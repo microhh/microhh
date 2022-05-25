@@ -303,6 +303,9 @@ void Boundary_surface<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
 
+    // Prepare base boundary, for inflow profiles.
+    Boundary<TF>::prepare_device();
+
     const int dmemsize2d = gd.ijcells*sizeof(TF);
     const int imemsize2d = gd.ijcells*sizeof(int);
     const int dimemsize  = gd.icells*sizeof(TF);

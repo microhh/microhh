@@ -24,6 +24,8 @@
 #include <cmath>
 #include <vector>
 #include <array>
+#include <algorithm>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -33,6 +35,7 @@
 #include "fast_math.h"
 #include "timedep.h"
 #include "constants.h"
+#include "netcdf_interface.h"
 
 namespace
 {
@@ -72,11 +75,35 @@ namespace
     }
 
     template<typename TF>
+    std::vector<int> calc_shape_profile(
+            const TF* restrict emission_profile, const TF* restrict z, const int kstart, const int kend)
+    {
+        std::vector<int> range(2);
+
+        for (int k=kstart; k<kend; ++k)
+            if (emission_profile[k] > Constants::dsmall)
+            {
+                range[0] = k;
+                break;
+            }
+
+        for (int k=kend-1; k>=kstart; --k)
+            if (emission_profile[k] > Constants::dsmall)
+            {
+                range[1] = k+1;
+                break;
+            }
+
+        return range;
+    }
+
+    template<typename TF, bool use_profile>
     void calc_source(
             TF* const __restrict__ st,
             const TF* const restrict x,
             const TF* const restrict y,
             const TF* const restrict z,
+            const TF* const restrict emission_profile,
             const TF x0, const TF sigma_x, const TF line_x,
             const TF y0, const TF sigma_y, const TF line_y,
             const TF z0, const TF sigma_z, const TF line_z,
@@ -147,10 +174,18 @@ namespace
                                     - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
                     }
                     else
-                        st[ijk] += strength/norm*exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    {
+                        if (use_profile)
+                            st[ijk] += strength/norm*(exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y))
+                                    * emission_profile[k]);
+                        else
+                            st[ijk] += strength/norm*exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    }
                 }
         }
 }
@@ -184,6 +219,29 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         // Switch between input in mass or volume ratio.
         // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
         sw_vmr = input.get_list<bool>("source", "swvmr", "");
+
+        // Option for (non-time dependent) profiles for vertical distribution emissions.
+        sw_emission_profile = input.get_item<bool>("source", "sw_profile", "", false);
+
+        if (sw_emission_profile)
+        {
+            // Find number of unique input profiles.
+            profile_index = input.get_list<int>("source", "profile_index", "");
+
+            for (int& i : profile_index)
+                unique_profile_indexes.insert(i);
+        }
+
+        // Limits on options (for now...)
+        if (sw_emission_profile && (swtimedep_location || swtimedep_strength))
+            throw std::runtime_error("Emission profiles with time dependent location/strength are not (yet) supported!");
+
+        if (sw_emission_profile)
+        {
+            for (int i=0; i<source_x0.size(); ++i)
+                if (line_x[i] > 0 || line_y[i] > 0 || line_z[i] > 0)
+                    throw std::runtime_error("Emission profiles with line emissions are not (yet) supported!");
+        }
     }
 }
 
@@ -196,6 +254,8 @@ Source<TF>::~Source()
 template<typename TF>
 void Source<TF>::init()
 {
+    auto& gd = grid.get_grid_data();
+
     if (swsource)
     {
         shape.resize(source_x0.size());
@@ -212,19 +272,47 @@ void Source<TF>::create(Input& input, Netcdf_handle& input_nc)
     if (!swsource)
         return;
 
+    if (sw_emission_profile)
+    {
+        // Get emission profiles from NetCDF input.
+        Netcdf_group& init_group = input_nc.get_group("init");
+
+        for (int i : unique_profile_indexes)
+        {
+            std::vector<TF> prof = std::vector<TF>(gd.kcells);
+            init_group.get_variable(prof, "emission_profile_" + std::to_string(i), {0}, {gd.ktot});
+            std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+            profile_z.emplace(i, prof);
+        }
+    }
+
     for (int n=0; n<source_x0.size(); ++n)
     {
         // Shape of the source in each direction
         shape[n].range_x = calc_shape(gd.x.data(), source_x0[n], sigma_x[n], line_x[n], gd.istart, gd.iend);
         shape[n].range_y = calc_shape(gd.y.data(), source_y0[n], sigma_y[n], line_y[n], gd.jstart, gd.jend);
-        shape[n].range_z = calc_shape(gd.z.data(), source_z0[n], sigma_z[n], line_z[n], gd.kstart, gd.kend);
 
-        norm[n] = calc_norm(
-                gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
-                gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
-                gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                shape[n].range_x, shape[n].range_y, shape[n].range_z,
-                fields.rhoref.data(), sw_vmr[n]);
+        if (sw_emission_profile)
+            shape[n].range_z = calc_shape_profile(profile_z.at(profile_index[n]).data(), gd.z.data(), gd.kstart, gd.kend);
+        else
+            shape[n].range_z = calc_shape(gd.z.data(), source_z0[n], sigma_z[n], line_z[n], gd.kstart, gd.kend);
+
+        if (sw_emission_profile)
+            norm[n] = calc_norm(
+                    gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
+                    gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
+                    gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
+                    profile_z.at(profile_index[n]).data(),
+                    shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                    fields.rhoref.data(), sw_vmr[n], true);
+        else
+            norm[n] = calc_norm(
+                    gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
+                    gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
+                    gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
+                    nullptr,
+                    shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                    fields.rhoref.data(), sw_vmr[n], false);
     }
 
     // Create timedep
@@ -289,12 +377,16 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
             shape[n].range_y = calc_shape(gd.y.data(), source_y0[n], sigma_y[n], line_y[n], gd.jstart, gd.jend);
             shape[n].range_z = calc_shape(gd.z.data(), source_z0[n], sigma_z[n], line_z[n], gd.kstart, gd.kend);
 
-            norm[n] = calc_norm(
-                    gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
-                    gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
-                    gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
-                    shape[n].range_x, shape[n].range_y, shape[n].range_z,
-                    fields.rhoref.data(), sw_vmr[n]);
+            if (sw_emission_profile)
+                throw std::runtime_error("Emission profiles with time dependent location/strength are not (yet) supported!");
+            else
+                norm[n] = calc_norm(
+                        gd.x.data(), source_x0[n], sigma_x[n], line_x[n],
+                        gd.y.data(), source_y0[n], sigma_y[n], line_y[n],
+                        gd.z.data(), source_z0[n], sigma_z[n], line_z[n],
+                        nullptr,
+                        shape[n].range_x, shape[n].range_y, shape[n].range_z,
+                        fields.rhoref.data(), sw_vmr[n], false);
         }
     }
 
@@ -309,17 +401,34 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
     }
 
     for (int n=0; n<sourcelist.size(); ++n)
-        calc_source(
-                fields.st[sourcelist[n]]->fld.data(),
-                gd.x.data(), gd.y.data(), gd.z.data(),
-                source_x0[n], sigma_x[n], line_x[n],
-                source_y0[n], sigma_y[n], line_y[n],
-                source_z0[n], sigma_z[n], line_z[n],
-                strength[n], norm[n],
-                shape[n].range_x[0], shape[n].range_x[1],
-                shape[n].range_y[0], shape[n].range_y[1],
-                shape[n].range_z[0], shape[n].range_z[1],
-                gd.icells, gd.ijcells);
+    {
+        if (sw_emission_profile)
+            calc_source<TF, true>(
+                    fields.st[sourcelist[n]]->fld.data(),
+                    gd.x.data(), gd.y.data(), gd.z.data(),
+                    profile_z.at(profile_index[n]).data(),
+                    source_x0[n], sigma_x[n], line_x[n],
+                    source_y0[n], sigma_y[n], line_y[n],
+                    source_z0[n], sigma_z[n], line_z[n],
+                    strength[n], norm[n],
+                    shape[n].range_x[0], shape[n].range_x[1],
+                    shape[n].range_y[0], shape[n].range_y[1],
+                    shape[n].range_z[0], shape[n].range_z[1],
+                    gd.icells, gd.ijcells);
+        else
+            calc_source<TF, false>(
+                    fields.st[sourcelist[n]]->fld.data(),
+                    gd.x.data(), gd.y.data(), gd.z.data(),
+                    nullptr,
+                    source_x0[n], sigma_x[n], line_x[n],
+                    source_y0[n], sigma_y[n], line_y[n],
+                    source_z0[n], sigma_z[n], line_z[n],
+                    strength[n], norm[n],
+                    shape[n].range_x[0], shape[n].range_x[1],
+                    shape[n].range_y[0], shape[n].range_y[1],
+                    shape[n].range_z[0], shape[n].range_z[1],
+                    gd.icells, gd.ijcells);
+    }
 }
 #endif
 
@@ -328,8 +437,9 @@ TF Source<TF>::calc_norm(
         const TF* const restrict x, const TF x0, const TF sigma_x, const TF line_x,
         const TF* const restrict y, const TF y0, const TF sigma_y, const TF line_y,
         const TF* const restrict z, const TF z0, const TF sigma_z, const TF line_z,
+        const TF* const restrict emission_profile,
         std::vector<int> range_x, std::vector<int>range_y, std::vector<int> range_z,
-        const TF* const restrict rhoref, const bool sw_vmr)
+        const TF* const restrict rhoref, const bool sw_vmr, const bool use_profile)
 {
     namespace fm = Fast_math;
     auto& gd = grid.get_grid_data();
@@ -411,10 +521,18 @@ TF Source<TF>::calc_norm(
                                     - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y));
                     }
                     else
-                        blob_norm = exp(
-                                - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
-                                - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
-                                - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    {
+                        if (use_profile)
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y))
+                                    * emission_profile[k];
+                        else
+                            blob_norm = exp(
+                                    - fm::pow2(x[i]-x0-line_x)/fm::pow2(sigma_x)
+                                    - fm::pow2(y[j]-y0-line_y)/fm::pow2(sigma_y)
+                                    - fm::pow2(z[k]-z0-line_z)/fm::pow2(sigma_z));
+                    }
                 }
                 else
                     blob_norm = TF(0);

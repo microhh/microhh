@@ -24,14 +24,16 @@
 #include "grid.h"
 #include "timedep.h"
 #include "timeloop.h"
+
 namespace
 {
-
     template<typename TF> __global__
-    void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
-                                    const TF fac0, const TF fac1,
-                                    const int index0, const int index1,
-                                    const int kmax, const int kgc)
+    void calc_time_dependent_prof_g(
+            TF* const __restrict__ prof,
+            const TF* const __restrict__ data,
+            const TF fac0, const TF fac1,
+            const int index0, const int index1,
+            const int kmax, const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -39,7 +41,7 @@ namespace
         if (k < kmax)
             prof[k+kgc] = fac0*data[index0*kk+k] + fac1*data[index1*kk+k];
     }
-} // end namespace
+}
 
 
 #ifdef USECUDA
