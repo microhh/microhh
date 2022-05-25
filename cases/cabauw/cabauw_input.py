@@ -39,7 +39,7 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
-    gpt_set = '256_224' # or '128_112'
+    gpt_set = '128_112' # or '256_224'
 
     # Link required files (if not present)
     if use_htessel:
