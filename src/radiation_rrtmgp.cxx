@@ -1611,7 +1611,6 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 #endif
 
 
-#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_all_stats(
         Stats<TF>& stats, Cross<TF>& cross,
@@ -1647,7 +1646,13 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         }
 
         if (do_column)
-            column.calc_column(name, array.fld.data(), no_offset);
+        {
+            // This `exec_all_stats` routine is used by both the cpu and gpu code.
+            // Unlike other `calc_column()` calls, the data for radiation is already on
+            // the cpu, so no copy from gpu to cpu is needed.
+            bool copy_from_gpu = false;
+            column.calc_column(name, array.fld.data(), no_offset, copy_from_gpu);
+        }
     };
 
     try
@@ -1697,7 +1702,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         #endif
     }
 }
-#endif
 
 
 template<typename TF>
@@ -1867,7 +1871,6 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
         }
 
-
     }
     catch (std::exception& e)
     {
@@ -1881,6 +1884,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     fields.release_tmp(tmp);
 }
+
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
