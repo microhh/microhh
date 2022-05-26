@@ -1267,12 +1267,10 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 {
     auto& gd = grid.get_grid_data();
 
-    std::cout << "exec_individual_column_stats, t=" << timeloop.get_time() << std::endl;
-
-    const int n_cols = column.get_n_columns();
+    const int n_stat_col = column.get_n_columns();
 
     // We can safely do nothing if there are no columns on this proc.
-    if (n_cols == 0)
+    if (n_stat_col == 0)
         return;
 
     auto tmp = fields.get_tmp();
@@ -1287,16 +1285,21 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     // Retrieve the thermo fields for the output columns.
     auto tmp_g = fields.get_tmp_g();
-    thermo.get_radiation_columns_g(*tmp_g, col_i_g, col_j_g, n_cols);
+    thermo.get_radiation_columns_g(*tmp_g, col_i_g, col_j_g, n_stat_col);
 
     // Create Array_gpu views on the thermo columns.
     int offset = 0;
-    Array_gpu<Float,2> t_lay_a(&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> t_lev_a(&tmp_g->fld_g[offset], {n_cols, gd.ktot+1}); offset += n_cols * (gd.ktot+1);
-    Array_gpu<Float,1> t_sfc_a(&tmp_g->fld_g[offset], {n_cols           }); offset += n_cols;
-    Array_gpu<Float,2> h2o_a  (&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> clwp_a (&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> ciwp_a (&tmp_g->fld_g[offset], {n_cols, gd.ktot  });
+    Array_gpu<Float,2> t_lay_a(&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> t_lev_a(&tmp_g->fld_g[offset], {n_stat_col, gd.ktot+1}); offset += n_stat_col * (gd.ktot+1);
+    Array_gpu<Float,1> t_sfc_a(&tmp_g->fld_g[offset], {n_stat_col           }); offset += n_stat_col;
+    Array_gpu<Float,2> h2o_a  (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> clwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> ciwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  });
+
+    // Flux fields.
+    Array_gpu<Float,2> flux_up ({n_stat_col, gd.ktot+1});
+    Array_gpu<Float,2> flux_dn ({n_stat_col, gd.ktot+1});
+    Array_gpu<Float,2> flux_net({n_stat_col, gd.ktot+1});
 
     bool compute_clouds = true;
 
@@ -1306,7 +1309,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     {
         const int size = array.dim(2);
 
-        for (int n=0; n<n_cols; ++n)
+        for (int n=0; n<n_stat_col; ++n)
         {
             // Copy data from GPU.
             //Array_gpu<Float,2> array_col(array.subset({{ {n+1, n+1}, {1, size} }}));
@@ -1315,7 +1318,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
             cuda_safe_call(cudaMemcpy2D(
                         &tmp->fld_mean.data()[gd.kstart], sizeof(Float),
-                        &array.ptr()[n], n_cols*sizeof(Float),
+                        &array.ptr()[n], n_stat_col*sizeof(Float),
                         sizeof(Float), size, cudaMemcpyDeviceToHost));
 
             const TF no_offset = 0;
@@ -1323,7 +1326,95 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         }
     };
 
-    save_column(t_lev_a, "sw_flux_dn");
+    if (sw_longwave)
+    {
+        exec_longwave(
+                thermo, timeloop, stats,
+                flux_up, flux_dn, flux_net,
+                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                compute_clouds, n_stat_col);
+
+        save_column(flux_up, "lw_flux_up");
+        save_column(flux_dn, "lw_flux_dn");
+
+        if (sw_clear_sky_stats)
+        {
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                    !compute_clouds, n_stat_col);
+
+            save_column(flux_up, "lw_flux_up_clear");
+            save_column(flux_dn, "lw_flux_dn_clear");
+        }
+    }
+
+    if (sw_shortwave)
+    {
+        Array_gpu<Float,2> flux_dn_dir({n_stat_col, gd.ktot+1});
+
+        // Single column solve of background profile for TOA conditions
+        if (!sw_fixed_sza)
+        {
+            // Update the solar zenith angle and sun-earth distance.
+            set_sun_location(timeloop);
+
+            if (is_day(this->mu0))
+            {
+                const int n_bnd = kdist_sw->get_nband();
+                const int n_gpt = kdist_sw->get_ngpt();
+
+                // Calculate new background column (on the CPU).
+                Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                Float p_top;
+                cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+                set_background_column_shortwave(p_top);
+
+                // Copy TOD fluxes to GPU
+                const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g, sw_flux_dn_dir_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g, sw_flux_dn_dif_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+            }
+        }
+
+        if (is_day(this->mu0))
+        {
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds, n_stat_col);
+        }
+        else
+        {
+            flux_up.fill(Float(0.));
+            flux_dn.fill(Float(0.));
+            flux_dn_dir.fill(Float(0.));
+        }
+
+        save_column(flux_up, "sw_flux_up");
+        save_column(flux_dn, "sw_flux_dn");
+        save_column(flux_dn_dir, "sw_flux_dn_dir");
+
+        // clear sky
+        if (sw_clear_sky_stats)
+        {
+            if (is_day(this->mu0))
+            {
+                exec_shortwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds, n_stat_col);
+            }
+
+            save_column(flux_up, "sw_flux_up_clear");
+            save_column(flux_dn, "sw_flux_dn_clear");
+            save_column(flux_dn_dir, "sw_flux_dn_dir_clear");
+        }
+    }
 
     fields.release_tmp_g(tmp_g);
     fields.release_tmp(tmp);
