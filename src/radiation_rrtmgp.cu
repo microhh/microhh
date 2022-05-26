@@ -1275,31 +1275,58 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     if (n_cols == 0)
         return;
 
-    // Get the column indices
+    auto tmp = fields.get_tmp();
+
+    // Get the column indices on CPU and GPU.
+    std::vector<int> col_i;
+    std::vector<int> col_j;
+    column.get_column_locations(col_i, col_j);
+
     int* col_i_g = column.get_column_location_g("i");
     int* col_j_g = column.get_column_location_g("j");
 
     // Retrieve the thermo fields for the output columns.
-    auto tmp = fields.get_tmp_g();
-    thermo.get_radiation_columns_g(*tmp, col_i_g, col_j_g, n_cols);
+    auto tmp_g = fields.get_tmp_g();
+    thermo.get_radiation_columns_g(*tmp_g, col_i_g, col_j_g, n_cols);
 
     // Create Array_gpu views on the thermo columns.
     int offset = 0;
-    Array_gpu<Float,2> t_lay_a(&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> t_lev_a(&tmp->fld_g[offset], {n_cols, gd.ktot+1}); offset += n_cols * (gd.ktot+1);
-    Array_gpu<Float,1> t_sfc_a(&tmp->fld_g[offset], {n_cols           }); offset += n_cols;
-    Array_gpu<Float,2> h2o_a  (&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> clwp_a (&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
-    Array_gpu<Float,2> ciwp_a (&tmp->fld_g[offset], {n_cols, gd.ktot  });
+    Array_gpu<Float,2> t_lay_a(&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> t_lev_a(&tmp_g->fld_g[offset], {n_cols, gd.ktot+1}); offset += n_cols * (gd.ktot+1);
+    Array_gpu<Float,1> t_sfc_a(&tmp_g->fld_g[offset], {n_cols           }); offset += n_cols;
+    Array_gpu<Float,2> h2o_a  (&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> clwp_a (&tmp_g->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> ciwp_a (&tmp_g->fld_g[offset], {n_cols, gd.ktot  });
 
-    //t_lay_a.dump("t_lay_a");
-    //t_lev_a.dump("t_lev_a");
-    //t_sfc_a.dump("t_sfc_a");
-    //h2o_a.dump("h2o_a");
-    //clwp_a.dump("clwp_a");
-    //ciwp_a.dump("ciwp_a");
+    bool compute_clouds = true;
 
-    throw 1;
+    // Lambda function to set the column data and save column statistics.
+    auto save_column = [&](
+            const Array_gpu<Float,2>& array, const std::string& name)
+    {
+        const int size = array.dim(2);
+
+        for (int n=0; n<n_cols; ++n)
+        {
+            // Copy data from GPU.
+            //Array_gpu<Float,2> array_col(array.subset({{ {n+1, n+1}, {1, size} }}));
+            //cuda_safe_call(cudaMemcpy(
+            //    &tmp->fld_mean.data()[gd.kstart], array_col.ptr(), size*sizeof(Float), cudaMemcpyDeviceToHost));
+
+            cuda_safe_call(cudaMemcpy2D(
+                        &tmp->fld_mean.data()[gd.kstart], sizeof(Float),
+                        &array.ptr()[n], n_cols*sizeof(Float),
+                        sizeof(Float), size, cudaMemcpyDeviceToHost));
+
+            const TF no_offset = 0;
+            column.set_individual_column(name, tmp->fld_mean.data(), no_offset, col_i[n], col_j[n]);
+        }
+    };
+
+    save_column(t_lev_a, "sw_flux_dn");
+
+    fields.release_tmp_g(tmp_g);
+    fields.release_tmp(tmp);
 }
 #endif
 

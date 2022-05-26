@@ -92,13 +92,6 @@ void Column<TF>::calc_time_series(
 }
 
 template<typename TF>
-void Column<TF>::set_individual_column(
-        std::string profname, const TF* const restrict prof,
-        const TF offset, const int i_col, const int j_col)
-{
-}
-
-template<typename TF>
 int* Column<TF>::get_column_location_g(const std::string& dim)
 {
     if (dim == "i")

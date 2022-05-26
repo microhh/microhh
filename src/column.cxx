@@ -311,6 +311,7 @@ void Column<TF>::calc_column(
         }
     }
 }
+#endif
 
 template<typename TF>
 void Column<TF>::set_individual_column(
@@ -337,6 +338,7 @@ void Column<TF>::set_individual_column(
     throw std::runtime_error("Cant set individual column for i,j=" + std::to_string(i_col) + "," + std::to_string(j_col));
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_time_series(
         std::string name, const TF* const restrict data, const TF offset)

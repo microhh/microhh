@@ -1786,7 +1786,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
 
             const TF no_offset = 0;
-            column.set_individual_column(name, tmp->fld_mean.data(), no_offset, col_i[n], col_j[n]);
+            column.set_individual_column(name, tmp->fld_mean.data(), no_offset, col_i[n], col_j[n], gd.kcells);
         }
     };
 
