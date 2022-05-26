@@ -506,7 +506,6 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpt_pool, nbnd_pool);
 
-
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
 
@@ -558,13 +557,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
-        const bool compute_clouds)
+        const bool compute_clouds, const int n_col)
 {
     constexpr int n_col_block = 1024;
 
     auto& gd = grid.get_grid_data();
 
-    const int n_col = gd.imax*gd.jmax;
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -761,13 +759,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
-        const bool compute_clouds)
+        const bool compute_clouds, const int n_col)
 {
     constexpr int n_col_block = 1024;
 
     auto& gd = grid.get_grid_data();
 
-    const int n_col = gd.imax*gd.jmax;
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -1025,11 +1022,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         {
             if (sw_longwave)
             {
+                const int n_col = gd.imax*gd.jmax;
                 exec_longwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds);
+                        compute_clouds, n_col);
 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld_g,
@@ -1068,16 +1066,17 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                     do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
-                
-                    // clear sky 
+
+                    // clear sky
                     if (sw_clear_sky_stats)
                     {
+                        const int n_col = gd.imax*gd.jmax;
                         exec_longwave(
                                 thermo, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                                !compute_clouds);
-                        
+                                !compute_clouds, n_col);
+
                         do_gcs(*fields.sd.at("lw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("lw_flux_dn_clear"), flux_dn);
                     }
@@ -1115,11 +1114,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                 if (is_day(this->mu0))
                 {
+                    const int n_col = gd.imax*gd.jmax;
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                            compute_clouds);
+                            compute_clouds, n_col);
 
                     calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld_g,
@@ -1173,18 +1173,19 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
-                    
+
                     // clear sky
                     if (sw_clear_sky_stats)
                     {
                         if (is_day(this->mu0))
                         {
+                            const int n_col = gd.imax*gd.jmax;
                             exec_shortwave(
                                     thermo, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
                                     t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                                    !compute_clouds);
-                        }    
+                                    !compute_clouds, n_col);
+                        }
 
                         do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
@@ -1266,17 +1267,39 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 {
     auto& gd = grid.get_grid_data();
 
-    // Get column indices.
-    std::vector<int> col_i;
-    std::vector<int> col_j;
-    column.get_column_locations(col_i, col_j);
-    const int n_cols = col_i.size();
+    std::cout << "exec_individual_column_stats, t=" << timeloop.get_time() << std::endl;
+
+    const int n_cols = column.get_n_columns();
 
     // We can safely do nothing if there are no columns on this proc.
     if (n_cols == 0)
         return;
 
-    // TO-DO: the rest :-)
+    // Get the column indices
+    int* col_i_g = column.get_column_location_g("i");
+    int* col_j_g = column.get_column_location_g("j");
+
+    // Retrieve the thermo fields for the output columns.
+    auto tmp = fields.get_tmp_g();
+    thermo.get_radiation_columns_g(*tmp, col_i_g, col_j_g, n_cols);
+
+    // Create Array_gpu views on the thermo columns.
+    int offset = 0;
+    Array_gpu<Float,2> t_lay_a(&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> t_lev_a(&tmp->fld_g[offset], {n_cols, gd.ktot+1}); offset += n_cols * (gd.ktot+1);
+    Array_gpu<Float,1> t_sfc_a(&tmp->fld_g[offset], {n_cols           }); offset += n_cols;
+    Array_gpu<Float,2> h2o_a  (&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> clwp_a (&tmp->fld_g[offset], {n_cols, gd.ktot  }); offset += n_cols * gd.ktot;
+    Array_gpu<Float,2> ciwp_a (&tmp->fld_g[offset], {n_cols, gd.ktot  });
+
+    //t_lay_a.dump("t_lay_a");
+    //t_lev_a.dump("t_lev_a");
+    //t_sfc_a.dump("t_sfc_a");
+    //h2o_a.dump("h2o_a");
+    //clwp_a.dump("clwp_a");
+    //ciwp_a.dump("ciwp_a");
+
+    throw 1;
 }
 #endif
 

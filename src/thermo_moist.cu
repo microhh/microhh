@@ -503,6 +503,63 @@ namespace
         }
     }
 
+
+    template<typename TF> __global__
+    void calc_radiation_columns_g(
+            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o,
+            TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
+            const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
+            const TF* const restrict p, const TF* const restrict ph,
+            const int* const col_i, const int* const col_j,
+            const int n_cols,
+            const int kgc, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+        const int k = blockIdx.y*blockDim.y + threadIdx.y + kstart;
+
+        if (n < n_cols)
+        {
+            const int i = col_i[n];
+            const int j = col_j[n];
+
+
+            const int ij = i + j*icells;
+            const int ijk = i + j*icells + k*ijcells;
+
+            const int ij_out = n;
+            const int ijk_out = n + (k-kgc) * n_cols;
+
+            if (k < kend)
+            {
+                const Struct_sat_adjust<TF> ssa = sat_adjust_g(thl[ijk], qt[ijk], p[k], exner(p[k]));
+
+                const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+                clwp[ijk_out] = ssa.ql * dpg;
+                ciwp[ijk_out] = ssa.qi * dpg;
+
+                const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                vmr_h2o[ijk_out] = qv / (ep<TF> - ep<TF>*qv);
+                T[ijk_out] = ssa.t;
+            }
+
+            if (k < kend+1)
+            {
+                const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
+                const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
+
+                T_h[ijk_out] = sat_adjust_g(thlh, qth, ph[k], exner(ph[k])).t;
+            }
+
+            if (k == kstart)
+                T_sfc[ij_out] = thl_bot[ij] * exner(ph[kstart]);
+        }
+    }
+
+
     /*
     // BvS: no longer used, base state is calculated at the host
     // CvH: This unused code does not take into account ice
@@ -1026,6 +1083,50 @@ void Thermo_moist<TF>::get_radiation_fields_g(
             gd.igc, gd.jgc, gd.kgc,
             gd.icells, gd.ijcells,
             gd.imax, gd.imax*gd.jmax);
+    cuda_check_error();
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_radiation_columns_g(
+    Field3d<TF>& tmp,
+    const int* const __restrict__ col_i_g,
+    const int* const __restrict__ col_j_g,
+    const int n_cols) const
+{
+    auto& gd = grid.get_grid_data();
+
+    // Get slices from tmp field.
+    const int n_full = gd.ktot;
+    const int n_half = gd.ktot+1;
+
+    int offset = 0;
+    TF* t_lay_a = &tmp.fld_g[offset]; offset += n_cols * n_full;
+    TF* t_lev_a = &tmp.fld_g[offset]; offset += n_cols * n_half;
+    TF* t_sfc_a = &tmp.fld_g[offset]; offset += n_cols;
+    TF* h2o_a   = &tmp.fld_g[offset]; offset += n_cols * n_full;
+    TF* clwp_a  = &tmp.fld_g[offset]; offset += n_cols * n_full;
+    TF* ciwp_a  = &tmp.fld_g[offset];
+
+    const int blocki = 4;
+    const int blockj = 32;
+    const int gridi = n_cols/blocki + (n_cols%blocki > 0);
+    const int gridj = n_half/blockj + (n_half%blockj > 0);
+
+    dim3 gridGPU(gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
+
+    calc_radiation_columns_g<<<gridGPU, blockGPU>>>(
+            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            fields.sp.at("thl")->fld_bot_g,
+            bs.pref_g,
+            bs.prefh_g,
+            col_i_g,
+            col_j_g,
+            n_cols,
+            gd.kgc, gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
     cuda_check_error();
 }
 

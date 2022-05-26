@@ -62,10 +62,6 @@ class Radiation_disabled : public Radiation<TF>
         std::vector<TF>& get_surface_radiation(const std::string&)
             { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
 
-        // void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
-        // void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
-        // void exec_dump(Dump<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) {};
-
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,

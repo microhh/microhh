@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -94,6 +96,49 @@ void Column<TF>::set_individual_column(
         std::string profname, const TF* const restrict prof,
         const TF offset, const int i_col, const int j_col)
 {
+}
+
+template<typename TF>
+int* Column<TF>::get_column_location_g(const std::string& dim)
+{
+    if (dim == "i")
+        return col_i_g;
+    else if (dim == "j")
+        return col_j_g;
+    else
+        throw std::runtime_error("Can not get column locations for dimension " + dim);
+}
+
+template<typename TF>
+void Column<TF>::prepare_device()
+{
+    // Init individual column statistics.
+    std::vector<int> col_i;
+    std::vector<int> col_j;
+    get_column_locations(col_i, col_j);
+
+    if (col_i.size() > 0)
+    {
+        const int colsize = col_i.size() * sizeof(int);
+
+        cuda_safe_call(cudaMalloc(&col_i_g, colsize));
+        cuda_safe_call(cudaMalloc(&col_j_g, colsize));
+
+        cuda_safe_call(cudaMemcpy(col_i_g, col_i.data(), colsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(col_j_g, col_j.data(), colsize, cudaMemcpyHostToDevice));
+    }
+}
+
+template<typename TF>
+void Column<TF>::clear_device()
+{
+    int n = get_n_columns();
+
+    if (n > 0)
+    {
+        cuda_safe_call(cudaFree(col_i_g));
+        cuda_safe_call(cudaFree(col_j_g));
+    }
 }
 #endif
 
