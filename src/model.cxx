@@ -322,6 +322,7 @@ void Model<TF>::exec()
         #endif
     #endif
 
+
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -460,6 +461,7 @@ void Model<TF>::exec()
                         boundary ->exec_column(*column);
                         microphys->exec_column(*column);
 
+                        #pragma omp critical
                         column   ->exec(iter, time, itime);
                     }
 
@@ -626,7 +628,10 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
     if (stats->do_statistics(itime))
+    {
+        #pragma omp critical
         stats->exec(iteration, time, itime);
+    }
 }
 
 // Calculate the statistics for all classes that have a statistics function.
