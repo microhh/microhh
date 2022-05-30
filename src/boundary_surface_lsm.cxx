@@ -1318,7 +1318,7 @@ void Boundary_surface_lsm<TF>::create_stats(
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::load(const int iotime)
+void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
 {
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
@@ -1446,7 +1446,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime)
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::save(const int iotime)
+void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto& sgd = soil_grid.get_grid_data();
 

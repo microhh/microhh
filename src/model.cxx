@@ -240,7 +240,7 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
-    boundary->load(timeloop->get_iotime());
+    boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
@@ -294,7 +294,7 @@ void Model<TF>::save()
     thermo->save(timeloop->get_iotime());
 
     boundary->create_cold_start(*input_nc);
-    boundary->save(timeloop->get_iotime());
+    boundary->save(timeloop->get_iotime(), *thermo);
 }
 
 template<typename TF>
@@ -509,7 +509,7 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
-                            boundary->save(iotime);
+                            boundary->save(iotime, *thermo);
                         }
                     }
                 }
@@ -530,7 +530,7 @@ void Model<TF>::exec()
                     timeloop->load(iotime);
                     fields  ->load(iotime);
                     thermo  ->load(iotime);
-                    boundary->load(iotime);
+                    boundary->load(iotime, *thermo);
 
                     // Reset tendencies
                     fields->reset_tendencies();

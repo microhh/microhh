@@ -101,8 +101,8 @@ class Boundary_surface_lsm : public Boundary<TF>
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
-        void load(const int);
-        void save(const int);
+        void load(const int, Thermo<TF>&);
+        void save(const int, Thermo<TF>&);
 
         #ifdef USECUDA
         // GPU functions and variables

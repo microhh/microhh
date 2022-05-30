@@ -102,8 +102,8 @@ class Boundary
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
 
-        virtual void load(const int) {};
-        virtual void save(const int) {};
+        virtual void load(const int, Thermo<TF>&) {};
+        virtual void save(const int, Thermo<TF>&) {};
 
         // Get functions for various 2D fields
         virtual const std::vector<TF>& get_z0m() const;
