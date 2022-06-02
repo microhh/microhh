@@ -23,6 +23,7 @@
 
 #include "radiation.h"
 #include "field3d_operators.h"
+#include "boundary_cyclic.h"
 
 #include "Gas_concs.h"
 #include "Gas_optics_rrtmgp.h"
@@ -90,6 +91,8 @@ class Radiation_rrtmgp : public Radiation<TF>
 		using Radiation<TF>::fields;
 		using Radiation<TF>::field3d_operators;
 
+        Boundary_cyclic<TF> boundary_cyclic;
+
         void create_column(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
         void create_column_longwave(
@@ -110,7 +113,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create_solver_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
                 const Gas_concs&);
-    
+        void create_diffuse_filter();
+
         void solve_shortwave_column(
                 std::unique_ptr<Optical_props_arry>&,
                 Array<Float,2>&, Array<Float,2>&,
@@ -159,20 +163,19 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const bool);
-        
+                const bool, const int);
+
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const bool);
+                const bool, const int);
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
-        void set_background_column_shortwave(Thermo<TF>&);
-        
+        void set_background_column_shortwave(const TF);
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
@@ -251,11 +254,23 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         Float* sw_flux_dn_sfc_g;
         Float* sw_flux_up_sfc_g;
-        
+
         Float* sw_flux_dn_dir_inc_g;
         Float* sw_flux_dn_dif_inc_g;
         Float* lw_flux_dn_inc_g;
-        
+
+        // Surface diffuse radiation filtering
+        bool sw_diffuse_filter;
+
+        Float sigma_filter;
+        Float sigma_filter_small;
+        int n_filter_iterations;
+
+        std::vector<Float> sw_flux_dn_dif_f;
+
+        std::vector<Float> filter_kernel_x;
+        std::vector<Float> filter_kernel_y;
+
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;

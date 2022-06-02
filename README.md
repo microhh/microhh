@@ -12,6 +12,7 @@ MicroHH is described in detail in [Van Heerwaarden et al. (2017)](http://www.geo
 
 [![DOI](https://zenodo.org/badge/14754940.svg)](https://zenodo.org/badge/latestdoi/14754940)
 
+
 Requirements
 ------------
 In order to compile MicroHH you need:
@@ -24,6 +25,18 @@ In order to compile MicroHH you need:
 * CUDA (optional for GPU support)
 * Python + numpy + python-netcdf4 (optional for running example cases)
 * Ipython + python-netcdf4 + matplotlib (optional for plotting results example cases)
+
+
+Downloading the code
+--------------------
+Check out the code from GitHub using
+
+    git clone --recurse-submodules git@github.com:microhh/microhh
+
+In case you had already checked out the repository without checking out the submodules, use:
+
+    git submodule update --init
+
 
 Compilation of the code
 -----------------------
@@ -60,6 +73,7 @@ With the previous command you have triggered the build system and created the ma
     make -j
 
 Your directory should contain a file named `microhh` now. This is the main executable.
+
 
 Running an example case
 -----------------------

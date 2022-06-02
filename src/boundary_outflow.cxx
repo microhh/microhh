@@ -19,6 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdexcept>
 
 #include "master.h"
 #include "grid.h"
@@ -81,6 +82,72 @@ namespace
         }
     }
 
+    template<typename TF, Edge_location location, Flow_direction direction>
+    void compute_inoutflow_2nd(
+            TF* const restrict a, const TF* const restrict inflow_prof,
+            const int istart, const int iend, const int igc,
+            const int jstart, const int jend, const int jgc,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int ii = 1;
+        int ijk;
+        int ijk_gc;
+        int ijk_d;
+
+        // Set the ghost cells using extrapolation.
+        if (location == Edge_location::West || location == Edge_location::East)
+        {
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    for (int i=0; i<igc; ++i)
+                    {
+                        if (location == Edge_location::West)
+                        {
+                            ijk_d  = (istart    ) + j*icells + k*ijcells;
+                            ijk    = (istart+i  ) + j*icells + k*ijcells;
+                            ijk_gc = (istart-1-i) + j*icells + k*ijcells;
+                        }
+                        else if (location == Edge_location::East)
+                        {
+                            ijk_d  = (iend-1  ) + j*icells + k*ijcells;
+                            ijk    = (iend-1-i) + j*icells + k*ijcells;
+                            ijk_gc = (iend+i  ) + j*icells + k*ijcells;
+                        }
+
+                        if (direction == Flow_direction::Inflow)
+                            a[ijk_gc] = a[ijk_d] - (i+1)*TF(2)*(a[ijk_d] - inflow_prof[k]);
+                        else
+                            a[ijk_gc] = a[ijk];
+                    }
+        }
+        else if (location == Edge_location::North || location == Edge_location::South)
+        {
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jgc; ++j)
+                    for (int i=0; i<icells; ++i)
+                    {
+                        if (location == Edge_location::South)
+                        {
+                            ijk_d  = i + (jstart    )*icells + k*ijcells;
+                            ijk    = i + (jstart+j  )*icells + k*ijcells;
+                            ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
+                        }
+                        else if (location == Edge_location::North)
+                        {
+                            ijk_d  = i + (jend-1  )*icells + k*ijcells;
+                            ijk    = i + (jend-1-j)*icells + k*ijcells;
+                            ijk_gc = i + (jend+j  )*icells + k*ijcells;
+                        }
+
+                        if (direction == Flow_direction::Inflow)
+                            a[ijk_gc] = a[ijk_d] - (j+1)*TF(2)*(a[ijk_d] - inflow_prof[k]);
+                        else
+                            a[ijk_gc] = a[ijk];
+                    }
+        }
+    }
+
     template<typename TF>
     void compute_outflow_4th(
             TF* const restrict a,
@@ -127,10 +194,36 @@ namespace
 }
 
 template<typename TF>
-Boundary_outflow<TF>::Boundary_outflow(Master& masterin, Grid<TF>& gridin) :
+Boundary_outflow<TF>::Boundary_outflow(Master& masterin, Grid<TF>& gridin, Input& inputin) :
     master(masterin),
     grid(gridin)
 {
+    std::vector<std::string> outflow_list = inputin.get_list<std::string>(
+            "boundary", "scalar_outflow", "", std::vector<std::string>());
+
+    if (outflow_list.size() > 0)
+    {
+        // Process the in/outflow locations:
+        auto process_lbc = [&](std::string edge_name, Edge_location edge)
+        {
+            std::string direction = inputin.get_item<std::string>("boundary", "flow_direction", edge_name);
+
+            if (direction == "inflow")
+                flow_direction[edge] = Flow_direction::Inflow;
+            else if (direction == "outflow")
+                flow_direction[edge] = Flow_direction::Outflow;
+            else
+            {
+                std::string error = "Inflow direction \"" + direction + "\" is invalid\n";
+                throw std::runtime_error(error);
+            }
+        };
+
+        process_lbc("north", Edge_location::North);
+        process_lbc("east",  Edge_location::East);
+        process_lbc("south", Edge_location::South);
+        process_lbc("west",  Edge_location::West);
+    }
 }
 
 template<typename TF>
@@ -140,7 +233,9 @@ Boundary_outflow<TF>::~Boundary_outflow()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_outflow<TF>::exec(TF* const restrict data)
+void Boundary_outflow<TF>::exec(
+        TF* const restrict data,
+        const TF* const restrict inflow_prof)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -165,38 +260,85 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
     }
     else if (grid.get_spatial_order() == Grid_order::Second)
     {
-        // Neumann BCs on all boundaries
         if (md.mpicoordx == 0)
-            set_neumann<TF, Edge_location::West>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::West;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Inflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Outflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordx == md.npx-1)
-            set_neumann<TF, Edge_location::East>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::East;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Inflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Outflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordy == 0)
-            set_neumann<TF, Edge_location::South>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::South;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Inflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Outflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordy == md.npy-1)
-            set_neumann<TF, Edge_location::North>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::North;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Inflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd<TF, edge, Flow_direction::Outflow>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
     }
 }
 #endif

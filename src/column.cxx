@@ -287,7 +287,7 @@ void Column<TF>::get_column_locations(std::vector<int>& i, std::vector<int>& j)
 #ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(
-        std::string profname, const TF* const restrict data, const TF offset)
+        std::string profname, const TF* const restrict data, const TF offset, const bool copy_from_gpu)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -311,6 +311,7 @@ void Column<TF>::calc_column(
         }
     }
 }
+#endif
 
 template<typename TF>
 void Column<TF>::set_individual_column(
@@ -337,6 +338,7 @@ void Column<TF>::set_individual_column(
     throw std::runtime_error("Cant set individual column for i,j=" + std::to_string(i_col) + "," + std::to_string(j_col));
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_time_series(
         std::string name, const TF* const restrict data, const TF offset)

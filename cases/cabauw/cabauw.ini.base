@@ -71,6 +71,7 @@ z0h=0.003
 swhomogeneous=None
 swfreedrainage=1
 swtilestats=0
+swtilestats_column=0
 switerseb=0
 swwater=0
 ktot=4
@@ -139,7 +140,7 @@ crosslist=qlqipath,sw_flux_dn,sw_flux_dn_dir,thlbot,qtbot,thlfluxbot,qtfluxbot,u
 
 [column]
 swcolumn=1
-sampletime=10
+sampletime=60
 coordinates[x]=1600
 coordinates[y]=1600
 

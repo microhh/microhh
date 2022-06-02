@@ -1,12 +1,10 @@
-import matplotlib.pyplot as pl
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
+import os
 
 # Available in `microhh_root/python`:
 import microhh_tools as mht
-
-pl.close('all')
 
 def add_nc_var(name, dims, nc, data):
     """
@@ -18,35 +16,66 @@ def add_nc_var(name, dims, nc, data):
         var = nc.createVariable(name, np.float64, dims)
     var[:] = data
 
+
+def link(f1, f2):
+    """
+    Create symbolic link from `f1` to `f2`, if `f2` does not yet exist.
+    """
+    if os.path.islink(f2):
+        os.remove(f2)
+    if os.path.exists(f1):
+        os.symlink(f1, f2)
+    else:
+        raise Exception('Source file {} does not exist!'.format(f1))
+
+
 if __name__ == '__main__':
     """
     Case switches.
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = False           # False = prescribed radiation from ERA5.
+    use_rrtmgp = True            # False = prescribed radiation from ERA5.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
+
+    gpt_set = '128_112' # or '256_224'
+
+    # Link required files (if not present)
+    if use_htessel:
+        link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
+    if use_rrtmgp:
+        if gpt_set == '256_224':
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
+        elif gpt_set == '128_112':
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
+            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
+        else:
+            raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
+
+        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
+        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
 
     """
     Create vertical grid for LES
     """
-    zsize = 3200
-    ktot = 128
+    zsize = 4000
+    ktot = 160
     dz = zsize/ktot
     z = np.arange(dz/2, zsize, dz)
 
     """
     Read / interpolate (LS)2D initial conditions and forcings
     """
-    ls2d = xr.open_dataset('ls2d_20160815_0600_1800.nc')
+    ls2d = xr.open_dataset('ls2d_20160815.nc')
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
     ls2d_z = ls2d.interp(z=z)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
         # TODO: add to LS2D download...
-        ds_rad = xr.open_dataset('era_rad_20160815_0000_2300.nc')
+        ds_rad = xr.open_dataset('era_rad_20160815.nc')
         ds_rad = ds_rad/3600.
         ds_rad['time'] = ds_rad['time'] - np.timedelta64(30, 'm')
         ds_rad = ds_rad.interp(time=ls2d_z.time)

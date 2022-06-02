@@ -506,7 +506,6 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpt_pool, nbnd_pool);
 
-
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
 
@@ -558,13 +557,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
-        const bool compute_clouds)
+        const bool compute_clouds, const int n_col)
 {
     constexpr int n_col_block = 1024;
 
     auto& gd = grid.get_grid_data();
 
-    const int n_col = gd.imax*gd.jmax;
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -761,13 +759,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
-        const bool compute_clouds)
+        const bool compute_clouds, const int n_col)
 {
     constexpr int n_col_block = 1024;
 
     auto& gd = grid.get_grid_data();
 
-    const int n_col = gd.imax*gd.jmax;
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -1025,11 +1022,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         {
             if (sw_longwave)
             {
+                const int n_col = gd.imax*gd.jmax;
                 exec_longwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds);
+                        compute_clouds, n_col);
 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld_g,
@@ -1068,16 +1066,17 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                     do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
-                
-                    // clear sky 
+
+                    // clear sky
                     if (sw_clear_sky_stats)
                     {
+                        const int n_col = gd.imax*gd.jmax;
                         exec_longwave(
                                 thermo, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
-                                !compute_clouds);
-                        
+                                !compute_clouds, n_col);
+
                         do_gcs(*fields.sd.at("lw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("lw_flux_dn_clear"), flux_dn);
                     }
@@ -1091,64 +1090,36 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 // Single column solve of background profile for TOA conditions
                 if (!sw_fixed_sza)
                 {
-                    // Update the solar zenith angle, and calculate new shortwave reference column
-                    const int day_of_year = int(timeloop.calc_day_of_year());
-                    const int year = timeloop.get_year();
-                    const Float seconds_after_midnight = Float(timeloop.calc_hour_of_day()*3600);
-                    Float azimuth_dummy;
-                    std::tie(this->mu0, azimuth_dummy) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
-
-                    // Calculate correction factor for impact Sun's distance on the solar "constant"
-                    const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
-                    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+                    // Update the solar zenith angle and sun-earth distance.
+                    set_sun_location(timeloop);
 
                     if (is_day(this->mu0))
                     {
                         const int n_bnd = kdist_sw->get_nband();
                         const int n_gpt = kdist_sw->get_ngpt();
 
-                        // Set the solar zenith angle and albedo.
-                        Array<Float,2> sfc_alb_dir({n_bnd, n_col});
-                        Array<Float,2> sfc_alb_dif({n_bnd, n_col});
+                        // Calculate new background column (on the CPU).
+                        Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                        Float p_top;
+                        cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
 
-                        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-                        {
-                            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-                            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
-                        }
+                        set_background_column_shortwave(p_top);
 
-                        Array<Float,1> mu0({n_col});
-                        mu0({1}) = this->mu0;
-
-                        // sw column solve on cpu for TOD fluxes
-                        solve_shortwave_column(
-                                optical_props_sw,
-                                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
-                                gas_concs_col,
-                                *kdist_sw,
-                                col_dry,
-                                p_lay_col, p_lev_col,
-                                t_lay_col, t_lev_col,
-                                mu0,
-                                sfc_alb_dir, sfc_alb_dif,
-                                tsi_scaling,
-                                n_lay_col);
-
-                        //TOD fluxes to CPU
-                        const int ncolgptsize = n_col*n_gpt*sizeof(Float);
-                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g,  sw_flux_dn_dir_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
-                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g,  sw_flux_dn_dif_inc.ptr(),  ncolgptsize, cudaMemcpyHostToDevice));
+                        // Copy TOD fluxes to GPU
+                        const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g, sw_flux_dn_dir_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                        cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g, sw_flux_dn_dif_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
                     }
                 }
 
                 if (is_day(this->mu0))
                 {
+                    const int n_col = gd.imax*gd.jmax;
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                            compute_clouds);
+                            compute_clouds, n_col);
 
                     calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld_g,
@@ -1202,18 +1173,20 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     do_gcs(*fields.sd.at("sw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
-                    
+
                     // clear sky
                     if (sw_clear_sky_stats)
                     {
                         if (is_day(this->mu0))
                         {
+                            const int n_col = gd.imax*gd.jmax;
                             exec_shortwave(
                                     thermo, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
                                     t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                                    !compute_clouds);
-                        }    
+                                    !compute_clouds, n_col);
+                        }
+
                         do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
                         do_gcs(*fields.sd.at("sw_flux_dn_dir_clear"), flux_dn_dir);
@@ -1289,73 +1262,162 @@ void Radiation_rrtmgp<TF>::clear_device()
 
 
 template<typename TF>
-void Radiation_rrtmgp<TF>::exec_all_stats(
-        Stats<TF>& stats, Cross<TF>& cross,
-        Dump<TF>& dump, Column<TF>& column,
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop,
-        const unsigned long itime, const int iotime)
+void Radiation_rrtmgp<TF>::exec_individual_column_stats(
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
-    const bool do_stats  = stats.do_statistics(itime);
-    const bool do_cross  = cross.do_cross(itime) && crosslist.size() > 0;
-    const bool do_column = column.do_column(itime);
-
-    // Return in case of no stats or cross section.
-    if ( !(do_stats || do_cross || do_column) )
-        return;
-
-    const Float no_offset = 0.;
-    const Float no_threshold = 0.;
-
-    // CvH: lots of code repetition with exec()
     auto& gd = grid.get_grid_data();
 
-    const bool compute_clouds = true;
+    const int n_stat_col = column.get_n_columns();
 
-    // Use a lambda function to avoid code repetition.
-    auto save_stats_and_cross = [&](
-            Field3d<TF>& array, const std::string& name, const std::array<int,3>& loc)
+    // We can safely do nothing if there are no columns on this proc.
+    if (n_stat_col == 0)
+        return;
+
+    auto tmp = fields.get_tmp();
+
+    // Get the column indices on CPU and GPU.
+    std::vector<int> col_i;
+    std::vector<int> col_j;
+    column.get_column_locations(col_i, col_j);
+
+    int* col_i_g = column.get_column_location_g("i");
+    int* col_j_g = column.get_column_location_g("j");
+
+    // Retrieve the thermo fields for the output columns.
+    auto tmp_g = fields.get_tmp_g();
+    thermo.get_radiation_columns_g(*tmp_g, col_i_g, col_j_g, n_stat_col);
+
+    // Create Array_gpu views on the thermo columns.
+    int offset = 0;
+    Array_gpu<Float,2> t_lay_a(&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> t_lev_a(&tmp_g->fld_g[offset], {n_stat_col, gd.ktot+1}); offset += n_stat_col * (gd.ktot+1);
+    Array_gpu<Float,1> t_sfc_a(&tmp_g->fld_g[offset], {n_stat_col           }); offset += n_stat_col;
+    Array_gpu<Float,2> h2o_a  (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> clwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> ciwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  });
+
+    // Flux fields.
+    Array_gpu<Float,2> flux_up ({n_stat_col, gd.ktot+1});
+    Array_gpu<Float,2> flux_dn ({n_stat_col, gd.ktot+1});
+    Array_gpu<Float,2> flux_net({n_stat_col, gd.ktot+1});
+
+    bool compute_clouds = true;
+
+    // Lambda function to set the column data and save column statistics.
+    auto save_column = [&](
+            const Array_gpu<Float,2>& array, const std::string& name)
     {
-        if (do_stats)
-            stats.calc_stats(name, array, no_offset, no_threshold);
+        const int size = array.dim(2);
 
-        if (do_cross)
+        for (int n=0; n<n_stat_col; ++n)
         {
-            if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(array.fld.data(), name, iotime, loc);
-        }
+            // Copy data from GPU.
+            //Array_gpu<Float,2> array_col(array.subset({{ {n+1, n+1}, {1, size} }}));
+            //cuda_safe_call(cudaMemcpy(
+            //    &tmp->fld_mean.data()[gd.kstart], array_col.ptr(), size*sizeof(Float), cudaMemcpyDeviceToHost));
 
-        if (do_column)
-            column.calc_column(name, array.fld.data(), no_offset);
+            cuda_safe_call(cudaMemcpy2D(
+                        &tmp->fld_mean.data()[gd.kstart], sizeof(Float),
+                        &array.ptr()[n], n_stat_col*sizeof(Float),
+                        sizeof(Float), size, cudaMemcpyDeviceToHost));
+
+            const TF no_offset = 0;
+            column.set_individual_column(name, tmp->fld_mean.data(), no_offset, col_i[n], col_j[n]);
+        }
     };
 
     if (sw_longwave)
     {
-        save_stats_and_cross(*fields.sd.at("lw_flux_up"), "lw_flux_up", gd.wloc);
-        save_stats_and_cross(*fields.sd.at("lw_flux_dn"), "lw_flux_dn", gd.wloc);
+        exec_longwave(
+                thermo, timeloop, stats,
+                flux_up, flux_dn, flux_net,
+                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                compute_clouds, n_stat_col);
+
+        save_column(flux_up, "lw_flux_up");
+        save_column(flux_dn, "lw_flux_dn");
 
         if (sw_clear_sky_stats)
         {
-            save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
-            save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
+            exec_longwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_net,
+                    t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                    !compute_clouds, n_stat_col);
+
+            save_column(flux_up, "lw_flux_up_clear");
+            save_column(flux_dn, "lw_flux_dn_clear");
         }
     }
 
     if (sw_shortwave)
     {
-        save_stats_and_cross(*fields.sd.at("sw_flux_up"), "sw_flux_up", gd.wloc);
-        save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
-        save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
+        Array_gpu<Float,2> flux_dn_dir({n_stat_col, gd.ktot+1});
 
+        // Single column solve of background profile for TOA conditions
+        if (!sw_fixed_sza)
+        {
+            // Update the solar zenith angle and sun-earth distance.
+            set_sun_location(timeloop);
+
+            if (is_day(this->mu0))
+            {
+                const int n_bnd = kdist_sw->get_nband();
+                const int n_gpt = kdist_sw->get_ngpt();
+
+                // Calculate new background column (on the CPU).
+                Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                Float p_top;
+                cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+                set_background_column_shortwave(p_top);
+
+                // Copy TOD fluxes to GPU
+                const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                cuda_safe_call(cudaMemcpy(sw_flux_dn_dir_inc_g, sw_flux_dn_dir_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                cuda_safe_call(cudaMemcpy(sw_flux_dn_dif_inc_g, sw_flux_dn_dif_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+            }
+        }
+
+        if (is_day(this->mu0))
+        {
+            exec_shortwave(
+                    thermo, timeloop, stats,
+                    flux_up, flux_dn, flux_dn_dir, flux_net,
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    compute_clouds, n_stat_col);
+        }
+        else
+        {
+            flux_up.fill(Float(0.));
+            flux_dn.fill(Float(0.));
+            flux_dn_dir.fill(Float(0.));
+        }
+
+        save_column(flux_up, "sw_flux_up");
+        save_column(flux_dn, "sw_flux_dn");
+        save_column(flux_dn_dir, "sw_flux_dn_dir");
+
+        // clear sky
         if (sw_clear_sky_stats)
         {
-            save_stats_and_cross(*fields.sd.at("sw_flux_up_clear"), "sw_flux_up_clear", gd.wloc);
-            save_stats_and_cross(*fields.sd.at("sw_flux_dn_clear"), "sw_flux_dn_clear", gd.wloc);
-            save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
+            if (is_day(this->mu0))
+            {
+                exec_shortwave(
+                        thermo, timeloop, stats,
+                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        !compute_clouds, n_stat_col);
+            }
+
+            save_column(flux_up, "sw_flux_up_clear");
+            save_column(flux_dn, "sw_flux_dn_clear");
+            save_column(flux_dn_dir, "sw_flux_dn_dir_clear");
         }
     }
 
-    stats.set_time_series("sza", std::acos(mu0));
-    stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+    fields.release_tmp_g(tmp_g);
+    fields.release_tmp(tmp);
 }
 #endif
 

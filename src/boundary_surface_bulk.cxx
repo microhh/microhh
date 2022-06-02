@@ -214,7 +214,7 @@ void Boundary_surface_bulk<TF>::init_surface(Input& input)
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::load(const int iotime)
+void Boundary_surface_bulk<TF>::load(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
@@ -254,7 +254,7 @@ void Boundary_surface_bulk<TF>::load(const int iotime)
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::save(const int iotime)
+void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;

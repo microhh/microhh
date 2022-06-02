@@ -43,6 +43,7 @@ class Column
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swcolumn; }
+        int get_n_columns() {return columns.size(); }
         void get_column_locations(std::vector<int>&, std::vector<int>&);
         void exec(int, double, unsigned long);
         bool do_column(unsigned long);
@@ -51,9 +52,15 @@ class Column
         void add_prof(std::string, std::string, std::string, std::string);
         void add_time_series(std::string, std::string, std::string);
 
-        void calc_column(std::string, const TF* const, const TF);
+        void calc_column(std::string, const TF* const, const TF, const bool copy_from_gpu=true);
         void calc_time_series(std::string, const TF* const, const TF);
         void set_individual_column(std::string, const TF*, const TF, const int, const int);
+
+        #ifdef USECUDA
+        void prepare_device();
+        void clear_device();
+        int* get_column_location_g(const std::string&);
+        #endif
 
     private:
         // Struct for profiles.
@@ -85,6 +92,11 @@ class Column
         };
 
         std::vector<Column_struct> columns;
+
+        #ifdef USECUDA
+        int* col_i_g;
+        int* col_j_g;
+        #endif
 
     protected:
         Master& master;

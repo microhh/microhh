@@ -240,7 +240,7 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
-    boundary->load(timeloop->get_iotime());
+    boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
@@ -294,7 +294,7 @@ void Model<TF>::save()
     thermo->save(timeloop->get_iotime());
 
     boundary->create_cold_start(*input_nc);
-    boundary->save(timeloop->get_iotime());
+    boundary->save(timeloop->get_iotime(), *thermo);
 }
 
 template<typename TF>
@@ -321,6 +321,7 @@ void Model<TF>::exec()
         const int nthreads_out=1;
         #endif
     #endif
+
 
     #pragma omp parallel num_threads(nthreads_out)
     {
@@ -460,6 +461,7 @@ void Model<TF>::exec()
                         boundary ->exec_column(*column);
                         microphys->exec_column(*column);
 
+                        #pragma omp critical
                         column   ->exec(iter, time, itime);
                     }
 
@@ -507,7 +509,7 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             thermo  ->save(iotime);
-                            boundary->save(iotime);
+                            boundary->save(iotime, *thermo);
                         }
                     }
                 }
@@ -528,7 +530,7 @@ void Model<TF>::exec()
                     timeloop->load(iotime);
                     fields  ->load(iotime);
                     thermo  ->load(iotime);
-                    boundary->load(iotime);
+                    boundary->load(iotime, *thermo);
 
                     // Reset tendencies
                     fields->reset_tendencies();
@@ -565,6 +567,7 @@ void Model<TF>::prepare_gpu()
     ib       ->prepare_device();
     microphys->prepare_device();
     radiation->prepare_device();
+    column   ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -581,6 +584,7 @@ void Model<TF>::clear_gpu()
     ib       ->clear_device();
     microphys->clear_device();
     radiation->clear_device();
+    column   ->clear_device();
     // Clear pressure last, for memory check
     pres     ->clear_device();
 }
@@ -624,7 +628,10 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
     if (stats->do_statistics(itime))
+    {
+        #pragma omp critical
         stats->exec(iteration, time, itime);
+    }
 }
 
 // Calculate the statistics for all classes that have a statistics function.

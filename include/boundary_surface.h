@@ -50,8 +50,8 @@ class Boundary_surface : public Boundary<TF>
         void exec_column(Column<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
 
-        void load(const int);
-        void save(const int);
+        void load(const int, Thermo<TF>&);
+        void save(const int, Thermo<TF>&);
 
         #ifdef USECUDA
         // GPU functions and variables
@@ -68,7 +68,7 @@ class Boundary_surface : public Boundary<TF>
 
     protected:
         void process_input(Input&, Thermo<TF>&); // Process and check the surface input
-        void init_surface(Input&); // Allocate and initialize the surface arrays
+        void init_surface(Input&, Thermo<TF>&); // Allocate and initialize the surface arrays
         void init_solver(); // Prepare the lookup table's for the surface layer solver
         void set_ustar(); // Set fixed ustar
 

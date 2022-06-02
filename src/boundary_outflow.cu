@@ -29,9 +29,9 @@
 
 namespace
 {
-    template<typename TF, Edge_location location> __global__
-    void set_neumann_g(
-            TF* const __restrict__ fld,
+    template<typename TF, Edge_location location, Flow_direction direction> __global__
+    void compute_inoutflow_2nd_g(
+            TF* const restrict a, const TF* const restrict inflow_prof,
             const int istart, const int iend, const int igc,
             const int jstart, const int jend, const int jgc,
             const int icells, const int jcells, const int kcells,
@@ -41,40 +41,55 @@ namespace
         const int j  = blockIdx.y*blockDim.y + threadIdx.y;
         const int k  = blockIdx.z*blockDim.z + threadIdx.z;
 
+        int ijk;
+        int ijk_gc;
+        int ijk_d;
+
+        // Set the ghost cells using extrapolation.
         if (location == Edge_location::West || location == Edge_location::East)
         {
-            if (i<igc && j<jcells && k<kcells)
+            if (k < kcells && j < jcells && i < igc)
             {
                 if (location == Edge_location::West)
                 {
-                    const int ijk    = (istart+i  ) + j*icells + k*ijcells;
-                    const int ijk_gc = (istart-1-i) + j*icells + k*ijcells;
-                    fld[ijk_gc] = fld[ijk];
+                    ijk_d  = (istart    ) + j*icells + k*ijcells;
+                    ijk    = (istart+i  ) + j*icells + k*ijcells;
+                    ijk_gc = (istart-1-i) + j*icells + k*ijcells;
                 }
                 else if (location == Edge_location::East)
                 {
-                    const int ijk    = (iend-1-i) + j*icells + k*ijcells;
-                    const int ijk_gc = (iend+i  ) + j*icells + k*ijcells;
-                    fld[ijk_gc] = fld[ijk];
+                    ijk_d  = (iend-1  ) + j*icells + k*ijcells;
+                    ijk    = (iend-1-i) + j*icells + k*ijcells;
+                    ijk_gc = (iend+i  ) + j*icells + k*ijcells;
                 }
+
+                if (direction == Flow_direction::Inflow)
+                    a[ijk_gc] = a[ijk_d] - (i+1)*TF(2)*(a[ijk_d] - inflow_prof[k]);
+                else
+                    a[ijk_gc] = a[ijk];
             }
         }
         else if (location == Edge_location::North || location == Edge_location::South)
         {
-            if (i<icells && j<jgc && k<kcells)
+            if (k < kcells && j < jgc && i < icells)
             {
                 if (location == Edge_location::South)
                 {
-                    const int ijk    = i + (jstart+j  )*icells + k*ijcells;
-                    const int ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
-                    fld[ijk_gc] = fld[ijk];
+                    ijk_d  = i + (jstart    )*icells + k*ijcells;
+                    ijk    = i + (jstart+j  )*icells + k*ijcells;
+                    ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
                 }
                 else if (location == Edge_location::North)
                 {
-                    const int ijk    = i + (jend-1-j)*icells + k*ijcells;
-                    const int ijk_gc = i + (jend+j  )*icells + k*ijcells;
-                    fld[ijk_gc] = fld[ijk];
+                    ijk_d  = i + (jend-1  )*icells + k*ijcells;
+                    ijk    = i + (jend-1-j)*icells + k*ijcells;
+                    ijk_gc = i + (jend+j  )*icells + k*ijcells;
                 }
+
+                if (direction == Flow_direction::Inflow)
+                    a[ijk_gc] = a[ijk_d] - (j+1)*TF(2)*(a[ijk_d] - inflow_prof[k]);
+                else
+                    a[ijk_gc] = a[ijk];
             }
         }
     }
@@ -129,7 +144,9 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary_outflow<TF>::exec(TF* const restrict data)
+void Boundary_outflow<TF>::exec(
+    TF* const restrict data,
+    const TF* const restrict inflow_prof)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -165,6 +182,7 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
     }
     else if (grid.get_spatial_order() == Grid_order::Second)
     {
+        // Vertical grid
         const int blockk = 4;
         const int gridk  = gd.kcells/blockk + (gd.kcells%blockk > 0);
 
@@ -188,38 +206,85 @@ void Boundary_outflow<TF>::exec(TF* const restrict data)
         dim3 gridGPU_y (gridi_y, gridj_y, gridk);
         dim3 blockGPU_y(blocki_y, blockj_y, blockk);
 
-        // Neumann BCs on all boundaries
         if (md.mpicoordx == 0)
-            set_neumann_g<TF, Edge_location::West><<<gridGPU_x, blockGPU_x>>>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::West;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Inflow><<<gridGPU_x, blockGPU_x>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Outflow><<<gridGPU_x, blockGPU_x>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordx == md.npx-1)
-            set_neumann_g<TF, Edge_location::East><<<gridGPU_x, blockGPU_x>>>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::East;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Inflow><<<gridGPU_x, blockGPU_x>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Outflow><<<gridGPU_x, blockGPU_x>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordy == 0)
-            set_neumann_g<TF, Edge_location::South><<<gridGPU_y, blockGPU_y>>>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::South;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Inflow><<<gridGPU_y, blockGPU_y>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Outflow><<<gridGPU_y, blockGPU_y>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         if (md.mpicoordy == md.npy-1)
-            set_neumann_g<TF, Edge_location::North><<<gridGPU_y, blockGPU_y>>>(
-                    data,
-                    gd.istart, gd.iend, gd.igc,
-                    gd.jstart, gd.jend, gd.kgc,
-                    gd.icells, gd.jcells, gd.kcells,
-                    gd.ijcells);
+        {
+            const Edge_location edge = Edge_location::North;
+
+            if (flow_direction[edge] == Flow_direction::Inflow)
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Inflow><<<gridGPU_y, blockGPU_y>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+            else
+                compute_inoutflow_2nd_g<TF, edge, Flow_direction::Outflow><<<gridGPU_y, blockGPU_y>>>(
+                        data, inflow_prof,
+                        gd.istart, gd.iend, gd.igc,
+                        gd.jstart, gd.jend, gd.kgc,
+                        gd.icells, gd.jcells, gd.kcells,
+                        gd.ijcells);
+        }
 
         cuda_check_error();
     }
