@@ -1482,16 +1482,23 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         Float azimuth_angle = this->azimuth;
 
         //const Int ray_count = Int(4194304/8);
-        const Int ray_count = Int(16*131072);
+        const int ngrid_x = 20;
+        const int ngrid_y = 20;
+        const int ngrid_z = 35;
+        const Int photons_per_pixel = Int(16);
         raytracer.trace_rays(
-                ray_count,
+                photons_per_pixel,
                 gd.imax, gd.jmax, n_lay,
                 gd.dx, gd.dy, gd.dz[gd.kstart],
-                dynamic_cast<Optical_props_2str_rt&>(*optical_props),
-                dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props),
+                ngrid_x, ngrid_y, ngrid_z,
+                dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
+                dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
+                dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_g(),
+                dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_tau(),
                 sfc_alb_dir, zenith_angle,
                 azimuth_angle,
                 sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
+                (*fluxes).get_flux_tod_dn(),
                 (*fluxes).get_flux_tod_up(),
                 (*fluxes).get_flux_sfc_dir(),
                 (*fluxes).get_flux_sfc_dif(),
