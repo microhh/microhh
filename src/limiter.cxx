@@ -118,7 +118,7 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 
     if (sw_min)
         tendency_enforce_minimum<TF>(
-                fields.at.at("sgstke12")->fld.data(), fields.ap.at("sgstke12")->fld.data(), dt, Constants::sgstke12_min<TF>
+                fields.at.at("sgstke12")->fld.data(), fields.ap.at("sgstke12")->fld.data(), dt, Constants::sgstke12_min<TF>,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 }
