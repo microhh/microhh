@@ -1641,7 +1641,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     }
 
     // Start with retrieving the stability information
-    if ( sw_buoy )
+    if ( !sw_buoy )
     {
         // Calculate eddy viscosity using MO at lowest model level
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
