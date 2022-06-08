@@ -1966,13 +1966,13 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
 template<typename TF>
 void Diff_deardorff<TF>::diff_flux(
-        Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in, std::string varname)
+        Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
 {
     auto& gd = grid.get_grid_data();
 
     // SGS_TODO, SvdL, 07.06.22: this can be done much nicer by just adapting these functions completely to avoid need of tPr..
     // Just a dummy value; scalars have their own evisc, so no Prandtl number needed..
-    const TF tPr_one = TF(1);
+    const TF tPr_one = TF(1.);
 
     if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
     {
@@ -2015,6 +2015,8 @@ void Diff_deardorff<TF>::diff_flux(
                     gd.icells, gd.ijcells);
         else
         {
+            // SvdL, 08.07.22: if no buoyancy all scalars diffuse with Km, in any case sgstke12 has to diffuse with Km
+            std::string varname = fld.name;
             if (!sw_buoy || varname == "sgstke12" || varname == "w")
                 calc_diff_flux_c<TF, Surface_model::Enabled>(
                         out.fld.data(), fld_in.fld.data(),
