@@ -31,8 +31,8 @@
 #include "diff.h" // tentativechange, SvdL, 07.06.22
 
 template<typename TF>
-Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), diff(diffin)
 {
     limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
 

@@ -1435,7 +1435,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
             }
             else // all other scalars, diffuse with Kh
             {
-                if( thermo.get_switch() == "0" ) // if no buoyancy, Kh = Km
+                if( sw_buoy ) // if no buoyancy, Kh = Km
                 {
                     diff_c<TF, Surface_model::Enabled>(
                             it.second->fld.data(),
@@ -1547,7 +1547,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
         //    }
         //    else // all other scalars, diffuse with Kh
         //    {
-        //        if( thermo.get_switch() == "0" ) // if no buoyancy, Kh = Km
+        //        if( sw_buoy ) // if no buoyancy, Kh = Km
         //        {
         //            diff_c<TF, Surface_model::Disabled>(
         //                    it.second->fld.data(),
@@ -1641,7 +1641,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     }
 
     // Start with retrieving the stability information
-    if (thermo.get_switch() == "0")
+    if ( sw_buoy )
     {
         // Calculate eddy viscosity using MO at lowest model level
         if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
