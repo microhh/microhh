@@ -46,7 +46,7 @@ class Diff_smag2 : public Diff<TF>
         void exec(Stats<TF>&);
         void exec_viscosity(Thermo<TF>&);
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
-        void exec_stats(Stats<TF>&);
+        void exec_stats(Stats<TF>&, Thermo<TF>&);
 
         #ifdef USECUDA
         void prepare_device(Boundary<TF>&);

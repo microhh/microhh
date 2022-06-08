@@ -43,7 +43,7 @@ class Diff_2 : public Diff<TF>
         // Empty functions, these are allowed to pass.
         void exec_viscosity(Thermo<TF>&) {}
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
-        void exec_stats(Stats<TF>&) {};
+        void exec_stats(Stats<TF>&, Thermo<TF>&) {};
 
         #ifdef USECUDA
         void prepare_device(Boundary<TF>&) {};

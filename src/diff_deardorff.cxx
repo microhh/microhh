@@ -2016,7 +2016,7 @@ void Diff_deardorff<TF>::diff_flux(
         else
         {
             // SvdL, 08.07.22: if no buoyancy all scalars diffuse with Km, in any case sgstke12 has to diffuse with Km
-            std::string varname = fld.name;
+            std::string varname = fld_in.name;
             if (!sw_buoy || varname == "sgstke12" || varname == "w")
                 calc_diff_flux_c<TF, Surface_model::Enabled>(
                         out.fld.data(), fld_in.fld.data(),

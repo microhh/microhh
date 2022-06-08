@@ -1052,7 +1052,7 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
+void Diff_smag2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
