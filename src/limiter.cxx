@@ -37,7 +37,8 @@ Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, D
     limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
 
     // Set the switch for use of deardorff scheme
-    const std::string sw_diff     = inputin.get_item<std::string>("diff",     "swdiff",     "", swspatialorder);
+    const std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
+    const std::string sw_diff        = inputin.get_item<std::string>("diff",     "swdiff",     "", swspatialorder);
     sw_min = (sw_diff == "deardorff") ? true : false;
     // SGS_TODO: SvdL, 07.06.22: minimum has to be enforced on sgstke12, but "new" limiter function only allows for zero enforcement. So new dedicated limiter function required, better of in scheme itself..
     // SGS_TODO: SvdL, 07.06.22: potentially add separate infrastructure to track if sgstke12_min is applied, better of in scheme itself..

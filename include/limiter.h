@@ -38,7 +38,7 @@ template<typename TF>
 class Limiter
 {
     public:
-        Limiter(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Input&); // Constructor of the decay class. // tentativechange, SvdL, 07.06.22
+        Limiter(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Input&); // Constructor of the decay class. // tentativechange, SvdL, 08.06.22
         ~Limiter();                                       // Destructor of the decay class.
 
         void create(Stats<TF>&); // Read the profiles of the forces from the input.
@@ -48,6 +48,7 @@ class Limiter
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Diff<TF>& diff; // tentativechange, SvdL, 08.06.22
 
         std::vector<std::string> limit_list;
 
