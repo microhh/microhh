@@ -32,12 +32,13 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+template<typename> class Diff; // tentativechange, SvdL, 07.06.22
 
 template<typename TF>
 class Limiter
 {
     public:
-        Limiter(Master&, Grid<TF>&, Fields<TF>&, Input&); // Constructor of the decay class.
+        Limiter(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Input&); // Constructor of the decay class. // tentativechange, SvdL, 07.06.22
         ~Limiter();                                       // Destructor of the decay class.
 
         void create(Stats<TF>&); // Read the profiles of the forces from the input.

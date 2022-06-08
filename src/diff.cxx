@@ -39,6 +39,7 @@
 #include "diff_2.h"
 #include "diff_4.h"
 #include "diff_smag2.h"
+#include "diff_deardorff.h"
 
 template<typename TF>
 Diff<TF>::Diff(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& input) :
@@ -68,6 +69,8 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
         return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else if (swdiff == "smag2")
         return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
+    else if (swdiff == "deardorff")
+        return std::make_shared<Diff_deardorff<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
     else
     {
         std::string msg = swdiff + " is an illegal value for swdiff";

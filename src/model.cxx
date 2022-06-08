@@ -380,6 +380,9 @@ void Model<TF>::exec()
                 // Apply the limiter as the last tendency.
                 limiter->exec(timeloop->get_sub_time_step(), *stats);
 
+                // tentativechange, SvdL, 07.06.22: Add enforcement of minimum sgstke is not included in the limiter call..
+                // maybe not the nicest option, and new limiter function was required. Also still enforce minimum in init stage?!
+
                 // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
                     stats->calc_tend(*it.second, "total");
