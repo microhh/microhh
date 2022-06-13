@@ -484,6 +484,7 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
     sw_flux_sfc_dir_rt.resize(gd.ijcells);
     sw_flux_sfc_dif_rt.resize(gd.ijcells);
     sw_flux_sfc_up_rt.resize(gd.ijcells);
+    sw_flux_tod_dn_rt.resize(gd.ijcells);
     sw_flux_tod_up_rt.resize(gd.ijcells);
 
 }
@@ -538,12 +539,14 @@ void Radiation_rrtmgp_rt<TF>::create(
         const std::string group_name = "radiation";
         stats.add_time_series("sza", "solar zenith angle", "rad", group_name);
         stats.add_time_series("saa", "solar azimuth angle", "rad", group_name);
+        stats.add_time_series("tsi_scaling", "tsi scaling", "W/m2", group_name);
         stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
         
         stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
         stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave downwelling upwelling flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave downwelling upwelling flux at toa", "W m-2", group_name);
+        stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
+        stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
+        stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
     }
 
     // Get the allowed cross sections from the cross list
@@ -561,6 +564,7 @@ void Radiation_rrtmgp_rt<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
         allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
+        allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
         allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
         
         if (sw_clear_sky_stats)
