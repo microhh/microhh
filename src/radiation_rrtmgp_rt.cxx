@@ -424,6 +424,9 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
+    rays_per_pixel = inputin.get_item<Float>("radiation","rays_per_pixel", "", 1);
+    ngrid_xyz = inputin.get_list<int>("radiation", "ngrid_xyz", "", std::vector<int>(3,16));
+
     if (sw_fixed_sza)
     {
         const Float sza = inputin.get_item<Float>("radiation", "sza", "");

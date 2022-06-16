@@ -1483,12 +1483,12 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         Float zenith_angle = std::acos(mu0({1}));
         Float azimuth_angle = this->azimuth;
 
-        const int ngrid_x = 52;
-        const int ngrid_y = 52;
-        const int ngrid_z = 16;
-        const Int photons_per_pixel = Int(256);
+        const int ngrid_x = this->ngrid_xyz[0];
+        const int ngrid_y = this->ngrid_xyz[1];
+        const int ngrid_z = this->ngrid_xyz[2];
+
         raytracer.trace_rays(
-                photons_per_pixel,
+                this->rays_per_pixel,
                 gd.imax, gd.jmax, n_lay,
                 gd.dx, gd.dy, gd.dz[gd.kstart],
                 ngrid_x, ngrid_y, ngrid_z,
