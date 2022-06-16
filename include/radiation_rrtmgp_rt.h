@@ -205,7 +205,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         unsigned long idt_rad;
 
         Int rays_per_pixel;
-        std::vector<int> ngrid_xyz; // knull grid cells in x-, y-, and z-direction
+        int kngrid_i;
+        int kngrid_j;
+        int kngrid_k;
 
         std::vector<std::string> crosslist;
 

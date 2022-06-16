@@ -48,7 +48,7 @@ namespace
     __global__
     void calc_tendency_rt(
             Float* __restrict__ thlt_rad,
-            const Float* __restrict__ rt_flux_abs_dir, const Float* __restrict__ rt_flux_abs_dif,
+            Float* __restrict__ rt_flux_abs_dir, Float* __restrict__ rt_flux_abs_dif,
             const Float* __restrict__ rho, const Float* __restrict__ exner, const Float* __restrict__ dz,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
@@ -62,12 +62,15 @@ namespace
 
         if ( (i < iend) && (j < jend) && (k < kend) )
         {
-            const Float fac = Float(1.) / (rho[k] * Constants::cp<Float> * exner[k] * dz[k]);
+            const Float fac = Float(1.) / (rho[k] * Constants::cp<Float> * exner[k]);
 
             const int ijk = i + j*jj + k*kk;
             const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
-            thlt_rad[ijk] += fac * (rt_flux_abs_dir[ijk_nogc] + rt_flux_abs_dif[ijk_nogc]);
+            rt_flux_abs_dir[ijk_nogc] *= fac;
+            rt_flux_abs_dif[ijk_nogc] *= fac;
+
+            thlt_rad[ijk] += rt_flux_abs_dir[ijk_nogc] + rt_flux_abs_dif[ijk_nogc];
         }
     }
 
@@ -1483,15 +1486,11 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         Float zenith_angle = std::acos(mu0({1}));
         Float azimuth_angle = this->azimuth;
 
-        const int ngrid_x = this->ngrid_xyz[0];
-        const int ngrid_y = this->ngrid_xyz[1];
-        const int ngrid_z = this->ngrid_xyz[2];
-
         raytracer.trace_rays(
                 this->rays_per_pixel,
                 gd.imax, gd.jmax, n_lay,
                 gd.dx, gd.dy, gd.dz[gd.kstart],
-                ngrid_x, ngrid_y, ngrid_z,
+                kngrid_i, kngrid_j, kngrid_k,
                 dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
                 dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
                 dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_g(),
