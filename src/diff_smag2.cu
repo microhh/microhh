@@ -51,10 +51,10 @@ namespace
             TF* __restrict__ u,
             TF* __restrict__ v,
             TF* __restrict__ w,
-            TF* __restrict__ dudz,
-            TF* __restrict__ dvdz,
-            TF* __restrict__ dzi,
-            TF* __restrict__ dzhi,
+            const TF* __restrict__ dudz,
+            const TF* __restrict__ dvdz,
+            const TF* __restrict__ dzi,
+            const TF* __restrict__ dzhi,
             const TF dxi, const TF dyi,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -140,11 +140,11 @@ namespace
     template<typename TF, Surface_model surface_model> __global__
     void evisc_g(
             TF* __restrict__ evisc,
-            TF* __restrict__ N2,
-            TF* __restrict__ bgradbot,
-            TF* __restrict__ mlen0,
-            TF* __restrict__ z0m,
-            TF* __restrict__ z,
+            const TF* __restrict__ N2,
+            const TF* __restrict__ bgradbot,
+            const TF* __restrict__ mlen0,
+            const TF* __restrict__ z0m,
+            const TF* __restrict__ z,
             const TF tPri,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -194,9 +194,9 @@ namespace
     template<typename TF> __global__
     void evisc_neutral_g(
             TF* __restrict__ evisc,
-            TF* __restrict__ z0m,
-            TF* __restrict__ z,
-            TF* __restrict__ mlen0,
+            const TF* __restrict__ z0m,
+            const TF* __restrict__ z,
+            const TF* __restrict__ mlen0,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
@@ -286,8 +286,8 @@ namespace
                     TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
                     TF* __restrict__ fluxbotu, TF* __restrict__ fluxtopu,
                     TF* __restrict__ fluxbotv, TF* __restrict__ fluxtopv,
-                    TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
-                    TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                    const TF* __restrict__ dzi, const TF* __restrict__ dzhi, const TF dxi, const TF dyi,
+                    const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
                     const TF visc,
                     const int istart, const int jstart, const int kstart,
                     const int iend,   const int jend,   const int kend,
@@ -427,8 +427,8 @@ namespace
     template<typename TF, Surface_model surface_model> __global__
     void diff_c_g(TF* __restrict__ at, TF* __restrict__ a, TF* __restrict__ evisc,
                   TF* __restrict__ fluxbot, TF* __restrict__ fluxtop,
-                  TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
-                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                  const TF* __restrict__ dzi, const TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
+                  const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
                   const TF tPri, const TF visc,
                   const int istart, const int jstart, const int kstart,
                   const int iend,   const int jend,   const int kend,
@@ -498,7 +498,7 @@ namespace
 
     template<typename TF> __global__
     void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc,
-                      TF* __restrict__ dzi, TF tPrfac_i, const TF dxidxi, const TF dyidyi,
+                      const TF* __restrict__ dzi, const TF tPrfac_i, const TF dxidxi, const TF dyidyi,
                       const int istart, const int jstart, const int kstart,
                       const int iend,   const int jend,   const int kend,
                       const int jj,     const int kk)

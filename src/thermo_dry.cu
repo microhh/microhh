@@ -129,7 +129,7 @@ namespace
 
     template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2,    TF* __restrict__ th,
-                   TF* __restrict__ thref, TF* __restrict__ dzi,
+                   TF* __restrict__ thref, const TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)

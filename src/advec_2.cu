@@ -37,8 +37,8 @@ namespace
     template<typename TF>__global__
     void advec_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF * __restrict__ wt,
                      TF* __restrict__ u,  TF* __restrict__ v,  TF * __restrict__ w,
-                     TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                     TF* __restrict__ dzi,    TF* __restrict__ dzhi, TF dxi, TF dyi,
+                     const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                     const TF* __restrict__ dzi,    const TF* __restrict__ dzhi, TF dxi, TF dyi,
                      int jj, int kk,
                      int istart, int jstart, int kstart,
                      int iend,   int jend,   int kend)
@@ -89,8 +89,8 @@ namespace
     template<typename TF>__global__
     void advec_s_g(TF* __restrict__ st, TF* __restrict__ s,
                    TF* __restrict__ u,  TF* __restrict__ v, TF* __restrict__ w,
-                   TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                   TF* __restrict__ dzi, TF dxi, TF dyi,
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, TF dxi, TF dyi,
                    int jj, int kk,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend)
@@ -117,7 +117,7 @@ namespace
 
     template<typename TF>__global__
     void calc_cfl_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                    TF* __restrict__ cfl, TF* __restrict__ dzi, TF dxi, TF dyi,
+                    TF* __restrict__ cfl, const TF* __restrict__ dzi, TF dxi, TF dyi,
                     int jj, int kk,
                     int istart, int jstart, int kstart,
                     int iend, int jend, int kend)

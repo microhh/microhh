@@ -296,8 +296,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_N2_g(TF* __restrict__ N2, TF* __restrict__ th,
-                   TF* __restrict__ thvref, TF* __restrict__ dzi,
+    void calc_N2_g(TF* __restrict__ N2, const TF* __restrict__ th,
+                   const TF* __restrict__ thvref, const TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -598,7 +598,7 @@ namespace
                            TF* __restrict__ ex,       TF* __restrict__ exh,
                            TF* __restrict__ thlmean,  TF* __restrict__ qtmean,
                            TF* __restrict__ z,        TF* __restrict__ dz,
-                           TF* __restrict__ dzh,
+                           const TF* __restrict__ dzi,
                            TF pbot, int kstart, int kend)
     {
         TF ql, si, qti, qli;
