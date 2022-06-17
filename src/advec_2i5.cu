@@ -642,7 +642,7 @@ double Advec_2i5<TF>::get_cfl(const double dt)
 
     auto tmp1 = fields.get_tmp_g();
 
-    calc_cfl_g<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         tmp1->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         gd.dzi_g, gd.dxi, gd.dyi,

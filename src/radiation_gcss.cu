@@ -242,12 +242,12 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 
     thermo.get_thermo_field_g(*ql,"ql",false);
 
-    calc_gcss_rad_LW_g<<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+    calc_gcss_rad_LW_g<TF><<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
         tmp->fld_g,fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
 
-    update_temperature<<<gridGPU3D, blockGPU>>>(
+    update_temperature<TF><<<gridGPU3D, blockGPU>>>(
         fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
         gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
         gd.iend,  gd.jend,   gd.kend-1, gd.icells, gd.ijcells);
@@ -256,16 +256,16 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
 
     if (mu > mu_min)
     {
-        calc_gcss_rad_SW_g<<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+        calc_gcss_rad_SW_g<TF><<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
             tmp->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells, gd.ncells);
 
         const int nblock = 256;
         const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-        mult_by_val<<<ngrid, nblock>>>(flx->fld_g, gd.ncells, TF(-1.));
+        mult_by_val<TF><<<ngrid, nblock>>>(flx->fld_g, gd.ncells, TF(-1.));
 
-        update_temperature<<<gridGPU3D, blockGPU>>>(
+        update_temperature<TF><<<gridGPU3D, blockGPU>>>(
             fields.st.at("thl")->fld_g, flx->fld_g, Constants::cp<TF>, fields.rhoref_g,
             gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
             gd.iend,  gd.jend,   gd.kend, gd.icells, gd.ijcells);
@@ -317,7 +317,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
         auto ql  = fields.get_tmp_g();
         thermo.get_thermo_field_g(*ql,"ql",false);
 
-        calc_gcss_rad_LW_g<<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g,fields.sp.at("qt")->fld_g, lwp->fld_g,
+        calc_gcss_rad_LW_g<TF><<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g,fields.sp.at("qt")->fld_g, lwp->fld_g,
             fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -333,7 +333,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
             auto ql  = fields.get_tmp_g();
             auto tau = fields.get_tmp_g();
             thermo.get_thermo_field_g(*ql,"ql",false);
-            calc_gcss_rad_SW_g<<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+            calc_gcss_rad_SW_g<TF><<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
                 tau->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, gd.ncells);
@@ -345,7 +345,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
         {
             const int nblock = 256;
             const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-            set_to_val<<<ngrid, nblock>>>(fld.fld_g, gd.ncells, TF(0.));
+            set_to_val<TF><<<ngrid, nblock>>>(fld.fld_g, gd.ncells, TF(0.));
         }
     }
     else
