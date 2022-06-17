@@ -42,8 +42,8 @@ namespace
 
     // TODO use interp2 functions instead of manual interpolation
     template<typename TF> __global__
-    void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                        TF* __restrict__ mom, TF* __restrict__ dz,
+    void calc_mom_2nd_g(const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+                        TF* __restrict__ mom, const TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
@@ -63,8 +63,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_tke_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                        TF* __restrict__ tke, TF* __restrict__ dz,
+    void calc_tke_2nd_g(const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+                        TF* __restrict__ tke, const TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
@@ -326,10 +326,7 @@ void Fields<TF>::prepare_device()
     auto& sgd = soil_grid.get_grid_data();
 
     const int ijmemsize  = gd.ijcells*sizeof(TF);
-    const int nmemsize   = gd.ncells*sizeof(TF);
-    const int nmemsize1d = gd.kcells*sizeof(TF);
     const int nmemsize_soil = sgd.ncells*sizeof(TF);
-
 
     // Prognostic fields atmosphere
     for (auto& it : a)
@@ -356,8 +353,8 @@ void Fields<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
 
     // Reference profiles
-    cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
-    cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
+    rhoref_g.resize(gd.kcells);
+    rhorefh_g.resize(gd.kcells);
 
     // copy all the data to the GPU
     forward_device();
