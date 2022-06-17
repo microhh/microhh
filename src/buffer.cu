@@ -35,7 +35,7 @@ namespace
 {
     template<typename TF>__global__
     void buffer_g(TF* __restrict__ at,   TF* __restrict__ a,
-                  TF* __restrict__ abuf, TF* __restrict__ z,
+                  TF* __restrict__ abuf, const TF* __restrict__ z,
                   TF zstart, TF zsizebufi, TF sigma,  TF beta,
                   int istart, int jstart, int bufferkstart,
                   int iend,   int jend,   int kend,

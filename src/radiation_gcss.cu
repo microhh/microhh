@@ -129,8 +129,8 @@ namespace
     template<typename TF> __global__
     void calc_gcss_rad_SW_g(TF* __restrict__ swn, TF* __restrict__ ql,TF* __restrict__ qt,
                   TF* __restrict__ tau,
-                  TF* __restrict__ rhoref, TF mu,
-                  TF* __restrict__ z, TF* __restrict__ dz,
+                  const TF* __restrict__ rhoref, TF mu,
+                  const TF* __restrict__ z, const TF* __restrict__ dz,
                   const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                   const int icells, const int ijcells, const int ncells)
     {
@@ -157,8 +157,8 @@ namespace
     }
     template<typename TF> __global__
     void calc_gcss_rad_LW_g(TF* __restrict__ flx, TF* __restrict__ ql,TF* __restrict__ qt, TF* __restrict__ lwp,
-                  TF* __restrict__ rhoref, TF fr0, TF fr1, TF xka, TF div, TF cp,
-                  TF* __restrict__ z, TF* __restrict__ dz,
+                  const TF* __restrict__ rhoref, TF fr0, TF fr1, TF xka, TF div, TF cp,
+                            const TF* __restrict__ z, const TF* __restrict__ dz,
                   const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
                   const int jj, const int kk)
     {
@@ -203,8 +203,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void update_temperature(TF* __restrict__ tt, TF* __restrict__ flx, TF cp, TF* __restrict__ rhoref,
-                            TF* dzi, int istart, int jstart, int kstart,
+    void update_temperature(TF* __restrict__ tt, const TF* __restrict__ flx, TF cp, const TF* __restrict__ rhoref,
+                            const TF* dzi, int istart, int jstart, int kstart,
                             int iend,   int jend,   int kend, int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -317,7 +317,8 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
         auto ql  = fields.get_tmp_g();
         thermo.get_thermo_field_g(*ql,"ql",false);
 
-        calc_gcss_rad_LW_g<TF><<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g,fields.sp.at("qt")->fld_g, lwp->fld_g,
+        calc_gcss_rad_LW_g<TF><<<gridGPU, blockGPU>>>(
+            fld.fld_g, ql->fld_g,fields.sp.at("qt")->fld_g, lwp->fld_g,
             fields.rhoref_g, fr0, fr1, xka, div, Constants::cp<TF>,gd.z_g, gd.dz_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
@@ -333,7 +334,8 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
             auto ql  = fields.get_tmp_g();
             auto tau = fields.get_tmp_g();
             thermo.get_thermo_field_g(*ql,"ql",false);
-            calc_gcss_rad_SW_g<TF><<<gridGPU, blockGPU>>>(fld.fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
+            calc_gcss_rad_SW_g<TF><<<gridGPU, blockGPU>>>(
+                fld.fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
                 tau->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, gd.ncells);

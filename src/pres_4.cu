@@ -412,7 +412,7 @@ namespace
     template<typename TF> __global__
     void calc_divergence_g(TF* __restrict__ div,
                            TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                           TF* __restrict__ dzi4,
+                           const TF* __restrict__ dzi4,
                            TF dxi, TF dyi,
                            int jj,     int kk,
                            int istart, int jstart, int kstart,

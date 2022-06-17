@@ -55,7 +55,7 @@ namespace
 
 
     template<typename TF> __global__
-    void calc_ghost_cells_bot_2nd_g(TF* __restrict__ a, TF* __restrict__ dzh, Boundary_type sw,
+    void calc_ghost_cells_bot_2nd_g(TF* __restrict__ a, const TF* __restrict__ dzh, Boundary_type sw,
                                     TF* __restrict__ abot, TF* __restrict__ agradbot,
                                     const int icells, const int jcells, const int kstart)
     {
@@ -77,8 +77,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_top_2nd_g(TF* __restrict__ a, TF* __restrict__ dzh, const Boundary_type sw,
-                                    TF* __restrict__ atop, TF* __restrict__ agradtop,
+    void calc_ghost_cells_top_2nd_g(TF* __restrict__ a, const TF* __restrict__ dzh, const Boundary_type sw,
+                                    TF* __restrict__ atop, const TF* __restrict__ agradtop,
                                     const int icells, const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -105,8 +105,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_bot_4th_g(TF* __restrict__ a, TF* __restrict__ z, const Boundary_type sw,
-                                    TF* __restrict__ abot, TF* __restrict__ agradbot,
+    void calc_ghost_cells_bot_4th_g(TF* __restrict__ a, const TF* __restrict__ z, const Boundary_type sw,
+                                    const TF* __restrict__ abot, const TF* __restrict__ agradbot,
                                     const int icells, const int jcells, const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -135,8 +135,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_top_4th_g(TF* __restrict__ a, TF* __restrict__ z,const Boundary_type sw,
-                                    TF* __restrict__ atop, TF* __restrict__ agradtop,
+    void calc_ghost_cells_top_4th_g(TF* __restrict__ a, const TF* __restrict__ z, const Boundary_type sw,
+                                    const TF* __restrict__ atop, const TF* __restrict__ agradtop,
                                     const int icells, const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
