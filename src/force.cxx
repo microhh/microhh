@@ -200,7 +200,7 @@ namespace
     }
 
     template<typename TF>
-    void advec_wls_2nd(
+    void advec_wls_2nd_mean(
             TF* const restrict st, const TF* const restrict s,
             const TF* const restrict wls, const TF* const dzhi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -234,6 +234,76 @@ namespace
     }
 
     template<typename TF>
+    void advec_wls_2nd_local(
+            TF* const restrict st, const TF* const restrict s,
+            const TF* const restrict wls, const TF* const dzhi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // use an upwind differentiation
+        for (int k=kstart; k<kend; ++k)
+        {
+            if (wls[k] > 0.)
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
+                    }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
+                    }
+            }
+        }
+    }
+
+    // Especially, check this one thoroughly (indices, grid positions, etc.)! - SvdLinden, 28.04.21
+    template<typename TF>
+    void advec_wls_2nd_local_w(
+            TF* const restrict st, const TF* const restrict s,
+            const TF* const restrict wls, const TF* const dzi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        // should not be needed to do kend-1 separately ? CHECK?
+        // use an upwind differentiation
+        for (int k=kstart+1; k<kend; ++k) // for (int k=kstart+2; k<kend-1; ++k)
+        {
+            if ( interp2( wls[k-1], wls[k] ) > 0.) // formeel ook in conditie interp2
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1]; // HIER DUS dz !! maar waar begint dz[kstart] +1 of niet??
+                    }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
+                    }
+            }
+        }
+    }
+
+    template<typename TF>
     void add_offset(TF* const restrict prof, const TF offset, const int kstart, const int kend)
     {
         for (int k=kstart; k<kend; ++k)
@@ -246,12 +316,21 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
 {
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
-    std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
     std::string swwls_in    = inputin.get_item<std::string>("force", "swwls"   , "", "0");
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
+    std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
+
+    if (swwls_in == "1" || swwls_in == "mean" || swwls_in == "local")
+        bool swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
+
+    // Checks on input:
+    if (swwls_in == "1")
+    {
+        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=mean\"\n");
+        swwls_in = "mean";
+    }
 
     // Set the internal switches and read other required input
-
     // Large-scale pressure forcing.
     if (swlspres_in == "0")
     {
@@ -302,10 +381,20 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     // Large-scale subsidence.
     if (swwls_in == "0")
         swwls = Large_scale_subsidence_type::Disabled;
-    else if (swwls_in == "1")
+    else if (swwls_in == "mean")
     {
-        swwls = Large_scale_subsidence_type::Enabled;
+
+        swwls = Large_scale_subsidence_type::Mean_field;
         fields.set_calc_mean_profs(true);
+    }
+    else if (swwls_in == "local")
+    {
+        swwls = Large_scale_subsidence_type::Local_field;
+        fields.set_calc_mean_profs(true);
+
+        #ifdef USECUDA
+        throw std::runtime_error("Local field subsidence not yet included for GPU");
+        #endif
     }
     else
     {
@@ -357,7 +446,7 @@ void Force<TF>::init()
         for (auto& it : lslist)
             lsprofs[it] = std::vector<TF>(gd.kcells);
     }
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
         wls.resize(gd.kcells);
 
     if (swnudge == Nudging_type::Enabled)
@@ -467,15 +556,26 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
 
     // Get the large scale vertical velocity from the input
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
     {
         group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
         std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
 
         const TF offset = 0;
         tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
+
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
+
+        if (swwls_mom)
+        {
+            // Initialize statistics output also for u,v,w.
+            stats.add_tendency(*fields.mt.at("u"), "z", tend_name_subs, tend_longname_subs);
+            stats.add_tendency(*fields.mt.at("v"), "z", tend_name_subs, tend_longname_subs);
+
+            if (swwls == Large_scale_subsidence_type::Local_field)
+                stats.add_tendency(*fields.mt.at("w"), "zh", tend_name_subs, tend_longname_subs);
+        }
     }
 }
 
@@ -543,12 +643,62 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field )
     {
+        if (swwls_mom)
+        {
+            // Also apply to the velocity components u,v - SvdLinden, 28.04.21
+            advec_wls_2nd_mean<TF>(
+                    fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld_mean.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_mean<TF>(
+                    fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld_mean.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+        }
+
         for (auto& it : fields.st)
         {
-            advec_wls_2nd<TF>(
+            advec_wls_2nd_mean<TF>(
                     fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*it.second, tend_name_subs);
+        }
+    }
+    else if ( swwls == Large_scale_subsidence_type::Local_field )
+    {
+        // New functions for the local subsidence term - SvdLinden, 28.04.21
+        if (swwls_mom)
+        {
+            // Apply to all prognostic scalars, also velocity. Treat w-velocity separately
+            advec_wls_2nd_local<TF>(
+                    fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_local<TF>(
+                    fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), wls.data(), gd.dzhi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+
+            advec_wls_2nd_local_w<TF>(
+                    fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), wls.data(), gd.dzi.data(),
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
+        }
+
+        for (auto& it : fields.st)
+        {
+            advec_wls_2nd_local<TF>(
+                    fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), wls.data(), gd.dzhi.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
             stats.calc_tend(*it.second, tend_name_subs);
@@ -600,8 +750,10 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
+
+    // Idea: could decide to update interpolated wls to full levels here ? - SvdLinden, 28.04.21
 }
 #endif
 

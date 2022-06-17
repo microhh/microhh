@@ -253,7 +253,7 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
@@ -289,7 +289,7 @@ void Force<TF>::clear_device()
 
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         cuda_safe_call(cudaFree(wls_g));
         tdep_wls->clear_device();
@@ -414,7 +414,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         }
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         for (auto& it : fields.st)
         {
@@ -454,7 +454,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_geo.at("v_geo")->update_time_dependent_prof_g(vg_g, timeloop);
     }
 
-    if (swwls == Large_scale_subsidence_type::Enabled)
+    if (swwls == Large_scale_subsidence_type::Mean_field)
         tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
 }
 #endif

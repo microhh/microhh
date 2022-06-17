@@ -21,6 +21,8 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
+#include <set>
+
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
@@ -82,12 +84,19 @@ class Source
         std::map<std::string, Timedep<TF>*> tdep_source_z0;
         std::map<std::string, Timedep<TF>*> tdep_source_strength;
 
+        // Option for vertical profiles
+        bool sw_emission_profile;
+        std::vector<int> profile_index;
+        std::set<int> unique_profile_indexes;
+        std::map<int, std::vector<TF>> profile_z;
+
         TF calc_norm(
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
                 const TF* const, const TF, const TF, const TF,
+                const TF* const,
                 std::vector<int>, std::vector<int>, std::vector<int>,
-                const TF* const, const bool);
+                const TF* const, const bool, const bool);
 };
 #endif
 

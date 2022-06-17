@@ -36,4 +36,4 @@ if(USECUDA)
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
-add_definitions(-DUSE_CBOOL)
+add_definitions(-DRTE_RRTMGP_USE_CBOOL)

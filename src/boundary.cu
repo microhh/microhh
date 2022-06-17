@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -441,9 +443,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                 no_offset);
     }
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Boundary<TF>::set_prognostic_cyclic_bcs()
 {
@@ -456,20 +456,15 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
     for (auto& it : fields.sp)
         boundary_cyclic.exec_g(it.second->fld_g);
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Boundary<TF>::set_prognostic_outflow_bcs()
 {
     // Overwrite here the ghost cells for the scalars with outflow BCs
     for (auto& s : scalar_outflow)
-        boundary_outflow.exec(fields.sp.at(s)->fld_g);
+        boundary_outflow.exec(fields.sp.at(s)->fld_g, inflow_profiles_g.at(s));
 }
-#endif
 
-
-#ifdef USECUDA
 template<typename TF>
 TF* Boundary<TF>::get_z0m_g()
 {
@@ -492,6 +487,30 @@ template<typename TF>
 TF* Boundary<TF>::get_dbdz_g()
 {
     throw std::runtime_error("Function get_dbdz_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+void Boundary<TF>::prepare_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize = gd.kcells * sizeof(TF);
+
+    for (auto& scalar : scalar_outflow)
+    {
+        inflow_profiles_g.emplace(scalar, nullptr);
+        cuda_safe_call(cudaMalloc(&inflow_profiles_g.at(scalar), memsize));
+        cuda_safe_call(cudaMemcpy(inflow_profiles_g.at(scalar), inflow_profiles.at(scalar).data(), memsize, cudaMemcpyHostToDevice));
+    }
+}
+
+template<typename TF>
+void Boundary<TF>::forward_device()
+{
+}
+
+template<typename TF>
+void Boundary<TF>::backward_device()
+{
 }
 #endif
 

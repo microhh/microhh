@@ -31,18 +31,22 @@ class Master;
 template<typename> class Grid;
 
 enum class Edge_location {West, East, South, North};
+enum class Flow_direction {Inflow, Outflow};
 
 template<typename TF>
 class Boundary_outflow
 {
     public:
-        Boundary_outflow(Master&, Grid<TF>&); // Constuctor of the boundary class.
-        ~Boundary_outflow();                  // Destructor of the boundary class.
+        Boundary_outflow(Master&, Grid<TF>&, Input&); // Constuctor of the boundary class.
+        ~Boundary_outflow();                          // Destructor of the boundary class.
 
-        void exec(TF* const restrict);
+        void exec(TF* const restrict, const TF* const restrict);
 
     private:
         Master& master; // Reference to master class.
         Grid<TF>& grid; // Reference to grid class.
+
+        // Switch between in/outflow:
+        std::map<Edge_location, Flow_direction> flow_direction;
 };
 #endif

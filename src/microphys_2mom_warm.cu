@@ -313,6 +313,24 @@ namespace sedimentation_2mom_warm
             }
         }
     }
+
+    template<typename TF> __global__
+    void copy_rain_rate(
+        TF* const __restrict__ rr_out,
+        const TF* const __restrict__ rr_in,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            rr_out[ij] = rr_in[ij];
+        }
+    }
 }
 
 #ifdef USECUDA
@@ -563,9 +581,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     stats.calc_tend(*fields.st.at("qr"),  tend_name);
     stats.calc_tend(*fields.st.at("nr"),  tend_name);
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const double dt)
 {
@@ -625,9 +641,29 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     const unsigned long idt_lim = idt * cflmax / cfl;
     return idt_lim;
 }
-#endif
 
-#ifdef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::get_surface_rain_rate_g(
+    TF* const __restrict__ rr_out)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
+
+    sedimentation_2mom_warm::copy_rain_rate<<<gridGPU, blockGPU>>>(
+        rr_out, rr_bot_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
+    cuda_check_error();
+}
+
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
 {

@@ -454,15 +454,9 @@ namespace Soil_kernels
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*icells;
+
                 flux_top[ij] = tile_frac_soil[ij] * LE_soil[ij] * fac + infiltration[ij];
                 flux_bot[ij] = TF(0);
-
-                // Set free drainage bottom BC:
-                const int ijk = ij + kstart*ijcells;
-                if (sw_free_drainage)
-                    conductivity_h[ijk] = conductivity_h[ijk+kk];
-                else
-                    conductivity_h[ijk] = TF(0);
             }
 
         if (sw_free_drainage)

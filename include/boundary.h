@@ -102,8 +102,8 @@ class Boundary
         virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
         virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
 
-        virtual void load(const int) {};
-        virtual void save(const int) {};
+        virtual void load(const int, Thermo<TF>&) {};
+        virtual void save(const int, Thermo<TF>&) {};
 
         // Get functions for various 2D fields
         virtual const std::vector<TF>& get_z0m() const;
@@ -111,19 +111,18 @@ class Boundary
         virtual const std::vector<TF>& get_dvdz() const;
         virtual const std::vector<TF>& get_dbdz() const;
 
+        std::string get_switch();
+
         #ifdef USECUDA
         virtual TF* get_z0m_g();
         virtual TF* get_dudz_g();
         virtual TF* get_dvdz_g();
         virtual TF* get_dbdz_g();
-        #endif
 
-        std::string get_switch();
-
-        // GPU functions and variables
         virtual void prepare_device();
         virtual void forward_device();
         virtual void backward_device();
+        #endif
 
     protected:
         Master& master;
@@ -151,7 +150,12 @@ class Boundary
 
         // Spatial sbot input:
         std::vector<std::string> sbot_2d_list;
+
+        // Scalar in/outflow
         std::vector<std::string> scalar_outflow;
+        std::map<std::string, std::vector<TF>> inflow_profiles;
+        bool swtimedep_outflow;
+        std::map<std::string, Timedep<TF>*> tdep_outflow;
 
         // Time varying spatial sbot input:
         bool swtimedep_sbot_2d;
@@ -163,9 +167,11 @@ class Boundary
 
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
         void process_time_dependent(Input&, Netcdf_handle&, Timeloop<TF>&); ///< Process the time dependent settings from the ini file.
+        void process_inflow(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
 
         #ifdef USECUDA
         void clear_device();
+        std::map<std::string, TF*> inflow_profiles_g;
         #endif
 
         // GPU functions and variables

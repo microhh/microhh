@@ -369,9 +369,9 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
 
     // Allocate the prognostic 2d fields
     for (auto& it : ap2d)
-        it.second.resize(gd.ijcells);
+        it.second->fld.resize(gd.ijcells);
     for (auto& it : at2d)
-        it.second.resize(gd.ijcells);
+        it.second->fld.resize(gd.ijcells);
 
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
     for (int i=0; i<n_tmp_fields; ++i)
@@ -544,10 +544,13 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 template<typename TF>
 void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 {
-    if (tmp == nullptr)
-        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp field with value nullptr");
 
-    atmp.push_back(std::move(tmp));
+        atmp.push_back(std::move(tmp));
+    }
 }
 
 template<typename TF>
@@ -582,10 +585,13 @@ std::shared_ptr<std::vector<TF>> Fields<TF>::get_tmp_xy()
 template<typename TF>
 void Fields<TF>::release_tmp_xy(std::shared_ptr<std::vector<TF>>& tmp)
 {
-    if (tmp == nullptr)
-        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp field with value nullptr");
 
-    atmp_xy.push_back(std::move(tmp));
+        atmp_xy.push_back(std::move(tmp));
+    }
 }
 
 template<typename TF>
@@ -764,9 +770,9 @@ void Fields<TF>::init_prognostic_2d_field(const std::string& fldname)
         throw std::runtime_error(msg);
     }
 
-    // add a new scalar variable
-    ap2d[fldname] = std::vector<TF>();
-    at2d[fldname] = std::vector<TF>();
+    // Add a new scalar variable
+    ap2d[fldname] = std::make_shared<Field2d<TF>>();
+    at2d[fldname] = std::make_shared<Field2d<TF>>();
 }
 
 template<typename TF>

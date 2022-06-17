@@ -1200,22 +1200,5 @@ void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
 
-#ifndef USECUDA 
-template<typename TF>
-void Microphys_nsw6<TF>::prepare_device()
-{
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::clear_device()
-{
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::backward_device()
-{
-}
-#endif
-
 template class Microphys_nsw6<double>;
 template class Microphys_nsw6<float>;
