@@ -515,14 +515,14 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
     boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
-    ghost_cells_wt_g<<<grid2dGPU, block2dGPU>>>(
+    ghost_cells_wt_g<TF><<<grid2dGPU, block2dGPU>>>(
         fields.mt.at("w")->fld_g,
         gd.icells, gd.ijcells,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
-    pres_in_g<<<gridGPU, blockGPU>>>(
+    pres_in_g<TF><<<gridGPU, blockGPU>>>(
         fields.sd.at("p")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
@@ -560,7 +560,7 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
     for (int n=0; n<nj; ++n)
     {
         // Prepare the fields that go into the matrix solver
-        solve_in_g<<<grid2dsGPU,block2dsGPU>>>(
+        solve_in_g<TF><<<grid2dsGPU,block2dsGPU>>>(
             fields.sd.at("p")->fld_g,
             m1_g, m2_g, m3_g, m4_g,
             m5_g, m6_g, m7_g,
@@ -581,7 +581,7 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
         cuda_check_error();
 
         // Put the solution back into the pressure field
-        solve_put_back_g<<<grid2dsGPU,block2dsGPU>>>(
+        solve_put_back_g<TF><<<grid2dsGPU,block2dsGPU>>>(
             fields.sd.at("p")->fld_g,
             &tmp2_g[3*ns],
             gd.iblock, gd.jblock,
@@ -594,7 +594,7 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
 
     cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
-    solve_out_g<<<gridGPU, blockGPU>>>(
+    solve_out_g<TF><<<gridGPU, blockGPU>>>(
         fields.sd.at("p")->fld_g, tmp1->fld_g,
         gd.imax, gd.imax*gd.jmax,
         gd.icells, gd.ijcells,
@@ -605,7 +605,7 @@ void Pres_4<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
     // 3. Get the pressure tendencies from the pressure field.
-    pres_out_g<<<gridGPU, blockGPU>>>(
+    pres_out_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
         fields.sd.at("p")->fld_g,
         gd.dzhi4_g, gd.dxi, gd.dyi,
@@ -638,7 +638,7 @@ TF Pres_4<TF>::check_divergence()
 
     auto div = fields.get_tmp_g();
 
-    calc_divergence_g<<<gridGPU, blockGPU>>>(
+    calc_divergence_g<TF><<<gridGPU, blockGPU>>>(
             div->fld_g,
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             gd.dzi4_g,

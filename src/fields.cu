@@ -142,24 +142,24 @@ namespace
         //dim3 gridGPU1(1, 1, 1);
         //dim3 blockGPU1(1, 1, gd.kcells);
 
-        set_to_val_g<<<gridGPU3, blockGPU>>>(
+        set_to_val_g<TF><<<gridGPU3, blockGPU>>>(
                 fld->fld_g, value,
                 gd.icells, gd.jcells, gd.kcells, gd.ijcells);
         cuda_check_error();
 
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
         cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
-        cuda_check_error();
-
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
-        cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
         cuda_check_error();
 
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
         cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
         cuda_check_error();
 
         //set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
@@ -183,7 +183,7 @@ TF Fields<TF>::check_momentum()
 
     auto tmp1 = get_tmp_g();
 
-    calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
+    calc_mom_2nd_g<TF><<<gridGPU, blockGPU>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -215,7 +215,7 @@ TF Fields<TF>::check_tke()
 
     auto tmp1 = get_tmp_g();
 
-    calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
+    calc_tke_2nd_g<TF><<<gridGPU, blockGPU>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -337,7 +337,7 @@ void Fields<TF>::prepare_device()
 
     // Tendencies atmosphere
     for (auto& it : at)
-        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
+        it.second->fld_g.resize(gd.ncells);
 
     // Prognostic 2D fields
     for (auto& it : ap2d)

@@ -353,7 +353,7 @@ TF Pres_2<TF>::check_divergence()
 
     auto divergence = fields.get_tmp_g();
 
-    calc_divergence_g<<<gridGPU, blockGPU>>>(
+    calc_divergence_g<TF><<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, divergence->fld_g,
         gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,

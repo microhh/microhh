@@ -817,7 +817,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
         cudaMemcpy(bs.rhorefh_g, bs.rhorefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
     }
 
-    calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_tend_2nd_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
             fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
             gd.istart, gd.jstart, gd.kstart+1,
@@ -883,7 +883,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
 
     if (name == "b")
     {
-        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_g<TF><<<gridGPU, blockGPU>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.thvref_g, bs.pref_g, bs.exnref_g,
             gd.istart,  gd.jstart, gd.kstart,
@@ -893,7 +893,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "b_h")
     {
-        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_g<TF><<<gridGPU, blockGPU>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.thvrefh_g, bs.prefh_g, bs.exnrefh_g,
             gd.istart,  gd.jstart, gd.kstart,
@@ -903,7 +903,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "ql")
     {
-        calc_liquid_water_g<<<gridGPU2, blockGPU2>>>(
+        calc_liquid_water_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.exnref_g, bs.pref_g,
             gd.istart,  gd.jstart,  gd.kstart,
@@ -913,7 +913,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "ql_h")
     {
-        calc_liquid_water_h_g<<<gridGPU2, blockGPU2>>>(
+        calc_liquid_water_h_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.exnrefh_g, bs.prefh_g,
             gd.istart,  gd.jstart,  gd.kstart,
@@ -923,7 +923,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "qi")
     {
-        calc_ice_g<<<gridGPU2, blockGPU2>>>(
+        calc_ice_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.exnrefh_g, bs.prefh_g,
             gd.istart,  gd.jstart,  gd.kstart,
@@ -933,7 +933,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "N2")
     {
-        calc_N2_g<<<gridGPU2, blockGPU2>>>(
+        calc_N2_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, bs.thvref_g, gd.dzi_g,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend,
@@ -942,7 +942,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     }
     else if (name == "thv")
     {
-        calc_thv_g<<<gridGPU2, blockGPU2>>>(
+        calc_thv_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g,
             fields.sp.at("thl")->fld_g,
             fields.sp.at("qt")->fld_g,
@@ -999,7 +999,7 @@ void Thermo_moist<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& bfield)
     dim3 gridGPU (gridi, gridj, 1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<TF><<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
         fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,
@@ -1021,7 +1021,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
     dim3 gridGPU (gridi, gridj, 1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_bot_g<TF><<<gridGPU, blockGPU>>>(
         bfield.fld_g, bfield.fld_bot_g,
         fields.sp.at("thl")->fld_g, fields.sp.at("thl")->fld_bot_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("qt")->fld_bot_g,
@@ -1029,7 +1029,7 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(Field3d<TF>& bfield)
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<TF><<<gridGPU, blockGPU>>>(
         bfield.flux_bot_g,
         fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g,

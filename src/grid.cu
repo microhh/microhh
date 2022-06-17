@@ -61,7 +61,6 @@ void Grid<TF>::prepare_device()
 template<typename TF>
 void Grid<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(gd.x_g    ));
     cuda_safe_call(cudaFree(gd.y_g    ));
     cuda_safe_call(cudaFree(gd.z_g    ));
     cuda_safe_call(cudaFree(gd.zh_g   ));
