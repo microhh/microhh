@@ -329,14 +329,14 @@ void Fields<TF>::prepare_device()
     const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
     const int nmemsize_soil = sgd.ncells*sizeof(TF);
-    
+
     // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->init_device();
 
     // Tendencies atmosphere
     for (auto& it : at)
-        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
+        it.second->fld_g.resize(gd.ncells);
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
@@ -355,8 +355,8 @@ void Fields<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
 
     // Reference profiles
-    cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
-    cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
+    rhoref_g.resize(gd.kcells);
+    rhorefh_g.resize(gd.kcells);
 
     // copy all the data to the GPU
     forward_device();
@@ -374,7 +374,7 @@ void Fields<TF>::clear_device()
 
     // Tendencies atmosphere
     for (auto& it : at)
-        cuda_safe_call(cudaFree(it.second->fld_g));
+        it.second->fld_g.free();
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
@@ -392,8 +392,8 @@ void Fields<TF>::clear_device()
     for (auto& it : sts)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
-    cuda_safe_call(cudaFree(rhoref_g));
-    cuda_safe_call(cudaFree(rhorefh_g));
+    rhoref_g.free();
+    rhorefh_g.free();
 
     // Free the tmp fields
     for (auto& it : atmp_g)

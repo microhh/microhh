@@ -35,16 +35,16 @@ void Grid<TF>::prepare_device()
     const int jmemsize = gd.jcells*sizeof(TF);
     const int kmemsize = gd.kcells*sizeof(TF);
 
-    cuda_safe_call(cudaMalloc((void**)&gd.x_g,     imemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.y_g,     jmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.z_g,     kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.zh_g,    kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dz_g,    kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzh_g,   kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzi_g,   kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzhi_g,  kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzi4_g,  kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&gd.dzhi4_g, kmemsize));
+    gd.x_g.resize(gd.icells);
+    gd.y_g.resize(gd.jcells);
+    gd.z_g.resize(gd.kcells);
+    gd.zh_g.resize(gd.kcells);
+    gd.dz_g.resize(gd.kcells);
+    gd.dzh_g.resize(gd.kcells);
+    gd.dzi_g.resize(gd.kcells);
+    gd.dzhi_g.resize(gd.kcells);
+    gd.dzi4_g.resize(gd.kcells);
+    gd.dzhi4_g.resize(gd.kcells);
 
     cuda_safe_call(cudaMemcpy(gd.x_g,     gd.x.data(),     imemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(gd.y_g,     gd.y.data(),     jmemsize, cudaMemcpyHostToDevice));
@@ -61,16 +61,16 @@ void Grid<TF>::prepare_device()
 template<typename TF>
 void Grid<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(gd.x_g    ));
-    cuda_safe_call(cudaFree(gd.y_g    ));
-    cuda_safe_call(cudaFree(gd.z_g    ));
-    cuda_safe_call(cudaFree(gd.zh_g   ));
-    cuda_safe_call(cudaFree(gd.dz_g   ));
-    cuda_safe_call(cudaFree(gd.dzh_g  ));
-    cuda_safe_call(cudaFree(gd.dzi_g  ));
-    cuda_safe_call(cudaFree(gd.dzhi_g ));
-    cuda_safe_call(cudaFree(gd.dzi4_g ));
-    cuda_safe_call(cudaFree(gd.dzhi4_g));
+    gd.x_g.free();
+    gd.y_g.free();
+    gd.z_g.free();
+    gd.zh_g.free();
+    gd.dz_g.free();
+    gd.dzh_g.free();
+    gd.dzi_g.free();
+    gd.dzhi_g.free();
+    gd.dzi4_g.free();
+    gd.dzhi4_g.free();
 }
 
 template class Grid<double>;
