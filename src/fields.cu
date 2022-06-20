@@ -326,15 +326,17 @@ void Fields<TF>::prepare_device()
     auto& sgd = soil_grid.get_grid_data();
 
     const int ijmemsize  = gd.ijcells*sizeof(TF);
+    const int nmemsize   = gd.ncells*sizeof(TF);
+    const int nmemsize1d = gd.kcells*sizeof(TF);
     const int nmemsize_soil = sgd.ncells*sizeof(TF);
-
+    
     // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->init_device();
 
     // Tendencies atmosphere
     for (auto& it : at)
-        it.second->fld_g.resize(gd.ncells);
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
@@ -353,8 +355,8 @@ void Fields<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
 
     // Reference profiles
-    rhoref_g.resize(gd.kcells);
-    rhorefh_g.resize(gd.kcells);
+    cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
+    cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
 
     // copy all the data to the GPU
     forward_device();

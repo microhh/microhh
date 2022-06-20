@@ -27,8 +27,6 @@
 #include <vector>
 #include <array>
 
-#include "cuda_buffer.h"
-
 class Master;
 template<typename> class Grid;
 
@@ -68,14 +66,14 @@ class Field3d
         void init_device();  // Allocate Field3D fields at device
         void clear_device(); // Deallocate Field3D fields at device
 
-        cuda_buffer<TF> fld_g;
-        cuda_buffer<TF> fld_bot_g;
-        cuda_buffer<TF> fld_top_g;
-        cuda_buffer<TF> fld_mean_g;
-        cuda_buffer<TF> grad_bot_g;
-        cuda_buffer<TF> grad_top_g;
-        cuda_buffer<TF> flux_bot_g;
-        cuda_buffer<TF> flux_top_g;
+        TF* fld_g;
+        TF* fld_bot_g;
+        TF* fld_top_g;
+        TF* fld_mean_g;
+        TF* grad_bot_g;
+        TF* grad_top_g;
+        TF* flux_bot_g;
+        TF* flux_top_g;
 
     private:
         Master& master;
