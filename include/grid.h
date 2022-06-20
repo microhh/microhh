@@ -32,6 +32,7 @@
 #include <array>
 #include "defines.h"
 #include "transpose.h"
+#include "cuda_buffer.h"
 
 class Master;
 class Input;
@@ -102,16 +103,16 @@ struct Grid_data
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 
-    TF* x_g;
-    TF* y_g;
-    TF* z_g;
-    TF* zh_g;
-    TF* dz_g;
-    TF* dzh_g;
-    TF* dzi_g;
-    TF* dzhi_g;
-    TF* dzi4_g;
-    TF* dzhi4_g;
+    cuda_buffer<TF> x_g;
+    cuda_buffer<TF> y_g;
+    cuda_buffer<TF> z_g;
+    cuda_buffer<TF> zh_g;
+    cuda_buffer<TF> dz_g;
+    cuda_buffer<TF> dzh_g;
+    cuda_buffer<TF> dzi_g;
+    cuda_buffer<TF> dzhi_g;
+    cuda_buffer<TF> dzi4_g;
+    cuda_buffer<TF> dzhi4_g;
 
     const std::array<int,3> uloc  = {{1,0,0}}; // Location of the u-velocity on the staggered grid
     const std::array<int,3> vloc  = {{0,1,0}}; // Location of the v-velocity on the staggered grid
