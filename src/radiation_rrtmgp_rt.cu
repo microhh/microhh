@@ -1452,7 +1452,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 */
 
         // We loop over the gas optics, due to memory constraints
-        constexpr int n_col_block = 1<<15; // 2^15
+        constexpr int n_col_block = 1<<14; // 2^14
 
         auto gas_optics_subset = [&](const int col_s, const int col_e, const int n_col_subset)
         {
