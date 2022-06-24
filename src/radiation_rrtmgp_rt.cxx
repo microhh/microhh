@@ -424,10 +424,10 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
-    rays_per_pixel = inputin.get_item<Float>("radiation","rays_per_pixel", "", 1);
-    kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "", 16);
-    kngrid_j = inputin.get_item<Float>("radiation", "kngrid_j", "", 16);
-    kngrid_k = inputin.get_item<Float>("radiation", "kngrid_k", "", 16);
+    rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
+    kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "");
+    kngrid_j = inputin.get_item<Float>("radiation", "kngrid_j", "");
+    kngrid_k = inputin.get_item<Float>("radiation", "kngrid_k", "");
 
     if (sw_fixed_sza)
     {

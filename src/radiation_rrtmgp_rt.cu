@@ -1388,11 +1388,12 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
     Array_gpu<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp_rt::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev);
 
-    Array_gpu<Float,1> toa_src_dummy({n_col});
+    // Array_gpu<Float,1> toa_src_dummy({n_col});
 
     // compute cloud eff radius and convert ice/liquid water path to g/m2
     Array_gpu<Float,2> rel;
     Array_gpu<Float,2> rei;
+
     if (compute_clouds)
     {
         // Constants for computation of liquid and ice droplet effective radius
@@ -1438,6 +1439,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
             }
         }
 
+        /*
         kdist_sw_rt->gas_optics(
                 igpt-1,
                 p_lay,
@@ -1447,6 +1449,57 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 optical_props,
                 toa_src_dummy,
                 col_dry);
+                */
+
+        // We loop over the gas optics, due to memory constraints
+        constexpr int n_col_block = 1<<15; // 2^15
+
+        auto gas_optics_subset = [&](const int col_s, const int col_e, const int n_col_subset)
+        {
+            // CvH: the calls below can be removed from the loop to gain performance as they
+            // only need to be allocated once.
+            std::unique_ptr<Optical_props_arry_rt> optical_props_subset =
+                    std::make_unique<Optical_props_2str_rt>(n_col_subset, n_lay, *kdist_sw_rt);
+            Array_gpu<Float,1> toa_src_dummy({n_col_subset});
+
+            Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s, n_col_subset);
+
+            // Run the gas_optics on a subset.
+            kdist_sw_rt->gas_optics(
+                    igpt-1,
+                    p_lay.subset({{ {col_s, col_e}, {1, n_lay} }}),
+                    p_lev.subset({{ {col_s, col_e}, {1, n_lev} }}),
+                    t_lay.subset({{ {col_s, col_e}, {1, n_lay} }}),
+                    gas_concs_subset,
+                    optical_props_subset,
+                    toa_src_dummy,
+                    col_dry.subset({{ {col_s, col_e}, {1, n_lay} }}));
+
+            subset_kernel_launcher_cuda::get_from_subset(
+                    n_col, n_lay, n_col_subset, col_s,
+                    optical_props->get_tau().ptr(), optical_props->get_ssa().ptr(), optical_props->get_g().ptr(),
+                    optical_props_subset->get_tau().ptr(), optical_props_subset->get_ssa().ptr(), optical_props_subset->get_g().ptr());
+        };
+
+        const int n_blocks = n_col / n_col_block;
+        const int n_col_residual = n_col % n_col_block;
+
+        for (int n=0; n<n_blocks; ++n)
+        {
+            const int col_s = n*n_col_block + 1;
+            const int col_e = (n+1)*n_col_block;
+
+            gas_optics_subset(col_s, col_e, n_col_block);
+        }
+
+        if (n_col_residual > 0)
+        {
+            const int col_s = n_blocks*n_col_block + 1;
+            const int col_e = n_col;
+
+            gas_optics_subset(col_s, col_e, n_col_residual);
+        }
+
 
         if (compute_clouds)
         {
@@ -1478,9 +1531,9 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 sfc_alb_dir.subset({{ {band, band}, {1, n_col}} }),
                 sfc_alb_dif.subset({{ {band, band}, {1, n_col}} }),
                 sw_flux_dn_dif_inc_local,
-                (*fluxes).get_flux_up(),
-                (*fluxes).get_flux_dn(),
-                (*fluxes).get_flux_dn_dir());
+                fluxes->get_flux_up(),
+                fluxes->get_flux_dn(),
+                fluxes->get_flux_dn_dir());
 
         // CvH: this computation assumes that mu0 and azimuth are constant over the entire subset. Works for small LES only.
         Float zenith_angle = std::acos(mu0({1}));
@@ -1498,27 +1551,27 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 sfc_alb_dir, zenith_angle,
                 azimuth_angle,
                 sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
-                (*fluxes).get_flux_tod_dn(),
-                (*fluxes).get_flux_tod_up(),
-                (*fluxes).get_flux_sfc_dir(),
-                (*fluxes).get_flux_sfc_dif(),
-                (*fluxes).get_flux_sfc_up(),
-                (*fluxes).get_flux_abs_dir(),
-                (*fluxes).get_flux_abs_dif());
+                fluxes->get_flux_tod_dn(),
+                fluxes->get_flux_tod_up(),
+                fluxes->get_flux_sfc_dir(),
+                fluxes->get_flux_sfc_dif(),
+                fluxes->get_flux_sfc_up(),
+                fluxes->get_flux_abs_dir(),
+                fluxes->get_flux_abs_dif());
 
-        (*fluxes).net_flux();
+        fluxes->net_flux();
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
                   n_col, n_lev, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
-                  (*fluxes).get_flux_up().ptr(), (*fluxes).get_flux_dn().ptr(), (*fluxes).get_flux_dn_dir().ptr(), (*fluxes).get_flux_net().ptr());
+                  fluxes->get_flux_up().ptr(), fluxes->get_flux_dn().ptr(), fluxes->get_flux_dn_dir().ptr(), fluxes->get_flux_net().ptr());
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
                   gd.imax, gd.jmax, rt_flux_tod_dn.ptr(), rt_flux_tod_up.ptr(), rt_flux_sfc_dir.ptr(), rt_flux_sfc_dif.ptr(), rt_flux_sfc_up.ptr(),
-                  (*fluxes).get_flux_tod_dn().ptr(), (*fluxes).get_flux_tod_up().ptr(), (*fluxes).get_flux_sfc_dir().ptr(), (*fluxes).get_flux_sfc_dif().ptr(), (*fluxes).get_flux_sfc_up().ptr());
+                  fluxes->get_flux_tod_dn().ptr(), fluxes->get_flux_tod_up().ptr(), fluxes->get_flux_sfc_dir().ptr(), fluxes->get_flux_sfc_dif().ptr(), fluxes->get_flux_sfc_up().ptr());
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
                   n_col, n_lay, rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
-                  (*fluxes).get_flux_abs_dir().ptr(), (*fluxes).get_flux_abs_dif().ptr());
+                  fluxes->get_flux_abs_dir().ptr(), fluxes->get_flux_abs_dif().ptr());
 
     }
 }
