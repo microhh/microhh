@@ -1454,14 +1454,10 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         // We loop over the gas optics, due to memory constraints
         constexpr int n_col_block = 1<<14; // 2^14
 
-        auto gas_optics_subset = [&](const int col_s, const int col_e, const int n_col_subset)
+        auto gas_optics_subset = [&](
+                const int col_s, const int col_e, const int n_col_subset,
+                std::unique_ptr<Optical_props_arry_rt>& optical_props_subset, Array_gpu<Float,1>& toa_src_dummy)
         {
-            // CvH: the calls below can be removed from the loop to gain performance as they
-            // only need to be allocated once.
-            std::unique_ptr<Optical_props_arry_rt> optical_props_subset =
-                    std::make_unique<Optical_props_2str_rt>(n_col_subset, n_lay, *kdist_sw_rt);
-            Array_gpu<Float,1> toa_src_dummy({n_col_subset});
-
             Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s, n_col_subset);
 
             // Run the gas_optics on a subset.
@@ -1484,22 +1480,31 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         const int n_blocks = n_col / n_col_block;
         const int n_col_residual = n_col % n_col_block;
 
+        std::unique_ptr<Optical_props_arry_rt> optical_props_block =
+                std::make_unique<Optical_props_2str_rt>(n_col_block, n_lay, *kdist_sw_rt);
+        Array_gpu<Float,1> toa_src_block({n_col_block});
+
         for (int n=0; n<n_blocks; ++n)
         {
             const int col_s = n*n_col_block + 1;
             const int col_e = (n+1)*n_col_block;
 
-            gas_optics_subset(col_s, col_e, n_col_block);
+            gas_optics_subset(col_s, col_e, n_col_block, optical_props_block, toa_src_block);
         }
+
+        optical_props_block.reset();
 
         if (n_col_residual > 0)
         {
+            std::unique_ptr<Optical_props_arry_rt> optical_props_residual =
+                    std::make_unique<Optical_props_2str_rt>(n_col_residual, n_lay, *kdist_sw_rt);
+            Array_gpu<Float,1> toa_src_residual({n_col_residual});
+
             const int col_s = n_blocks*n_col_block + 1;
             const int col_e = n_col;
 
-            gas_optics_subset(col_s, col_e, n_col_residual);
+            gas_optics_subset(col_s, col_e, n_col_residual, optical_props_residual, toa_src_residual);
         }
-
 
         if (compute_clouds)
         {
