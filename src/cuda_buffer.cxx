@@ -31,7 +31,7 @@
 
 cuda_raw_buffer::cuda_raw_buffer(size_t size_in_bytes)
 {
-    resize(size_in_bytes);
+    reallocate(size_in_bytes);
 }
 
 cuda_raw_buffer::cuda_raw_buffer(cuda_raw_buffer&& that) noexcept
@@ -39,13 +39,29 @@ cuda_raw_buffer::cuda_raw_buffer(cuda_raw_buffer&& that) noexcept
     *this = std::move(that);
 }
 
-cuda_raw_buffer& cuda_raw_buffer::operator=(cuda_raw_buffer&& that)
+cuda_raw_buffer& cuda_raw_buffer::operator=(cuda_raw_buffer&& that) noexcept
 {
     std::swap(ptr_, that.ptr_);
     return *this;
 }
 
-void cuda_raw_buffer::resize(size_t size_in_bytes)
+#ifdef USECUDA
+static std::string allocation_failed_message(size_t allocation_attempt_size)
+{
+    size_t free = 0, total = 0;
+    int device = -1;
+
+    // Intentionally do not check for errors. In the worst case, the variables will remain 0.
+    cudaMemGetInfo(&free, &total);
+    cudaGetDevice(&device);
+
+    return std::string("memory allocation failed on device ") + std::to_string(device) +
+        ": attempted to allocate " + std::to_string(allocation_attempt_size) + " bytes, but only " +
+        std::to_string(free) + "bytes are available.";
+}
+#endif //USECUDA
+
+void cuda_raw_buffer::reallocate(size_t size_in_bytes)
 {
 #ifdef USECUDA
     if (ptr_)
@@ -56,12 +72,31 @@ void cuda_raw_buffer::resize(size_t size_in_bytes)
 
     if (size_in_bytes > 0)
     {
-        cuda_safe_call(cudaMalloc(&ptr_, size_in_bytes));
+        cudaError_t result = cudaMalloc(&ptr_, size_in_bytes);
+
+        if (result == cudaErrorMemoryAllocation)
+        {
+            throw Tools_g::cuda_exception(result, allocation_failed_message(size_in_bytes));
+        }
+
+        cuda_safe_call(result);
     }
 #else
     if (size_in_bytes > 0)
     {
         throw std::runtime_exception("CUDA is not enabled, allocating GPU memory is not possible");
+    }
+#endif //USECUDA
+}
+
+void cuda_raw_copy(const void* src, void* dst, size_t nbytes)
+{
+#ifdef USECUDA
+    cuda_safe_call(cudaMemcpy(dst, src, nbytes, cudaMemcpyDefault));
+#else
+    if (nbytes > 0)
+    {
+        throw std::runtime_exception("CUDA is not enabled, copying GPU memory is not possible");
     }
 #endif //USECUDA
 }
