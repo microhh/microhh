@@ -43,9 +43,15 @@ namespace Tools_g
 
     cuda_exception::cuda_exception(cudaError err, const char *file, const int line):
         err_(err),
-        line_(line),
-        file_(file),
         message_(format_exception_message(err, file, line))
+    {
+        //
+    }
+
+
+    cuda_exception::cuda_exception(cudaError err, std::string msg):
+        err_(err),
+        message_("CUDA error: " + msg)
     {
         //
     }
@@ -53,14 +59,6 @@ namespace Tools_g
     const char *cuda_exception::what() const throw()
     {
         return message_.c_str();
-    }
-
-    int cuda_exception::line() const {
-        return line_;
-    }
-
-    const char *cuda_exception::file() const {
-        return file_.c_str();
     }
 
     cudaError cuda_exception::error() const {

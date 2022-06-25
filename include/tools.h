@@ -50,15 +50,12 @@ namespace Tools_g
     struct cuda_exception : public std::exception
     {
         cuda_exception(cudaError err, const char *file, const int line);
+        cuda_exception(cudaError err, std::string msg);
         const char *what() const throw();
-        int line() const;
-        const char *file() const;
         cudaError error() const;
 
         private:
             const cudaError err_;
-            const std::string file_;
-            const int line_;
             const std::string message_;
     };
 
