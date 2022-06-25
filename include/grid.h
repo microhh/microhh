@@ -103,16 +103,16 @@ struct Grid_data
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 
-    cuda_buffer<TF> x_g;
-    cuda_buffer<TF> y_g;
-    cuda_buffer<TF> z_g;
-    cuda_buffer<TF> zh_g;
-    cuda_buffer<TF> dz_g;
-    cuda_buffer<TF> dzh_g;
-    cuda_buffer<TF> dzi_g;
-    cuda_buffer<TF> dzhi_g;
-    cuda_buffer<TF> dzi4_g;
-    cuda_buffer<TF> dzhi4_g;
+    cuda_vector<TF> x_g;
+    cuda_vector<TF> y_g;
+    cuda_vector<TF> z_g;
+    cuda_vector<TF> zh_g;
+    cuda_vector<TF> dz_g;
+    cuda_vector<TF> dzh_g;
+    cuda_vector<TF> dzi_g;
+    cuda_vector<TF> dzhi_g;
+    cuda_vector<TF> dzi4_g;
+    cuda_vector<TF> dzhi4_g;
 
     const std::array<int,3> uloc  = {{1,0,0}}; // Location of the u-velocity on the staggered grid
     const std::array<int,3> vloc  = {{0,1,0}}; // Location of the v-velocity on the staggered grid

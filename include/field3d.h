@@ -68,14 +68,14 @@ class Field3d
         void init_device();  // Allocate Field3D fields at device
         void clear_device(); // Deallocate Field3D fields at device
 
-        cuda_buffer<TF> fld_g;
-        cuda_buffer<TF> fld_bot_g;
-        cuda_buffer<TF> fld_top_g;
-        cuda_buffer<TF> fld_mean_g;
-        cuda_buffer<TF> grad_bot_g;
-        cuda_buffer<TF> grad_top_g;
-        cuda_buffer<TF> flux_bot_g;
-        cuda_buffer<TF> flux_top_g;
+        cuda_vector<TF> fld_g;
+        cuda_vector<TF> fld_bot_g;
+        cuda_vector<TF> fld_top_g;
+        cuda_vector<TF> fld_mean_g;
+        cuda_vector<TF> grad_bot_g;
+        cuda_vector<TF> grad_top_g;
+        cuda_vector<TF> flux_bot_g;
+        cuda_vector<TF> flux_top_g;
 
     private:
         Master& master;
