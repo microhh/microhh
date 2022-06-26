@@ -35,7 +35,7 @@ Check out the code from GitHub using
 
 In case you had already checked out the repository without checking out the submodules, use:
 
-    git submodule update --init
+    git submodule update --init --recursive
 
 
 Compilation of the code
