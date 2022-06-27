@@ -255,16 +255,17 @@ template<typename TF>
 Boundary_surface_lsm<TF>::Boundary_surface_lsm(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
         Fields<TF>& fieldsin, Input& inputin) :
-        Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
+        Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin),
+        field3d_operators(masterin, gridin, fieldsin)
 {
     swboundary = "surface_lsm";
 
     // Read .ini settings:
-    sw_constant_z0   = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
-    sw_homogeneous   = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
-    sw_free_drainage = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
-    sw_water         = inputin.get_item<bool>("land_surface", "swwater", "", false);
-
+    sw_constant_z0    = inputin.get_item<bool>("boundary",     "swconstantz0", "", true);
+    sw_homogeneous    = inputin.get_item<bool>("land_surface", "swhomogeneous", "", true);
+    sw_free_drainage  = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
+    sw_water          = inputin.get_item<bool>("land_surface", "swwater", "", false);
+    sw_homogenize_sfc = inputin.get_item<bool>("land_surface", "swhomogenizesfc", "", false);
     sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
 
@@ -716,6 +717,26 @@ void Boundary_surface_lsm<TF>::exec(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
+
+    if (sw_homogenize_sfc)
+    {
+        auto homogenize = [&](std::vector<TF>& field)
+        {
+            const TF mean_value = field3d_operators.calc_mean_2d(field.data());
+            std::fill(field.begin(), field.end(), mean_value);
+        };
+
+        // Homogenize the surface fields which interact with the atmosphere.
+        homogenize(fields.sp.at("thl")->flux_bot);
+        homogenize(fields.sp.at("qt")->flux_bot);
+
+        homogenize(fields.mp.at("u")->flux_bot),
+        homogenize(fields.mp.at("v")->flux_bot),
+
+        homogenize(dudz_mo);
+        homogenize(dvdz_mo);
+        homogenize(dbdz_mo);
+    }
 
     //
     // Calculate soil tendencies

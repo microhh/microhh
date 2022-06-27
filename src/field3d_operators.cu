@@ -131,8 +131,6 @@ TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
     return mean_value;
 }
 
-// set(CMAKE_CUDA_FLAGS "${CUDA_NVCC_FLAGS} ${CUDA_ARCH} --std=c++14 -arch sm_61");
-
 template<typename TF>
 TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)
 {
