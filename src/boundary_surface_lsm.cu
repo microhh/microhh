@@ -505,6 +505,29 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_g(buoy);
     fields.release_tmp_g(tmp2);
 
+    if (sw_homogenize_sfc)
+    {
+        const int blockGPU = 256;
+        const int gridGPU = gd.ijcells/blockGPU + (gd.ijcells%blockGPU > 0);
+
+        auto homogenize = [&](TF* const __restrict__ field)
+        {
+            const TF mean_value = field3d_operators.calc_mean_2d_g(field);
+            Tools_g::set_to_val<<<gridGPU, blockGPU>>>(field, gd.ijcells, mean_value);
+        };
+
+        // Homogenize the surface fields which interact with the atmosphere.
+        homogenize(fields.sp.at("thl")->flux_bot_g);
+        homogenize(fields.sp.at("qt")->flux_bot_g);
+
+        homogenize(fields.mp.at("u")->flux_bot_g),
+        homogenize(fields.mp.at("v")->flux_bot_g),
+
+        homogenize(dudz_mo_g);
+        homogenize(dvdz_mo_g);
+        homogenize(dbdz_mo_g);
+    }
+
     //
     // Calculate soil tendencies
     //
