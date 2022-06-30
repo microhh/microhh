@@ -208,6 +208,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         int kngrid_i;
         int kngrid_j;
         int kngrid_k;
+        Int time_idx = 0;
 
         std::vector<std::string> crosslist;
 

@@ -1544,8 +1544,10 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         Float zenith_angle = std::acos(mu0({1}));
         Float azimuth_angle = this->azimuth;
 
+        const Int qrng_offset = Int(igpt - 1) + this->time_idx * Int(n_gpt);
         raytracer.trace_rays(
                 this->rays_per_pixel,
+                qrng_offset,
                 gd.imax, gd.jmax, n_lay,
                 gd.dx, gd.dy, gd.dz[gd.kstart],
                 kngrid_i, kngrid_j, kngrid_k,
@@ -1563,7 +1565,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 fluxes->get_flux_sfc_up(),
                 fluxes->get_flux_abs_dir(),
                 fluxes->get_flux_abs_dif());
-
+        
         fluxes->net_flux();
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
@@ -1579,6 +1581,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                   fluxes->get_flux_abs_dir().ptr(), fluxes->get_flux_abs_dif().ptr());
 
     }
+    this->time_idx += Int(1);
 }
 #endif
 
