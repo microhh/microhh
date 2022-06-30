@@ -1,7 +1,7 @@
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
-import os
+import os, shutil
 
 # Available in `microhh_root/python`:
 import microhh_tools as mht
@@ -28,6 +28,17 @@ def link(f1, f2):
     else:
         raise Exception('Source file {} does not exist!'.format(f1))
 
+def copy(f1, f2):
+    """
+    Copy `f1` to `f2`, if `f2` does not yet exist.
+    """
+    if os.path.exists(f2):
+        os.remove(f2)
+    if os.path.exists(f1):
+        shutil.copy(f1, f2)
+    else:
+        raise Exception('Source file {} does not exist!'.format(f1))
+
 
 if __name__ == '__main__':
     """
@@ -39,23 +50,27 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
+    # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
+
+    # Option to link or copy the LSM + RRTMGP lookup tables.
+    copy_or_link = copy
 
     # Link required files (if not present)
     if use_htessel:
-        link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
+        copy_or_link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
     if use_rrtmgp:
         if gpt_set == '256_224':
-            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
-            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
         elif gpt_set == '128_112':
-            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
-            link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
         else:
             raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
 
-        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
-        link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
 
     """
     Create vertical grid for LES
