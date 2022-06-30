@@ -53,6 +53,24 @@ namespace
             atomicAdd(&prof[k], fld[ijk]*scalefac);
         }
     }
+
+    template<typename TF> __global__
+    void get_mean_2d(
+            TF* value, const TF* const __restrict__ fld,
+            const TF scalefac,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            atomicAdd(value, fld[ij]*scalefac);
+        }
+    }
 }
 
 #ifdef USECUDA
@@ -97,11 +115,46 @@ void Field3d_operators<TF>::calc_mean_profile_g(TF* const restrict prof, const T
     reduce_interior<TF>(
         fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot,
         gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
+
     // Reduce jtot*kcells to kcells values
     reduce_all<TF>(
         tmp->fld_g, prof, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
 
     fields.release_tmp_g(tmp);
+}
+
+template<typename TF>
+TF Field3d_operators<TF>::calc_mean_2d_g(const TF* const restrict fld)
+{
+    const auto& gd = grid.get_grid_data();
+    const TF scalefac = 1./(gd.itot*gd.jtot);
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.itot/blocki + (gd.itot%blocki > 0);
+    const int gridj  = gd.jtot/blockj + (gd.jtot%blockj > 0);
+
+    dim3 gridGPU(gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
+
+    TF mean_value = 0;
+    TF* mean_value_g;
+    cuda_safe_call(cudaMalloc(&mean_value_g, sizeof(TF)));
+    cudaMemcpy(mean_value_g, &mean_value, sizeof(TF), cudaMemcpyHostToDevice);
+
+    // Very naive reduction from itot*jtot to single value.
+    get_mean_2d<<<gridGPU, blockGPU>>>(
+        mean_value_g, fld, scalefac,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(&mean_value, mean_value_g, sizeof(TF), cudaMemcpyDeviceToHost);
+    cudaFree(mean_value_g);
+
+    return mean_value;
 }
 
 template<typename TF>
@@ -130,8 +183,6 @@ TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
     fields.release_tmp_g(tmp);
     return mean_value;
 }
-
-// set(CMAKE_CUDA_FLAGS "${CUDA_NVCC_FLAGS} ${CUDA_ARCH} --std=c++14 -arch sm_61");
 
 template<typename TF>
 TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)

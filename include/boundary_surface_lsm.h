@@ -25,6 +25,7 @@
 
 #include "boundary.h"
 #include "stats.h"
+#include "field3d_operators.h"
 
 template<typename> class Diff;
 
@@ -139,6 +140,8 @@ class Boundary_surface_lsm : public Boundary<TF>
         using Boundary<TF>::ubot;
         using Boundary<TF>::vbot;
 
+        Field3d_operators<TF> field3d_operators;
+
         typedef std::map<std::string, Field3dBc<TF>> BcMap;
         using Boundary<TF>::sbc;
 
@@ -150,6 +153,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_water;
         bool sw_tile_stats;
         bool sw_tile_stats_col;
+        bool sw_homogenize_sfc;
 
         TF emis_sfc;
 
