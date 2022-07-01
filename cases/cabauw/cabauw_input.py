@@ -36,6 +36,7 @@ if __name__ == '__main__':
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
     use_rrtmgp = True            # False = prescribed radiation from ERA5.
+    use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
 
@@ -115,8 +116,14 @@ if __name__ == '__main__':
     ini['boundary']['swconstantz0'] = use_homogeneous_z0
     ini['land_surface']['swhomogeneous'] = use_homogeneous_ls
 
-    if use_rrtmgp:
+    if use_rrtmgp and not use_rt:
         ini['radiation']['swradiation'] = 'rrtmgp'
+    elif use_rrtmgp and use_rt:
+        ini['radiation']['swradiation'] = 'rrtmgp_rt'
+        ini['radiation']['rays_per_pixel'] = 256
+        ini['radiation']['kngrid_i'] = 64
+        ini['radiation']['kngrid_j'] = 64
+        ini['radiation']['kngrid_k'] = 32
     else:
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
