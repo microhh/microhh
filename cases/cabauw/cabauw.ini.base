@@ -52,6 +52,7 @@ swclearskystats=1
 swfixedsza=0
 lat=51.971
 lon=4.927
+swhomogenizesfcrad=0
 
 [boundary]
 swboundary=None
