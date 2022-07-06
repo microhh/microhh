@@ -184,7 +184,9 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
-        bool sw_homogenize_sfc_rad;
+
+        bool sw_homogenize_sfc_sw;
+        bool sw_homogenize_sfc_lw;
 
         double dt_rad;
         unsigned long idt_rad;

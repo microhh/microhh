@@ -415,7 +415,9 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
-    sw_homogenize_sfc_rad = inputin.get_item<bool>("radiation", "swhomogenizesfcrad", "", false);
+
+    sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
+    sw_homogenize_sfc_lw = inputin.get_item<bool>("radiation", "swhomogenizesfc_lw", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 

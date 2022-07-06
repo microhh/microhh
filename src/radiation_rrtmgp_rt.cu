@@ -1688,7 +1688,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                         gd.imax);
                 cuda_check_error();
 
-                if (sw_homogenize_sfc_rad)
+                if (sw_homogenize_sfc_lw)
                 {
                     homogenize(lw_flux_up_sfc_g);
                     homogenize(lw_flux_dn_sfc_g);
@@ -1829,7 +1829,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                             gd.imax);
                     cuda_check_error();
 
-                    if (sw_homogenize_sfc_rad)
+                    if (sw_homogenize_sfc_sw)
                     {
                         homogenize(sw_flux_up_sfc_g);
                         homogenize(sw_flux_dn_sfc_g);
