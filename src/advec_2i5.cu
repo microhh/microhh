@@ -21,6 +21,7 @@
  */
 
 #include "advec_2i5.h"
+#include "advec_2i5_kernels.cuh"
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
@@ -28,6 +29,7 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "field3d_operators.h"
+#include "cuda_compiler.h"
 
 
 namespace
@@ -37,31 +39,29 @@ namespace
     using namespace Finite_difference::O6;
 
 
-    template<typename TF> __global__
-    void advec_u_g(TF* __restrict__ ut, const TF* __restrict__ u,
-                   const TF* __restrict__ v,  const TF* __restrict__ w,
-                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
-                   const TF* __restrict__ dzi, const TF dxi, const TF dyi,
-                   const int jj, int kk,
-                   const int istart, const int jstart, const int kstart,
-                   const int iend,   const int jend,   const int kend)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int ii3 = 3;
-        const int jj1 = 1*jj;
-        const int jj2 = 2*jj;
-        const int jj3 = 3*jj;
-        const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
-
-        if (i < iend && j < jend && k < kend)
+    template<typename TF>
+    struct advec_u_g {
+        template <typename Level>
+        CUDA_HOST_DEVICE
+        void operator()(Grid_layout g, int i, int j, int k, Level level,
+                       TF* __restrict__ ut, const TF* __restrict__ u,
+                       const TF* __restrict__ v,  const TF* __restrict__ w,
+                       const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                       const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
+            const int ii = g.ii;
+            const int ii1 = 1*ii;
+            const int ii2 = 2*ii;
+            const int ii3 = 3*ii;
+            const int jj = g.jj;
+            const int jj1 = 1*jj;
+            const int jj2 = 2*jj;
+            const int jj3 = 3*jj;
+            const int kk = g.kk;
+            const int kk1 = 1*kk;
+            const int kk2 = 2*kk;
+            const int kk3 = 3*kk;
+
             const int ijk = i + j*jj + k*kk;
 
             ut[ijk] +=
@@ -79,13 +79,13 @@ namespace
                 + ( fabs(interp2(v[ijk-ii1+jj1], v[ijk+jj1])) * interp5_ws(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2], u[ijk+jj3])
                   - fabs(interp2(v[ijk-ii1    ], v[ijk    ])) * interp5_ws(u[ijk-jj3], u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2]) ) * dyi;
 
-            if (k == kstart)
+            if (level.distance_to_start() == 0)
             {
                 // w*du/dz -> second order interpolation for fluxtop, fluxbot = 0. as w=0
                 ut[ijk] +=
                     - ( rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else if (k == kstart+1)
+            else if (level.distance_to_start() == 1)
             {
                 ut[ijk] +=
                     // w*du/dz -> second order interpolation for fluxbot, fourth order for fluxtop
@@ -94,7 +94,7 @@ namespace
 
                     + ( rhorefh[k+1] * fabs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
-            else if (k == kstart+2)
+            else if (level.distance_to_start() == 2)
             {
                 ut[ijk] +=
                     // w*du/dz -> fourth order interpolation for fluxbot
@@ -104,7 +104,7 @@ namespace
                     + ( rhorefh[k+1] * fabs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp5_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2], u[ijk+kk3])
                       - rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else if (k == kend-3)
+            else if (level.distance_to_end() == 2)
             {
                 ut[ijk] +=
                     // w*du/dz -> fourth order interpolation for fluxtop
@@ -114,7 +114,7 @@ namespace
                     + ( rhorefh[k+1] * fabs(interp2(w[ijk-ii1+kk1], w[ijk+kk1])) * interp3_ws(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
                       - rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp5_ws(u[ijk-kk3], u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
-            else if (k == kend-2)
+            else if (level.distance_to_end() == 1)
             {
                 ut[ijk] +=
                     // w*du/dz -> second order interpolation for fluxtop, fourth order for fluxbot
@@ -123,7 +123,7 @@ namespace
 
                     - ( rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp3_ws(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
             }
-            else if (k == kend-1)
+            else if (level.distance_to_end() == 0)
             {
                 ut[ijk] +=
                     // w*du/dz -> second order interpolation for fluxbot, fluxtop=0 as w=0
@@ -140,7 +140,7 @@ namespace
                       - rhorefh[k  ] * fabs(interp2(w[ijk-ii1    ], w[ijk    ])) * interp5_ws(u[ijk-kk3], u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2]) ) / rhoref[k] * dzi[k];
             }
         }
-    }
+    };
 
 
     template<typename TF> __global__
@@ -672,31 +672,25 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    advec_u_g<TF><<<gridGPU, blockGPU>>>(
+    launch_grid_kernel<advec_2i5::advec_u_g<TF>>(
+        gd,
         fields.mt.at("u")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
-        gd.icells, gd.ijcells,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend);
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
-    advec_v_g<TF><<<gridGPU, blockGPU>>>(
+    launch_grid_kernel<advec_2i5::advec_v_g<TF>>(
+        gd,
         fields.mt.at("v")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi,
-        gd.icells, gd.ijcells,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend);
+        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
-    advec_w_g<TF><<<gridGPU, blockGPU>>>(
+    launch_grid_kernel<advec_2i5::advec_w_g<TF>>(
+        gd,
         fields.mt.at("w")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, gd.dxi, gd.dyi,
-        gd.icells, gd.ijcells,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend);
+        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
     for (const std::string& s : sp_limit)
