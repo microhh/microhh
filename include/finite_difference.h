@@ -21,6 +21,7 @@
  */
 
 #ifndef FINITE_DIFFERENCE_H
+#define FINITE_DIFFERENCE_H
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
