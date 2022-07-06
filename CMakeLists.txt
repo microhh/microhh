@@ -161,3 +161,6 @@ if(USECUDA)
 endif()
 add_subdirectory(src)
 add_subdirectory(main)
+
+
+add_subdirectory(external/kernel_launcher)

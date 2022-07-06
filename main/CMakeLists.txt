@@ -38,8 +38,9 @@ message(STATUS "Git hash " ${GITHASH})
 add_definitions(-DGITHASH="${GITHASH}")
 
 add_executable(microhh microhh.cxx)
+target_link_libraries(microhh microhhc rte_rrtmgp_kernels rte_rrtmgp ${LIBS} m)
+
 if(USECUDA)
-    target_link_libraries(microhh microhhc rte_rrtmgp rte_rrtmgp_cuda rte_rrtmgp_kernels rte_rrtmgp_kernels_cuda ${LIBS} m)
-else()
-    target_link_libraries(microhh microhhc rte_rrtmgp_kernels rte_rrtmgp ${LIBS} m)
+    target_link_libraries(microhh rte_rrtmgp_cuda rte_rrtmgp_kernels)
+    target_link_libraries(microhh kernel_launcher)
 endif()
