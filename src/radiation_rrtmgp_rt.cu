@@ -1646,6 +1646,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds);
+                cuda_check_error();
 
                 calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
                         fields.sd.at("thlt_rad")->fld_g,
@@ -1779,6 +1780,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                             rt_flux_sfc_up, rt_flux_abs_dir, rt_flux_abs_dif,
                             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
                             compute_clouds);
+                    cuda_check_error();
 
                     calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                             fields.sd.at("thlt_rad")->fld_g,

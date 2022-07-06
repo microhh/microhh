@@ -110,6 +110,14 @@ namespace
     }
 
     __global__
+    void set_to_value(Float* __restrict__ a, const int nsize, const Float val)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+        if (n < nsize)
+            a[n] = val;
+    }
+
+    __global__
     void effective_radius_and_ciwp_to_gm2(
             Float* __restrict__ rel, Float* __restrict__ rei,
             Float* __restrict__ clwp, Float* __restrict__ ciwp,
@@ -987,6 +995,16 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
     if (do_radiation)
     {
+        auto homogenize = [&](TF* const __restrict__ field)
+        {
+            // Lambda function to homogenize 2D field
+            const int blockGPU = 256;
+            const int gridGPU = gd.ijcells/blockGPU + (gd.ijcells%blockGPU > 0);
+
+            const TF mean_value = field3d_operators.calc_mean_2d_g(field);
+            set_to_value<<<gridGPU, blockGPU>>>(field, gd.ijcells, mean_value);
+        };
+
         // Set the tendency to zero.
         // std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), Float(0.));
         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
@@ -1050,6 +1068,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.icells, gd.ijcells,
                         gd.imax);
                 cuda_check_error();
+
+                if (sw_homogenize_sfc_rad)
+                {
+                    homogenize(lw_flux_up_sfc_g);
+                    homogenize(lw_flux_dn_sfc_g);
+                }
 
                 if (do_radiation_stats)
                 {
@@ -1142,6 +1166,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.icells, gd.ijcells,
                             gd.imax);
                     cuda_check_error();
+
+                    if (sw_homogenize_sfc_rad)
+                    {
+                        homogenize(sw_flux_up_sfc_g);
+                        homogenize(sw_flux_dn_sfc_g);
+                    }
                 }
                 else
                 {
