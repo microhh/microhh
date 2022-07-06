@@ -110,11 +110,31 @@ namespace
     }
 
     __global__
-    void set_to_value(Float* __restrict__ a, const int nsize, const Float val)
+    void set_to_value(Float* __restrict__ fld, const int nsize, const Float value)
     {
         const int n = blockIdx.x*blockDim.x + threadIdx.x;
         if (n < nsize)
-            a[n] = val;
+            fld[n] = value;
+    }
+
+    __global__
+    void set_to_profile(
+            Float* __restrict__ fld,
+            const Float* __restrict__ profile,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if ((i < iend) && (j < jend) && (k < kend))
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] = profile[k];
+        }
     }
 
     __global__
@@ -1221,17 +1241,30 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
                         do_gcs(*fields.sd.at("sw_flux_dn_dir_clear"), flux_dn_dir);
                     }
-                 }
-             }
-         } // End try block.
-         catch (std::exception& e)
-         {
+                }
+            }
+        } // End try block.
+        catch (std::exception& e)
+        {
              #ifdef USEMPI
             std::cout << "SINGLE PROCESS EXCEPTION: " << e.what() << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
             #else
             throw;
             #endif
+        }
+
+        if (sw_homogenize_hr)
+        {
+            field3d_operators.calc_mean_profile_g(t_lay->fld_mean_g, fields.sd.at("thlt_rad")->fld_g);
+
+            set_to_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                    fields.sd.at("thlt_rad")->fld_g,
+                    t_lay->fld_mean_g,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
         }
 
         fields.release_tmp_g(t_lay);

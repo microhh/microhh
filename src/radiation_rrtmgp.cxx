@@ -590,6 +590,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
     sw_homogenize_sfc_lw = inputin.get_item<bool>("radiation", "swhomogenizesfc_lw", "", false);
+    sw_homogenize_hr = inputin.get_item<bool>("radiation", "swhomogenizehr", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
