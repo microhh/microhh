@@ -1005,7 +1005,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     // Time variable surface pressure
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
-    available_masks.insert(available_masks.end(), {"ql", "qlcore"});
+    available_masks.insert(available_masks.end(), {"ql", "qlcore", "bplus", "bmin"});
 }
 
 template<typename TF>
@@ -1313,6 +1313,27 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
 
         stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp(b);
+        fields.release_tmp(bh);
+    }
+    else if (mask_name == "bplus" || mask_name == "bmin")
+    {
+        auto b = fields.get_tmp();
+        auto bh = fields.get_tmp();
+
+        get_thermo_field(*b, "b", true, true);
+        get_thermo_field(*bh, "b_h", true, true);
+
+        field3d_operators.calc_mean_profile(b->fld_mean.data(), b->fld.data());
+        field3d_operators.calc_mean_profile(bh->fld_mean.data(), bh->fld.data());
+        field3d_operators.subtract_mean_profile(b->fld.data(), b->fld_mean.data());
+        field3d_operators.subtract_mean_profile(bh->fld.data(), bh->fld_mean.data());
+
+        if (mask_name == "bplus")
+            stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+        else
+            stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Min);
 
         fields.release_tmp(b);
         fields.release_tmp(bh);

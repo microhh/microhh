@@ -4,9 +4,8 @@
 #SBATCH --error=mhh-%j.err
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH -n 18
-#SBATCH --cpus-per-task=1
-#SBATCH --ntasks-per-core=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
 #SBATCH -t 08:00:00
 
 module purge
