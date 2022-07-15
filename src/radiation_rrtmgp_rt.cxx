@@ -418,7 +418,8 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
     sw_homogenize_sfc_lw = inputin.get_item<bool>("radiation", "swhomogenizesfc_lw", "", false);
-    sw_homogenize_hr = inputin.get_item<bool>("radiation", "swhomogenizehr", "", false);
+    sw_homogenize_hr_sw = inputin.get_item<bool>("radiation", "swhomogenizehr_sw", "", false);
+    sw_homogenize_hr_lw = inputin.get_item<bool>("radiation", "swhomogenizehr_lw", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 

@@ -151,7 +151,7 @@ namespace
     }
 
     __global__
-    void set_to_profile(
+    void add_profile(
             Float* __restrict__ fld,
             const Float* __restrict__ profile,
             const int istart, const int iend,
@@ -166,10 +166,9 @@ namespace
         if ((i < iend) && (j < jend) && (k < kend))
         {
             const int ijk = i + j*icells + k*ijcells;
-            fld[ijk] = profile[k];
+            fld[ijk] += profile[k];
         }
     }
-
     __global__
     void store_surface_fluxes(
             Float* __restrict__ flux_up_sfc, Float* __restrict__ flux_dn_sfc,
@@ -1686,17 +1685,50 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                         compute_clouds);
                 cuda_check_error();
 
-                calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
-                        fields.sd.at("thlt_rad")->fld_g,
-                        flux_up.ptr(), flux_dn.ptr(),
-                        fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                        gd.dz_g,
-                        gd.istart, gd.jstart, gd.kstart,
-                        gd.iend, gd.jend, gd.kend,
-                        gd.igc, gd.jgc, gd.kgc,
-                        gd.icells, gd.ijcells,
-                        gd.imax, gd.imax*gd.jmax);
-                cuda_check_error();
+                if (sw_homogenize_hr_lw)
+                {
+                    auto thlt = fields.get_tmp_g();
+                    cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
+
+                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                            thlt->fld_g,
+                            flux_up.ptr(), flux_dn.ptr(),
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
+                            gd.istart, gd.jstart, gd.kstart,
+                            gd.iend, gd.jend, gd.kend,
+                            gd.igc, gd.jgc, gd.kgc,
+                            gd.icells, gd.ijcells,
+                            gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
+
+                    field3d_operators.calc_mean_profile_g(thlt->fld_mean_g, thlt->fld_g);
+
+                    add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                            fields.sd.at("thlt_rad")->fld_g,
+                            thlt->fld_mean_g,
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+                    cuda_check_error();
+
+                    fields.release_tmp_g(thlt);
+                }
+                else
+                {
+                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                            fields.sd.at("thlt_rad")->fld_g,
+                            flux_up.ptr(), flux_dn.ptr(),
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
+                            gd.istart, gd.jstart, gd.kstart,
+                            gd.iend, gd.jend, gd.kend,
+                            gd.igc, gd.jgc, gd.kgc,
+                            gd.icells, gd.ijcells,
+                            gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
+                }
 
                 store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                         lw_flux_up_sfc_g, lw_flux_dn_sfc_g,
@@ -1826,17 +1858,50 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                             compute_clouds);
                     cuda_check_error();
 
-                    calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
-                            fields.sd.at("thlt_rad")->fld_g,
-                            rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
-                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                            gd.dz_g,
-                            gd.istart, gd.jstart, gd.kstart,
-                            gd.iend, gd.jend, gd.kend,
-                            gd.igc, gd.jgc, gd.kgc,
-                            gd.icells, gd.ijcells,
-                            gd.imax, gd.imax*gd.jmax);
-                    cuda_check_error();
+                    if (sw_homogenize_hr_sw)
+                    {
+                        auto thlt = fields.get_tmp_g();
+                        cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
+
+                        calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
+                                thlt->fld_g,
+                                rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
+                                fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                                gd.dz_g,
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend,
+                                gd.igc, gd.jgc, gd.kgc,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                        cuda_check_error();
+
+                        field3d_operators.calc_mean_profile_g(thlt->fld_mean_g, thlt->fld_g);
+
+                        add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                                fields.sd.at("thlt_rad")->fld_g,
+                                thlt->fld_mean_g,
+                                gd.istart, gd.iend,
+                                gd.jstart, gd.jend,
+                                gd.kstart, gd.kend,
+                                gd.icells, gd.ijcells);
+                        cuda_check_error();
+
+                        fields.release_tmp_g(thlt);
+                    }
+                    else
+                    {
+                        calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
+                                fields.sd.at("thlt_rad")->fld_g,
+                                rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
+                                fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                                gd.dz_g,
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend,
+                                gd.igc, gd.jgc, gd.kgc,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                        cuda_check_error();
+                    }
 
                     store_surface_fluxes_rt<<<gridGPU_2d, blockGPU_2d>>>(
                             sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
@@ -1939,19 +2004,6 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
             #else
             throw;
             #endif
-        }
-
-        if (sw_homogenize_hr)
-        {
-            field3d_operators.calc_mean_profile_g(t_lay->fld_mean_g, fields.sd.at("thlt_rad")->fld_g);
-
-            set_to_profile<<<gridGPU_3d, blockGPU_3d>>>(
-                    fields.sd.at("thlt_rad")->fld_g,
-                    t_lay->fld_mean_g,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
         }
 
         fields.release_tmp_g(t_lay);

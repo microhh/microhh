@@ -187,7 +187,8 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         bool sw_homogenize_sfc_sw;
         bool sw_homogenize_sfc_lw;
-        bool sw_homogenize_hr;
+        bool sw_homogenize_hr_sw;
+        bool sw_homogenize_hr_lw;
 
         double dt_rad;
         unsigned long idt_rad;
