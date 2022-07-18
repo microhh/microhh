@@ -74,7 +74,7 @@ namespace
 
                     if (ql[ijk] > ql_min<TF>)
                     {
-                        const TF au_tend = TF(1e-6);
+                        const TF au_tend = TF(1e-12);
 
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
@@ -102,6 +102,10 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
+
+    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("ns", "Number density snow", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("ng", "Number density graupel", "m-3", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -194,6 +198,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Sedimentation
     // TODO
+
+    // Release temporary fields.
+    fields.release_tmp(ql);
+    fields.release_tmp(qi);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
