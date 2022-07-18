@@ -30,6 +30,7 @@
 #include "microphys_disabled.h"
 #include "microphys_2mom_warm.h"
 #include "microphys_nsw6.h"
+#include "microphys_sb06.h"
 
 template<typename TF>
 Microphys<TF>::Microphys(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -59,6 +60,8 @@ std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>
         return std::make_shared<Microphys_2mom_warm<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swmicro == "nsw6")
         return std::make_shared<Microphys_nsw6<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swmicro == "sb06")
+        return std::make_shared<Microphys_sb06<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         std::string msg = swmicro + " is an illegal value for swmicro";

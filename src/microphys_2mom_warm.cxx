@@ -967,11 +967,13 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 
     // Calculate the maximum sedimentation CFL number
     auto w_qr = fields.get_tmp();
-    TF cfl = mp3d::calc_max_sedimentation_cfl(w_qr->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
-                                              fields.rhoref.data(), gd.dzi.data(), dt,
-                                              gd.istart, gd.jstart, gd.kstart,
-                                              gd.iend,   gd.jend,   gd.kend,
-                                              gd.icells, gd.ijcells);
+    TF cfl = mp3d::calc_max_sedimentation_cfl(
+        w_qr->fld.data(), fields.sp.at("qr")->fld.data(), fields.sp.at("nr")->fld.data(),
+        fields.rhoref.data(), gd.dzi.data(), dt,
+        gd.istart, gd.jstart, gd.kstart,
+        gd.iend,   gd.jend,   gd.kend,
+        gd.icells, gd.ijcells);
+
     fields.release_tmp(w_qr);
 
     // Get maximum CFL across all MPI tasks
