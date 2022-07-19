@@ -44,8 +44,20 @@ namespace
     namespace fm = Fast_math;
 
     // For simplicity, define constants here for now. These should probably move to the header.
+    template<typename TF> constexpr TF pi       = 3.14159265359;
+    template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
+    template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
+    template<typename TF> constexpr TF rho_w    = 1.e3;                // Density water
+    template<typename TF> constexpr TF rho_0    = 1.225;               // SB06, p48
+    template<typename TF> constexpr TF pirhow   = pi<TF>*rho_w<TF>/6.;
+    template<typename TF> constexpr TF mc_min   = 4.2e-15;             // Min mean mass of cloud droplet
+    template<typename TF> constexpr TF mc_max   = 2.6e-10;             // Max mean mass of cloud droplet
+    template<typename TF> constexpr TF mr_min   = mc_max<TF>;          // Min mean mass of precipitation drop
+    template<typename TF> constexpr TF mr_max   = 3e-6;                // Max mean mass of precipitation drop // as in UCLA-LES
     template<typename TF> constexpr TF ql_min   = 1.e-6;               // Min cloud liquid water for which calculations are performed
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
+    template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
+
 
     template<typename TF>
     void convert_units(
@@ -99,15 +111,21 @@ namespace
             const TF* const restrict ql,
             const TF* const restrict rho,
             const TF* const restrict exner,
-            const TF nc,
+            const TF Nc0,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
+        const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON
+        const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES
+        const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
 
         for (int k=kstart; k<kend; k++)
+        {
+            const TF rho_i = TF(1)/rho[k];
+
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
@@ -116,14 +134,23 @@ namespace
 
                     if (ql[ijk] > ql_min<TF>)
                     {
-                        const TF au_tend = TF(1e-12);
+                        // Mean mass of cloud drops [kg]:
+                        const TF xc = ql[ijk] / Nc0;
+                        // Dimensionless internal time scale (SB06, Eq 5):
+                        const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);
+                        // Collection kernel (SB06, Eq 6). Constants are from UCLA-LES and differ from SB06:
+                        const TF phi_au = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));
+                        // Autoconversion tendency (SB06, Eq 4):
+                        const TF au_tend = rho_0<TF>/rho[k] * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
+                                               (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
                         qtt[ijk]  -= au_tend;
-                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * au_tend;
+                        thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * au_tend;
                     }
                 }
+        }
     }
 }
 
