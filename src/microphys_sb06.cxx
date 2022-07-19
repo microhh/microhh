@@ -48,6 +48,48 @@ namespace
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
 
     template<typename TF>
+    void convert_units(
+            TF* const restrict qt,
+            TF* const restrict qr,
+            TF* const restrict qs,
+            TF* const restrict qg,
+            TF* const restrict qh,
+            TF* const restrict ql,
+            TF* const restrict qi,
+            const TF* const restrict rho,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells,
+            bool to_kgm3)
+    {
+        TF fac;
+
+        for (int k=kstart; k<kend; k++)
+        {
+            if (to_kgm3)
+                fac = rho[k];
+            else
+                fac = TF(1)/rho[k];
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    qt[ijk] *= fac;
+                    ql[ijk] *= fac;
+                    qi[ijk] *= fac;
+                    qr[ijk] *= fac;
+                    qs[ijk] *= fac;
+                    qg[ijk] *= fac;
+                    qh[ijk] *= fac;
+                }
+        }
+    }
+
+    template<typename TF>
     void autoconversion(
             TF* const restrict qrt,
             TF* const restrict nrt,
@@ -99,6 +141,7 @@ Microphys_sb06<TF>::Microphys_sb06(
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
+
     fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
@@ -180,6 +223,24 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
+    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+
+    // Convert all units from `kg kg-1 to `kg m-3`.
+    bool to_kgm3 = true;
+    convert_units(
+        fields.ap.at("qt")->fld.data(),
+        fields.ap.at("qr")->fld.data(),
+        fields.ap.at("qs")->fld.data(),
+        fields.ap.at("qg")->fld.data(),
+        fields.ap.at("qh")->fld.data(),
+        ql->fld.data(),
+        qi->fld.data(),
+        rho.data(),
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells,
+        to_kgm3);
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets.
     autoconversion(
@@ -209,6 +270,23 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     stats.calc_tend(*fields.st.at("qr" ), tend_name);
     stats.calc_tend(*fields.st.at("qs" ), tend_name);
     stats.calc_tend(*fields.st.at("qg" ), tend_name);
+
+    // Convert all units from `kg m-3 to `kg kg-1`.
+    to_kgm3 = false;
+    convert_units(
+        fields.ap.at("qt")->fld.data(),
+        fields.ap.at("qr")->fld.data(),
+        fields.ap.at("qs")->fld.data(),
+        fields.ap.at("qg")->fld.data(),
+        fields.ap.at("qh")->fld.data(),
+        ql->fld.data(),
+        qi->fld.data(),
+        rho.data(),
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells,
+        to_kgm3);
 }
 #endif
 
@@ -242,10 +320,8 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         {
             if (it == "rr_bot")
                 cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
-
             if (it == "rs_bot")
                 cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
-
             if (it == "rg_bot")
                 cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
         }
