@@ -52,7 +52,6 @@ template<typename> class Microphys;
 namespace Micro_2mom_warm_constants
 {
     template<typename TF> constexpr TF pi       = 3.14159265359;
-    template<typename TF> TF Nc0;                                      // Fixed cloud droplet number
     template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
     template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
     template<typename TF> constexpr TF rho_w    = 1.e3;                // Density water
@@ -186,6 +185,7 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         bool swmicrobudget;     // Output full microphysics budget terms
         TF cflmax;              // Max CFL number in microphysics sedimentation
+        TF Nc0;                 // Fixed cloud droplet number
 
         std::vector<std::string> crosslist;                  // Cross-sections handled by this class
         std::vector<std::string> available_masks = {"qr"};   // Vector with the masks that fields can provide
