@@ -54,8 +54,8 @@ namespace
             TF* const restrict qs,
             TF* const restrict qg,
             TF* const restrict qh,
-            TF* const restrict ql,
             TF* const restrict qi,
+            TF* const restrict ql,
             const TF* const restrict rho,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -133,7 +133,7 @@ Microphys_sb06<TF>::Microphys_sb06(
         Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
     auto& gd = grid.get_grid_data();
-    swmicrophys = Microphys_type::Nsw6;
+    swmicrophys = Microphys_type::SB06;
 
     // Read microphysics switches and settings
     cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
@@ -141,19 +141,30 @@ Microphys_sb06<TF>::Microphys_sb06(
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
-
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("qi", "Ice specific humidity", "kg kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("qr", "Rain specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
 
+    fields.init_prognostic_field("ni", "Number density ice", "m-3", group_name, gd.sloc);
     fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
     fields.init_prognostic_field("ns", "Number density snow", "m-3", group_name, gd.sloc);
     fields.init_prognostic_field("ng", "Number density graupel", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("nh", "Number density hail", "m-3", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
+    fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
     fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
     fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
+    fields.sp.at("qh")->visc = inputin.get_item<TF>("fields", "svisc", "qh");
+
+    fields.sp.at("ni")->visc = inputin.get_item<TF>("fields", "svisc", "ni");
+    fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
+    fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
+    fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
+    fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
 }
 
 template<typename TF>
@@ -216,10 +227,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Get liquid water, ice and pressure variables before starting.
     auto ql = fields.get_tmp();
-    auto qi = fields.get_tmp();
 
     thermo.get_thermo_field(*ql, "ql", false, false);
-    thermo.get_thermo_field(*qi, "qi", false, false);
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
@@ -233,8 +242,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         fields.ap.at("qs")->fld.data(),
         fields.ap.at("qg")->fld.data(),
         fields.ap.at("qh")->fld.data(),
+        fields.ap.at("qi")->fld.data(),
         ql->fld.data(),
-        qi->fld.data(),
         rho.data(),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -242,31 +251,37 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         gd.icells, gd.ijcells,
         to_kgm3);
 
-    // Autoconversion; formation of rain drop by coagulating cloud droplets.
-    autoconversion(
-        fields.st.at("qr")->fld.data(),
-        fields.st.at("nr")->fld.data(),
-        fields.st.at("qt")->fld.data(),
-        fields.st.at("thl")->fld.data(),
-        fields.sp.at("qr")->fld.data(),
-        ql->fld.data(),
-        fields.rhoref.data(),
-        exner.data(), Nc0,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+    for (int k=gd.kend-1; k<=gd.kstart; --k)
+    {
+        // Sedimentation
+        // TODO
 
-    // Sedimentation
-    // TODO
+        // Autoconversion; formation of rain drop by coagulating cloud droplets.
+        autoconversion(
+            fields.st.at("qr")->fld.data(),
+            fields.st.at("nr")->fld.data(),
+            fields.st.at("qt")->fld.data(),
+            fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            ql->fld.data(),
+            fields.rhoref.data(),
+            exner.data(), Nc0,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            k, k+1,
+            gd.icells, gd.ijcells);
+
+        // Sedimentation
+        // TODO
+    }
 
     // Release temporary fields.
     fields.release_tmp(ql);
-    fields.release_tmp(qi);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
+    stats.calc_tend(*fields.st.at("qi" ), tend_name);
     stats.calc_tend(*fields.st.at("qr" ), tend_name);
     stats.calc_tend(*fields.st.at("qs" ), tend_name);
     stats.calc_tend(*fields.st.at("qg" ), tend_name);
@@ -279,15 +294,14 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         fields.ap.at("qs")->fld.data(),
         fields.ap.at("qg")->fld.data(),
         fields.ap.at("qh")->fld.data(),
+        fields.ap.at("qi")->fld.data(),
         ql->fld.data(),
-        qi->fld.data(),
         rho.data(),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
         gd.kstart, gd.kend,
         gd.icells, gd.ijcells,
-        to_kgm3);
-}
+        to_kgm3);}
 #endif
 
 template<typename TF>
