@@ -275,9 +275,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // TODO
     }
 
-    // Release temporary fields.
-    fields.release_tmp(ql);
-
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
@@ -301,7 +298,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         gd.jstart, gd.jend,
         gd.kstart, gd.kend,
         gd.icells, gd.ijcells,
-        to_kgm3);}
+        to_kgm3);
+
+    // Release temporary fields.
+    fields.release_tmp(ql);
+}
 #endif
 
 template<typename TF>
