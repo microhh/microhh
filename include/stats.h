@@ -36,6 +36,7 @@ template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Timeloop;
 template<typename> class Netcdf_variable;
+template<typename> class Field3d;
 
 // Struct for profiles
 enum class Level_type {Full, Half};

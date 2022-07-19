@@ -7,11 +7,11 @@ npy=1
 wallclocklimit=1e9
 
 [grid]
-itot=64
-jtot=64
+itot=8
+jtot=8
 ktot=None
-xsize=6400
-ysize=6400
+xsize=800
+ysize=800
 zsize=None
 utrans=0.0
 vtrans=0.0
@@ -52,6 +52,9 @@ swclearskystats=1
 swfixedsza=0
 lat=51.971
 lon=4.927
+
+[aerosol]
+swaerosol=1
 
 [boundary]
 swboundary=None
