@@ -112,11 +112,13 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.init_prognostic_field("nh", "Number density hail", "m-3", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
+    fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
     fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
     fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
     fields.sp.at("qh")->visc = inputin.get_item<TF>("fields", "svisc", "qh");
 
+    fields.sp.at("ni")->visc = inputin.get_item<TF>("fields", "svisc", "ni");
     fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
     fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
     fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
