@@ -58,7 +58,6 @@ namespace
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
 
-
     template<typename TF>
     void convert_units(
             TF* const restrict qt,
@@ -117,6 +116,8 @@ namespace
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
+        /* Formation of rain by coagulating cloud droplets */
+
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES (kg)
         const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON (m3 kg-2 s-1)
         const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES (-)
@@ -148,6 +149,51 @@ namespace
                         nrt[ijk]  += au_tend / x_star;
                         qtt[ijk]  -= au_tend;
                         thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * au_tend;
+                    }
+                }
+        }
+    }
+
+    template<typename TF>
+    void accretion(
+            TF* const restrict qrt,
+            TF* const restrict qtt,
+            TF* const restrict thlt,
+            const TF* const restrict qr,
+            const TF* const restrict ql,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        /* Accreation: growth of raindrops collecting cloud droplets */
+
+        const TF k_cr = 5.25; // SB06, p49 (m3 kg-1 s-1)
+
+        for (int k=kstart; k<kend; k++)
+        {
+            const TF rho_i = TF(1)/rho[k];
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if (ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
+                    {
+                        // Dimensionless internal time scale (SB06, Eq 5):
+                        const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]);
+                        // Collection kernel (SB06, Eq 8):
+                        const TF phi_ac = fm::pow4(tau / (tau + TF(5e-5)));
+                        // Accreation tendency (SB06, Eq 7, kg m-3 s-1):
+                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * sqrt(rho_0<TF> / rho[k]);
+
+                        qrt[ijk]  += ac_tend;
+                        qtt[ijk]  -= ac_tend;
+                        thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ac_tend;
                     }
                 }
         }
@@ -254,7 +300,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Get liquid water, ice and pressure variables before starting.
     auto ql = fields.get_tmp();
-
     thermo.get_thermo_field(*ql, "ql", false, false);
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
@@ -277,8 +322,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         gd.kstart, gd.kend,
         gd.icells, gd.ijcells,
         to_kgm3);
-
-    for (int k=gd.kend-1; k<=gd.kstart; --k)
+   
+    for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Sedimentation
         // TODO
@@ -291,8 +336,22 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             fields.st.at("thl")->fld.data(),
             fields.sp.at("qr")->fld.data(),
             ql->fld.data(),
-            fields.rhoref.data(),
+            rho.data(),
             exner.data(), Nc0,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            k, k+1,
+            gd.icells, gd.ijcells);
+
+        // Accretion; growth of rain droplets by collecting cloud droplets
+        accretion(
+            fields.st.at("qr")->fld.data(),
+            fields.st.at("qt")->fld.data(),
+            fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            ql->fld.data(),
+            rho.data(),
+            exner.data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             k, k+1,
