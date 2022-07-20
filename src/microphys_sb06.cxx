@@ -58,6 +58,46 @@ namespace
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
 
+
+    template<typename TF>
+    inline TF tanh2(const TF x)
+    {
+        // Rational `tanh` approximation
+        return x * (TF(27) + x * x) / (TF(27) + TF(9) * x * x);
+    }
+
+    template<typename TF>
+    inline TF calc_rain_mass(const TF qr, const TF nr)
+    {
+        // Calculate mean mass of rain droplets (kg)
+        TF mr = qr / std::max(nr, TF(1.));
+        return std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
+    }
+
+    template<typename TF>
+    inline TF calc_rain_diameter(const TF mr)
+    {
+        // Given mean mass rain drop, calculate mean diameter (m)
+        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
+    }
+
+    template<typename TF>
+    inline TF calc_mu_r(const TF dr)
+    {
+        // Calculate shape parameter mu_r
+        //return 1./3.; // SB06
+        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return TF(10) * (TF(1) + tanh2(TF(1200) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+    }
+
+    template<typename TF> CUDA_MACRO
+    inline TF calc_lambda_r(const TF mur, const TF dr)
+    {
+        // Calculate Slope parameter lambda_r
+        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
+    }
+
+
     template<typename TF>
     void convert_units(
             TF* const restrict qt,
@@ -99,6 +139,7 @@ namespace
                 }
         }
     }
+
 
     template<typename TF>
     void autoconversion(
@@ -154,6 +195,7 @@ namespace
         }
     }
 
+
     template<typename TF>
     void accretion(
             TF* const restrict qrt,
@@ -198,6 +240,47 @@ namespace
                 }
         }
     }
+
+
+    template<typename TF>
+    void prepare_microphysics_slice(
+            TF* const restrict rain_mass,
+            TF* const restrict rain_diameter,
+            TF* const restrict mu_r,
+            TF* const restrict lambda_r,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells, const int ijcells,
+            const int k)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ij  = i + j*icells;
+
+                if (qr[ijk] > qr_min<TF>)
+                {
+                    rain_mass[ij]     = calc_rain_mass(qr[ijk], nr[ijk]);
+                    rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
+                    mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
+                    lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
+                }
+                else
+                {
+                    rain_mass[ij]     = TF(0);
+                    rain_diameter[ij] = TF(0);
+                    mu_r[ij]          = TF(0);
+                    lambda_r[ij]      = TF(0);
+                }
+            }
+    }
+
+
+
 }
 
 template<typename TF>
@@ -306,6 +389,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
     const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
+    auto rain_mass = fields.get_tmp_xy();
+    auto rain_diameter = fields.get_tmp_xy();
+    auto mu_r = fields.get_tmp_xy();
+    auto lambda_r = fields.get_tmp_xy();
+
     // Convert all units from `kg kg-1 to `kg m-3`.
     bool to_kgm3 = true;
     convert_units(
@@ -357,6 +445,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             k, k+1,
             gd.icells, gd.ijcells);
 
+        // Calculate quantities used by multiple kernels.
+        prepare_microphysics_slice(
+            (*rain_mass).data(),
+            (*rain_diameter).data(),
+            (*mu_r).data(),
+            (*lambda_r).data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("nr")->fld.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells, k);
+
         // Sedimentation
         // TODO
     }
@@ -388,6 +488,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Release temporary fields.
     fields.release_tmp(ql);
+
+    fields.release_tmp_xy(rain_mass);
+    fields.release_tmp_xy(rain_diameter);
+    fields.release_tmp_xy(mu_r);
+    fields.release_tmp_xy(lambda_r);
 }
 #endif
 
