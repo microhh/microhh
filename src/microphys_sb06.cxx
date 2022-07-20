@@ -117,9 +117,9 @@ namespace
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
-        const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON
-        const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES
+        const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES (kg)
+        const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON (m3 kg-2 s-1)
+        const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES (-)
         const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
 
         for (int k=kstart; k<kend; k++)
@@ -134,18 +134,18 @@ namespace
 
                     if (ql[ijk] > ql_min<TF>)
                     {
-                        // Mean mass of cloud drops [kg]:
+                        // Mean mass of cloud drops (kg):
                         const TF xc = ql[ijk] / Nc0;
                         // Dimensionless internal time scale (SB06, Eq 5):
                         const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);
                         // Collection kernel (SB06, Eq 6). Constants are from UCLA-LES and differ from SB06:
                         const TF phi_au = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));
-                        // Autoconversion tendency (SB06, Eq 4):
+                        // Autoconversion tendency (SB06, Eq 4, kg m-3 s-1):
                         const TF au_tend = rho_0<TF>/rho[k] * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
                                                (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
-                        nrt[ijk]  += au_tend * rho[k] / x_star;
+                        nrt[ijk]  += au_tend / x_star;
                         qtt[ijk]  -= au_tend;
                         thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * au_tend;
                     }
