@@ -119,41 +119,7 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 };
 
 
-/*
-Particle_nonsphere<TF> rainSBB {
-    "rainSBB", // name
-    0.000000,  // nu
-    0.333333,  // mu
-    3.00E-06,  // x_max
-    2.60E-10,  // x_min
-    1.24E-01,  // a_geo
-    0.333333,  // b_geo
-    114.0137,  // a_vel
-    0.234370,  // b_vel
-    0.780000,  // a_ven
-    0.308000,  // b_ven
-    2.000000,  // cap
-    2.000E+1,  // vsedi_max
-    0.1,       // vsedi_min
-    nullptr,   // n pointer
-    nullptr,   // q pointer
-    nullptr    // rho_v pointer
-};
 
-
-Particle_rain_coeffs<TF> rainSBBcoeffs {
-    0.0, 0.0, 0.0, 0.0,
-    9.292000,  // ..alfa
-    9.623000,  // ..beta
-    6.222e+2,  // ..gama
-    6.0000e0,  // ..cmu0
-    3.000e+1,  // ..cmu1
-    1.000e+3,  // ..cmu2
-    1.100e-3,  // ..cmu3 = D_br
-    1.0000e0,  // ..cmu4
-    2          // ..cmu5
-};
-*/
 
 
 template<typename TF>
@@ -216,5 +182,58 @@ class Microphys_sb06 : public Microphys<TF>
 
         Particle<TF> rain;
         Particle_rain_coeffs<TF> rain_coeffs;
+
+        const Particle<TF> rainSBB = {
+                "rainSBB", // name
+                0.000000,  // nu
+                0.333333,  // mu
+                3.00E-06,  // x_max
+                2.60E-10,  // x_min
+                1.24E-01,  // a_geo
+                0.333333,  // b_geo
+                114.0137,  // a_vel
+                0.234370,  // b_vel
+                0.780000,  // a_ven
+                0.308000,  // b_ven
+                2.000000,  // cap
+                2.000E+1,  // vsedi_max
+                0.1,       // vsedi_min
+                nullptr,   // n pointer
+                nullptr,   // q pointer
+                nullptr    // rho_v pointer
+        };
+
+        const Particle_rain_coeffs<TF> rainSBBcoeffs {
+                0.0, 0.0, 0.0, 0.0,
+                9.292000,  // ..alfa
+                9.623000,  // ..beta
+                6.222e+2,  // ..gama
+                6.0000e0,  // ..cmu0
+                3.000e+1,  // ..cmu1
+                1.000e+3,  // ..cmu2
+                1.100e-3,  // ..cmu3 = D_br
+                1.0000e0,  // ..cmu4
+                2          // ..cmu5
+        };
+
+        const Particle<TF> cloud_nue1mue1 {
+                "cloud_nue1mue1", // name...Bezeichnung der Partikelklasse
+                1.000000,         // nu.....Breiteparameter der Verteil.
+                1.000000,         // mu.....Exp.-parameter der Verteil.
+                2.60e-10,         // x_max..maximale Teilchenmasse D=80e-6m
+                4.20e-15,         // x_min..minimale Teilchenmasse D=2.e-6m
+                1.24e-01,         // a_geo..Koeff. Geometrie
+                0.333333,         // b_geo..Koeff. Geometrie = 1/3
+                3.75e+05,         // a_vel..Koeff. Fallgesetz
+                0.666667,         // b_vel..Koeff. Fallgesetz
+                0.780000,         // a_ven..Koeff. Ventilation (PK, S.541)
+                0.308000,         // b_ven..Koeff. Ventilation (PK, S.541)
+                2.00,             // cap....Koeff. Kapazitaet
+                1.0,              // vsedi_max
+                0.0,              // vsedi_min
+                nullptr,          // n pointer
+                nullptr,          // q pointer
+                nullptr           // rho_v pointer
+        };
 };
 #endif
