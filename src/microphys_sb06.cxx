@@ -406,16 +406,16 @@ namespace
 
     template<typename TF>
     inline TF particle_meanmass(
-            Particle<TF> particle,
+            Particle<TF>& particle,
             const TF q, const TF n)
     {
         // Mean mass of particle, with limiters (SB06, Eq 94)
-        return std::min( std::max( q/(n+Constants::dsmall), particle.x_min ), particle.x_max );
+        return std::min( std::max( q/(n+TF(Constants::dsmall)), particle.x_min ), particle.x_max );
     }
 
     template<typename TF>
     inline TF particle_diameter(
-            Particle<TF> particle,
+            Particle<TF>& particle,
             const TF mean_mass)
     {
         // Mass-diameter relation (SB06, Eq 32)
@@ -424,7 +424,7 @@ namespace
 
     template<typename TF>
     inline TF rain_mue_dm_relation(
-            Particle_rain_coeffs<TF> coeffs,
+            Particle_rain_coeffs<TF>& coeffs,
             const TF d_m)
     {
         // mue-Dm relation of raindrops.
@@ -446,8 +446,8 @@ namespace
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict ql,
-            Particle<TF> rain,
-            Particle_rain_coeffs<TF> coeffs,
+            Particle<TF>& rain,
+            Particle_rain_coeffs<TF>& coeffs,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride, const int kstride,
