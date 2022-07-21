@@ -215,5 +215,25 @@ class Microphys_sb06 : public Microphys<TF>
                 1.0000e0,  // ..cmu4
                 2          // ..cmu5
         };
+
+        const Particle<TF> cloud_nue1mue1 {
+                "cloud_nue1mue1", // name...Bezeichnung der Partikelklasse
+                1.000000,         // nu.....Breiteparameter der Verteil.
+                1.000000,         // mu.....Exp.-parameter der Verteil.
+                2.60e-10,         // x_max..maximale Teilchenmasse D=80e-6m
+                4.20e-15,         // x_min..minimale Teilchenmasse D=2.e-6m
+                1.24e-01,         // a_geo..Koeff. Geometrie
+                0.333333,         // b_geo..Koeff. Geometrie = 1/3
+                3.75e+05,         // a_vel..Koeff. Fallgesetz
+                0.666667,         // b_vel..Koeff. Fallgesetz
+                0.780000,         // a_ven..Koeff. Ventilation (PK, S.541)
+                0.308000,         // b_ven..Koeff. Ventilation (PK, S.541)
+                2.00,             // cap....Koeff. Kapazitaet
+                1.0,              // vsedi_max
+                0.0,              // vsedi_min
+                nullptr,          // n pointer
+                nullptr,          // q pointer
+                nullptr           // rho_v pointer
+        };
 };
 #endif

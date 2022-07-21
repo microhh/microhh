@@ -451,6 +451,10 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
     fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
     fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
+
+    // Set the rain and rain_coeff types to the default provided values
+    rain = rainSBB;
+    rain_coeffs = rainSBBcoeffs;
 }
 
 template<typename TF>
@@ -757,6 +761,7 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
     std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
+
 
 template class Microphys_sb06<double>;
 template class Microphys_sb06<float>;
