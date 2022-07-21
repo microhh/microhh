@@ -214,7 +214,7 @@ class Microphys_sb06 : public Microphys<TF>
         //TF* rg_bot_g;
         //#endif
 
-        Particle_nonsphere<TF> rain;
+        Particle<TF> rain;
         Particle_rain_coeffs<TF> rain_coeffs;
 };
 #endif
