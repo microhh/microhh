@@ -400,6 +400,9 @@ namespace
                     }
                 }
     }
+
+
+    template<typename TF>
     void sedi_vel_rain(
             TF* restrict qr,
             const int istart, const int iend,

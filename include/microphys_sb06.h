@@ -48,6 +48,77 @@ template<typename> class Thermo;
 template<typename> class Field3d;
 template<typename> class Microphys;
 
+
+// Derived type for hydrometeor species including pointers to data
+template<typename TF>
+struct Particle
+{
+    std::string name; // name of particle class
+    TF nu;            // first shape parameter of size distribution
+    TF mu;            // 2nd shape parameter
+    TF x_max;         // max mean particle mass
+    TF x_min;         // min mean particle mass
+    TF a_geo;         // pre-factor in diameter-mass relation
+    TF b_geo;         // exponent in diameter-mass relation
+    TF a_vel;         // pre-factor in power law fall speed (all particles have a power law fall speed,
+    TF b_vel;         // exponent in power law fall speed    some have also an Atlas-type relation)
+    TF a_ven;         // first parameter in ventilation coefficient
+    TF b_ven;         // 2nd parameter in ventilation coefficient
+    TF cap;           // coefficient for capacity of particle
+    TF vsedi_max;     // max bulk sedimentation velocity
+    TF vsedi_min;     // min bulk sedimentation velocity
+    TF* n;            // number density
+    TF* q;            // mass density
+    TF* rho_v;        // density correction of terminal fall velocity
+};
+
+
+// Because of OpenMP we have to separate the data pointers from the run-time-invariant coefficients.
+// Therefore, we carry 2 data structures for each particle species, e.g. graupel and graupel_coeff.
+// The following derived types are for the run-time coefficients
+template<typename TF>
+struct Particle_coeffs
+{
+    TF a_f; // ventilation coefficient, vent_coeff_a(particle,1)
+    TF b_f; // ventilation coefficient, vent_coeff_b(particle,1) * N_sc**n_f / SQRT(nu_l)
+    TF c_i; // 1.0/particle%cap
+    TF c_z; // coefficient for 2nd mass moment
+};
+
+
+// .. non-spherical particles have an Atlas-type terminal fall velocity relation
+template<typename TF>
+struct Particle_nonsphere : public Particle_coeffs<TF>
+{
+    TF alfa; // 1st parameter in Atlas-type fall speed
+    TF beta; // 2nd parameter in Atlas-type fall speed
+    TF gama; // 3rd parameter in Atlas-type fall speed
+};
+
+
+// raindrops have an Atlas-type terminal fall velocity relation
+// and a mu-D-relation which is used in sedimentation and evaporation
+// (see Seifert 2008, J. Atmos. Sci.)
+template<typename TF>
+struct Particle_rain_coeffs : public Particle_nonsphere<TF>
+{
+    TF cmu0; // Parameters for mu-D-relation of rain: max of left branch
+    TF cmu1; // max of right branch
+    TF cmu2; // scaling factor
+    TF cmu3; // location of min value = breakup equilibrium diameter
+    TF cmu4; // min value of relation
+    TF cmu5; // exponent
+};
+
+
+template<typename TF>
+struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
+{
+    TF k_au; // ..Parameters for autoconversion
+    TF k_sc; //     and selfcollection
+};
+
+
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
 {
