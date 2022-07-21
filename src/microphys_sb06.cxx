@@ -404,54 +404,93 @@ namespace
                 }
     }
 
+    template<typename TF>
+    inline TF particle_meanmass(
+            Particle<TF> particle,
+            const TF q, const TF n)
+    {
+        // Mean mass of particle, with limiters (SB06, Eq 94)
+        return std::min( std::max( q/(n+Constants::dsmall), particle.x_min ), particle.x_max );
+    }
+
+    template<typename TF>
+    inline TF particle_diameter(
+            Particle<TF> particle,
+            const TF mean_mass)
+    {
+        // Mass-diameter relation (SB06, Eq 32)
+        return particle.a_geo * std::exp(particle.b_geo * std::log(mean_mass));
+    }
+
+    template<typename TF>
+    inline TF rain_mue_dm_relation(
+            Particle_rain_coeffs<TF> coeffs,
+            const TF d_m)
+    {
+        // mue-Dm relation of raindrops.
+        TF mue;
+        const TF delta = coeffs.cmu2 * (d_m - coeffs.cmu3);
+
+        if (d_m <= coeffs.cmu3)
+           mue = coeffs.cmu0 * std::tanh(fm::pow2(TF(4) * delta)) + coeffs.cmu4;
+        else
+           mue = coeffs.cmu1 * std::tanh(fm::pow2(delta)) + coeffs.cmu4;
+
+        return mue;
+    }
 
     template<typename TF>
     void sedi_vel_rain(
-            TF* restrict qr,
-            Particle_nonsphere<TF> coeffs,
+            TF* const restrict vn,
+            TF* const restrict vq,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict ql,
+            Particle<TF> rain,
+            Particle_rain_coeffs<TF> coeffs,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride, const int kstride,
-            const int k)
+            const int k,
+            bool qc_present)
     {
+        TF mue;
+
         for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
+
+                if (qr[ijk] > q_crit<TF>)
                 {
-                    const int ij = i + j*jstride;
-                    const int ijk = i + j*jstride + k*kstride;
+                    const TF x = particle_meanmass(rain, qr[ijk], nr[ijk]);
+                    const TF d_m = particle_diameter(rain, x);
 
-                    if (qr[ijk] > q_crit<TF>)
+                    if (qc_present)
                     {
+                        if (ql[ijk] >= q_crit<TF>)
+                            mue = (rain.nu + TF(1.0)) / rain.b_geo - TF(1.0);
+                        else
+                            mue = rain_mue_dm_relation(coeffs, d_m);
+                    } else
+                        mue = rain_mue_dm_relation(coeffs, d_m);
 
+                    const TF d_p =
+                            d_m * std::exp(TF(-1. / 3.) * std::log((mue + TF(3)) * (mue + TF(2)) * (mue + TF(1))));
+                    vn[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(1)) * std::log(TF(1) + coeffs.gama * d_p));
+                    vq[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(4)) * std::log(TF(1) + coeffs.gama * d_p));
 
-                        w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
-                        w_nr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(1.))))));
-                    }
-
-//                          if (q(i).gt.q_crit) then
-//          D_m = particle_diameter(this, x(i))
-//          IF (PRESENT(qc)) THEN
-//             if (qc(i) >= q_crit) THEN
-//                mue = (this%nu+1.0_wp)/this%b_geo - 1.0_wp
-//             else
-//                mue = rain_mue_dm_relation(thisCoeffs, D_m)
-//             end if
-//          ELSE
-//             mue = rain_mue_dm_relation(thisCoeffs, D_m)
-//          END IF
-//          D_p = D_m * exp((-1./3.)*log((mue+3.)*(mue+2.)*(mue+1.)))
-//          vn(i) = thisCoeffs%alfa - thisCoeffs%beta * exp(-(mue+1.)*log(1.0 + thisCoeffs%gama*D_p))
-//          vq(i) = thisCoeffs%alfa - thisCoeffs%beta * exp(-(mue+4.)*log(1.0 + thisCoeffs%gama*D_p))
-//          vn(i) = vn(i) * rhocorr(i)
-//          vq(i) = vq(i) * rhocorr(i)
-//       else
-//          vn(i) = 0.0_wp
-//          vq(i) = 0.0_wp
-//       end if
-
-
+                    // TODO 1 or 2D rhocorr?
+                    //vn[ij] *= rhocorr[ij];
+                    //vq[ij] *= rhocorr[ij];
+                } else
+                {
+                    vn[ij] = TF(0);
+                    vq[ij] = TF(0);
                 }
+            }
     }
 }
 
@@ -573,6 +612,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto mu_r = fields.get_tmp_xy();
     auto lambda_r = fields.get_tmp_xy();
 
+    // 2D fields for fall velocities
+    auto vn = fields.get_tmp_xy();
+    auto vq = fields.get_tmp_xy();
+
     // Convert all units from `kg kg-1 to `kg m-3`.
     bool to_kgm3 = true;
     convert_units(
@@ -592,14 +635,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
    
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
-        // call sedi_vel_rain(rain,rain_coeffs,qr(:,k),xr_now,rhocorr(:,k),vr_sedn_now,vr_sedq_now,its,ite,qc(:,k))
         // Sedimentation
+        bool ql_present = true;
         sedi_vel_rain(
-                fields.sp.at("qr")->fld.data(),
-                rain,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            (*vn).data(), (*vq).data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("nr")->fld.data(),
+            ql->fld.data(),
+            rain, rain_coeffs,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells,
+            k, ql_present);
 
 
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
