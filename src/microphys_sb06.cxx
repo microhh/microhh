@@ -42,6 +42,7 @@ namespace
 {
     using namespace Constants;
     namespace fm = Fast_math;
+    namespace tmf = Thermo_moist_functions;
 
     // For simplicity, define constants here for now. These should probably move to the header.
     template<typename TF> constexpr TF pi       = 3.14159265359;
@@ -95,6 +96,44 @@ namespace
     {
         // Calculate Slope parameter lambda_r
         return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
+    }
+
+
+    template<typename TF>
+    void prepare_microphysics_slice(
+            TF* const restrict rain_mass,
+            TF* const restrict rain_diameter,
+            TF* const restrict mu_r,
+            TF* const restrict lambda_r,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells, const int ijcells,
+            const int k)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ij  = i + j*icells;
+
+                if (qr[ijk] > qr_min<TF>)
+                {
+                    rain_mass[ij]     = calc_rain_mass(qr[ijk], nr[ijk]);
+                    rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
+                    mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
+                    lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
+                }
+                else
+                {
+                    rain_mass[ij]     = TF(0);
+                    rain_diameter[ij] = TF(0);
+                    mu_r[ij]          = TF(0);
+                    lambda_r[ij]      = TF(0);
+                }
+            }
     }
 
 
@@ -243,38 +282,62 @@ namespace
 
 
     template<typename TF>
-    void prepare_microphysics_slice(
-            TF* const restrict rain_mass,
-            TF* const restrict rain_diameter,
-            TF* const restrict mu_r,
-            TF* const restrict lambda_r,
+    void evaporation(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qtt,
+            TF* const restrict thlt,
             const TF* const restrict qr,
             const TF* const restrict nr,
+            const TF* const restrict ql,
+            const TF* const restrict qi,
+            const TF* const restrict qt,
+            const TF* const restrict T,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const TF* const restrict p,
+            const TF* const restrict rain_mass,
+            const TF* const restrict rain_diameter,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells, const int ijcells,
             const int k)
     {
+        // Evaporation: evaporation of rain drops in unsaturated environment
+        const TF lambda_evap = TF(1.); // 1.0 in UCLA, 0.7 in DALES
+        const TF rho_i = TF(1.) / rho[k];
+
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ijk = i + j*icells + k*ijcells;
                 const int ij  = i + j*icells;
+                const int ijk = i + j*icells + k*ijcells;
 
                 if (qr[ijk] > qr_min<TF>)
                 {
-                    rain_mass[ij]     = calc_rain_mass(qr[ijk], nr[ijk]);
-                    rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
-                    mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
-                    lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
-                }
-                else
-                {
-                    rain_mass[ij]     = TF(0);
-                    rain_diameter[ij] = TF(0);
-                    mu_r[ij]          = TF(0);
-                    lambda_r[ij]      = TF(0);
+                    const TF mr  = rain_mass[ij];
+                    const TF dr  = rain_diameter[ij];
+
+                    // ...Condensation/evaporation rate...?
+                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (tmf::esat_liq(T[ijk]) * D_v<TF>) +
+                                       (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
+
+                    // Supersaturation over water (-).
+                    // NOTE: copy-pasted from UCLA, can't find the definition in SB06.
+                    const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
+                    const TF S   = qv / tmf::qsat_liq(p[k], T[ijk]) - TF(1.);
+
+                    // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
+                    const TF F   = TF(1.);
+
+                    // Evaporation tendency (kg m-3 s-1).
+                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk];
+
+                    qrt[ijk]  += ev_tend;
+                    nrt[ijk]  += lambda_evap * ev_tend / mr;
+                    qtt[ijk]  -= ev_tend;
+                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
                 }
             }
     }
@@ -381,14 +444,21 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 {
     auto& gd = grid.get_grid_data();
 
-    // Get liquid water, ice and pressure variables before starting.
+    // Get thermodynamic variables
+    bool cyclic = false;
+    bool is_stat = false;
+
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql", false, false);
+    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+
+    auto T = fields.get_tmp();
+    thermo.get_thermo_field(*T, "T", cyclic, is_stat);
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
     const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
+    // 2D slices for quantities shared between different kernels.
     auto rain_mass = fields.get_tmp_xy();
     auto rain_diameter = fields.get_tmp_xy();
     auto mu_r = fields.get_tmp_xy();
@@ -457,6 +527,27 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.jstart, gd.jend,
             gd.icells, gd.ijcells, k);
 
+        // Evaporation of rain droplets.
+        evaporation(
+            fields.st.at("qr")->fld.data(),
+            fields.st.at("nr")->fld.data(),
+            fields.st.at("qt")->fld.data(),
+            fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("nr")->fld.data(),
+            ql->fld.data(),
+            fields.sp.at("qi")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            T->fld.data(),
+            rho.data(),
+            exner.data(),
+            p.data(),
+            (*rain_mass).data(),
+            (*rain_diameter).data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells, k);
+
         // Sedimentation
         // TODO
     }
@@ -488,6 +579,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Release temporary fields.
     fields.release_tmp(ql);
+    fields.release_tmp(T);
 
     fields.release_tmp_xy(rain_mass);
     fields.release_tmp_xy(rain_diameter);
