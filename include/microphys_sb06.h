@@ -119,6 +119,43 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 };
 
 
+/*
+Particle_nonsphere<TF> rainSBB {
+    "rainSBB", // name
+    0.000000,  // nu
+    0.333333,  // mu
+    3.00E-06,  // x_max
+    2.60E-10,  // x_min
+    1.24E-01,  // a_geo
+    0.333333,  // b_geo
+    114.0137,  // a_vel
+    0.234370,  // b_vel
+    0.780000,  // a_ven
+    0.308000,  // b_ven
+    2.000000,  // cap
+    2.000E+1,  // vsedi_max
+    0.1,       // vsedi_min
+    nullptr,   // n pointer
+    nullptr,   // q pointer
+    nullptr    // rho_v pointer
+};
+
+
+Particle_rain_coeffs<TF> rainSBBcoeffs {
+    0.0, 0.0, 0.0, 0.0,
+    9.292000,  // ..alfa
+    9.623000,  // ..beta
+    6.222e+2,  // ..gama
+    6.0000e0,  // ..cmu0
+    3.000e+1,  // ..cmu1
+    1.000e+3,  // ..cmu2
+    1.100e-3,  // ..cmu3 = D_br
+    1.0000e0,  // ..cmu4
+    2          // ..cmu5
+};
+*/
+
+
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
 {
@@ -176,5 +213,8 @@ class Microphys_sb06 : public Microphys<TF>
         //TF* rs_bot_g;
         //TF* rg_bot_g;
         //#endif
+
+        Particle_nonsphere<TF> rain;
+        Particle_rain_coeffs<TF> rain_coeffs;
 };
 #endif
