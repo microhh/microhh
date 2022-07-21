@@ -59,6 +59,9 @@ namespace
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
 
+    template<typename TF> constexpr TF q_crit   = 1.e-9;              // Min rain liquid water for which calculations are performed
+
+
 
     template<typename TF>
     inline TF tanh2(const TF x)
@@ -405,11 +408,50 @@ namespace
     template<typename TF>
     void sedi_vel_rain(
             TF* restrict qr,
+            Particle_nonsphere<TF> coeffs,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int jstride, const int kstride
-            )
+            const int jstride, const int kstride,
+            const int k)
     {
+        for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jstride;
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    if (qr[ijk] > q_crit<TF>)
+                    {
+
+
+                        w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
+                        w_nr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(1.))))));
+                    }
+
+//                          if (q(i).gt.q_crit) then
+//          D_m = particle_diameter(this, x(i))
+//          IF (PRESENT(qc)) THEN
+//             if (qc(i) >= q_crit) THEN
+//                mue = (this%nu+1.0_wp)/this%b_geo - 1.0_wp
+//             else
+//                mue = rain_mue_dm_relation(thisCoeffs, D_m)
+//             end if
+//          ELSE
+//             mue = rain_mue_dm_relation(thisCoeffs, D_m)
+//          END IF
+//          D_p = D_m * exp((-1./3.)*log((mue+3.)*(mue+2.)*(mue+1.)))
+//          vn(i) = thisCoeffs%alfa - thisCoeffs%beta * exp(-(mue+1.)*log(1.0 + thisCoeffs%gama*D_p))
+//          vq(i) = thisCoeffs%alfa - thisCoeffs%beta * exp(-(mue+4.)*log(1.0 + thisCoeffs%gama*D_p))
+//          vn(i) = vn(i) * rhocorr(i)
+//          vq(i) = vq(i) * rhocorr(i)
+//       else
+//          vn(i) = 0.0_wp
+//          vq(i) = 0.0_wp
+//       end if
+
+
+                }
     }
 }
 
@@ -554,10 +596,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // Sedimentation
         sedi_vel_rain(
                 fields.sp.at("qr")->fld.data(),
+                rain,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
-                gd.icells, gd.ijcells
-                );
+                gd.icells, gd.ijcells, k);
 
 
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
