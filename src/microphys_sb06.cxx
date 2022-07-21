@@ -59,6 +59,9 @@ namespace
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
 
+    template<typename TF> constexpr TF q_crit   = 1.e-9;              // Min rain liquid water for which calculations are performed
+
+
 
     template<typename TF>
     inline TF tanh2(const TF x)
@@ -401,15 +404,93 @@ namespace
                 }
     }
 
+    template<typename TF>
+    inline TF particle_meanmass(
+            Particle<TF> particle,
+            const TF q, const TF n)
+    {
+        // Mean mass of particle, with limiters (SB06, Eq 94)
+        return std::min( std::max( q/(n+Constants::dsmall), particle.x_min ), particle.x_max );
+    }
+
+    template<typename TF>
+    inline TF particle_diameter(
+            Particle<TF> particle,
+            const TF mean_mass)
+    {
+        // Mass-diameter relation (SB06, Eq 32)
+        return particle.a_geo * std::exp(particle.b_geo * std::log(mean_mass));
+    }
+
+    template<typename TF>
+    inline TF rain_mue_dm_relation(
+            Particle_rain_coeffs<TF> coeffs,
+            const TF d_m)
+    {
+        // mue-Dm relation of raindrops.
+        TF mue;
+        const TF delta = coeffs.cmu2 * (d_m - coeffs.cmu3);
+
+        if (d_m <= coeffs.cmu3)
+           mue = coeffs.cmu0 * std::tanh(fm::pow2(TF(4) * delta)) + coeffs.cmu4;
+        else
+           mue = coeffs.cmu1 * std::tanh(fm::pow2(delta)) + coeffs.cmu4;
+
+        return mue;
+    }
 
     template<typename TF>
     void sedi_vel_rain(
-            TF* restrict qr,
+            TF* const restrict vn,
+            TF* const restrict vq,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict ql,
+            Particle<TF> rain,
+            Particle_rain_coeffs<TF> coeffs,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int jstride, const int kstride
-            )
+            const int jstride, const int kstride,
+            const int k,
+            bool qc_present)
     {
+        TF mue;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
+
+                if (qr[ijk] > q_crit<TF>)
+                {
+                    const TF x = particle_meanmass(rain, qr[ijk], nr[ijk]);
+                    const TF d_m = particle_diameter(rain, x);
+
+                    if (qc_present)
+                    {
+                        if (ql[ijk] >= q_crit<TF>)
+                            mue = (rain.nu + TF(1.0)) / rain.b_geo - TF(1.0);
+                        else
+                            mue = rain_mue_dm_relation(coeffs, d_m);
+                    } else
+                        mue = rain_mue_dm_relation(coeffs, d_m);
+
+                    const TF d_p =
+                            d_m * std::exp(TF(-1. / 3.) * std::log((mue + TF(3)) * (mue + TF(2)) * (mue + TF(1))));
+                    vn[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(1)) * std::log(TF(1) + coeffs.gama * d_p));
+                    vq[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(4)) * std::log(TF(1) + coeffs.gama * d_p));
+
+                    // TODO 1 or 2D rhocorr?
+                    //vn[ij] *= rhocorr[ij];
+                    //vq[ij] *= rhocorr[ij];
+                } else
+                {
+                    vn[ij] = TF(0);
+                    vq[ij] = TF(0);
+                }
+            }
     }
 }
 
@@ -535,6 +616,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto mu_r = fields.get_tmp_xy();
     auto lambda_r = fields.get_tmp_xy();
 
+    // 2D fields for fall velocities
+    auto vn = fields.get_tmp_xy();
+    auto vq = fields.get_tmp_xy();
+
     // Convert all units from `kg kg-1 to `kg m-3`.
     bool to_kgm3 = true;
     convert_units(
@@ -554,14 +639,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
    
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
-        // call sedi_vel_rain(rain,rain_coeffs,qr(:,k),xr_now,rhocorr(:,k),vr_sedn_now,vr_sedq_now,its,ite,qc(:,k))
         // Sedimentation
+        bool ql_present = true;
         sedi_vel_rain(
-                fields.sp.at("qr")->fld.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells
-                );
+            (*vn).data(), (*vq).data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("nr")->fld.data(),
+            ql->fld.data(),
+            rain, rain_coeffs,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells,
+            k, ql_present);
 
 
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
