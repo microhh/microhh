@@ -109,15 +109,15 @@ namespace
             const TF* const restrict nr,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells, const int ijcells,
+            const int jstride, const int kstride,
             const int k)
     {
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ijk = i + j*icells + k*ijcells;
-                const int ij  = i + j*icells;
+                const int ijk = i + j*jstride + k*kstride;
+                const int ij  = i + j*jstride;
 
                 if (qr[ijk] > qr_min<TF>)
                 {
@@ -150,7 +150,7 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int ijcells,
+            const int jstride, const int kstride,
             bool to_kgm3)
     {
         TF fac;
@@ -166,7 +166,7 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
-                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk = i + j*jstride + k*kstride;
 
                     qt[ijk] *= fac;
                     ql[ijk] *= fac;
@@ -194,7 +194,7 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int ijcells)
+            const int jstride, const int kstride)
     {
         /* Formation of rain by coagulating cloud droplets */
 
@@ -211,7 +211,7 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
-                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk = i + j*jstride + k*kstride;
 
                     if (ql[ijk] > ql_min<TF>)
                     {
@@ -247,7 +247,7 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int ijcells)
+            const int jstride, const int kstride)
     {
         /* Accreation: growth of raindrops collecting cloud droplets */
 
@@ -261,7 +261,7 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
-                    const int ijk = i + j*icells + k*ijcells;
+                    const int ijk = i + j*jstride + k*kstride;
 
                     if (ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
                     {
@@ -300,7 +300,7 @@ namespace
             const TF* const restrict rain_diameter,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells, const int ijcells,
+            const int jstride, const int kstride,
             const int k)
     {
         // Evaporation: evaporation of rain drops in unsaturated environment
@@ -311,8 +311,8 @@ namespace
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + k*ijcells;
+                const int ij  = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
 
                 if (qr[ijk] > qr_min<TF>)
                 {
@@ -342,6 +342,64 @@ namespace
             }
     }
 
+
+    template<typename TF>
+    void selfcollection_breakup(
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict rho,
+            const TF* const restrict rain_mass,
+            const TF* const restrict rain_diameter,
+            const TF* const restrict lambda_r,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        const TF k_rr     = 7.12;   // SB06, p49
+        const TF kappa_rr = 60.7;   // SB06, p49
+        const TF D_eq     = 0.9e-3; // SB06, list of symbols
+        const TF k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jstride;
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    if (qr[ijk] > qr_min<TF>)
+                    {
+                        // Short-cuts...
+                        const TF dr = rain_diameter[ij];
+
+                        // Selfcollection tendency:
+                        // NOTE: this is quite different in ICON, UCLA-LES had 4 different versions, ...
+                        const TF sc_tend = -k_rr * nr[ijk] * qr[ijk] /
+                            pow(TF(1.) + kappa_rr /
+                            lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
+
+                        nrt[ijk] += sc_tend;
+
+                        // Breakup by collisions:
+                        const TF dDr = dr - D_eq;
+                        if (dr > TF(0.35e-3))
+                        {
+                            TF phi_br;
+                            if (dr <= D_eq)
+                                phi_br = k_br1 * dDr;
+                            else
+                                phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+
+                            const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
+                            nrt[ijk] += br_tend;
+                        }
+                    }
+                }
+    }
 
 
 }
@@ -547,6 +605,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells, gd.ijcells, k);
+
+        selfcollection_breakup(
+                fields.st.at("nr")->fld.data(),
+                fields.sp.at("qr")->fld.data(),
+                fields.sp.at("nr")->fld.data(),
+                rho.data(),
+                (*rain_mass).data(),
+                (*rain_diameter).data(),
+                (*lambda_r).data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells, k);
 
         // Sedimentation
         // TODO
