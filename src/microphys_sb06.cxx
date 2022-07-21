@@ -279,8 +279,14 @@ namespace
             }
     }
 
-
-
+    void sedi_vel_rain(
+            TF* restrict qr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride
+            )
+    {
+    }
 }
 
 template<typename TF>
@@ -413,8 +419,15 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
    
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
+        // call sedi_vel_rain(rain,rain_coeffs,qr(:,k),xr_now,rhocorr(:,k),vr_sedn_now,vr_sedq_now,its,ite,qc(:,k))
         // Sedimentation
-        // TODO
+        sedi_vel_rain(
+                fields.sp.at("qr")->fld.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells
+                );
+
 
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
         autoconversion(
