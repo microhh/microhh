@@ -180,6 +180,7 @@ class Microphys_sb06 : public Microphys<TF>
         //TF* rg_bot_g;
         //#endif
 
+        Particle<TF> cloud;
         Particle<TF> rain;
         Particle_rain_coeffs<TF> rain_coeffs;
 

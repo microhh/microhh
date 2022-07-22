@@ -578,6 +578,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
 
     // Set the rain and rain_coeff types to the default provided values
+    cloud = cloud_nue1mue1;
     rain = rainSBB;
     rain_coeffs = rainSBBcoeffs;
 }
