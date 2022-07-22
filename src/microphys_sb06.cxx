@@ -672,6 +672,62 @@ Microphys_sb06<TF>::Microphys_sb06(
     cloud = cloud_nue1mue1;
     rain = rainSBB;
     rain_coeffs = rainSBBcoeffs;
+
+    // bulk ventilation coefficient, Eq. (88) of SB2006
+    auto vent_coeff_a = [](const Particle<TF>& parti, const int n)
+    {
+        const TF vent_coeff_a = parti.a_ven
+                * std::tgamma((parti.nu+n+parti.b_geo)/parti.mu)
+                / std::tgamma((parti.nu+1.0)/parti.mu)
+                * std::pow( std::tgamma((parti.nu+1.0)/parti.mu)
+                / std::tgamma((parti.nu+2.0)/parti.mu), (parti.b_geo+n-1.0) );
+
+        return vent_coeff_a;
+    };
+
+    // bulk ventilation coefficient, Eq. (89) of SB2006
+    auto vent_coeff_b = [](const Particle<TF>& parti, const int n)
+    {
+        constexpr TF m_f = 0.500; // see PK, S.541. Do not change.
+
+        const TF vent_coeff_b = parti.b_ven
+             * std::tgamma((parti.nu+n+(m_f+1.0)*parti.b_geo+m_f*parti.b_vel)/parti.mu)
+                         / std::tgamma((parti.nu+1.0)/parti.mu)
+                       * std::pow( std::tgamma((parti.nu+1.0)/parti.mu)
+                         / std::tgamma((parti.nu+2.0)/parti.mu),
+                         ((m_f+1.0)*parti.b_geo+m_f*parti.b_vel+n-1.0) );
+
+        return vent_coeff_b;
+    };
+
+    auto moment_gamma = [](const Particle<TF>& p, const int n)
+    {
+        const TF moment_gamma = std::tgamma((n+p.nu+1.0)/p.mu) / std::tgamma((p.nu+1.0)/p.mu)
+                * std::pow( std::tgamma((  p.nu+1.0)/p.mu) / std::tgamma((p.nu+2.0)/p.mu), n);
+
+        return moment_gamma;
+    };
+
+    // Setup the subset of the coefficients that does not follow from the copy.
+    auto setup_particle_coeffs = [&vent_coeff_a, &vent_coeff_b, &moment_gamma](const Particle<TF>& ptype, Particle_coeffs<TF>& pcoeffs)
+    {
+        constexpr TF N_sc = 0.710;  // Schmidt-Zahl (PK, S.541)
+        constexpr TF n_f = 0.333;   // Exponent von N_sc im Vent-koeff. (PK, S.541)
+        constexpr TF nu_l = 1.5e-5; // Kinematic viscosity of air (added by CvH).
+
+        pcoeffs.c_i = 1. / ptype.cap;
+        pcoeffs.a_f = vent_coeff_a(ptype, 1);
+        pcoeffs.b_f = vent_coeff_b(ptype, 1) * std::pow(N_sc, n_f) / std::sqrt(nu_l);
+        pcoeffs.c_z = moment_gamma(ptype, 2);
+    };
+
+    // Moved function to after assignment to prevent overwriting.
+    setup_particle_coeffs(rain, rain_coeffs);
+
+    // CvH: ICON overrides using the following code, but they are as far as I see the same values.
+    // rain_coeffs%cmu0 = cfg_params%rain_cmu0
+    // rain_coeffs%cmu1 = cfg_params%rain_cmu1
+    // rain_coeffs%cmu3 = cfg_params%rain_cmu3kkk
 }
 
 template<typename TF>

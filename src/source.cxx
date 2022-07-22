@@ -417,8 +417,8 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
                     gd.icells, gd.ijcells);
         else
             calc_source<TF, false>(
-                    fields.st[sourcelist[n]]->fld.data(),
-                    gd.x.data(), gd.y.data(), gd.z.data(),
+                    fields.at[sourcelist[n]]->fld.data(),
+                    (sourcelist[n] == "u") ? gd.xh.data() : gd.xh.data(), gd.y.data(), gd.z.data(),
                     nullptr,
                     source_x0[n], sigma_x[n], line_x[n],
                     source_y0[n], sigma_y[n], line_y[n],
