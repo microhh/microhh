@@ -41,12 +41,14 @@ if __name__ == '__main__':
     pl.plot(ds.time, ds.rr*3600)
     pl.ylabel(r'rain rate (mm h$^{-1}$)')
 
-    step = 36
+    step = 3*36
     ysize = 7000
+    nt = ds.time.size//step+1
+    cc = pl.cm.turbo(np.linspace(0, 1, nt))
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.ql[t,:]*1000, ds.z, label=ds.time.values[t])
+       pl.plot(ds.ql[t,:]*1000, ds.z, color=cc[i], label=ds.time.values[t])
     pl.legend()
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
@@ -54,37 +56,45 @@ if __name__ == '__main__':
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.qi[t,:]*1000, ds.z)
+       pl.plot(ds.qi[t,:]*1000, ds.z, color=cc[i])
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_i$ (g kg$^{-1}$)')
 
-    pl.subplot(nrows, ncols, sp); sp+=1
+    ax=pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.qr[t,:]*1000, ds.z)
+       pl.plot(ds.qr[t,:]*1000, ds.z, color=cc[i])
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_r$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.qs[t,:]*1000, ds.z)
+       pl.plot(ds.qs[t,:]*1000, ds.z, color=cc[i])
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_s$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.qg[t,:]*1000, ds.z)
+       pl.plot(ds.qg[t,:]*1000, ds.z, color=cc[i])
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_g$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
-       pl.plot(ds.vqr[t,:]*1000, ds.z)
+       pl.plot(ds.vqr[t,:], ds.z, color=cc[i])
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$v_{qr}$ (m s$^{-1}$)')
+
+    pl.subplot(nrows, ncols, sp); sp+=1
+    pl.plot(ds.time, ds.qr[:,0]*1000, label='z=12.5 m')
+    pl.plot(ds.time, ds.qr[:,10]*1000, label='z=300 m')
+    pl.plot(ds.time, ds.qr[:,20]*1000, label='z=600 m')
+    pl.xlabel('time')
+    pl.ylabel(r'$q_r$ (g kg-1)')
+    pl.legend()
 
     pl.tight_layout()
