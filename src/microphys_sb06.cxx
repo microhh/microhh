@@ -490,6 +490,52 @@ namespace
                 }
             }
     }
+
+
+    template<typename TF>
+    void implicit_core(
+            TF* const restrict q_val,
+            TF* const restrict q_sum,
+            TF* const restrict q_impl,
+            TF* const restrict vsed_new,
+            TF* const restrict vsed_now,
+            TF* const restrict flux_new,
+            TF* const restrict flux_now,
+            const TF rdzdt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j = jstart; j < jend; j++)
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
+
+                // `new` on r.h.s. is new value from level above
+                vsed_new[ij] = TF(0.5) * (vsed_now[ij] + vsed_new[ij]);
+
+                // `flux_new` are the updated flux values from the level above
+                // `flux_now` are here the old (current time step) flux values from the level above
+                const TF flux_sum = flux_new[ij] + flux_now[ij];
+
+                // `flux_now` are here overwritten with the current level
+                flux_now[ij] = std::min(vsed_now[ij] * q_val[ij], flux_sum);   // loop dependency
+                flux_now[ij] = std::max(flux_now[ij], TF(0));                  // Maybe not necessary
+
+                // Time integrated value without implicit weight
+                q_sum[ij] = q_val[ij] + rdzdt * (flux_sum - flux_now[ij]);
+
+                // Implicit weight
+                q_impl[ij] = TF(1) / (TF(1) + vsed_new[ij] * rdzdt);
+
+                // prepare for source term calculation
+                const TF q_star = q_impl[ij] * q_sum[ij];
+                q_val[ij]  = q_star;       // source/sinks work on star-values
+                q_sum[ij]  = q_sum[ij] - q_star;
+            }
+    }
+
 }
 
 template<typename TF>
@@ -618,9 +664,27 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto mu_r = fields.get_tmp_xy();
     auto lambda_r = fields.get_tmp_xy();
 
-    // 2D fields for fall velocities
-    auto vn = fields.get_tmp_xy();
-    auto vq = fields.get_tmp_xy();
+    // 2D slices for sedimentation.
+    auto get_zero_tmp_xy = [&]()
+    {
+        auto fld_xy = fields.get_tmp_xy();
+        std::fill((*fld_xy).begin(), (*fld_xy).end(), TF(0));
+        return fld_xy;
+    };
+
+    auto vr_sedq_now = get_zero_tmp_xy();
+    auto vr_sedq_new = get_zero_tmp_xy();
+    auto qr_flux_now = get_zero_tmp_xy();
+    auto qr_flux_new = get_zero_tmp_xy();
+    auto qr_sum = get_zero_tmp_xy();
+    auto qr_impl = get_zero_tmp_xy();
+
+    auto vr_sedn_now = get_zero_tmp_xy();
+    auto vr_sedn_new = get_zero_tmp_xy();
+    auto nr_flux_now = get_zero_tmp_xy();
+    auto nr_flux_new = get_zero_tmp_xy();
+    auto nr_sum = get_zero_tmp_xy();
+    auto nr_impl = get_zero_tmp_xy();
 
     // Convert all units from `kg kg-1 to `kg m-3`.
     bool to_kgm3 = true;
@@ -648,7 +712,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         bool ql_present = true;
         sedi_vel_rain(
-            (*vn).data(), (*vq).data(),
+            (*vr_sedn_now).data(),
+            (*vr_sedq_now).data(),
             fields.sp.at("qr")->fld.data(),
             fields.sp.at("nr")->fld.data(),
             ql->fld.data(),
@@ -658,6 +723,37 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.jstart, gd.jend,
             gd.icells, gd.ijcells,
             k, ql_present);
+
+        const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
+
+        implicit_core(
+            fields.sp.at("qr")->fld.data(),
+            (*qr_sum).data(),
+            (*qr_impl).data(),
+            (*vr_sedq_new).data(),
+            (*vr_sedq_now).data(),
+            (*qr_flux_new).data(),
+            (*qr_flux_now).data(),
+            rdzdt,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+        implicit_core(
+            fields.sp.at("nr")->fld.data(),
+            (*nr_sum).data(),
+            (*nr_impl).data(),
+            (*vr_sedn_new).data(),
+            (*vr_sedn_now).data(),
+            (*nr_flux_new).data(),
+            (*nr_flux_now).data(),
+            rdzdt,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+
+        // TO-DO: rest of implicit..?
 
 
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
@@ -771,8 +867,20 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(rain_diameter);
     fields.release_tmp_xy(mu_r);
     fields.release_tmp_xy(lambda_r);
-    fields.release_tmp_xy(vn);
-    fields.release_tmp_xy(vq);
+
+    fields.release_tmp_xy(vr_sedq_now);
+    fields.release_tmp_xy(vr_sedq_new);
+    fields.release_tmp_xy(qr_flux_now);
+    fields.release_tmp_xy(qr_flux_new);
+    fields.release_tmp_xy(qr_sum);
+    fields.release_tmp_xy(qr_impl);
+
+    fields.release_tmp_xy(vr_sedn_now);
+    fields.release_tmp_xy(vr_sedn_new);
+    fields.release_tmp_xy(nr_flux_now);
+    fields.release_tmp_xy(nr_flux_new);
+    fields.release_tmp_xy(nr_sum);
+    fields.release_tmp_xy(nr_impl);
 }
 #endif
 
