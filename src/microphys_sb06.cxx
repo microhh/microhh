@@ -590,6 +590,43 @@ namespace
     }
 
 
+    template<typename TF>
+    void calc_tendencies_qr_nr(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict thlt,
+            TF* const restrict qtt,
+            const TF* const restrict qr_old,
+            const TF* const restrict nr_old,
+            const TF* const restrict qr_new,
+            const TF* const restrict nr_new,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        const TF dt_i = TF(1) / dt;
+        const TF rho_i = TF(1) / rho[k];
+
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+                    const int ijk= i + j * jstride + k*kstride;
+
+                    const TF qrt_eval = (qr_new[ij] - qr_old[ijk]) * dt_i;
+                    const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
+
+                    qrt[ijk]  += qrt_eval;
+                    nrt[ijk]  += nrt_eval;
+                    qtt[ijk]  -= qrt_eval;
+                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
+                }
+    }
 }
 
 template<typename TF>
@@ -914,8 +951,24 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells);
 
-        // TO-DO: calculate tendency from difference between e.g. `qr_slice` and `qr`.
-        // TO-DO: calculate tendencies `thl` at `qt` from final tendency `qr`.
+        // Calculate tendencies `qr` and `nr` back from implicit solver,
+        // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
+        calc_tendencies_qr_nr(
+                fields.st.at("qr")->fld.data(),
+                fields.st.at("nr")->fld.data(),
+                fields.st.at("thl")->fld.data(),
+                fields.st.at("qt")->fld.data(),
+                fields.sp.at("qr")->fld.data(),
+                fields.sp.at("nr")->fld.data(),
+                (*qr_slice).data(),
+                (*nr_slice).data(),
+                rho.data(),
+                exner.data(),
+                dt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells,
+                k);
     }
 
     // Calculate tendencies.
