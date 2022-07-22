@@ -493,6 +493,27 @@ namespace
 
 
     template<typename TF>
+    void copy_slice(
+            TF* const restrict fld_2d,
+            const TF* const restrict fld_3d,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+                    const int ijk = i + j * jstride + k * kstride;
+
+                    fld_2d[ij] = fld_3d[ijk];
+                }
+    }
+
+
+    template<typename TF>
     void implicit_core(
             TF* const restrict q_val,
             TF* const restrict q_sum,
@@ -535,6 +556,36 @@ namespace
                 q_sum[ij]  = q_sum[ij] - q_star;
             }
     }
+
+
+    template<typename TF>
+    void implicit_time(
+            TF* const restrict q_val,
+            TF* const restrict q_sum,
+            TF* const restrict q_impl,
+            TF* const restrict vsed_new,
+            TF* const restrict vsed_now,
+            TF* const restrict flux_new,
+            const TF rdzdt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+
+                    // Time integration
+                    q_val[ij] = std::max(TF(0), q_impl[ij] * (q_sum[ij] + q_val[ij]));
+
+                    // Prepare for next level
+                    flux_new[ij] = q_val[ij] * vsed_new[ij];
+                    vsed_new[ij] = vsed_now[ij];
+                }
+    }
+
 
 }
 
@@ -678,6 +729,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto qr_flux_new = get_zero_tmp_xy();
     auto qr_sum = get_zero_tmp_xy();
     auto qr_impl = get_zero_tmp_xy();
+    auto qr_slice = get_zero_tmp_xy();
 
     auto vr_sedn_now = get_zero_tmp_xy();
     auto vr_sedn_new = get_zero_tmp_xy();
@@ -685,6 +737,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto nr_flux_new = get_zero_tmp_xy();
     auto nr_sum = get_zero_tmp_xy();
     auto nr_impl = get_zero_tmp_xy();
+    auto nr_slice = get_zero_tmp_xy();
 
     // Convert all units from `kg kg-1 to `kg m-3`.
     bool to_kgm3 = true;
@@ -705,6 +758,21 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
    
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
+        // Copy 3D fields to 2D slices.
+        copy_slice(
+                (*qr_slice).data(),
+                fields.sp.at("qr")->fld.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells, k);
+
+        copy_slice(
+                (*nr_slice).data(),
+                fields.sp.at("nr")->fld.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells, k);
+
         // Sedimentation
         // Density correction fall speeds
         const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
@@ -727,7 +795,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
         implicit_core(
-            fields.sp.at("qr")->fld.data(),
+            (*qr_slice).data(),
             (*qr_sum).data(),
             (*qr_impl).data(),
             (*vr_sedq_new).data(),
@@ -740,7 +808,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.icells);
 
         implicit_core(
-            fields.sp.at("nr")->fld.data(),
+            (*nr_slice).data(),
             (*nr_sum).data(),
             (*nr_impl).data(),
             (*vr_sedn_new).data(),
@@ -752,10 +820,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.jstart, gd.jend,
             gd.icells);
 
-
-        // TO-DO: rest of implicit..?
-
-
+        // Calculate microphysics processes.
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
         autoconversion(
             fields.st.at("qr")->fld.data(),
@@ -819,19 +884,43 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.icells, gd.ijcells, k);
 
         selfcollection_breakup(
-                fields.st.at("nr")->fld.data(),
-                fields.sp.at("qr")->fld.data(),
-                fields.sp.at("nr")->fld.data(),
-                rho.data(),
-                (*rain_mass).data(),
-                (*rain_diameter).data(),
-                (*lambda_r).data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            fields.st.at("nr")->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("nr")->fld.data(),
+            rho.data(),
+            (*rain_mass).data(),
+            (*rain_diameter).data(),
+            (*lambda_r).data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells, k);
 
         // Sedimentation
-        // TODO
+        implicit_time(
+                (*qr_slice).data(),
+                (*qr_sum).data(),
+                (*qr_impl).data(),
+                (*vr_sedq_new).data(),
+                (*vr_sedq_now).data(),
+                (*qr_flux_new).data(),
+                rdzdt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
+        implicit_time(
+                (*nr_slice).data(),
+                (*nr_sum).data(),
+                (*nr_impl).data(),
+                (*vr_sedn_new).data(),
+                (*vr_sedn_now).data(),
+                (*nr_flux_new).data(),
+                rdzdt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
+        // TO-DO: calculate tendency from difference between e.g. `qr_slice` and `qr`.
     }
 
     // Calculate tendencies.
@@ -874,6 +963,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(qr_flux_new);
     fields.release_tmp_xy(qr_sum);
     fields.release_tmp_xy(qr_impl);
+    fields.release_tmp_xy(qr_slice);
 
     fields.release_tmp_xy(vr_sedn_now);
     fields.release_tmp_xy(vr_sedn_new);
@@ -881,6 +971,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(nr_flux_new);
     fields.release_tmp_xy(nr_sum);
     fields.release_tmp_xy(nr_impl);
+    fields.release_tmp_xy(nr_slice);
 }
 #endif
 
