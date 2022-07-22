@@ -556,7 +556,7 @@ void Microphys_sb06<TF>::create(
         Input& inputin, Netcdf_handle& input_nc,
         Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
-    const std::string group_name = "thermo";
+    const std::string group_name = "micro";
 
     // Add variables to the statistics
     if (stats.get_switch())
@@ -571,6 +571,10 @@ void Microphys_sb06<TF>::create(
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+
+        // Profiles
+        stats.add_prof("vqr", "Fall velocity rain mass density", "m s-1", "z" , group_name);
+        stats.add_prof("vnr", "Fall velocity rain number density", "m s-1", "z" , group_name);
     }
 
     if (column.get_switch())
@@ -767,17 +771,62 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(rain_diameter);
     fields.release_tmp_xy(mu_r);
     fields.release_tmp_xy(lambda_r);
+    fields.release_tmp_xy(vn);
+    fields.release_tmp_xy(vq);
 }
 #endif
 
 template<typename TF>
 void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
-    // Time series
+    auto& gd = grid.get_grid_data();
+
     const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+    const bool is_stat = true;
+    const bool cyclic = false;
+
+    // Time series
     stats.calc_stats_2d("rr", rr_bot, no_offset);
     stats.calc_stats_2d("rs", rs_bot, no_offset);
     stats.calc_stats_2d("rg", rg_bot, no_offset);
+
+    // Profiles
+    auto vq = fields.get_tmp();
+    auto vn = fields.get_tmp();
+
+    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+    auto ql = fields.get_tmp();
+    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+
+    for (int k=gd.kend-1; k>=gd.kstart; --k)
+    {
+        // Sedimentation
+        // Density correction fall speeds
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
+        const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
+
+        bool ql_present = true;
+        sedi_vel_rain(
+                &vn->fld.data()[k * gd.ijcells],
+                &vq->fld.data()[k * gd.ijcells],
+                fields.sp.at("qr")->fld.data(),
+                fields.sp.at("nr")->fld.data(),
+                ql->fld.data(),
+                rain, rain_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells,
+                k, ql_present);
+    }
+
+    stats.calc_stats("vqr", *vq, no_offset, no_threshold);
+    stats.calc_stats("vnr", *vn, no_offset, no_threshold);
+
+    fields.release_tmp(vq);
+    fields.release_tmp(vn);
+    fields.release_tmp(ql);
 }
 
 #ifndef USECUDA

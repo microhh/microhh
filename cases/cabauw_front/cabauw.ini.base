@@ -35,8 +35,8 @@ swupdatebasestate=1
 swtimedep_pbot=1
 
 [micro]
-#swmicro=sb06
-swmicro=nsw6
+swmicro=sb06
+#swmicro=nsw6
 cflmax=1.2
 Nc0=200000000
 

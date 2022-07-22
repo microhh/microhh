@@ -32,14 +32,19 @@ if __name__ == '__main__':
     ds = xr_read_all('cabauw.default.0000000.nc')
 
     pl.figure(figsize=(8,7))
-    pl.subplot(321)
+
+    nrows = 3
+    ncols = 3
+    sp = 1
+
+    pl.subplot(nrows, ncols, sp); sp+=1
     pl.plot(ds.time, ds.rr*3600)
     pl.ylabel(r'rain rate (mm h$^{-1}$)')
 
     step = 36
     ysize = 7000
 
-    pl.subplot(322)
+    pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.ql[t,:]*1000, ds.z, label=ds.time.values[t])
     pl.legend()
@@ -47,32 +52,39 @@ if __name__ == '__main__':
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_l$ (kg kg$^{-1}$)')
 
-    pl.subplot(323)
+    pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qi[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_i$ (kg kg$^{-1}$)')
 
-    pl.subplot(324)
+    pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qr[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_r$ (kg kg$^{-1}$)')
 
-    pl.subplot(325)
+    pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qs[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_s$ (kg kg$^{-1}$)')
 
-    pl.subplot(326)
+    pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qg[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
     pl.xlabel(r'$q_g$ (kg kg$^{-1}$)')
+
+    pl.subplot(nrows, ncols, sp); sp+=1
+    for i,t in enumerate(range(0, ds.time.size, step)):
+       pl.plot(ds.vqr[t,:]*1000, ds.z)
+    pl.ylim(0, ysize)
+    pl.ylabel('z (m)')
+    pl.xlabel(r'$v_{qr}$ (m s$^{-1}$)')
 
     pl.tight_layout()
