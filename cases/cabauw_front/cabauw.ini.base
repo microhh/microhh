@@ -36,7 +36,6 @@ swtimedep_pbot=1
 
 [micro]
 swmicro=sb06
-#swmicro=nsw6
 cflmax=1.2
 Nc0=200000000
 
@@ -147,4 +146,4 @@ coordinates[x]=1600
 coordinates[y]=1600
 
 [limiter]
-limitlist=qt,qr,qs,qg
+limitlist=qt,qi,qr,qs,qg,qh,ni,nr,ns,ng,nh
