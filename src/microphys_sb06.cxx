@@ -120,9 +120,9 @@ namespace
                 const int ijk = i + j*jstride + k*kstride;
                 const int ij  = i + j*jstride;
 
-                if (qr[ijk] > qr_min<TF>)
+                if (qr[ij] > qr_min<TF>)
                 {
-                    rain_mass[ij]     = calc_rain_mass(qr[ijk], nr[ijk]);
+                    rain_mass[ij]     = calc_rain_mass(qr[ij], nr[ij]);
                     rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
                     mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
                     lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
@@ -465,9 +465,9 @@ namespace
                 const int ij = i + j * jstride;
                 const int ijk = i + j * jstride + k * kstride;
 
-                if (qr[ijk] > q_crit<TF>)
+                if (qr[ij] > q_crit<TF>)
                 {
-                    const TF x = particle_meanmass(rain, qr[ijk], nr[ijk]);
+                    const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF d_m = particle_diameter(rain, x);
 
                     if (qc_present)
@@ -823,8 +823,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         sedi_vel_rain(
                 (*vr_sedn_now).data(),
                 (*vr_sedq_now).data(),
-                fields.sp.at("qr")->fld.data(),
-                fields.sp.at("nr")->fld.data(),
+                (*qr_slice).data(),
+                (*qr_slice).data(),
                 ql->fld.data(),
                 rain, rain_coeffs,
                 rho_corr,
@@ -891,8 +891,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*rain_diameter).data(),
                 (*mu_r).data(),
                 (*lambda_r).data(),
-                fields.sp.at("qr")->fld.data(),
-                fields.sp.at("nr")->fld.data(),
+                (*qr_slice).data(),
+                (*nr_slice).data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
@@ -1058,8 +1058,8 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
         sedi_vel_rain(
                 &vn->fld.data()[k * gd.ijcells],
                 &vq->fld.data()[k * gd.ijcells],
-                fields.sp.at("qr")->fld.data(),
-                fields.sp.at("nr")->fld.data(),
+                &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
+                &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
                 ql->fld.data(),
                 rain, rain_coeffs,
                 rho_corr,
