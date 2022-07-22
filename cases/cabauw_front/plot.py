@@ -50,35 +50,35 @@ if __name__ == '__main__':
     pl.legend()
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
-    pl.xlabel(r'$q_l$ (kg kg$^{-1}$)')
+    pl.xlabel(r'$q_l$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qi[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
-    pl.xlabel(r'$q_i$ (kg kg$^{-1}$)')
+    pl.xlabel(r'$q_i$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qr[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
-    pl.xlabel(r'$q_r$ (kg kg$^{-1}$)')
+    pl.xlabel(r'$q_r$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qs[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
-    pl.xlabel(r'$q_s$ (kg kg$^{-1}$)')
+    pl.xlabel(r'$q_s$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
        pl.plot(ds.qg[t,:]*1000, ds.z)
     pl.ylim(0, ysize)
     pl.ylabel('z (m)')
-    pl.xlabel(r'$q_g$ (kg kg$^{-1}$)')
+    pl.xlabel(r'$q_g$ (g kg$^{-1}$)')
 
     pl.subplot(nrows, ncols, sp); sp+=1
     for i,t in enumerate(range(0, ds.time.size, step)):
