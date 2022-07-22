@@ -58,10 +58,8 @@ namespace
     template<typename TF> constexpr TF ql_min   = 1.e-6;               // Min cloud liquid water for which calculations are performed
     template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
-
-    template<typename TF> constexpr TF q_crit   = 1.e-9;              // Min rain liquid water for which calculations are performed
-
-
+    template<typename TF> constexpr TF rho_vel  = 0.4;                 // Exponent for density correction (value from ICON)
+    template<typename TF> constexpr TF q_crit   = 1.e-9;               // Min rain liquid water for which calculations are performed (value from ICON)
 
     template<typename TF>
     inline TF tanh2(const TF x)
@@ -448,6 +446,7 @@ namespace
             const TF* const restrict ql,
             Particle<TF>& rain,
             Particle_rain_coeffs<TF>& coeffs,
+            const TF rho_corr,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride, const int kstride,
@@ -482,9 +481,8 @@ namespace
                     vn[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(1)) * std::log(TF(1) + coeffs.gama * d_p));
                     vq[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(4)) * std::log(TF(1) + coeffs.gama * d_p));
 
-                    // TODO 1 or 2D rhocorr?
-                    //vn[ij] *= rhocorr[ij];
-                    //vq[ij] *= rhocorr[ij];
+                    vn[ij] *= rho_corr;
+                    vq[ij] *= rho_corr;
                 } else
                 {
                     vn[ij] = TF(0);
@@ -640,6 +638,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Sedimentation
+        // Density correction fall speeds
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
+        const TF rho_corr = std::exp(-rho_vel<TF>*hlp);
+
         bool ql_present = true;
         sedi_vel_rain(
             (*vn).data(), (*vq).data(),
@@ -647,6 +649,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             fields.sp.at("nr")->fld.data(),
             ql->fld.data(),
             rain, rain_coeffs,
+            rho_corr,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells, gd.ijcells,
