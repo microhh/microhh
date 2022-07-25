@@ -536,7 +536,7 @@ namespace
             {
                 const int ij = i + j * jstride;
 
-                // `new` on r.h.s. is new value from level above
+                // `new` on r.h.s. is `now` value from level above
                 vsed_new[ij] = TF(0.5) * (vsed_now[ij] + vsed_new[ij]);
 
                 // `flux_new` are the updated flux values from the level above
@@ -618,13 +618,14 @@ namespace
                     const int ij = i + j * jstride;
                     const int ijk= i + j * jstride + k*kstride;
 
-                    const TF qrt_eval = (qr_new[ij] - qr_old[ijk]) * dt_i;
-                    const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
+                    // Evaluate tendencies (in kg kg-1 s-1)
+                    const TF qrt_eval = rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
+                    const TF nrt_eval = rho_i * (nr_new[ij] - nr_old[ijk]) * dt_i;
 
                     qrt[ijk]  += qrt_eval;
                     nrt[ijk]  += nrt_eval;
                     qtt[ijk]  -= qrt_eval;
-                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
                 }
     }
 }
