@@ -315,13 +315,14 @@ namespace
                     const TF dr  = rain_diameter[ij];
 
                     // ...Condensation/evaporation rate...?
-                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (tmf::esat_liq(T[ijk]) * D_v<TF>) +
+                    const TF es = tmf::esat_liq(T[ijk]);
+                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
                                        (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
 
-                    // Supersaturation over water (-).
-                    // NOTE: copy-pasted from UCLA, can't find the definition in SB06.
+                    // Supersaturation over water (-, KP97 Eq 4-37).
                     const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
-                    const TF S   = qv / tmf::qsat_liq(p[k], T[ijk]) - TF(1.);
+                    const TF qs = tmf::qsat_liq(p[k], T[ijk]);
+                    const TF S  = std::min(TF(0), qv / qs - TF(1.));
 
                     // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
                     const TF F   = TF(1.);
@@ -744,6 +745,7 @@ void Microphys_sb06<TF>::init()
     rr_bot.resize(gd.ijcells);
     rs_bot.resize(gd.ijcells);
     rg_bot.resize(gd.ijcells);
+    rh_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -751,7 +753,7 @@ void Microphys_sb06<TF>::create(
         Input& inputin, Netcdf_handle& input_nc,
         Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
-    const std::string group_name = "micro";
+    const std::string group_name = "thermo";
 
     // Add variables to the statistics
     if (stats.get_switch())
@@ -760,12 +762,14 @@ void Microphys_sb06<TF>::create(
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
         stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
         stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
+        stats.add_time_series("rh", "Mean surface hail rate", "kg m-2 s-1", group_name);
 
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qh") , "z", tend_name, tend_longname);
 
         // Profiles
         stats.add_prof("vqr", "Fall velocity rain mass density", "m s-1", "z" , group_name);
@@ -777,6 +781,7 @@ void Microphys_sb06<TF>::create(
         column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
         column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
         column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
+        column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -1008,6 +1013,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+
+        // Store surface precipitation rates.
+        rr_bot = (*qr_flux_new);
 
         // Calculate tendencies `qr` and `nr` back from implicit solver,
         // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
