@@ -311,32 +311,36 @@ namespace
 
                 if (qr[ij] > qr_min<TF>)
                 {
-                    const TF mr  = rain_mass[ij];
-                    const TF dr  = rain_diameter[ij];
-
-                    // ...Condensation/evaporation rate...?
-                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (tmf::esat_liq(T[ijk]) * D_v<TF>) +
-                                       (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
-
-                    // Supersaturation over water (-).
-                    // NOTE: copy-pasted from UCLA, can't find the definition in SB06.
+                    // Supersaturation over water (-, KP97 Eq 4-37).
                     const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
-                    const TF S   = qv / tmf::qsat_liq(p[k], T[ijk]) - TF(1.);
+                    const TF qs = tmf::qsat_liq(p[k], T[ijk]);
+                    const TF S  = qv / qs - TF(1.);
 
-                    // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
-                    const TF F   = TF(1.);
+                    if (S < TF(0))
+                    {
+                        const TF mr  = rain_mass[ij];
+                        const TF dr  = rain_diameter[ij];
 
-                    // Evaporation tendency (kg m-3 s-1).
-                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
+                        // ...Condensation/evaporation rate...?
+                        const TF es = tmf::esat_liq(T[ijk]);
+                        const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
+                                           (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
 
-                    // Update 2D slices:
-                    qr[ij] += ev_tend * TF(dt);
-                    nr[ij] += lambda_evap * ev_tend / mr * TF(dt);
+                        // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
+                        const TF F   = TF(1.);
 
-                    //qrt[ijk]  += ev_tend;
-                    //nrt[ijk]  += lambda_evap * ev_tend / mr;
-                    //qtt[ijk]  -= ev_tend;
-                    //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                        // Evaporation tendency (kg m-3 s-1).
+                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
+
+                        // Update 2D slices:
+                        qr[ij] += ev_tend * TF(dt);
+                        nr[ij] += lambda_evap * ev_tend / mr * TF(dt);
+
+                        //qrt[ijk]  += ev_tend;
+                        //nrt[ijk]  += lambda_evap * ev_tend / mr;
+                        //qtt[ijk]  -= ev_tend;
+                        //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                    }
                 }
             }
     }
@@ -536,7 +540,7 @@ namespace
             {
                 const int ij = i + j * jstride;
 
-                // `new` on r.h.s. is new value from level above
+                // `new` on r.h.s. is `now` value from level above
                 vsed_new[ij] = TF(0.5) * (vsed_now[ij] + vsed_new[ij]);
 
                 // `flux_new` are the updated flux values from the level above
@@ -618,13 +622,14 @@ namespace
                     const int ij = i + j * jstride;
                     const int ijk= i + j * jstride + k*kstride;
 
-                    const TF qrt_eval = (qr_new[ij] - qr_old[ijk]) * dt_i;
-                    const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
+                    // Evaluate tendencies (in kg kg-1 s-1)
+                    const TF qrt_eval = rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
+                    const TF nrt_eval = rho_i * (nr_new[ij] - nr_old[ijk]) * dt_i;
 
                     qrt[ijk]  += qrt_eval;
                     nrt[ijk]  += nrt_eval;
                     qtt[ijk]  -= qrt_eval;
-                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
                 }
     }
 }
@@ -744,6 +749,7 @@ void Microphys_sb06<TF>::init()
     rr_bot.resize(gd.ijcells);
     rs_bot.resize(gd.ijcells);
     rg_bot.resize(gd.ijcells);
+    rh_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -751,7 +757,7 @@ void Microphys_sb06<TF>::create(
         Input& inputin, Netcdf_handle& input_nc,
         Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
-    const std::string group_name = "micro";
+    const std::string group_name = "thermo";
 
     // Add variables to the statistics
     if (stats.get_switch())
@@ -760,12 +766,14 @@ void Microphys_sb06<TF>::create(
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
         stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
         stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
+        stats.add_time_series("rh", "Mean surface hail rate", "kg m-2 s-1", group_name);
 
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qh") , "z", tend_name, tend_longname);
 
         // Profiles
         stats.add_prof("vqr", "Fall velocity rain mass density", "m s-1", "z" , group_name);
@@ -777,6 +785,7 @@ void Microphys_sb06<TF>::create(
         column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
         column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
         column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
+        column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -1008,6 +1017,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+
+        // Store surface precipitation rates.
+        rr_bot = (*qr_flux_new);
 
         // Calculate tendencies `qr` and `nr` back from implicit solver,
         // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
