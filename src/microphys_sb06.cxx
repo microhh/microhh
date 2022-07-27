@@ -311,33 +311,36 @@ namespace
 
                 if (qr[ij] > qr_min<TF>)
                 {
-                    const TF mr  = rain_mass[ij];
-                    const TF dr  = rain_diameter[ij];
-
-                    // ...Condensation/evaporation rate...?
-                    const TF es = tmf::esat_liq(T[ijk]);
-                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
-                                       (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
-
                     // Supersaturation over water (-, KP97 Eq 4-37).
                     const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
                     const TF qs = tmf::qsat_liq(p[k], T[ijk]);
-                    const TF S  = std::min(TF(0), qv / qs - TF(1.));
+                    const TF S  = qv / qs - TF(1.);
 
-                    // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
-                    const TF F   = TF(1.);
+                    if (S < TF(0))
+                    {
+                        const TF mr  = rain_mass[ij];
+                        const TF dr  = rain_diameter[ij];
 
-                    // Evaporation tendency (kg m-3 s-1).
-                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
+                        // ...Condensation/evaporation rate...?
+                        const TF es = tmf::esat_liq(T[ijk]);
+                        const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
+                                           (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
 
-                    // Update 2D slices:
-                    qr[ij] += ev_tend * TF(dt);
-                    nr[ij] += lambda_evap * ev_tend / mr * TF(dt);
+                        // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
+                        const TF F   = TF(1.);
 
-                    //qrt[ijk]  += ev_tend;
-                    //nrt[ijk]  += lambda_evap * ev_tend / mr;
-                    //qtt[ijk]  -= ev_tend;
-                    //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                        // Evaporation tendency (kg m-3 s-1).
+                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
+
+                        // Update 2D slices:
+                        qr[ij] += ev_tend * TF(dt);
+                        nr[ij] += lambda_evap * ev_tend / mr * TF(dt);
+
+                        //qrt[ijk]  += ev_tend;
+                        //nrt[ijk]  += lambda_evap * ev_tend / mr;
+                        //qtt[ijk]  -= ev_tend;
+                        //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                    }
                 }
             }
     }

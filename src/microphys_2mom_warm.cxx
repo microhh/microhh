@@ -298,23 +298,29 @@ namespace mp2d
 
                 if (qr[ijk] > qr_min<TF>)
                 {
-                    const TF mr  = rain_mass[ik];
-                    const TF dr  = rain_diameter[ik];
-
-                    const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (esat_liq(T[ijk]) * D_v<TF>) +
-                                       (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.))); // Cond/evap rate (kg m-1 s-1)?
-
+                    // Supersaturation over water (-, KP97 Eq 4-37).
                     const TF qv  = qt[ijk] - ql[ijk];
                     const TF qs  = qsat_liq(p[k], T[ijk]);
-                    const TF S   = std::min(TF(0), qv / qs - TF(1.)); // Saturation
-                    const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+                    const TF S   = qv / qs - TF(1.);  // Saturation
 
-                    const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
+                    if (S < TF(0))
+                    {
+                        const TF mr = rain_mass[ik];
+                        const TF dr = rain_diameter[ik];
 
-                    qrt[ijk]  += ev_tend;
-                    nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
-                    qtt[ijk]  -= ev_tend;
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                        const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (esat_liq(T[ijk]) * D_v<TF>) +
+                                                 (Lv<TF> / (K_t<TF> * T[ijk])) *
+                                                 (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.))); // Cond/evap rate (kg m-1 s-1)?
+
+                        const TF F = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+
+                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
+
+                        qrt[ijk] += ev_tend;
+                        nrt[ijk] += lambda_evap * ev_tend * rho[k] / mr;
+                        qtt[ijk] -= ev_tend;
+                        thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                    }
                 }
             }
     }
