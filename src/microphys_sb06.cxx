@@ -1055,9 +1055,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells);
 
-        // Store surface precipitation rates.
-        rr_bot = (*qr_flux_new);
-
         // Calculate tendencies `qr` and `nr` back from implicit solver,
         // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
         calc_tendencies_qr_nr(
@@ -1079,6 +1076,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells,
                 k);
     }
+
+    // Store surface precipitation rates.
+    rr_bot = (*qr_flux_new);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
