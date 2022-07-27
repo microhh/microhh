@@ -139,14 +139,8 @@ namespace
 
 
     template<typename TF>
-    void convert_units(
-            TF* const restrict qt,
-            TF* const restrict qr,
-            TF* const restrict qs,
-            TF* const restrict qg,
-            TF* const restrict qh,
-            TF* const restrict qi,
-            TF* const restrict ql,
+    void convert_unit(
+            TF* const restrict a,
             const TF* const restrict rho,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -154,28 +148,16 @@ namespace
             const int jstride, const int kstride,
             bool to_kgm3)
     {
-        TF fac;
-
         for (int k=kstart; k<kend; k++)
         {
-            if (to_kgm3)
-                fac = rho[k];
-            else
-                fac = TF(1)/rho[k];
+            const TF fac = (to_kgm3) ? rho[k] : TF(1.)/rho[k];
 
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jstride + k*kstride;
-
-                    qt[ijk] *= fac;
-                    ql[ijk] *= fac;
-                    qi[ijk] *= fac;
-                    qr[ijk] *= fac;
-                    qs[ijk] *= fac;
-                    qg[ijk] *= fac;
-                    qh[ijk] *= fac;
+                    a[ijk] *= fac;
                 }
         }
     }
@@ -654,11 +636,11 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
 
-    fields.init_prognostic_field("ni", "Number density ice", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("ns", "Number density snow", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("ng", "Number density graupel", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("nh", "Number density hail", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("ni", "Number density ice", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("nr", "Number density rain", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("ns", "Number density snow", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("ng", "Number density graupel", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("nh", "Number density hail", "kg-1", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
@@ -846,22 +828,26 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto nr_impl = get_zero_tmp_xy();
     auto nr_slice = get_zero_tmp_xy();
 
-    // Convert all units from `kg kg-1 to `kg m-3`.
-    bool to_kgm3 = true;
-    convert_units(
-            fields.ap.at("qt")->fld.data(),
-            fields.ap.at("qr")->fld.data(),
-            fields.ap.at("qs")->fld.data(),
-            fields.ap.at("qg")->fld.data(),
-            fields.ap.at("qh")->fld.data(),
-            fields.ap.at("qi")->fld.data(),
-            ql->fld.data(),
-            rho.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells,
-            to_kgm3);
+    auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
+    {
+        convert_unit(
+                data_ptr,
+                rho.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                is_to_kgm3);
+    };
+
+    const bool to_kgm3 = true;
+    const std::vector<std::string> fields_to_convert =
+        {"qt", "qi", "qr", "qs", "qg", "qh", "ni", "nr", "ns", "ng", "nh"};
+
+    // Convert all units from `kg kg-1` to `kg m-3.
+    convert_units_short(ql->fld.data(), to_kgm3);
+    for (const std::string& name : fields_to_convert)
+        convert_units_short(fields.ap.at(name)->fld.data(), to_kgm3);
    
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
@@ -1050,21 +1036,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     stats.calc_tend(*fields.st.at("qg" ), tend_name);
 
     // Convert all units from `kg m-3 to `kg kg-1`.
-    to_kgm3 = false;
-    convert_units(
-        fields.ap.at("qt")->fld.data(),
-        fields.ap.at("qr")->fld.data(),
-        fields.ap.at("qs")->fld.data(),
-        fields.ap.at("qg")->fld.data(),
-        fields.ap.at("qh")->fld.data(),
-        fields.ap.at("qi")->fld.data(),
-        ql->fld.data(),
-        rho.data(),
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells,
-        to_kgm3);
+    for (const std::string& name : fields_to_convert)
+        convert_units_short(fields.ap.at(name)->fld.data(), !to_kgm3);
 
     // Release temporary fields.
     fields.release_tmp(ql);
