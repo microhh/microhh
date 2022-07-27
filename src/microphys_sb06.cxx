@@ -247,7 +247,7 @@ namespace
             const int jstride, const int kstride,
             const int k)
     {
-        /* Accreation: growth of raindrops collecting cloud droplets */
+        /* Accretion: growth of raindrops collecting cloud droplets */
 
         const TF k_cr = 5.25; // SB06, p49 (m3 kg-1 s-1)
         const TF rho_i = TF(1)/rho[k];
@@ -469,7 +469,8 @@ namespace
                 const int ij = i + j * jstride;
                 const int ijk = i + j * jstride + k * kstride;
 
-                if (qr[ij] > q_crit<TF>)
+                //if (qr[ij] > q_crit<TF>)
+                if (qr[ij] > qr_min<TF>)
                 {
                     const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF d_m = particle_diameter(rain, x);
@@ -624,7 +625,7 @@ namespace
 
                     // Evaluate tendencies (in kg kg-1 s-1)
                     const TF qrt_eval = rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
-                    const TF nrt_eval = rho_i * (nr_new[ij] - nr_old[ijk]) * dt_i;
+                    const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
 
                     qrt[ijk]  += qrt_eval;
                     nrt[ijk]  += nrt_eval;

@@ -116,7 +116,7 @@ namespace mp3d
                         const TF xc      = rho[k] * ql[ijk] / nc;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                         const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));    // UCLA-LES
-                        const TF au_tend = rho_0<TF> * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
+                        const TF au_tend = rho_0<TF> / fm::pow2(rho[k]) * kccxs * fm::pow2(ql[ijk]*rho[k]) * fm::pow2(xc) *
                                                (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
@@ -718,7 +718,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
 
-    //// Accretion; growth of raindrops collecting cloud droplets
+    // Accretion; growth of raindrops collecting cloud droplets
     mp3d::accretion(
             fields.st.at("qr")->fld.data(),
             fields.st.at("qt")->fld.data(),
