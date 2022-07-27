@@ -722,6 +722,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     };
 
     // Moved function to after assignment to prevent overwriting.
+    setup_particle_coeffs(cloud, cloud_coeffs);
     setup_particle_coeffs(rain, rain_coeffs);
 
     // CvH: ICON overrides using the following code, but they are as far as I see the same values.
