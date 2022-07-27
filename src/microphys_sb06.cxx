@@ -139,14 +139,8 @@ namespace
 
 
     template<typename TF>
-    void convert_units(
-            TF* const restrict qt,
-            TF* const restrict qr,
-            TF* const restrict qs,
-            TF* const restrict qg,
-            TF* const restrict qh,
-            TF* const restrict qi,
-            TF* const restrict ql,
+    void convert_unit(
+            TF* const restrict a,
             const TF* const restrict rho,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -154,28 +148,16 @@ namespace
             const int jstride, const int kstride,
             bool to_kgm3)
     {
-        TF fac;
-
         for (int k=kstart; k<kend; k++)
         {
-            if (to_kgm3)
-                fac = rho[k];
-            else
-                fac = TF(1)/rho[k];
+            const TF fac = (to_kgm3) ? rho[k] : TF(1.)/rho[k];
 
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jstride + k*kstride;
-
-                    qt[ijk] *= fac;
-                    ql[ijk] *= fac;
-                    qi[ijk] *= fac;
-                    qr[ijk] *= fac;
-                    qs[ijk] *= fac;
-                    qg[ijk] *= fac;
-                    qh[ijk] *= fac;
+                    a[ijk] *= fac;
                 }
         }
     }
@@ -183,8 +165,10 @@ namespace
 
     template<typename TF>
     void autoconversion(
-            TF* const restrict qr,
-            TF* const restrict nr,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
             const TF* const restrict ql,
             const TF* const restrict rho,
             const TF* const restrict exner,
@@ -223,13 +207,8 @@ namespace
                                            (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
 
                     // Update 2D slices:
-                    qr[ij] += au_tend * TF(dt);
-                    nr[ij] += au_tend / x_star * TF(dt);
-
-                    //qrt[ijk]  += au_tend;
-                    //nrt[ijk]  += au_tend / x_star;
-                    //qtt[ijk]  -= au_tend;
-                    //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * au_tend;
+                    qrt[ij] += au_tend;
+                    nrt[ij] += au_tend / x_star;
                 }
             }
     }
@@ -237,7 +216,8 @@ namespace
 
     template<typename TF>
     void accretion(
-            TF* const restrict qr,
+            TF* const restrict qrt,
+            const TF* const restrict qr,
             const TF* const restrict ql,
             const TF* const restrict rho,
             const TF* const restrict exner,
@@ -269,11 +249,7 @@ namespace
                     const TF ac_tend = k_cr * ql[ijk] *  qr[ij] * phi_ac * sqrt(rho_0<TF> / rho[k]);
 
                     // Update 2D slice:
-                    qr[ij] += ac_tend * TF(dt);
-
-                    //qrt[ijk]  += ac_tend;
-                    //qtt[ijk]  -= ac_tend;
-                    //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ac_tend;
+                    qrt[ij] += ac_tend;
                 }
             }
     }
@@ -281,8 +257,10 @@ namespace
 
     template<typename TF>
     void evaporation(
-            TF* const restrict qr,
-            TF* const restrict nr,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
             const TF* const restrict ql,
             const TF* const restrict qi,
             const TF* const restrict qt,
@@ -333,13 +311,8 @@ namespace
                         const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
 
                         // Update 2D slices:
-                        qr[ij] += ev_tend * TF(dt);
-                        nr[ij] += lambda_evap * ev_tend / mr * TF(dt);
-
-                        //qrt[ijk]  += ev_tend;
-                        //nrt[ijk]  += lambda_evap * ev_tend / mr;
-                        //qtt[ijk]  -= ev_tend;
-                        //thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * ev_tend;
+                        qrt[ij] += ev_tend;
+                        nrt[ij] += lambda_evap * ev_tend / mr;
                     }
                 }
             }
@@ -348,7 +321,8 @@ namespace
 
     template<typename TF>
     void selfcollection_breakup(
-            TF* const restrict nr,
+            TF* const restrict nrt,
+            const TF* const restrict nr,
             const TF* const restrict qr,
             const TF* const restrict rho,
             const TF* const restrict rain_mass,
@@ -386,8 +360,7 @@ namespace
                             lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
 
                         // Update 2D slice:
-                        nr[ij] += sc_tend * TF(dt);
-                        //nrt[ijk] += sc_tend;
+                        nrt[ij] += sc_tend;
 
                         // Breakup by collisions:
                         const TF dDr = dr - D_eq;
@@ -402,8 +375,7 @@ namespace
                             const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
 
                             // Update 2D slice:
-                            nr[ij] += br_tend * TF(dt);
-                            //nrt[ijk] += br_tend;
+                            nrt[ij] += br_tend;
                         }
                     }
                 }
@@ -491,7 +463,8 @@ namespace
 
                     vn[ij] *= rho_corr;
                     vq[ij] *= rho_corr;
-                } else
+                }
+                else
                 {
                     vn[ij] = TF(0);
                     vq[ij] = TF(0);
@@ -567,6 +540,29 @@ namespace
 
 
     template<typename TF>
+    void integrate_processes(
+            TF* const restrict q_val,
+            TF* const restrict n_val,
+            const TF* const restrict q_tend,
+            const TF* const restrict n_tend,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+
+                    // Time integration
+                    q_val[ij] += q_tend[ij] * TF(dt);
+                    n_val[ij] += n_tend[ij] * TF(dt);
+                }
+    }
+
+    template<typename TF>
     void implicit_time(
             TF* const restrict q_val,
             TF* const restrict q_sum,
@@ -605,6 +601,8 @@ namespace
             const TF* const restrict nr_old,
             const TF* const restrict qr_new,
             const TF* const restrict nr_new,
+            const TF* const restrict qr_tend_conversion,
+            const TF* const restrict nr_tend_conversion,
             const TF* const restrict rho,
             const TF* const restrict exner,
             const double dt,
@@ -624,13 +622,16 @@ namespace
                     const int ijk= i + j * jstride + k*kstride;
 
                     // Evaluate tendencies (in kg kg-1 s-1)
+                    // This includes the tendencies from conversions and sedimentation.
                     const TF qrt_eval = rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
                     const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
 
                     qrt[ijk]  += qrt_eval;
                     nrt[ijk]  += nrt_eval;
-                    qtt[ijk]  -= qrt_eval;
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * qrt_eval;
+
+                    // Tendencies `qt` and `thl` only include tendencies from conversions.
+                    qtt[ijk]  -= qr_tend_conversion[ij];
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
                 }
     }
 }
@@ -655,11 +656,11 @@ Microphys_sb06<TF>::Microphys_sb06(
     fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
 
-    fields.init_prognostic_field("ni", "Number density ice", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("ns", "Number density snow", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("ng", "Number density graupel", "m-3", group_name, gd.sloc);
-    fields.init_prognostic_field("nh", "Number density hail", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("ni", "Number density ice", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("nr", "Number density rain", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("ns", "Number density snow", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("ng", "Number density graupel", "kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("nh", "Number density hail", "kg-1", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
     fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
@@ -728,6 +729,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     };
 
     // Moved function to after assignment to prevent overwriting.
+    setup_particle_coeffs(cloud, cloud_coeffs);
     setup_particle_coeffs(rain, rain_coeffs);
 
     // CvH: ICON overrides using the following code, but they are as far as I see the same values.
@@ -822,11 +824,17 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto mu_r = fields.get_tmp_xy();
     auto lambda_r = fields.get_tmp_xy();
 
+    // Help functions to get/zero XY fields.
+    auto zero_tmp_xy = [&](std::shared_ptr<std::vector<TF>>& fld_xy)
+    {
+        std::fill((*fld_xy).begin(), (*fld_xy).end(), TF(0));
+    };
+
     // 2D slices for sedimentation.
     auto get_zero_tmp_xy = [&]()
     {
         auto fld_xy = fields.get_tmp_xy();
-        std::fill((*fld_xy).begin(), (*fld_xy).end(), TF(0));
+        zero_tmp_xy(fld_xy);
         return fld_xy;
     };
 
@@ -837,6 +845,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto qr_sum = get_zero_tmp_xy();
     auto qr_impl = get_zero_tmp_xy();
     auto qr_slice = get_zero_tmp_xy();
+    auto qr_tend_conversion = get_zero_tmp_xy();
 
     auto vr_sedn_now = get_zero_tmp_xy();
     auto vr_sedn_new = get_zero_tmp_xy();
@@ -845,24 +854,29 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto nr_sum = get_zero_tmp_xy();
     auto nr_impl = get_zero_tmp_xy();
     auto nr_slice = get_zero_tmp_xy();
+    auto nr_tend_conversion = get_zero_tmp_xy();
 
-    // Convert all units from `kg kg-1 to `kg m-3`.
-    bool to_kgm3 = true;
-    convert_units(
-            fields.ap.at("qt")->fld.data(),
-            fields.ap.at("qr")->fld.data(),
-            fields.ap.at("qs")->fld.data(),
-            fields.ap.at("qg")->fld.data(),
-            fields.ap.at("qh")->fld.data(),
-            fields.ap.at("qi")->fld.data(),
-            ql->fld.data(),
-            rho.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells,
-            to_kgm3);
-   
+    auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
+    {
+        convert_unit(
+                data_ptr,
+                rho.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                is_to_kgm3);
+    };
+
+    const bool to_kgm3 = true;
+    const std::vector<std::string> fields_to_convert =
+        {"qt", "qi", "qr", "qs", "qg", "qh", "ni", "nr", "ns", "ng", "nh"};
+
+    // Convert all units from `kg kg-1` to `kg m-3.
+    convert_units_short(ql->fld.data(), to_kgm3);
+    for (const std::string& name : fields_to_convert)
+        convert_units_short(fields.ap.at(name)->fld.data(), to_kgm3);
+
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Copy 3D fields to 2D slices.
@@ -879,6 +893,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
+
+        // Zero 2D tmp arrays which gather the process tendencies
+        zero_tmp_xy(qr_tend_conversion);
+        zero_tmp_xy(nr_tend_conversion);
 
         // Sedimentation
         // Density correction fall speeds
@@ -930,6 +948,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // Calculate microphysics processes.
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
         autoconversion(
+                (*qr_tend_conversion).data(),
+                (*nr_tend_conversion).data(),
                 (*qr_slice).data(),
                 (*nr_slice).data(),
                 ql->fld.data(),
@@ -942,6 +962,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Accretion; growth of rain droplets by collecting cloud droplets
         accretion(
+                (*qr_tend_conversion).data(),
                 (*qr_slice).data(),
                 ql->fld.data(),
                 rho.data(),
@@ -965,6 +986,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Evaporation of rain droplets.
         evaporation(
+                (*qr_tend_conversion).data(),
+                (*nr_tend_conversion).data(),
                 (*qr_slice).data(),
                 (*nr_slice).data(),
                 ql->fld.data(),
@@ -981,7 +1004,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
 
+        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
+        // coagulation, and breakup by collisions.
         selfcollection_breakup(
+                (*nr_tend_conversion).data(),
                 (*nr_slice).data(),
                 (*qr_slice).data(),
                 rho.data(),
@@ -992,6 +1018,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
+
+        // Integrate conversion tendencies into qr/Nr
+        // slices before implicit step.
+        integrate_processes(
+                (*qr_slice).data(),
+                (*nr_slice).data(),
+                (*qr_tend_conversion).data(),
+                (*nr_tend_conversion).data(),
+                dt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
 
         // Sedimentation
         implicit_time(
@@ -1018,9 +1056,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells);
 
-        // Store surface precipitation rates.
-        rr_bot = (*qr_flux_new);
-
         // Calculate tendencies `qr` and `nr` back from implicit solver,
         // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
         calc_tendencies_qr_nr(
@@ -1032,6 +1067,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 fields.sp.at("nr")->fld.data(),
                 (*qr_slice).data(),
                 (*nr_slice).data(),
+                (*qr_tend_conversion).data(),
+                (*nr_tend_conversion).data(),
                 rho.data(),
                 exner.data(),
                 dt,
@@ -1040,6 +1077,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells,
                 k);
     }
+
+    // Store surface precipitation rates.
+    rr_bot = (*qr_flux_new);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
@@ -1050,21 +1090,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     stats.calc_tend(*fields.st.at("qg" ), tend_name);
 
     // Convert all units from `kg m-3 to `kg kg-1`.
-    to_kgm3 = false;
-    convert_units(
-        fields.ap.at("qt")->fld.data(),
-        fields.ap.at("qr")->fld.data(),
-        fields.ap.at("qs")->fld.data(),
-        fields.ap.at("qg")->fld.data(),
-        fields.ap.at("qh")->fld.data(),
-        fields.ap.at("qi")->fld.data(),
-        ql->fld.data(),
-        rho.data(),
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells,
-        to_kgm3);
+    for (const std::string& name : fields_to_convert)
+        convert_units_short(fields.ap.at(name)->fld.data(), !to_kgm3);
 
     // Release temporary fields.
     fields.release_tmp(ql);
@@ -1082,6 +1109,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(qr_sum);
     fields.release_tmp_xy(qr_impl);
     fields.release_tmp_xy(qr_slice);
+    fields.release_tmp_xy(qr_tend_conversion);
 
     fields.release_tmp_xy(vr_sedn_now);
     fields.release_tmp_xy(vr_sedn_new);
@@ -1090,6 +1118,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(nr_sum);
     fields.release_tmp_xy(nr_impl);
     fields.release_tmp_xy(nr_slice);
+    fields.release_tmp_xy(nr_tend_conversion);
 }
 #endif
 
