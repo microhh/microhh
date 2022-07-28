@@ -113,7 +113,7 @@ for k in range(k_tr,kmax):
 cpres = grav*pow(p0,rdcp)*dz/cp
 qfg = 0
 p_up = p_tr
-for k in range(k_tr-1, -1, -1):
+for k in range(k_tr-1, -2, -1):
     # First guess no humidity
     pfg   = pow(pow(p_up, rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
     Ttemp = thl[k] * pow(pfg/p0, rdcp)
@@ -122,16 +122,11 @@ for k in range(k_tr-1, -1, -1):
     # Second guess with humidity
     p_up  = pow(pow(p_up,rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
     Ttemp = thl[k] * pow(p_up/p0, rdcp)
-    qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))
-    print(z[k], p_up/1.e5, Ttemp, qt[k])
+    if ( k > -1):
+        qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))	
+        #print(z[k], p_up/1.e5, Ttemp, qt[k])
 
-    # First guess for pressure ( no humidity)
-    # ploc = p_tr * numpy.exp( const_top * (z[k] - z_tr))
-    # qloc = rh[k] * qsat_liq(ploc,T_tr)
-    # Secong guess (with humidity)
-    # ploc  = p_tr * numpy.exp( const_top * (z[k] - z_tr)/ ( 1. + ep*qloc) )
-    # qt[k] =
-
+print("Please set surface pressure in ini file to:", p_up)    
 
 # write the data to a file
 nc_file = nc.Dataset("weisman_klemp_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
