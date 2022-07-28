@@ -55,7 +55,7 @@ for k in range(kminbub,kmaxbub):
 
 thl.tofile("thl.0000000")
 
-
+"""
 xh = np.arange(0.0, xsize, dx)
 yh = np.arange(0.0, ysize, dy)
 
@@ -66,3 +66,4 @@ ax.set_title('Filled Contours Plot')
 ax.set_xlabel('x (m)')
 ax.set_ylabel('y (m)')
 plt.show()
+"""
