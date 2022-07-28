@@ -56,7 +56,7 @@ def qv_rh(p, T, rh):
 
 
 # Get number of vertical levels and size from .ini file
-with open('weissman_klemp.ini') as f:
+with open('weisman_klemp.ini') as f:
     for line in f:
         if(line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
@@ -129,7 +129,7 @@ for k in range(k_tr-1, -2, -1):
 print("Please set surface pressure in ini file to:", p_up)    
 
 # write the data to a file
-nc_file = nc.Dataset("weissman_klemp_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
+nc_file = nc.Dataset("weisman_klemp_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
 
