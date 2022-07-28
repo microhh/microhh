@@ -1244,6 +1244,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
                 &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
                 &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
                 ql->fld.data(),
+                rho.data(),
                 rain, rain_coeffs,
                 rho_corr,
                 gd.istart, gd.iend,
