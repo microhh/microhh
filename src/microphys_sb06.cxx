@@ -456,7 +456,8 @@ namespace
                             mue = (rain.nu + TF(1.0)) / rain.b_geo - TF(1.0);
                         else
                             mue = rain_mue_dm_relation(coeffs, d_m);
-                    } else
+                    }
+                    else
                         mue = rain_mue_dm_relation(coeffs, d_m);
 
                     const TF d_p =
@@ -926,7 +927,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
         const TF rho_corr = std::exp(-rho_vel<TF>*hlp);
 
-        bool ql_present = true;
+        // CvH: I disable this switch as it leads to discontinuous N and qr profiles
+        // Check later with ICON developers.
+        // bool ql_present = true;
+        bool ql_present = false;
         sedi_vel_rain(
                 (*vr_sedn_now).data(),
                 (*vr_sedq_now).data(),
