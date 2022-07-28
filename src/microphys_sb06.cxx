@@ -1232,8 +1232,8 @@ void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
     column.calc_time_series("rr", rr_bot.data(), no_offset);
-    column.calc_time_series("rs", rs_bot.data(), no_offset);
-    column.calc_time_series("rg", rg_bot.data(), no_offset);
+    // column.calc_time_series("rs", rs_bot.data(), no_offset);
+    // column.calc_time_series("rg", rg_bot.data(), no_offset);
 }
 #endif
 
@@ -1296,8 +1296,8 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
     field = rr_bot;
 
     // Add snow and graupel surface precipitation
-    std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
-    std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
+    // std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
+    // std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
 
 
