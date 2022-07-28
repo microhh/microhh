@@ -108,6 +108,7 @@ namespace
             TF* const restrict lambda_r,
             const TF* const restrict qr,
             const TF* const restrict nr,
+            const TF* const restrict rho,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride, const int kstride,
@@ -120,7 +121,7 @@ namespace
                 const int ijk = i + j*jstride + k*kstride;
                 const int ij  = i + j*jstride;
 
-                if (qr[ij] > qr_min<TF>)
+                if (qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho...
                 {
                     rain_mass[ij]     = calc_rain_mass(qr[ij], nr[ij]);
                     rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
@@ -287,7 +288,7 @@ namespace
                 const int ij  = i + j*jstride;
                 const int ijk = i + j*jstride + k*kstride;
 
-                if (qr[ij] > qr_min<TF>)
+                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                 {
                     // Supersaturation over water (-, KP97 Eq 4-37).
                     const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
@@ -348,7 +349,7 @@ namespace
                     const int ij  = i + j*jstride;
                     const int ijk = i + j*jstride + k*kstride;
 
-                    if (qr[ij] > qr_min<TF>)
+                    if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                     {
                         // Short-cuts...
                         const TF dr = rain_diameter[ij];
@@ -423,6 +424,7 @@ namespace
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict ql,
+            const TF* const restrict rho,
             Particle<TF>& rain,
             Particle_rain_coeffs<TF>& coeffs,
             const TF rho_corr,
@@ -442,7 +444,7 @@ namespace
                 const int ijk = i + j * jstride + k * kstride;
 
                 //if (qr[ij] > q_crit<TF>)
-                if (qr[ij] > qr_min<TF>)
+                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                 {
                     //vn[ij] = TF(0);
                     //vq[ij] = TF(0);
@@ -865,7 +867,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
-    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+
+    // TMP/HACK BvS
+    //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+    const std::vector<TF>& rho = fields.rhoref;
 
     // 2D slices for quantities shared between different kernels.
     auto rain_mass = fields.get_tmp_xy();
@@ -969,6 +974,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*qr_slice).data(),
                 (*qr_slice).data(),
                 ql->fld.data(),
+                rho.data(),
                 rain, rain_coeffs,
                 rho_corr,
                 gd.istart, gd.iend,
@@ -1039,6 +1045,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*lambda_r).data(),
                 (*qr_slice).data(),
                 (*nr_slice).data(),
+                rho.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
