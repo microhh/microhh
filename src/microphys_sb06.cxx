@@ -499,6 +499,29 @@ namespace
 
 
     template<typename TF>
+    void copy_slice_and_integrate(
+            TF* const restrict fld_2d,
+            const TF* const restrict fld_3d,
+            const TF* const restrict fld_3d_tend,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+                    const int ijk = i + j * jstride + k * kstride;
+
+                    fld_2d[ij] = fld_3d[ijk] + dt*fld_3d_tend[ijk];
+                }
+    }
+
+
+    template<typename TF>
     void implicit_core(
             TF* const restrict q_val,
             TF* const restrict q_sum,
@@ -909,16 +932,20 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Copy 3D fields to 2D slices.
-        copy_slice(
+        copy_slice_and_integrate(
                 (*qr_slice).data(),
                 fields.sp.at("qr")->fld.data(),
+                fields.st.at("qr")->fld.data(),
+                TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
 
-        copy_slice(
+        copy_slice_and_integrate(
                 (*nr_slice).data(),
                 fields.sp.at("nr")->fld.data(),
+                fields.st.at("nr")->fld.data(),
+                TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
