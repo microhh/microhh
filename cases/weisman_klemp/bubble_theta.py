@@ -24,16 +24,16 @@ dy = ysize / jmax
 dz = zsize / kmax
 
 # Bubble position (m)
-xbub = 2000.
+xbub = 20000.
 ybub = 0.5*ysize
-zbub = 2000.
+zbub = 1400.
 
 # Bubble size (m)
-lxybub = 1000.
-lzbub  = 500.
+lxybub = 10000.
+lzbub  = 1400.
 
 # Bubble Amplitude (K)
-bubamp = 4
+bubamp = 2
 
 iminbub = int(round((xbub - lxybub)/dx))
 imaxbub = int(round((xbub + lxybub)/dx)) + 1
@@ -51,7 +51,7 @@ for k in range(kminbub,kmaxbub):
         for i in range(iminbub,imaxbub):
             dist = math.sqrt( ((xbub - i*dx)/lxybub)**2 + ((ybub - j*dy)/lxybub)**2 + ((zbub - k*dz)/lzbub)**2)
             if (dist < 1.0):
-                thl[k, j, i] = thl[k, j, i] + bubamp * np.cos(dist)**2
+                thl[k, j, i] = thl[k, j, i] + bubamp * np.cos(dist*np.pi/2)**2
 
 thl.tofile("thl.0000000")
 
