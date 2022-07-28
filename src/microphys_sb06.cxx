@@ -194,7 +194,7 @@ namespace
                 const int ij = i + j*jstride;
                 const int ijk = i + j*jstride + k*kstride;
 
-                if (ql[ijk] > ql_min<TF>)
+                if (ql[ijk] > ql_min<TF> * rho[k])  // TODO: remove *rho[k]...
                 {
                     // Mean mass of cloud drops (kg):
                     const TF xc = ql[ijk] / Nc0;
@@ -239,7 +239,7 @@ namespace
                 const int ij = i + j*jstride;
                 const int ijk = i + j*jstride + k*kstride;
 
-                if (ql[ijk] > ql_min<TF> && qr[ij] > qr_min<TF>)
+                if (ql[ijk] > ql_min<TF> * rho[k] && qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho[k]...
                 {
                     // Dimensionless internal time scale (SB06, Eq 5):
                     const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ij]);
@@ -444,8 +444,8 @@ namespace
                 //if (qr[ij] > q_crit<TF>)
                 if (qr[ij] > qr_min<TF>)
                 {
-                    //vn[ij] = TF(1);
-                    //vq[ij] = TF(1);
+                    //vn[ij] = TF(0);
+                    //vq[ij] = TF(0);
 
                     const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF d_m = particle_diameter(rain, x);
