@@ -444,6 +444,9 @@ namespace
                 //if (qr[ij] > q_crit<TF>)
                 if (qr[ij] > qr_min<TF>)
                 {
+                    //vn[ij] = TF(1);
+                    //vq[ij] = TF(1);
+
                     const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF d_m = particle_diameter(rain, x);
 
@@ -592,17 +595,41 @@ namespace
 
 
     template<typename TF>
-    void calc_tendencies_qr_nr(
-            TF* const restrict qrt,
-            TF* const restrict nrt,
+    void calc_thermo_tendencies(
             TF* const restrict thlt,
             TF* const restrict qtt,
+            const TF* const restrict qr_tend_conversion,
+            const TF* const restrict nr_tend_conversion,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        const TF rho_i = TF(1) / rho[k];
+
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+                    const int ijk= i + j * jstride + k*kstride;
+
+                    // Tendencies `qt` and `thl` only include tendencies from microphysics conversions.
+                    qtt[ijk]  -= rho_i * qr_tend_conversion[ij];
+                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
+                }
+    }
+
+    template<typename TF>
+    void calc_tendencies(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
             const TF* const restrict qr_old,
             const TF* const restrict nr_old,
             const TF* const restrict qr_new,
             const TF* const restrict nr_new,
-            const TF* const restrict qr_tend_conversion,
-            const TF* const restrict nr_tend_conversion,
             const TF* const restrict rho,
             const TF* const restrict exner,
             const double dt,
@@ -621,17 +648,13 @@ namespace
                     const int ij = i + j * jstride;
                     const int ijk= i + j * jstride + k*kstride;
 
-                    // Evaluate tendencies (in kg kg-1 s-1)
-                    // This includes the tendencies from conversions and sedimentation.
-                    const TF qrt_eval = rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
-                    const TF nrt_eval = (nr_new[ij] - nr_old[ijk]) * dt_i;
+                    // Evaluate tendencies. This includes the
+                    // tendencies from both conversions and sedimentation.
 
-                    qrt[ijk]  += qrt_eval;
-                    nrt[ijk]  += nrt_eval;
-
-                    // Tendencies `qt` and `thl` only include tendencies from conversions.
-                    qtt[ijk]  -= qr_tend_conversion[ij];
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
+                    // `qr`: internally in `kg m-3`, externally in `kg kg-1:
+                    qrt[ijk] += rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
+                    // `nr`': internally in `m-3`, externally in ``kg-1`:
+                    nrt[ijk] += rho_i * (nr_new[ij] - nr_old[ijk]) * dt_i;
                 }
     }
 }
@@ -1056,19 +1079,28 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells);
 
-        // Calculate tendencies `qr` and `nr` back from implicit solver,
-        // and set `qrt`, `nrt`, `qtt` and `thlt` tendencies.
-        calc_tendencies_qr_nr(
-                fields.st.at("qr")->fld.data(),
-                fields.st.at("nr")->fld.data(),
+        // Calculate thermodynamic tendencies `thl` and `qt`,
+        // from microphysics tendencies excluding sedimentation.
+        calc_thermo_tendencies(
                 fields.st.at("thl")->fld.data(),
                 fields.st.at("qt")->fld.data(),
+                (*qr_tend_conversion).data(),
+                (*nr_tend_conversion).data(),
+                rho.data(),
+                exner.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells,
+                k);
+
+        // Evaluate total tendencies `qr` and `nr` back from implicit solver.
+        calc_tendencies(
+                fields.st.at("qr")->fld.data(),
+                fields.st.at("nr")->fld.data(),
                 fields.sp.at("qr")->fld.data(),
                 fields.sp.at("nr")->fld.data(),
                 (*qr_slice).data(),
                 (*nr_slice).data(),
-                (*qr_tend_conversion).data(),
-                (*nr_tend_conversion).data(),
                 rho.data(),
                 exner.data(),
                 dt,
