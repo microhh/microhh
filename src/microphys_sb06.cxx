@@ -674,30 +674,30 @@ Microphys_sb06<TF>::Microphys_sb06(
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
-    fields.init_prognostic_field("qi", "Ice specific humidity", "kg kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("qi", "Ice specific humidity", "kg kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("qr", "Rain specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
 
-    fields.init_prognostic_field("ni", "Number density ice", "kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("ni", "Number density ice", "kg-1", group_name, gd.sloc);
     fields.init_prognostic_field("nr", "Number density rain", "kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("ns", "Number density snow", "kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("ng", "Number density graupel", "kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("nh", "Number density hail", "kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("ns", "Number density snow", "kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("ng", "Number density graupel", "kg-1", group_name, gd.sloc);
+    // fields.init_prognostic_field("nh", "Number density hail", "kg-1", group_name, gd.sloc);
 
     // Load the viscosity for both fields.
-    fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
+    // fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
-    fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
-    fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
-    fields.sp.at("qh")->visc = inputin.get_item<TF>("fields", "svisc", "qh");
+    // fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
+    // fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
+    // fields.sp.at("qh")->visc = inputin.get_item<TF>("fields", "svisc", "qh");
 
-    fields.sp.at("ni")->visc = inputin.get_item<TF>("fields", "svisc", "ni");
+    // fields.sp.at("ni")->visc = inputin.get_item<TF>("fields", "svisc", "ni");
     fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
-    fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
-    fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
-    fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
+    // fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
+    // fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
+    // fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
 
     // Set the rain and rain_coeff types to the default provided values
     cloud = cloud_nue1mue1;
@@ -773,9 +773,9 @@ void Microphys_sb06<TF>::init()
     auto& gd = grid.get_grid_data();
 
     rr_bot.resize(gd.ijcells);
-    rs_bot.resize(gd.ijcells);
-    rg_bot.resize(gd.ijcells);
-    rh_bot.resize(gd.ijcells);
+    // rs_bot.resize(gd.ijcells);
+    // rg_bot.resize(gd.ijcells);
+    // rh_bot.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -790,16 +790,16 @@ void Microphys_sb06<TF>::create(
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
-        stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
-        stats.add_time_series("rh", "Mean surface hail rate", "kg m-2 s-1", group_name);
+        // stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
+        // stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
+        // stats.add_time_series("rh", "Mean surface hail rate", "kg m-2 s-1", group_name);
 
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qh") , "z", tend_name, tend_longname);
+        // stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
+        // stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+        // stats.add_tendency(*fields.st.at("qh") , "z", tend_name, tend_longname);
 
         // Profiles
         stats.add_prof("vqr", "Fall velocity rain mass density", "m s-1", "z" , group_name);
@@ -809,9 +809,9 @@ void Microphys_sb06<TF>::create(
     if (column.get_switch())
     {
         column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
-        column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
-        column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
-        column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
+        // column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
+        // column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
+        // column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -833,9 +833,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     bool is_stat = false;
 
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
-
+    auto qi = fields.get_tmp();
     auto T = fields.get_tmp();
+
+    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+    thermo.get_thermo_field(*qi, "qi", cyclic, is_stat);
     thermo.get_thermo_field(*T, "T", cyclic, is_stat);
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
@@ -893,11 +895,14 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     };
 
     const bool to_kgm3 = true;
+    // const std::vector<std::string> fields_to_convert =
+    //     {"qt", "qi", "qr", "qs", "qg", "qh", "ni", "nr", "ns", "ng", "nh"};
     const std::vector<std::string> fields_to_convert =
-        {"qt", "qi", "qr", "qs", "qg", "qh", "ni", "nr", "ns", "ng", "nh"};
+        {"qt", "qr", "nr"};
 
     // Convert all units from `kg kg-1` to `kg m-3.
     convert_units_short(ql->fld.data(), to_kgm3);
+    convert_units_short(qi->fld.data(), to_kgm3);
     for (const std::string& name : fields_to_convert)
         convert_units_short(fields.ap.at(name)->fld.data(), to_kgm3);
 
@@ -1018,7 +1023,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*qr_slice).data(),
                 (*nr_slice).data(),
                 ql->fld.data(),
-                fields.sp.at("qi")->fld.data(),
+                // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
+                // fields.sp.at("qi")->fld.data(),
+                qi->fld.data(),
                 fields.sp.at("qt")->fld.data(),
                 T->fld.data(),
                 rho.data(),
@@ -1117,20 +1124,28 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     // Store surface precipitation rates.
     rr_bot = (*qr_flux_new);
 
-    // Calculate tendencies.
-    stats.calc_tend(*fields.st.at("thl"), tend_name);
-    stats.calc_tend(*fields.st.at("qt" ), tend_name);
-    stats.calc_tend(*fields.st.at("qi" ), tend_name);
-    stats.calc_tend(*fields.st.at("qr" ), tend_name);
-    stats.calc_tend(*fields.st.at("qs" ), tend_name);
-    stats.calc_tend(*fields.st.at("qg" ), tend_name);
-
     // Convert all units from `kg m-3 to `kg kg-1`.
     for (const std::string& name : fields_to_convert)
         convert_units_short(fields.ap.at(name)->fld.data(), !to_kgm3);
 
+    // Calculate tendencies.
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
+    stats.calc_tend(*fields.st.at("qt" ), tend_name);
+    // stats.calc_tend(*fields.st.at("qi" ), tend_name);
+    stats.calc_tend(*fields.st.at("qr" ), tend_name);
+    // stats.calc_tend(*fields.st.at("qs" ), tend_name);
+    // stats.calc_tend(*fields.st.at("qg" ), tend_name);
+    // stats.calc_tend(*fields.st.at("qh" ), tend_name);
+
+    // stats.calc_tend(*fields.st.at("ni" ), tend_name);
+    stats.calc_tend(*fields.st.at("nr" ), tend_name);
+    // stats.calc_tend(*fields.st.at("ns" ), tend_name);
+    // stats.calc_tend(*fields.st.at("ng" ), tend_name);
+    // stats.calc_tend(*fields.st.at("nh" ), tend_name);
+
     // Release temporary fields.
     fields.release_tmp(ql);
+    fields.release_tmp(qi);
     fields.release_tmp(T);
 
     fields.release_tmp_xy(rain_mass);
