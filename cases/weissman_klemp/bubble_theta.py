@@ -4,7 +4,7 @@ import math
 import matplotlib.pyplot as plt
 
 # Get grid information from .ini file
-with open('weissman_klemp.ini') as f:
+with open('weisman_klemp.ini') as f:
     for line in f:
         if(line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
