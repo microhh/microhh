@@ -1225,8 +1225,8 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     // Time series
     stats.calc_stats_2d("rr", rr_bot, no_offset);
-    stats.calc_stats_2d("rs", rs_bot, no_offset);
-    stats.calc_stats_2d("rg", rg_bot, no_offset);
+    // stats.calc_stats_2d("rs", rs_bot, no_offset);
+    // stats.calc_stats_2d("rg", rg_bot, no_offset);
 
     // Profiles
     auto vq = fields.get_tmp();
@@ -1287,10 +1287,10 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         {
             if (it == "rr_bot")
                 cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
-            if (it == "rs_bot")
-                cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
-            if (it == "rg_bot")
-                cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
+            // if (it == "rs_bot")
+            //     cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
+            // if (it == "rg_bot")
+            //     cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
         }
     }
 }
