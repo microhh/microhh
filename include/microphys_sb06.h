@@ -162,6 +162,10 @@ class Microphys_sb06 : public Microphys<TF>
         bool swmicrobudget;     // Output full microphysics budget terms
         double cflmax;          // Max CFL number in microphysics sedimentation
 
+        // NOTE: this switch is set to True in ICON, but produces discontinuities in Nr and qr profiles.
+        // Disable the feature for now, and discuss later with the ICON people.
+        bool use_ql_sedi_rain = false;
+
         std::vector<std::string> crosslist; // Cross-sections handled by this class
 
         const std::string tend_name = "micro";
