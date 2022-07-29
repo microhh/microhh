@@ -978,7 +978,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*vr_sedn_now).data(),
                 (*vr_sedq_now).data(),
                 (*qr_slice).data(),
-                (*qr_slice).data(),
+                (*nr_slice).data(),
                 ql->fld.data(),
                 rho.data(),
                 rain, rain_coeffs,
