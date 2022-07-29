@@ -56,7 +56,8 @@ namespace
     template<typename TF> constexpr TF mr_min   = mc_max<TF>;          // Min mean mass of precipitation drop
     template<typename TF> constexpr TF mr_max   = 3e-6;                // Max mean mass of precipitation drop // as in UCLA-LES
     template<typename TF> constexpr TF ql_min   = 1.e-6;               // Min cloud liquid water for which calculations are performed
-    template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
+    //template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
+    template<typename TF> constexpr TF qr_min   = 1.e-9;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
     template<typename TF> constexpr TF rho_vel  = 0.4;                 // Exponent for density correction (value from ICON)
     template<typename TF> constexpr TF q_crit   = 1.e-9;               // Min rain liquid water for which calculations are performed (value from ICON)
