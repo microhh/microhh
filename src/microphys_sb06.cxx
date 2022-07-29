@@ -505,6 +505,7 @@ namespace
             TF* const restrict fld_2d,
             const TF* const restrict fld_3d,
             const TF* const restrict fld_3d_tend,
+            const TF* const restrict rho,
             const TF dt,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -518,7 +519,8 @@ namespace
                     const int ij = i + j * jstride;
                     const int ijk = i + j * jstride + k * kstride;
 
-                    fld_2d[ij] = fld_3d[ijk] + dt*fld_3d_tend[ijk];
+                    // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
+                    fld_2d[ij] = fld_3d[ijk] + dt*rho[k]*fld_3d_tend[ijk];
                 }
     }
 
@@ -639,8 +641,8 @@ namespace
                 #pragma ivdep
                 for (int i = istart; i < iend; i++)
                 {
-                    const int ij = i + j * jstride;
-                    const int ijk= i + j * jstride + k*kstride;
+                    const int ij  = i + j * jstride;
+                    const int ijk = i + j * jstride + k*kstride;
 
                     // Tendencies `qt` and `thl` only include tendencies from microphysics conversions.
                     qtt[ijk]  -= rho_i * qr_tend_conversion[ij];
@@ -678,9 +680,11 @@ namespace
                     // tendencies from both conversions and sedimentation.
 
                     // `qr`: internally in `kg m-3`, externally in `kg kg-1:
-                    qrt[ijk] += rho_i * (qr_new[ij] - qr_old[ijk]) * dt_i;
+                    // old versions are integrated first with only the dynamics tendencies to avoid double counting.
+                    qrt[ijk] += rho_i * (qr_new[ij] - (qr_old[ijk] + dt*rho[k]*qrt[ijk])) * dt_i;
                     // `nr`': internally in `m-3`, externally in ``kg-1`:
-                    nrt[ijk] += rho_i * (nr_new[ij] - nr_old[ijk]) * dt_i;
+                    // old versions are integrated first with only the dynamics tendencies to avoid double counting.
+                    nrt[ijk] += rho_i * (nr_new[ij] - (nr_old[ijk] + dt*rho[k]*nrt[ijk])) * dt_i;
                 }
     }
 }
@@ -941,6 +945,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*qr_slice).data(),
                 fields.sp.at("qr")->fld.data(),
                 fields.st.at("qr")->fld.data(),
+                rho.data(),
                 TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -950,6 +955,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*nr_slice).data(),
                 fields.sp.at("nr")->fld.data(),
                 fields.st.at("nr")->fld.data(),
+                rho.data(),
                 TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
