@@ -148,7 +148,7 @@ namespace mp3d
                     {
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
                         const TF phi_ac  = fm::pow4(tau / (tau + TF(5e-5))); // SB06, Eq 8
-                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * sqrt(rho_0<TF> / rho[k]); // SB06, Eq 7
+                        const TF ac_tend = k_cr * (ql[ijk]*rho[k]) *  (qr[ijk]*rho[k]) * phi_ac * sqrt(rho_0<TF> / rho[k]) / rho[k]; // SB06, Eq 7
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  -= ac_tend;
