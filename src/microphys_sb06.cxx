@@ -291,8 +291,11 @@ namespace
                 if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                 {
                     // Supersaturation over water (-, KP97 Eq 4-37).
-                    const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
-                    const TF qs = tmf::qsat_liq(p[k], T[ijk]);
+                    // TMP BvS, for comparison with old scheme:
+                    //const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
+                    const TF qv = qt[ijk] - ql[ijk];
+
+                    const TF qs = tmf::qsat_liq(p[k], T[ijk]) * rho[k];
                     const TF S  = qv / qs - TF(1.);
 
                     if (S < TF(0))
@@ -446,9 +449,6 @@ namespace
                 //if (qr[ij] > q_crit<TF>)
                 if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                 {
-                    //vn[ij] = TF(0);
-                    //vq[ij] = TF(0);
-
                     const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF d_m = particle_diameter(rain, x);
 

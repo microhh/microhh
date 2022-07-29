@@ -421,8 +421,8 @@ namespace mp2d
                 }
                 else
                 {
-                    w_qr[ik] = 0.;
-                    w_nr[ik] = 0.;
+                    w_qr[ik] = TF(0);
+                    w_nr[ik] = TF(0);
                 }
             }
         }
