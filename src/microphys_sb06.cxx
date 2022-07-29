@@ -343,43 +343,43 @@ namespace
         const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
 
         for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
                 {
-                    const int ij  = i + j*jstride;
-                    const int ijk = i + j*jstride + k*kstride;
+                    // Short-cuts...
+                    const TF dr = rain_diameter[ij];
 
-                    if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
+                    // Selfcollection tendency:
+                    // NOTE: this is quite different in ICON, UCLA-LES had 4 different versions, ...
+                    const TF sc_tend = -k_rr * nr[ij] * qr[ij] /
+                        pow(TF(1.) + kappa_rr /
+                        lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
+
+                    // Update 2D slice:
+                    nrt[ij] += sc_tend;
+
+                    // Breakup by collisions:
+                    const TF dDr = dr - D_eq;
+                    if (dr > TF(0.35e-3))
                     {
-                        // Short-cuts...
-                        const TF dr = rain_diameter[ij];
+                        TF phi_br;
+                        if (dr <= D_eq)
+                            phi_br = k_br1 * dDr;
+                        else
+                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
 
-                        // Selfcollection tendency:
-                        // NOTE: this is quite different in ICON, UCLA-LES had 4 different versions, ...
-                        const TF sc_tend = -k_rr * nr[ij] * qr[ij] /
-                            pow(TF(1.) + kappa_rr /
-                            lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
+                        const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
 
                         // Update 2D slice:
-                        nrt[ij] += sc_tend;
-
-                        // Breakup by collisions:
-                        const TF dDr = dr - D_eq;
-                        if (dr > TF(0.35e-3))
-                        {
-                            TF phi_br;
-                            if (dr <= D_eq)
-                                phi_br = k_br1 * dDr;
-                            else
-                                phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
-
-                            const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
-
-                            // Update 2D slice:
-                            nrt[ij] += br_tend;
-                        }
+                        nrt[ij] += br_tend;
                     }
                 }
+            }
     }
 
     template<typename TF>
@@ -489,14 +489,14 @@ namespace
             const int k)
     {
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
-                    const int ijk = i + j * jstride + k * kstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
 
-                    fld_2d[ij] = fld_3d[ijk];
-                }
+                fld_2d[ij] = fld_3d[ijk];
+            }
     }
 
 
@@ -513,15 +513,15 @@ namespace
             const int k)
     {
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
-                    const int ijk = i + j * jstride + k * kstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
 
-                    // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
-                    fld_2d[ij] = fld_3d[ijk] + dt*rho[k]*fld_3d_tend[ijk];
-                }
+                // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
+                fld_2d[ij] = fld_3d[ijk] + dt*rho[k]*fld_3d_tend[ijk];
+            }
     }
 
 
@@ -582,15 +582,15 @@ namespace
             const int jstride)
     {
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
 
-                    // Time integration
-                    q_val[ij] += q_tend[ij] * TF(dt);
-                    n_val[ij] += n_tend[ij] * TF(dt);
-                }
+                // Time integration
+                q_val[ij] += q_tend[ij] * TF(dt);
+                n_val[ij] += n_tend[ij] * TF(dt);
+            }
     }
 
     template<typename TF>
@@ -607,18 +607,18 @@ namespace
             const int jstride)
     {
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
 
-                    // Time integration
-                    q_val[ij] = std::max(TF(0), q_impl[ij] * (q_sum[ij] + q_val[ij]));
+                // Time integration
+                q_val[ij] = std::max(TF(0), q_impl[ij] * (q_sum[ij] + q_val[ij]));
 
-                    // Prepare for next level
-                    flux_new[ij] = q_val[ij] * vsed_new[ij];
-                    vsed_new[ij] = vsed_now[ij];
-                }
+                // Prepare for next level
+                flux_new[ij] = q_val[ij] * vsed_new[ij];
+                vsed_new[ij] = vsed_now[ij];
+            }
     }
 
 
@@ -638,16 +638,16 @@ namespace
         const TF rho_i = TF(1) / rho[k];
 
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij  = i + j * jstride;
-                    const int ijk = i + j * jstride + k*kstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij  = i + j * jstride;
+                const int ijk = i + j * jstride + k*kstride;
 
-                    // Tendencies `qt` and `thl` only include tendencies from microphysics conversions.
-                    qtt[ijk]  -= rho_i * qr_tend_conversion[ij];
-                    thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
-                }
+                // Tendencies `qt` and `thl` only include tendencies from microphysics conversions.
+                qtt[ijk]  -= rho_i * qr_tend_conversion[ij];
+                thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
+            }
     }
 
     template<typename TF>
@@ -670,22 +670,22 @@ namespace
         const TF rho_i = TF(1) / rho[k];
 
         for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
-                    const int ijk= i + j * jstride + k*kstride;
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk= i + j * jstride + k*kstride;
 
-                    // Evaluate tendencies. This includes the
-                    // tendencies from both conversions and sedimentation.
+                // Evaluate tendencies. This includes the
+                // tendencies from both conversions and sedimentation.
 
-                    // `qr`: internally in `kg m-3`, externally in `kg kg-1:
-                    // old versions are integrated first with only the dynamics tendencies to avoid double counting.
-                    qrt[ijk] += rho_i * (qr_new[ij] - (qr_old[ijk] + dt*rho[k]*qrt[ijk])) * dt_i;
-                    // `nr`': internally in `m-3`, externally in ``kg-1`:
-                    // old versions are integrated first with only the dynamics tendencies to avoid double counting.
-                    nrt[ijk] += rho_i * (nr_new[ij] - (nr_old[ijk] + dt*rho[k]*nrt[ijk])) * dt_i;
-                }
+                // `qr`: internally in `kg m-3`, externally in `kg kg-1:
+                // old versions are integrated first with only the dynamics tendencies to avoid double counting.
+                qrt[ijk] += rho_i * (qr_new[ij] - (qr_old[ijk] + dt*rho[k]*qrt[ijk])) * dt_i;
+                // `nr`': internally in `m-3`, externally in ``kg-1`:
+                // old versions are integrated first with only the dynamics tendencies to avoid double counting.
+                nrt[ijk] += rho_i * (nr_new[ij] - (nr_old[ijk] + dt*rho[k]*nrt[ijk])) * dt_i;
+            }
     }
 }
 
