@@ -123,10 +123,10 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 template<typename TF>
 struct Hydro_specie
 {
-    std::string name;
-    std::string long_name;
-    std::string units;
-    std::string bla;
+    std::string name;       // Species name (e.g. `rain`)
+    std::string long_name;  // Long name (e.g. `rain specific humidity`)
+    std::string units;      // Units (e.g. `kg kg-1`)
+    bool is_mass;           // Switch between mass and density.
 
     std::vector<TF> precip_rate;
 

@@ -733,33 +733,37 @@ Microphys_sb06<TF>::Microphys_sb06(
             const std::string& symbol,
             const std::string& short_name,
             const std::string& long_name,
-            const std::string& units)
+            const std::string& units,
+            const bool is_mass)
     {
-        Hydro_specie<TF> tmp = {short_name, long_name, units};
+        Hydro_specie<TF> tmp = {short_name, long_name, units, is_mass};
         hydro_species.emplace(symbol, tmp);
     };
 
+    // Switch between mass and density for precipitation types.
+    const bool is_mass = true;
+
     if (sw_warm)
     {
-        add_type("qr", "rain", "rain specific humidity", "kg kg-1");
-        add_type("nr", "rain", "number density rain", "kg-1");
+        add_type("qr", "rain", "rain specific humidity", "kg kg-1", is_mass);
+        add_type("nr", "rain", "number density rain", "kg-1", !is_mass);
     }
     else
     {
-        add_type("qi", "ice", "ice specific humidity", "kg kg-1");
-        add_type("ni", "ice", "number density ice", "kg-1");
+        add_type("qi", "ice", "ice specific humidity", "kg kg-1", is_mass);
+        add_type("ni", "ice", "number density ice", "kg-1", !is_mass);
 
-        add_type("qr", "rain", "rain specific humidity", "kg kg-1");
-        add_type("nr", "rain", "number density rain", "kg-1");
+        add_type("qr", "rain", "rain specific humidity", "kg kg-1", is_mass);
+        add_type("nr", "rain", "number density rain", "kg-1", !is_mass);
 
-        add_type("qs", "snow", "snow specific humidity", "kg kg-1");
-        add_type("ns", "snow", "number density snow", "kg-1");
+        add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
+        add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
 
-        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1");
-        add_type("ng", "graupel", "number density graupel", "kg-1");
+        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
+        add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
 
-        add_type("qh", "hail", "hail specific humidity", "kg kg-1");
-        add_type("nh", "hail", "number density hail", "kg-1");
+        add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
+        add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
     }
 
     const std::string group_name = "thermo";
@@ -844,7 +848,8 @@ void Microphys_sb06<TF>::init()
     auto& gd = grid.get_grid_data();
 
     for (auto& it : hydro_species)
-        it.second.precip_rate.resize(gd.ijcells);
+        if (it.second.is_mass)
+            it.second.precip_rate.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -859,9 +864,9 @@ void Microphys_sb06<TF>::create(
     {
         for (auto& it : hydro_species)
         {
-            // Aargh, here the fun with automation/names starts...
             // Time series
-            stats.add_time_series("r" + it.first.substr(1,1), "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
+            if (it.second.is_mass)
+                stats.add_time_series("r" + it.first.substr(1,1), "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
 
             // Profiles
             stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
@@ -878,7 +883,8 @@ void Microphys_sb06<TF>::create(
     if (column.get_switch())
     {
         for (auto& it : hydro_species)
-            column.add_time_series("r" + it.first.substr(1,1), "Surface " + it.second.name + " rate", "kg m-2 s-1");
+            if (it.second.is_mass)
+                column.add_time_series("r" + it.first.substr(1,1), "Surface " + it.second.name + " rate", "kg m-2 s-1");
     }
 
     // Create cross-sections
@@ -1159,8 +1165,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     for (auto& it : hydro_species)
     {
         // Store surface precipitation rates.
-        for (int n=0; n<gd.ijcells; ++n)
-            it.second.precip_rate[n] = it.second.flux_new[n];
+        if (it.second.is_mass)
+            for (int n=0; n<gd.ijcells; ++n)
+                it.second.precip_rate[n] = it.second.flux_new[n];
 
         // Convert all units back from `kg m-3` to `kg kg-1` (mass) and `m-3` to `kg-1` (density)
         convert_units_short(fields.ap.at(it.first)->fld.data(), !to_kgm3);
@@ -1200,7 +1207,8 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     // Time series
     for (auto& it : hydro_species)
-        stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
+        if (it.second.is_mass)
+            stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
 
     // Profiles
     auto vq = fields.get_tmp();
@@ -1244,7 +1252,8 @@ void Microphys_sb06<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
 
     for (auto& it : hydro_species)
-        column.calc_time_series("r" + it.first.substr(1,1), it.second.precip_rate.data(), no_offset);
+        if (it.second.is_mass)
+            column.calc_time_series("r" + it.first.substr(1,1), it.second.precip_rate.data(), no_offset);
 }
 #endif
 
@@ -1308,8 +1317,11 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
 
     for (auto& it : hydro_species)
     {
-        for (int n=0; n<gd.ijcells; ++n)
-            field[n] += it.second.precip_rate[n];
+        if (it.second.is_mass)
+        {
+            for (int n=0; n<gd.ijcells; ++n)
+                field[n] += it.second.precip_rate[n];
+        }
     }
 }
 
