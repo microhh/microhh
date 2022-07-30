@@ -736,8 +736,8 @@ Microphys_sb06<TF>::Microphys_sb06(
             const std::string& units,
             const bool is_mass)
     {
-        Hydro_specie<TF> tmp = {short_name, long_name, units, is_mass};
-        hydro_species.emplace(symbol, tmp);
+        Hydro_type<TF> tmp = {short_name, long_name, units, is_mass};
+        hydro_types.emplace(symbol, tmp);
     };
 
     // Switch between mass and density for precipitation types.
@@ -767,7 +767,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     }
 
     const std::string group_name = "thermo";
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
     {
         fields.init_prognostic_field(it.first, it.second.long_name, it.second.units, group_name, gd.sloc);
         fields.sp.at(it.first)->visc = inputin.get_item<TF>("fields", "svisc", it.first);
@@ -847,7 +847,7 @@ void Microphys_sb06<TF>::init()
 {
     auto& gd = grid.get_grid_data();
 
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
         if (it.second.is_mass)
             it.second.precip_rate.resize(gd.ijcells);
 }
@@ -862,7 +862,7 @@ void Microphys_sb06<TF>::create(
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        for (auto& it : hydro_species)
+        for (auto& it : hydro_types)
         {
             // Time series
             if (it.second.is_mass)
@@ -882,7 +882,7 @@ void Microphys_sb06<TF>::create(
 
     if (column.get_switch())
     {
-        for (auto& it : hydro_species)
+        for (auto& it : hydro_types)
             if (it.second.is_mass)
                 column.add_time_series("r" + it.first.substr(1,1), "Surface " + it.second.name + " rate", "kg m-2 s-1");
     }
@@ -890,7 +890,7 @@ void Microphys_sb06<TF>::create(
     // Create cross-sections
     // Variables that this class can calculate/provide:
     std::vector<std::string> allowed_crossvars;
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
     {
         allowed_crossvars.push_back("r" + it.first.substr(1,1) + "_bot");
     }
@@ -931,14 +931,14 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto lambda_r = fields.get_tmp_xy();
 
     // Setup 2D slices for implicit solver
-    const int n_slices = hydro_species.size() * 8;
+    const int n_slices = hydro_types.size() * 8;
     if (n_slices > gd.kcells)
         throw std::runtime_error("TODO.... :-)");
 
     auto tmp_slices = fields.get_tmp();
     std::fill(tmp_slices->fld.begin(), tmp_slices->fld.end(), TF(0));
     int n = 0;
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
     {
         it.second.v_sed_now = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
         it.second.v_sed_new = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
@@ -973,12 +973,12 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     convert_units_short(ql->fld.data(), to_kgm3);
     convert_units_short(qi->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
-        for (auto& it : hydro_species)
+        for (auto& it : hydro_types)
         {
             // Copy 3D fields to 2D slices, and do partial
             // integration of dynamics tendencies.
@@ -1003,10 +1003,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Sedimentation velocity rain species.
         sedi_vel_rain<TF>(
-                hydro_species.at("qr").v_sed_now,
-                hydro_species.at("nr").v_sed_now,
-                hydro_species.at("qr").slice,
-                hydro_species.at("nr").slice,
+                hydro_types.at("qr").v_sed_now,
+                hydro_types.at("nr").v_sed_now,
+                hydro_types.at("qr").slice,
+                hydro_types.at("nr").slice,
                 ql->fld.data(),
                 rho.data(),
                 rain, rain_coeffs,
@@ -1018,7 +1018,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
-        for (auto& it : hydro_species)
+        for (auto& it : hydro_types)
             implicit_core(
                     it.second.slice,
                     it.second.sum,
@@ -1035,10 +1035,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // Calculate microphysics processes.
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
         autoconversion(
-                hydro_species.at("qr").conversion_tend,
-                hydro_species.at("nr").conversion_tend,
-                hydro_species.at("qr").slice,
-                hydro_species.at("nr").slice,
+                hydro_types.at("qr").conversion_tend,
+                hydro_types.at("nr").conversion_tend,
+                hydro_types.at("qr").slice,
+                hydro_types.at("nr").slice,
                 ql->fld.data(),
                 rho.data(),
                 exner.data(),
@@ -1049,8 +1049,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Accretion; growth of rain droplets by collecting cloud droplets
         accretion(
-                hydro_species.at("qr").conversion_tend,
-                hydro_species.at("qr").slice,
+                hydro_types.at("qr").conversion_tend,
+                hydro_types.at("qr").slice,
                 ql->fld.data(),
                 rho.data(),
                 exner.data(),
@@ -1065,8 +1065,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*rain_diameter).data(),
                 (*mu_r).data(),
                 (*lambda_r).data(),
-                hydro_species.at("qr").slice,
-                hydro_species.at("nr").slice,
+                hydro_types.at("qr").slice,
+                hydro_types.at("nr").slice,
                 rho.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -1074,10 +1074,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Evaporation of rain droplets.
         evaporation(
-                hydro_species.at("qr").conversion_tend,
-                hydro_species.at("nr").conversion_tend,
-                hydro_species.at("qr").slice,
-                hydro_species.at("nr").slice,
+                hydro_types.at("qr").conversion_tend,
+                hydro_types.at("nr").conversion_tend,
+                hydro_types.at("qr").slice,
+                hydro_types.at("nr").slice,
                 ql->fld.data(),
                 // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
                 // fields.sp.at("qi")->fld.data(),
@@ -1097,9 +1097,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
         // coagulation, and breakup by collisions.
         selfcollection_breakup(
-                hydro_species.at("nr").conversion_tend,
-                hydro_species.at("nr").slice,
-                hydro_species.at("qr").slice,
+                hydro_types.at("nr").conversion_tend,
+                hydro_types.at("nr").slice,
+                hydro_types.at("qr").slice,
                 rho.data(),
                 (*rain_mass).data(),
                 (*rain_diameter).data(),
@@ -1109,7 +1109,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
 
-        for (auto& it : hydro_species)
+        for (auto& it : hydro_types)
         {
             // Integrate conversion tendencies into qr/Nr slices before implicit step.
             integrate_process(
@@ -1152,8 +1152,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         calc_thermo_tendencies(
                 fields.st.at("thl")->fld.data(),
                 fields.st.at("qt")->fld.data(),
-                hydro_species.at("qr").conversion_tend,
-                hydro_species.at("nr").conversion_tend,
+                hydro_types.at("qr").conversion_tend,
+                hydro_types.at("nr").conversion_tend,
                 rho.data(),
                 exner.data(),
                 gd.istart, gd.iend,
@@ -1162,7 +1162,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 k);
     }
 
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
     {
         // Store surface precipitation rates.
         if (it.second.is_mass)
@@ -1179,7 +1179,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
         stats.calc_tend(*fields.st.at(it.first), tend_name);
 
     // Release temporary fields.
@@ -1206,7 +1206,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     const bool cyclic = false;
 
     // Time series
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
         if (it.second.is_mass)
             stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
 
@@ -1251,7 +1251,7 @@ void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
         if (it.second.is_mass)
             column.calc_time_series("r" + it.first.substr(1,1), it.second.precip_rate.data(), no_offset);
 }
@@ -1267,7 +1267,7 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             // Yikes (BvS), this is easy to break.... Any better ideas? Should we stick to
             // using the full name, like e.g. `rain_rate` or `qr_flux` or ...?
             const std::string letter = it.substr(1,1);
-            cross.cross_plane(hydro_species.at("q" + letter).precip_rate.data(), it, iotime);
+            cross.cross_plane(hydro_types.at("q" + letter).precip_rate.data(), it, iotime);
         }
     }
 }
@@ -1315,7 +1315,7 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
     for (int n=0; n<gd.ijcells; ++n)
         field[n] = TF(0);
 
-    for (auto& it : hydro_species)
+    for (auto& it : hydro_types)
     {
         if (it.second.is_mass)
         {

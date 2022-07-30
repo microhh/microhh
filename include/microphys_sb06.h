@@ -121,7 +121,7 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 
 
 template<typename TF>
-struct Hydro_specie
+struct Hydro_type
 {
     std::string name;       // Species name (e.g. `rain`)
     std::string long_name;  // Long name (e.g. `rain specific humidity`)
@@ -182,8 +182,8 @@ class Microphys_sb06 : public Microphys<TF>
         bool sw_microbudget;     // Output full microphysics budget terms
         double cfl_max;          // Max CFL number in microphysics sedimentation
 
-        // Map with hydrometeor species.
-        std::map<std::string, Hydro_specie<TF>> hydro_species;
+        // Map with hydrometeor types.
+        std::map<std::string, Hydro_type<TF>> hydro_types;
 
         // NOTE: this switch is set to True in ICON, but produces discontinuities in Nr and qr profiles.
         // Disable the feature for now, and discuss later with the ICON people.
