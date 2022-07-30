@@ -38,6 +38,8 @@
 #include "microphys.h"
 #include "microphys_sb06.h"
 
+
+
 namespace
 {
     using namespace Constants;
@@ -62,82 +64,7 @@ namespace
     template<typename TF> constexpr TF rho_vel  = 0.4;                 // Exponent for density correction (value from ICON)
     template<typename TF> constexpr TF q_crit   = 1.e-9;               // Min rain liquid water for which calculations are performed (value from ICON)
 
-    template<typename TF>
-    inline TF tanh2(const TF x)
-    {
-        // Rational `tanh` approximation
-        return x * (TF(27) + x * x) / (TF(27) + TF(9) * x * x);
-    }
 
-    template<typename TF>
-    inline TF calc_rain_mass(const TF qr, const TF nr)
-    {
-        // Calculate mean mass of rain droplets (kg)
-        TF mr = qr / std::max(nr, TF(1.));
-        return std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
-    }
-
-    template<typename TF>
-    inline TF calc_rain_diameter(const TF mr)
-    {
-        // Given mean mass rain drop, calculate mean diameter (m)
-        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
-    }
-
-    template<typename TF>
-    inline TF calc_mu_r(const TF dr)
-    {
-        // Calculate shape parameter mu_r
-        //return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return TF(10) * (TF(1) + tanh2(TF(1200) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-    }
-
-    template<typename TF> CUDA_MACRO
-    inline TF calc_lambda_r(const TF mur, const TF dr)
-    {
-        // Calculate Slope parameter lambda_r
-        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
-    }
-
-
-    template<typename TF>
-    void prepare_microphysics_slice(
-            TF* const restrict rain_mass,
-            TF* const restrict rain_diameter,
-            TF* const restrict mu_r,
-            TF* const restrict lambda_r,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            const TF* const restrict rho,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ijk = i + j*jstride + k*kstride;
-                const int ij  = i + j*jstride;
-
-                if (qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho...
-                {
-                    rain_mass[ij]     = calc_rain_mass(qr[ij], nr[ij]);
-                    rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
-                    mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
-                    lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
-                }
-                else
-                {
-                    rain_mass[ij]     = TF(0);
-                    rain_diameter[ij] = TF(0);
-                    mu_r[ij]          = TF(0);
-                    lambda_r[ij]      = TF(0);
-                }
-            }
-    }
 
 
     template<typename TF>
@@ -165,226 +92,7 @@ namespace
     }
 
 
-    template<typename TF>
-    void autoconversion(
-            TF* const restrict qrt,
-            TF* const restrict nrt,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            const TF* const restrict ql,
-            const TF* const restrict rho,
-            const TF* const restrict exner,
-            const TF Nc0, const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        /* Formation of rain by coagulating cloud droplets */
 
-        const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES (kg)
-        const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON (m3 kg-2 s-1)
-        const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES (-)
-        const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
-
-        const TF rho_i = TF(1)/rho[k];
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j*jstride;
-                const int ijk = i + j*jstride + k*kstride;
-
-                if (ql[ijk] > ql_min<TF> * rho[k])  // TODO: remove *rho[k]...
-                {
-                    // Mean mass of cloud drops (kg):
-                    const TF xc = ql[ijk] / Nc0;
-                    // Dimensionless internal time scale (SB06, Eq 5):
-                    const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ij] + dsmall);
-                    // Collection kernel (SB06, Eq 6). Constants are from UCLA-LES and differ from SB06:
-                    const TF phi_au = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));
-                    // Autoconversion tendency (SB06, Eq 4, kg m-3 s-1):
-                    const TF au_tend = rho_0<TF>/rho[k] * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
-                                           (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
-
-                    // Update 2D slices:
-                    qrt[ij] += au_tend;
-                    nrt[ij] += au_tend / x_star;
-                }
-            }
-    }
-
-
-    template<typename TF>
-    void accretion(
-            TF* const restrict qrt,
-            const TF* const restrict qr,
-            const TF* const restrict ql,
-            const TF* const restrict rho,
-            const TF* const restrict exner,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        /* Accretion: growth of raindrops collecting cloud droplets */
-
-        const TF k_cr = 5.25; // SB06, p49 (m3 kg-1 s-1)
-        const TF rho_i = TF(1)/rho[k];
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j*jstride;
-                const int ijk = i + j*jstride + k*kstride;
-
-                if (ql[ijk] > ql_min<TF> * rho[k] && qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho[k]...
-                {
-                    // Dimensionless internal time scale (SB06, Eq 5):
-                    const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ij]);
-                    // Collection kernel (SB06, Eq 8):
-                    const TF phi_ac = fm::pow4(tau / (tau + TF(5e-5)));
-                    // Accreation tendency (SB06, Eq 7, kg m-3 s-1):
-                    const TF ac_tend = k_cr * ql[ijk] *  qr[ij] * phi_ac * sqrt(rho_0<TF> / rho[k]);
-
-                    // Update 2D slice:
-                    qrt[ij] += ac_tend;
-                }
-            }
-    }
-
-
-    template<typename TF>
-    void evaporation(
-            TF* const restrict qrt,
-            TF* const restrict nrt,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            const TF* const restrict ql,
-            const TF* const restrict qi,
-            const TF* const restrict qt,
-            const TF* const restrict T,
-            const TF* const restrict rho,
-            const TF* const restrict exner,
-            const TF* const restrict p,
-            const TF* const restrict rain_mass,
-            const TF* const restrict rain_diameter,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        // Evaporation: evaporation of rain drops in unsaturated environment
-        const TF lambda_evap = TF(1.); // 1.0 in UCLA, 0.7 in DALES
-        const TF rho_i = TF(1.) / rho[k];
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*jstride;
-                const int ijk = i + j*jstride + k*kstride;
-
-                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
-                {
-                    // Supersaturation over water (-, KP97 Eq 4-37).
-                    // TMP BvS, for comparison with old scheme:
-                    //const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
-                    const TF qv = qt[ijk] - ql[ijk];
-
-                    const TF qs = tmf::qsat_liq(p[k], T[ijk]) * rho[k];
-                    const TF S  = qv / qs - TF(1.);
-
-                    if (S < TF(0))
-                    {
-                        const TF mr  = rain_mass[ij];
-                        const TF dr  = rain_diameter[ij];
-
-                        // ...Condensation/evaporation rate...?
-                        const TF es = tmf::esat_liq(T[ijk]);
-                        const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
-                                           (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
-
-                        // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
-                        const TF F   = TF(1.);
-
-                        // Evaporation tendency (kg m-3 s-1).
-                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
-
-                        // Update 2D slices:
-                        qrt[ij] += ev_tend;
-                        nrt[ij] += lambda_evap * ev_tend / mr;
-                    }
-                }
-            }
-    }
-
-
-    template<typename TF>
-    void selfcollection_breakup(
-            TF* const restrict nrt,
-            const TF* const restrict nr,
-            const TF* const restrict qr,
-            const TF* const restrict rho,
-            const TF* const restrict rain_mass,
-            const TF* const restrict rain_diameter,
-            const TF* const restrict lambda_r,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
-        const TF k_rr     = 7.12;   // SB06, p49
-        const TF kappa_rr = 60.7;   // SB06, p49
-        const TF D_eq     = 0.9e-3; // SB06, list of symbols
-        const TF k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
-        const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*jstride;
-                const int ijk = i + j*jstride + k*kstride;
-
-                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
-                {
-                    // Short-cuts...
-                    const TF dr = rain_diameter[ij];
-
-                    // Selfcollection tendency:
-                    // NOTE: this is quite different in ICON, UCLA-LES had 4 different versions, ...
-                    const TF sc_tend = -k_rr * nr[ij] * qr[ij] /
-                        pow(TF(1.) + kappa_rr /
-                        lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
-
-                    // Update 2D slice:
-                    nrt[ij] += sc_tend;
-
-                    // Breakup by collisions:
-                    const TF dDr = dr - D_eq;
-                    if (dr > TF(0.35e-3))
-                    {
-                        TF phi_br;
-                        if (dr <= D_eq)
-                            phi_br = k_br1 * dDr;
-                        else
-                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
-
-                        const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
-
-                        // Update 2D slice:
-                        nrt[ij] += br_tend;
-                    }
-                }
-            }
-    }
 
     template<typename TF>
     inline TF particle_meanmass(
@@ -714,6 +422,310 @@ namespace
     }
 }
 
+namespace warm
+{
+    /* These are the "old" kernels used in the old `2mom_warm` scheme,
+       ported (mainly) from UCLA-LES and DALES. */
+
+    template<typename TF>
+    inline TF tanh2(const TF x)
+    {
+        // Rational `tanh` approximation
+        return x * (TF(27) + x * x) / (TF(27) + TF(9) * x * x);
+    }
+
+    template<typename TF>
+    inline TF calc_rain_mass(const TF qr, const TF nr)
+    {
+        // Calculate mean mass of rain droplets (kg)
+        TF mr = qr / std::max(nr, TF(1.));
+        return std::min(std::max(mr, mr_min<TF>), mr_max<TF>);
+    }
+
+    template<typename TF>
+    inline TF calc_rain_diameter(const TF mr)
+    {
+        // Given mean mass rain drop, calculate mean diameter (m)
+        return pow(mr/pirhow<TF>, TF(1.)/TF(3.));
+    }
+
+    template<typename TF>
+    inline TF calc_mu_r(const TF dr)
+    {
+        // Calculate shape parameter mu_r
+        //return 1./3.; // SB06
+        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return TF(10) * (TF(1) + tanh2(TF(1200) * (dr - TF(0.0015)))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+    }
+
+    template<typename TF> CUDA_MACRO
+    inline TF calc_lambda_r(const TF mur, const TF dr)
+    {
+        // Calculate Slope parameter lambda_r
+        return pow((mur+3)*(mur+2)*(mur+1), TF(1.)/TF(3.)) / dr;
+    }
+
+    template<typename TF>
+    void prepare_microphysics_slice(
+            TF* const restrict rain_mass,
+            TF* const restrict rain_diameter,
+            TF* const restrict mu_r,
+            TF* const restrict lambda_r,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict rho,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*jstride + k*kstride;
+                const int ij  = i + j*jstride;
+
+                if (qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho...
+                {
+                    rain_mass[ij]     = calc_rain_mass(qr[ij], nr[ij]);
+                    rain_diameter[ij] = calc_rain_diameter(rain_mass[ij]);
+                    mu_r[ij]          = calc_mu_r(rain_diameter[ij]);
+                    lambda_r[ij]      = calc_lambda_r(mu_r[ij], rain_diameter[ij]);
+                }
+                else
+                {
+                    rain_mass[ij]     = TF(0);
+                    rain_diameter[ij] = TF(0);
+                    mu_r[ij]          = TF(0);
+                    lambda_r[ij]      = TF(0);
+                }
+            }
+    }
+
+
+    template<typename TF>
+    void autoconversion(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict ql,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const TF Nc0, const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        /* Formation of rain by coagulating cloud droplets */
+
+        const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES (kg)
+        const TF k_cc = 9.44e9;          // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48, same as ICON (m3 kg-2 s-1)
+        const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES (-)
+        const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
+
+        const TF rho_i = TF(1)/rho[k];
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                if (ql[ijk] > ql_min<TF> * rho[k])  // TODO: remove *rho[k]...
+                {
+                    // Mean mass of cloud drops (kg):
+                    const TF xc = ql[ijk] / Nc0;
+                    // Dimensionless internal time scale (SB06, Eq 5):
+                    const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ij] + dsmall);
+                    // Collection kernel (SB06, Eq 6). Constants are from UCLA-LES and differ from SB06:
+                    const TF phi_au = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));
+                    // Autoconversion tendency (SB06, Eq 4, kg m-3 s-1):
+                    const TF au_tend = rho_0<TF>/rho[k] * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
+                                       (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
+
+                    // Update 2D slices:
+                    qrt[ij] += au_tend;
+                    nrt[ij] += au_tend / x_star;
+                }
+            }
+    }
+
+
+    template<typename TF>
+    void accretion(
+            TF* const restrict qrt,
+            const TF* const restrict qr,
+            const TF* const restrict ql,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        /* Accretion: growth of raindrops collecting cloud droplets */
+
+        const TF k_cr = 5.25; // SB06, p49 (m3 kg-1 s-1)
+        const TF rho_i = TF(1)/rho[k];
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                if (ql[ijk] > ql_min<TF> * rho[k] && qr[ij] > qr_min<TF> * rho[k])  // TODO: remove *rho[k]...
+                {
+                    // Dimensionless internal time scale (SB06, Eq 5):
+                    const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ij]);
+                    // Collection kernel (SB06, Eq 8):
+                    const TF phi_ac = fm::pow4(tau / (tau + TF(5e-5)));
+                    // Accreation tendency (SB06, Eq 7, kg m-3 s-1):
+                    const TF ac_tend = k_cr * ql[ijk] *  qr[ij] * phi_ac * sqrt(rho_0<TF> / rho[k]);
+
+                    // Update 2D slice:
+                    qrt[ij] += ac_tend;
+                }
+            }
+    }
+
+
+    template<typename TF>
+    void evaporation(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict ql,
+            const TF* const restrict qi,
+            const TF* const restrict qt,
+            const TF* const restrict T,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const TF* const restrict p,
+            const TF* const restrict rain_mass,
+            const TF* const restrict rain_diameter,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Evaporation: evaporation of rain drops in unsaturated environment
+        const TF lambda_evap = TF(1.); // 1.0 in UCLA, 0.7 in DALES
+        const TF rho_i = TF(1.) / rho[k];
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
+                {
+                    // Supersaturation over water (-, KP97 Eq 4-37).
+                    // TMP BvS, for comparison with old scheme:
+                    //const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
+                    const TF qv = qt[ijk] - ql[ijk];
+
+                    const TF qs = tmf::qsat_liq(p[k], T[ijk]) * rho[k];
+                    const TF S  = qv / qs - TF(1.);
+
+                    if (S < TF(0))
+                    {
+                        const TF mr  = rain_mass[ij];
+                        const TF dr  = rain_diameter[ij];
+
+                        // ...Condensation/evaporation rate...?
+                        const TF es = tmf::esat_liq(T[ijk]);
+                        const TF Glv = TF(1.) / (Rv<TF> * T[ijk] / (es * D_v<TF>) +
+                                                 (Lv<TF> / (K_t<TF> * T[ijk])) * (Lv<TF> / (Rv<TF> * T[ijk]) - TF(1.)));
+
+                        // Ventilation factor. UCLA-LES=1, calculated in SB06 = TODO..
+                        const TF F   = TF(1.);
+
+                        // Evaporation tendency (kg m-3 s-1).
+                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ij];
+
+                        // Update 2D slices:
+                        qrt[ij] += ev_tend;
+                        nrt[ij] += lambda_evap * ev_tend / mr;
+                    }
+                }
+            }
+    }
+
+
+    template<typename TF>
+    void selfcollection_breakup(
+            TF* const restrict nrt,
+            const TF* const restrict nr,
+            const TF* const restrict qr,
+            const TF* const restrict rho,
+            const TF* const restrict rain_mass,
+            const TF* const restrict rain_diameter,
+            const TF* const restrict lambda_r,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        const TF k_rr     = 7.12;   // SB06, p49
+        const TF kappa_rr = 60.7;   // SB06, p49
+        const TF D_eq     = 0.9e-3; // SB06, list of symbols
+        const TF k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const TF k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij  = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
+                {
+                    // Short-cuts...
+                    const TF dr = rain_diameter[ij];
+
+                    // Selfcollection tendency:
+                    // NOTE: this is quite different in ICON, UCLA-LES had 4 different versions, ...
+                    const TF sc_tend = -k_rr * nr[ij] * qr[ij] /
+                                       pow(TF(1.) + kappa_rr /
+                                                    lambda_r[ij] * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * sqrt(rho_0<TF> / rho[k]);
+
+                    // Update 2D slice:
+                    nrt[ij] += sc_tend;
+
+                    // Breakup by collisions:
+                    const TF dDr = dr - D_eq;
+                    if (dr > TF(0.35e-3))
+                    {
+                        TF phi_br;
+                        if (dr <= D_eq)
+                            phi_br = k_br1 * dDr;
+                        else
+                            phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
+
+                        const TF br_tend = -(phi_br + TF(1.)) * sc_tend;
+
+                        // Update 2D slice:
+                        nrt[ij] += br_tend;
+                    }
+                }
+            }
+    }
+}
+
 template<typename TF>
 Microphys_sb06<TF>::Microphys_sb06(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -1030,82 +1042,85 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
-        // Calculate microphysics processes.
-        // Autoconversion; formation of rain drop by coagulating cloud droplets.
-        autoconversion(
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                ql->fld.data(),
-                rho.data(),
-                exner.data(),
-                Nc0, dt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+        if (sw_warm)
+        {
+            // Calculate microphysics processes.
+            // Autoconversion; formation of rain drop by coagulating cloud droplets.
+            warm::autoconversion(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    ql->fld.data(),
+                    rho.data(),
+                    exner.data(),
+                    Nc0, dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
 
-        // Accretion; growth of rain droplets by collecting cloud droplets
-        accretion(
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("qr").slice,
-                ql->fld.data(),
-                rho.data(),
-                exner.data(),
-                dt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            // Accretion; growth of rain droplets by collecting cloud droplets
+            warm::accretion(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    ql->fld.data(),
+                    rho.data(),
+                    exner.data(),
+                    dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
 
-        // Calculate quantities used by multiple kernels.
-        prepare_microphysics_slice(
-                (*rain_mass).data(),
-                (*rain_diameter).data(),
-                (*mu_r).data(),
-                (*lambda_r).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                rho.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            // Calculate quantities used by multiple kernels.
+            warm::prepare_microphysics_slice(
+                    (*rain_mass).data(),
+                    (*rain_diameter).data(),
+                    (*mu_r).data(),
+                    (*lambda_r).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    rho.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
 
-        // Evaporation of rain droplets.
-        evaporation(
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                ql->fld.data(),
-                // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
-                // fields.sp.at("qi")->fld.data(),
-                qi->fld.data(),
-                fields.sp.at("qt")->fld.data(),
-                T->fld.data(),
-                rho.data(),
-                exner.data(),
-                p.data(),
-                (*rain_mass).data(),
-                (*rain_diameter).data(),
-                dt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            // Evaporation of rain droplets.
+            warm::evaporation(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    ql->fld.data(),
+                    // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
+                    // fields.sp.at("qi")->fld.data(),
+                    qi->fld.data(),
+                    fields.sp.at("qt")->fld.data(),
+                    T->fld.data(),
+                    rho.data(),
+                    exner.data(),
+                    p.data(),
+                    (*rain_mass).data(),
+                    (*rain_diameter).data(),
+                    dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
 
-        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
-        // coagulation, and breakup by collisions.
-        selfcollection_breakup(
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("nr").slice,
-                hydro_types.at("qr").slice,
-                rho.data(),
-                (*rain_mass).data(),
-                (*rain_diameter).data(),
-                (*lambda_r).data(),
-                dt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
+            // coagulation, and breakup by collisions.
+            warm::selfcollection_breakup(
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("nr").slice,
+                    hydro_types.at("qr").slice,
+                    rho.data(),
+                    (*rain_mass).data(),
+                    (*rain_diameter).data(),
+                    (*lambda_r).data(),
+                    dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
+        }
 
         for (auto& it : hydro_types)
         {
