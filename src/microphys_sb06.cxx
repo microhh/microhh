@@ -855,25 +855,25 @@ void Microphys_sb06<TF>::create(
     const std::string group_name = "thermo";
 
     // Add variables to the statistics
-    //if (stats.get_switch())
-    //{
-    //    for (auto& it : hydro_species)
-    //    {
-    //        // Aargh, here the fun with automation/names starts...
-    //        // Time series
-    //        stats.add_time_series("r" + it.first[1], "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
+    if (stats.get_switch())
+    {
+        for (auto& it : hydro_species)
+        {
+            // Aargh, here the fun with automation/names starts...
+            // Time series
+            stats.add_time_series("r" + it.first.substr(1,1), "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
 
-    //        // Profiles
-    //        stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
+            // Profiles
+            stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
 
-    //        // Tendencies
-    //        stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
-    //    }
+            // Tendencies
+            stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
+        }
 
-    //    // Thermo tendencies
-    //    stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
-    //    stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
-    //}
+        // Thermo tendencies
+        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
+    }
 
     //if (column.get_switch())
     //{
@@ -1204,52 +1204,50 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 template<typename TF>
 void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
-    //auto& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
 
-    //const TF no_offset = 0.;
-    //const TF no_threshold = 0.;
-    //const bool is_stat = true;
-    //const bool cyclic = false;
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+    const bool is_stat = true;
+    const bool cyclic = false;
 
-    //// Time series
-    //stats.calc_stats_2d("rr", rr_bot, no_offset);
-    // stats.calc_stats_2d("rs", rs_bot, no_offset);
-    // stats.calc_stats_2d("rg", rg_bot, no_offset);
+    // Time series
+    for (auto& it : hydro_species)
+        stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
 
     // Profiles
-    //auto vq = fields.get_tmp();
-    //auto vn = fields.get_tmp();
+    auto vq = fields.get_tmp();
+    auto vn = fields.get_tmp();
 
-    //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
-    //for (int k=gd.kend-1; k>=gd.kstart; --k)
-    //{
-    //    // Sedimentation
-    //    // Density correction fall speeds
-    //    const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
-    //    const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
+    for (int k=gd.kend-1; k>=gd.kstart; --k)
+    {
+        // Sedimentation
+        // Density correction fall speeds
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
+        const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
 
-    //    bool ql_present = true;
-    //    sedi_vel_rain<TF>(
-    //            &vq->fld.data()[k * gd.ijcells],
-    //            &vn->fld.data()[k * gd.ijcells],
-    //            &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
-    //            &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
-    //            nullptr,
-    //            rho.data(),
-    //            rain, rain_coeffs,
-    //            rho_corr,
-    //            gd.istart, gd.iend,
-    //            gd.jstart, gd.jend,
-    //            gd.icells, gd.ijcells,
-    //            k, use_ql_sedi_rain);
-    //}
+        sedi_vel_rain<TF>(
+                &vq->fld.data()[k * gd.ijcells],
+                &vn->fld.data()[k * gd.ijcells],
+                &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
+                &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
+                nullptr,
+                rho.data(),
+                rain, rain_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells,
+                k, use_ql_sedi_rain);
+    }
 
-    //stats.calc_stats("vqr", *vq, no_offset, no_threshold);
-    //stats.calc_stats("vnr", *vn, no_offset, no_threshold);
+    stats.calc_stats("vqr", *vq, no_offset, no_threshold);
+    stats.calc_stats("vnr", *vn, no_offset, no_threshold);
 
-    //fields.release_tmp(vq);
-    //fields.release_tmp(vn);
+    fields.release_tmp(vq);
+    fields.release_tmp(vn);
 }
 
 #ifndef USECUDA
@@ -1325,7 +1323,7 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
 
     for (auto& it : hydro_species)
     {
-        for (int n = 0; n < gd.ijcells; ++n)
+        for (int n=0; n<gd.ijcells; ++n)
             field[n] += it.second.precip_rate[n];
     }
 }
