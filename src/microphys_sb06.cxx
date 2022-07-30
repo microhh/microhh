@@ -1318,14 +1318,17 @@ void Microphys_sb06<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 template<typename TF>
 void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
 {
-    // Make a hard copy of the surface rain precipitation field
-    //field = rr_bot;
+    auto& gd = grid.get_grid_data();
 
-    // Add snow and graupel surface precipitation
-    // std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
-    // std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
+    for (int n=0; n<gd.ijcells; ++n)
+        field[n] = TF(0);
+
+    for (auto& it : hydro_species)
+    {
+        for (int n = 0; n < gd.ijcells; ++n)
+            field[n] += it.second.precip_rate[n];
+    }
 }
-
 
 template class Microphys_sb06<double>;
 template class Microphys_sb06<float>;
