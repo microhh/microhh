@@ -355,43 +355,6 @@ namespace
             }
     }
 
-    template<typename TF>
-    void calc_tendencies(
-            TF* const restrict qrt,
-            TF* const restrict nrt,
-            const TF* const restrict qr_old,
-            const TF* const restrict nr_old,
-            const TF* const restrict qr_new,
-            const TF* const restrict nr_new,
-            const TF* const restrict rho,
-            const TF* const restrict exner,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        const TF dt_i = TF(1) / dt;
-        const TF rho_i = TF(1) / rho[k];
-
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk= i + j * jstride + k*kstride;
-
-                // Evaluate tendencies. This includes the
-                // tendencies from both conversions and sedimentation.
-
-                // `qr`: internally in `kg m-3`, externally in `kg kg-1:
-                // old versions are integrated first with only the dynamics tendencies to avoid double counting.
-                qrt[ijk] += rho_i * (qr_new[ij] - (qr_old[ijk] + dt*rho[k]*qrt[ijk])) * dt_i;
-                // `nr`': internally in `m-3`, externally in ``kg-1`:
-                // old versions are integrated first with only the dynamics tendencies to avoid double counting.
-                nrt[ijk] += rho_i * (nr_new[ij] - (nr_old[ijk] + dt*rho[k]*nrt[ijk])) * dt_i;
-            }
-    }
 
     template<typename TF>
     void diagnose_tendency(
@@ -526,8 +489,6 @@ namespace warm
         const TF nu_c = 1;               // SB06, Table 1., same as UCLA-LES (-)
         const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
 
-        const TF rho_i = TF(1)/rho[k];
-
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -571,7 +532,6 @@ namespace warm
         /* Accretion: growth of raindrops collecting cloud droplets */
 
         const TF k_cr = 5.25; // SB06, p49 (m3 kg-1 s-1)
-        const TF rho_i = TF(1)/rho[k];
 
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -619,7 +579,6 @@ namespace warm
     {
         // Evaporation: evaporation of rain drops in unsaturated environment
         const TF lambda_evap = TF(1.); // 1.0 in UCLA, 0.7 in DALES
-        const TF rho_i = TF(1.) / rho[k];
 
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
