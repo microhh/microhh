@@ -875,26 +875,22 @@ void Microphys_sb06<TF>::create(
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
     }
 
-    //if (column.get_switch())
-    //{
-    //    column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
-    //    // column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
-    //    // column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
-    //    // column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
-    //}
+    if (column.get_switch())
+    {
+        for (auto& it : hydro_species)
+            column.add_time_series("r" + it.first.substr(1,1), "Surface " + it.second.name + " rate", "kg m-2 s-1");
+    }
 
-    // Create cross sections
+    // Create cross-sections
     // Variables that this class can calculate/provide:
-    //std::vector<std::string> allowed_crossvars;
-    //for (auto& it : hydro_species)
-    //{
-    //    std::string name = "r" + it.first[1];
-    //    name += "_bot"; // ?!!?!
-    //    allowed_crossvars.push_back(name);
-    //}
+    std::vector<std::string> allowed_crossvars;
+    for (auto& it : hydro_species)
+    {
+        allowed_crossvars.push_back("r" + it.first.substr(1,1) + "_bot");
+    }
 
-    //// Cross-reference with the variables requested in the .ini file:
-    //crosslist = cross.get_enabled_variables(allowed_crossvars);
+    // Cross-reference with the variables requested in the .ini file:
+    crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
 #ifndef USECUDA
@@ -1173,20 +1169,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     // Convert specific humidity from `kg m-3` to `kg kg-`
     convert_units_short(fields.ap.at("qt")->fld.data(), !to_kgm3);
 
-//    // Calculate tendencies.
-//    stats.calc_tend(*fields.st.at("thl"), tend_name);
-//    stats.calc_tend(*fields.st.at("qt" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("qi" ), tend_name);
-//    stats.calc_tend(*fields.st.at("qr" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("qs" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("qg" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("qh" ), tend_name);
-//
-//    // stats.calc_tend(*fields.st.at("ni" ), tend_name);
-//    stats.calc_tend(*fields.st.at("nr" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("ns" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("ng" ), tend_name);
-//    // stats.calc_tend(*fields.st.at("nh" ), tend_name);
+    // Calculate tendencies.
+    stats.calc_tend(*fields.st.at("thl"), tend_name);
+    stats.calc_tend(*fields.st.at("qt" ), tend_name);
+    for (auto& it : hydro_species)
+        stats.calc_tend(*fields.st.at(it.first), tend_name);
 
     // Release temporary fields.
     fields.release_tmp(ql);
@@ -1254,28 +1241,26 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 template<typename TF>
 void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 {
-    //const TF no_offset = 0.;
-    //column.calc_time_series("rr", rr_bot.data(), no_offset);
-    // column.calc_time_series("rs", rs_bot.data(), no_offset);
-    // column.calc_time_series("rg", rg_bot.data(), no_offset);
+    const TF no_offset = 0.;
+
+    for (auto& it : hydro_species)
+        column.calc_time_series("r" + it.first.substr(1,1), it.second.precip_rate.data(), no_offset);
 }
 #endif
 
 template<typename TF>
 void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    //if (cross.get_switch())
-    //{
-    //    for (auto& it : crosslist)
-    //    {
-    //        if (it == "rr_bot")
-    //            cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
-    //        // if (it == "rs_bot")
-    //        //     cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
-    //        // if (it == "rg_bot")
-    //        //     cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
-    //    }
-    //}
+    if (cross.get_switch())
+    {
+        for (auto& it : crosslist)
+        {
+            // Yikes (BvS), this is easy to break.... Any better ideas? Should we stick to
+            // using the full name, like e.g. `rain_rate` or `qr_flux` or ...?
+            const std::string letter = it.substr(1,1);
+            cross.cross_plane(hydro_species.at("q" + letter).precip_rate.data(), it, iotime);
+        }
+    }
 }
 
 #ifndef USECUDA
