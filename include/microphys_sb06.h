@@ -31,6 +31,7 @@
 #endif
 
 #include <cmath>
+#include <map>
 
 #include "microphys.h"
 #include "field3d_operators.h"
@@ -119,8 +120,16 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 };
 
 
+template<typename TF>
+struct Hydro_specie
+{
+    std::string name;
+    std::string long_name;
+    std::string units;
+    std::string bla;
 
-
+    std::vector<TF> precip_rate;
+};
 
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
@@ -159,8 +168,12 @@ class Microphys_sb06 : public Microphys<TF>
         using Microphys<TF>::fields;
         using Microphys<TF>::field3d_operators;
 
-        bool swmicrobudget;     // Output full microphysics budget terms
-        double cflmax;          // Max CFL number in microphysics sedimentation
+        bool sw_warm;            // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
+        bool sw_microbudget;     // Output full microphysics budget terms
+        double cfl_max;          // Max CFL number in microphysics sedimentation
+
+        // Map with hydrometeor species.
+        std::map<std::string, Hydro_specie<TF>> hydro_species;
 
         // NOTE: this switch is set to True in ICON, but produces discontinuities in Nr and qr profiles.
         // Disable the feature for now, and discuss later with the ICON people.
@@ -173,11 +186,6 @@ class Microphys_sb06 : public Microphys<TF>
 
         // Variables for microphysics.
         TF Nc0;  // Number concentration of cloud water (cm-3)
-
-        std::vector<TF> rr_bot; // Rain rate at the bottom.
-        std::vector<TF> rs_bot; // Snow rate at the bottom.
-        std::vector<TF> rg_bot; // Graupel rate at the bottom.
-        std::vector<TF> rh_bot; // Hail rate at the bottom.
 
         //#ifdef USECUDA
         //TF* rr_bot_g;

@@ -699,35 +699,49 @@ Microphys_sb06<TF>::Microphys_sb06(
     swmicrophys = Microphys_type::SB06;
 
     // Read microphysics switches and settings
-    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    sw_warm = inputin.get_item<bool>("micro", "swwarm", "", true);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
-    // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
+    auto add_type = [&](
+            const std::string& symbol,
+            const std::string& short_name,
+            const std::string& long_name,
+            const std::string& units)
+    {
+        Hydro_specie<TF> tmp = {short_name, long_name, units};
+        hydro_species.emplace(symbol, tmp);
+    };
+
+    if (sw_warm)
+    {
+        add_type("qr", "rain", "rain specific humidity", "kg kg-1");
+        add_type("nr", "rain", "number density rain", "kg-1");
+    }
+    else
+    {
+        add_type("qi", "ice", "ice specific humidity", "kg kg-1");
+        add_type("ni", "ice", "number density ice", "kg-1");
+
+        add_type("qr", "rain", "rain specific humidity", "kg kg-1");
+        add_type("nr", "rain", "number density rain", "kg-1");
+
+        add_type("qs", "snow", "snow specific humidity", "kg kg-1");
+        add_type("ns", "snow", "number density snow", "kg-1");
+
+        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1");
+        add_type("ng", "graupel", "number density graupel", "kg-1");
+
+        add_type("qh", "hail", "hail specific humidity", "kg kg-1");
+        add_type("nh", "hail", "number density hail", "kg-1");
+    }
+
     const std::string group_name = "thermo";
-    // fields.init_prognostic_field("qi", "Ice specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qr", "Rain specific humidity", "kg kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("qh", "Hail specific humidity", "kg kg-1", group_name, gd.sloc);
-
-    // fields.init_prognostic_field("ni", "Number density ice", "kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("nr", "Number density rain", "kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("ns", "Number density snow", "kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("ng", "Number density graupel", "kg-1", group_name, gd.sloc);
-    // fields.init_prognostic_field("nh", "Number density hail", "kg-1", group_name, gd.sloc);
-
-    // Load the viscosity for both fields.
-    // fields.sp.at("qi")->visc = inputin.get_item<TF>("fields", "svisc", "qi");
-    fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
-    // fields.sp.at("qg")->visc = inputin.get_item<TF>("fields", "svisc", "qg");
-    // fields.sp.at("qs")->visc = inputin.get_item<TF>("fields", "svisc", "qs");
-    // fields.sp.at("qh")->visc = inputin.get_item<TF>("fields", "svisc", "qh");
-
-    // fields.sp.at("ni")->visc = inputin.get_item<TF>("fields", "svisc", "ni");
-    fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
-    // fields.sp.at("ng")->visc = inputin.get_item<TF>("fields", "svisc", "ng");
-    // fields.sp.at("ns")->visc = inputin.get_item<TF>("fields", "svisc", "ns");
-    // fields.sp.at("nh")->visc = inputin.get_item<TF>("fields", "svisc", "nh");
+    for (auto& it : hydro_species)
+    {
+        fields.init_prognostic_field(it.first, it.second.long_name, it.second.units, group_name, gd.sloc);
+        fields.sp.at(it.first)->visc = inputin.get_item<TF>("fields", "svisc", it.first);
+    }
 
     // Set the rain and rain_coeff types to the default provided values
     cloud = cloud_nue1mue1;
@@ -797,15 +811,14 @@ Microphys_sb06<TF>::~Microphys_sb06()
 {
 }
 
+
 template<typename TF>
 void Microphys_sb06<TF>::init()
 {
     auto& gd = grid.get_grid_data();
 
-    rr_bot.resize(gd.ijcells);
-    // rs_bot.resize(gd.ijcells);
-    // rg_bot.resize(gd.ijcells);
-    // rh_bot.resize(gd.ijcells);
+    for (auto& it : hydro_species)
+        it.second.precip_rate.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -818,37 +831,43 @@ void Microphys_sb06<TF>::create(
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        // Time series
-        stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        // stats.add_time_series("rs", "Mean surface snow rate", "kg m-2 s-1", group_name);
-        // stats.add_time_series("rg", "Mean surface graupel rate", "kg m-2 s-1", group_name);
-        // stats.add_time_series("rh", "Mean surface hail rate", "kg m-2 s-1", group_name);
+        for (auto& it : hydro_species)
+        {
+            // Aargh, here the fun with automation/names starts...
+            // Time series
+            stats.add_time_series("r" + it.first[1], "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
 
+            // Profiles
+            stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
+
+            // Tendencies
+            stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
+        }
+
+        // Thermo tendencies
         stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
-        // stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
-        // stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
-        // stats.add_tendency(*fields.st.at("qh") , "z", tend_name, tend_longname);
-
-        // Profiles
-        stats.add_prof("vqr", "Fall velocity rain mass density", "m s-1", "z" , group_name);
-        stats.add_prof("vnr", "Fall velocity rain number density", "m s-1", "z" , group_name);
     }
 
-    if (column.get_switch())
-    {
-        column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
-        // column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
-        // column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
-        // column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
-    }
+    //if (column.get_switch())
+    //{
+    //    column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
+    //    // column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
+    //    // column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
+    //    // column.add_time_series("rh", "Surface hail rate", "kg m-2 s-1");
+    //}
 
     // Create cross sections
-    // 1. Variables that this class can calculate/provide:
-    const std::vector<std::string> allowed_crossvars = {"rr_bot", "rs_bot", "rg_bot"};
+    // Variables that this class can calculate/provide:
+    std::vector<std::string> allowed_crossvars;
+    for (auto& it : hydro_species)
+    {
+        std::string name = "r" + it.first[1];
+        name += "_bot"; // ?!!?!
+        allowed_crossvars.push_back(name);
+    }
 
-    // 2. Cross-reference with the variables requested in the .ini file:
+    // Cross-reference with the variables requested in the .ini file:
     crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
@@ -1159,7 +1178,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     }
 
     // Store surface precipitation rates.
-    rr_bot = (*qr_flux_new);
+    //rr_bot = (*qr_flux_new);
 
     // Convert all units from `kg m-3 to `kg kg-1`.
     for (const std::string& name : fields_to_convert)
@@ -1213,60 +1232,60 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 template<typename TF>
 void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const double dt)
 {
-    auto& gd = grid.get_grid_data();
+    //auto& gd = grid.get_grid_data();
 
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
-    const bool is_stat = true;
-    const bool cyclic = false;
+    //const TF no_offset = 0.;
+    //const TF no_threshold = 0.;
+    //const bool is_stat = true;
+    //const bool cyclic = false;
 
-    // Time series
-    stats.calc_stats_2d("rr", rr_bot, no_offset);
+    //// Time series
+    //stats.calc_stats_2d("rr", rr_bot, no_offset);
     // stats.calc_stats_2d("rs", rs_bot, no_offset);
     // stats.calc_stats_2d("rg", rg_bot, no_offset);
 
     // Profiles
-    auto vq = fields.get_tmp();
-    auto vn = fields.get_tmp();
+    //auto vq = fields.get_tmp();
+    //auto vn = fields.get_tmp();
 
-    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+    //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
-    for (int k=gd.kend-1; k>=gd.kstart; --k)
-    {
-        // Sedimentation
-        // Density correction fall speeds
-        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
-        const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
+    //for (int k=gd.kend-1; k>=gd.kstart; --k)
+    //{
+    //    // Sedimentation
+    //    // Density correction fall speeds
+    //    const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
+    //    const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
 
-        bool ql_present = true;
-        sedi_vel_rain<TF>(
-                &vq->fld.data()[k * gd.ijcells],
-                &vn->fld.data()[k * gd.ijcells],
-                &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
-                &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
-                nullptr,
-                rho.data(),
-                rain, rain_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k, use_ql_sedi_rain);
-    }
+    //    bool ql_present = true;
+    //    sedi_vel_rain<TF>(
+    //            &vq->fld.data()[k * gd.ijcells],
+    //            &vn->fld.data()[k * gd.ijcells],
+    //            &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
+    //            &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
+    //            nullptr,
+    //            rho.data(),
+    //            rain, rain_coeffs,
+    //            rho_corr,
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.icells, gd.ijcells,
+    //            k, use_ql_sedi_rain);
+    //}
 
-    stats.calc_stats("vqr", *vq, no_offset, no_threshold);
-    stats.calc_stats("vnr", *vn, no_offset, no_threshold);
+    //stats.calc_stats("vqr", *vq, no_offset, no_threshold);
+    //stats.calc_stats("vnr", *vn, no_offset, no_threshold);
 
-    fields.release_tmp(vq);
-    fields.release_tmp(vn);
+    //fields.release_tmp(vq);
+    //fields.release_tmp(vn);
 }
 
 #ifndef USECUDA
 template<typename TF>
 void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 {
-    const TF no_offset = 0.;
-    column.calc_time_series("rr", rr_bot.data(), no_offset);
+    //const TF no_offset = 0.;
+    //column.calc_time_series("rr", rr_bot.data(), no_offset);
     // column.calc_time_series("rs", rs_bot.data(), no_offset);
     // column.calc_time_series("rg", rg_bot.data(), no_offset);
 }
@@ -1275,18 +1294,18 @@ void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    if (cross.get_switch())
-    {
-        for (auto& it : crosslist)
-        {
-            if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
-            // if (it == "rs_bot")
-            //     cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
-            // if (it == "rg_bot")
-            //     cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
-        }
-    }
+    //if (cross.get_switch())
+    //{
+    //    for (auto& it : crosslist)
+    //    {
+    //        if (it == "rr_bot")
+    //            cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+    //        // if (it == "rs_bot")
+    //        //     cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
+    //        // if (it == "rg_bot")
+    //        //     cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
+    //    }
+    //}
 }
 
 #ifndef USECUDA
@@ -1307,7 +1326,7 @@ unsigned long Microphys_sb06<TF>::get_time_limit(unsigned long idt, const double
     // Prevent zero division.
     cfl = std::max(cfl, 1.e-5);
 
-    return idt * this->cflmax / cfl;
+    return idt * this->cfl_max / cfl;
 }
 #endif
 
@@ -1328,7 +1347,7 @@ template<typename TF>
 void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
 {
     // Make a hard copy of the surface rain precipitation field
-    field = rr_bot;
+    //field = rr_bot;
 
     // Add snow and graupel surface precipitation
     // std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
