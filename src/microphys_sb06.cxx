@@ -521,7 +521,7 @@ namespace
                 const int ijk = i + j * jstride + k * kstride;
 
                 // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
-                fld_2d[ij] = fld_3d[ijk] + dt*rho[k]*fld_3d_tend[ijk];
+                fld_2d[ij] = fld_3d[ijk] + 0*dt*rho[k]*fld_3d_tend[ijk];
             }
     }
 
@@ -572,11 +572,9 @@ namespace
 
 
     template<typename TF>
-    void integrate_processes(
-            TF* const restrict q_val,
-            TF* const restrict n_val,
-            const TF* const restrict q_tend,
-            const TF* const restrict n_tend,
+    void integrate_process(
+            TF* const restrict val,
+            const TF* const restrict tend,
             const double dt,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -589,8 +587,7 @@ namespace
                 const int ij = i + j * jstride;
 
                 // Time integration
-                q_val[ij] += q_tend[ij] * TF(dt);
-                n_val[ij] += n_tend[ij] * TF(dt);
+                val[ij] += tend[ij] * TF(dt);
             }
     }
 
@@ -687,6 +684,35 @@ namespace
                 // old versions are integrated first with only the dynamics tendencies to avoid double counting.
                 nrt[ijk] += rho_i * (nr_new[ij] - (nr_old[ijk] + dt*rho[k]*nrt[ijk])) * dt_i;
             }
+    }
+
+    template<typename TF>
+    void diagnose_tendency(
+            TF* const restrict tend,
+            const TF* const restrict fld_old,
+            const TF* const restrict fld_new,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        const TF dt_i = TF(1) / dt;
+        const TF rho_i = TF(1) / rho[k];
+
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij = i + j * jstride;
+                    const int ijk= i + j * jstride + k*kstride;
+
+                    // Evaluate tendencies. This includes the tendencies from both conversions and implicit sedimentation.
+                    // `Old` versions are integrated first with only the dynamics tendencies to avoid double counting.
+                    tend[ijk] += rho_i * (fld_new[ij] - (fld_old[ijk] + 0*dt*rho[k]*tend[ijk])) * dt_i;
+                }
     }
 }
 
@@ -829,25 +855,25 @@ void Microphys_sb06<TF>::create(
     const std::string group_name = "thermo";
 
     // Add variables to the statistics
-    if (stats.get_switch())
-    {
-        for (auto& it : hydro_species)
-        {
-            // Aargh, here the fun with automation/names starts...
-            // Time series
-            stats.add_time_series("r" + it.first[1], "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
+    //if (stats.get_switch())
+    //{
+    //    for (auto& it : hydro_species)
+    //    {
+    //        // Aargh, here the fun with automation/names starts...
+    //        // Time series
+    //        stats.add_time_series("r" + it.first[1], "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
 
-            // Profiles
-            stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
+    //        // Profiles
+    //        stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
 
-            // Tendencies
-            stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
-        }
+    //        // Tendencies
+    //        stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
+    //    }
 
-        // Thermo tendencies
-        stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
-        stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
-    }
+    //    // Thermo tendencies
+    //    stats.add_tendency(*fields.st.at("thl"), "z", tend_name, tend_longname);
+    //    stats.add_tendency(*fields.st.at("qt") , "z", tend_name, tend_longname);
+    //}
 
     //if (column.get_switch())
     //{
@@ -859,16 +885,16 @@ void Microphys_sb06<TF>::create(
 
     // Create cross sections
     // Variables that this class can calculate/provide:
-    std::vector<std::string> allowed_crossvars;
-    for (auto& it : hydro_species)
-    {
-        std::string name = "r" + it.first[1];
-        name += "_bot"; // ?!!?!
-        allowed_crossvars.push_back(name);
-    }
+    //std::vector<std::string> allowed_crossvars;
+    //for (auto& it : hydro_species)
+    //{
+    //    std::string name = "r" + it.first[1];
+    //    name += "_bot"; // ?!!?!
+    //    allowed_crossvars.push_back(name);
+    //}
 
-    // Cross-reference with the variables requested in the .ini file:
-    crosslist = cross.get_enabled_variables(allowed_crossvars);
+    //// Cross-reference with the variables requested in the .ini file:
+    //crosslist = cross.get_enabled_variables(allowed_crossvars);
 }
 
 #ifndef USECUDA
@@ -902,37 +928,31 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto mu_r = fields.get_tmp_xy();
     auto lambda_r = fields.get_tmp_xy();
 
-    // Help functions to get/zero XY fields.
+    // Setup 2D slices for implicit solver
+    const int n_slices = hydro_species.size() * 8;
+    if (n_slices > gd.kcells)
+        throw std::runtime_error("TODO.... :-)");
+
+    auto tmp_slices = fields.get_tmp();
+    std::fill(tmp_slices->fld.begin(), tmp_slices->fld.end(), TF(0));
+    int n = 0;
+    for (auto& it : hydro_species)
+    {
+        it.second.v_sed_now = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.v_sed_new = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.flux_now = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.flux_new = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.sum = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.impl = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.slice = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.conversion_tend = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+    }
+
+    // Help functions to zero XY fields.
     auto zero_tmp_xy = [&](std::shared_ptr<std::vector<TF>>& fld_xy)
     {
         std::fill((*fld_xy).begin(), (*fld_xy).end(), TF(0));
     };
-
-    // 2D slices for sedimentation.
-    auto get_zero_tmp_xy = [&]()
-    {
-        auto fld_xy = fields.get_tmp_xy();
-        zero_tmp_xy(fld_xy);
-        return fld_xy;
-    };
-
-    auto vr_sedq_now = get_zero_tmp_xy();
-    auto vr_sedq_new = get_zero_tmp_xy();
-    auto qr_flux_now = get_zero_tmp_xy();
-    auto qr_flux_new = get_zero_tmp_xy();
-    auto qr_sum = get_zero_tmp_xy();
-    auto qr_impl = get_zero_tmp_xy();
-    auto qr_slice = get_zero_tmp_xy();
-    auto qr_tend_conversion = get_zero_tmp_xy();
-
-    auto vr_sedn_now = get_zero_tmp_xy();
-    auto vr_sedn_new = get_zero_tmp_xy();
-    auto nr_flux_now = get_zero_tmp_xy();
-    auto nr_flux_new = get_zero_tmp_xy();
-    auto nr_sum = get_zero_tmp_xy();
-    auto nr_impl = get_zero_tmp_xy();
-    auto nr_slice = get_zero_tmp_xy();
-    auto nr_tend_conversion = get_zero_tmp_xy();
 
     auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
     {
@@ -946,55 +966,45 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 is_to_kgm3);
     };
 
+    // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
     const bool to_kgm3 = true;
-    // const std::vector<std::string> fields_to_convert =
-    //     {"qt", "qi", "qr", "qs", "qg", "qh", "ni", "nr", "ns", "ng", "nh"};
-    const std::vector<std::string> fields_to_convert =
-        {"qt", "qr", "nr"};
-
-    // Convert all units from `kg kg-1` to `kg m-3.
     convert_units_short(ql->fld.data(), to_kgm3);
     convert_units_short(qi->fld.data(), to_kgm3);
-    for (const std::string& name : fields_to_convert)
-        convert_units_short(fields.ap.at(name)->fld.data(), to_kgm3);
+    convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
+    for (auto& it : hydro_species)
+        convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
-        // Copy 3D fields to 2D slices.
-        copy_slice_and_integrate(
-                (*qr_slice).data(),
-                fields.sp.at("qr")->fld.data(),
-                fields.st.at("qr")->fld.data(),
-                rho.data(),
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+        for (auto& it : hydro_species)
+        {
+            // Copy 3D fields to 2D slices, and do partial
+            // integration of dynamics tendencies.
+            copy_slice_and_integrate(
+                    it.second.slice,
+                    fields.sp.at(it.first)->fld.data(),
+                    fields.st.at(it.first)->fld.data(),
+                    rho.data(),
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells, k);
 
-        copy_slice_and_integrate(
-                (*nr_slice).data(),
-                fields.sp.at("nr")->fld.data(),
-                fields.st.at("nr")->fld.data(),
-                rho.data(),
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells, k);
+            // Zero slice which gathers the conversion tendencies
+            for (int n=0; n<gd.ijcells; ++n)
+                it.second.conversion_tend[n] = TF(0);
+        }
 
-        // Zero 2D tmp arrays which gather the process tendencies
-        zero_tmp_xy(qr_tend_conversion);
-        zero_tmp_xy(nr_tend_conversion);
-
-        // Sedimentation
         // Density correction fall speeds
         const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
         const TF rho_corr = std::exp(-rho_vel<TF>*hlp);
 
+        // Sedimentation velocity rain species.
         sedi_vel_rain<TF>(
-                (*vr_sedq_now).data(),
-                (*vr_sedn_now).data(),
-                (*qr_slice).data(),
-                (*nr_slice).data(),
+                hydro_species.at("qr").v_sed_now,
+                hydro_species.at("nr").v_sed_now,
+                hydro_species.at("qr").slice,
+                hydro_species.at("nr").slice,
                 ql->fld.data(),
                 rho.data(),
                 rain, rain_coeffs,
@@ -1006,39 +1016,27 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
-        implicit_core(
-                (*qr_slice).data(),
-                (*qr_sum).data(),
-                (*qr_impl).data(),
-                (*vr_sedq_new).data(),
-                (*vr_sedq_now).data(),
-                (*qr_flux_new).data(),
-                (*qr_flux_now).data(),
-                rdzdt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-
-        implicit_core(
-                (*nr_slice).data(),
-                (*nr_sum).data(),
-                (*nr_impl).data(),
-                (*vr_sedn_new).data(),
-                (*vr_sedn_now).data(),
-                (*nr_flux_new).data(),
-                (*nr_flux_now).data(),
-                rdzdt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
+        for (auto& it : hydro_species)
+            implicit_core(
+                    it.second.slice,
+                    it.second.sum,
+                    it.second.impl,
+                    it.second.v_sed_new,
+                    it.second.v_sed_now,
+                    it.second.flux_new,
+                    it.second.flux_now,
+                    rdzdt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
         // Calculate microphysics processes.
         // Autoconversion; formation of rain drop by coagulating cloud droplets.
         autoconversion(
-                (*qr_tend_conversion).data(),
-                (*nr_tend_conversion).data(),
-                (*qr_slice).data(),
-                (*nr_slice).data(),
+                hydro_species.at("qr").conversion_tend,
+                hydro_species.at("nr").conversion_tend,
+                hydro_species.at("qr").slice,
+                hydro_species.at("nr").slice,
                 ql->fld.data(),
                 rho.data(),
                 exner.data(),
@@ -1049,8 +1047,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Accretion; growth of rain droplets by collecting cloud droplets
         accretion(
-                (*qr_tend_conversion).data(),
-                (*qr_slice).data(),
+                hydro_species.at("qr").conversion_tend,
+                hydro_species.at("qr").slice,
                 ql->fld.data(),
                 rho.data(),
                 exner.data(),
@@ -1065,8 +1063,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 (*rain_diameter).data(),
                 (*mu_r).data(),
                 (*lambda_r).data(),
-                (*qr_slice).data(),
-                (*nr_slice).data(),
+                hydro_species.at("qr").slice,
+                hydro_species.at("nr").slice,
                 rho.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -1074,10 +1072,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Evaporation of rain droplets.
         evaporation(
-                (*qr_tend_conversion).data(),
-                (*nr_tend_conversion).data(),
-                (*qr_slice).data(),
-                (*nr_slice).data(),
+                hydro_species.at("qr").conversion_tend,
+                hydro_species.at("nr").conversion_tend,
+                hydro_species.at("qr").slice,
+                hydro_species.at("nr").slice,
                 ql->fld.data(),
                 // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
                 // fields.sp.at("qi")->fld.data(),
@@ -1097,9 +1095,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
         // coagulation, and breakup by collisions.
         selfcollection_breakup(
-                (*nr_tend_conversion).data(),
-                (*nr_slice).data(),
-                (*qr_slice).data(),
+                hydro_species.at("nr").conversion_tend,
+                hydro_species.at("nr").slice,
+                hydro_species.at("qr").slice,
                 rho.data(),
                 (*rain_mass).data(),
                 (*rain_diameter).data(),
@@ -1109,123 +1107,97 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells, k);
 
-        // Integrate conversion tendencies into qr/Nr
-        // slices before implicit step.
-        integrate_processes(
-                (*qr_slice).data(),
-                (*nr_slice).data(),
-                (*qr_tend_conversion).data(),
-                (*nr_tend_conversion).data(),
-                dt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
+        for (auto& it : hydro_species)
+        {
+            // Integrate conversion tendencies into qr/Nr slices before implicit step.
+            integrate_process(
+                    it.second.slice,
+                    it.second.conversion_tend,
+                    dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
-        // Sedimentation
-        implicit_time(
-                (*qr_slice).data(),
-                (*qr_sum).data(),
-                (*qr_impl).data(),
-                (*vr_sedq_new).data(),
-                (*vr_sedq_now).data(),
-                (*qr_flux_new).data(),
-                rdzdt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
+            // Implicit sedimentation step
+            implicit_time(
+                    it.second.slice,
+                    it.second.sum,
+                    it.second.impl,
+                    it.second.v_sed_new,
+                    it.second.v_sed_now,
+                    it.second.flux_new,
+                    rdzdt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
-        implicit_time(
-                (*nr_slice).data(),
-                (*nr_sum).data(),
-                (*nr_impl).data(),
-                (*vr_sedn_new).data(),
-                (*vr_sedn_now).data(),
-                (*nr_flux_new).data(),
-                rdzdt,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
+            // Evaluate total tendencies back from implicit solver.
+            diagnose_tendency(
+                    fields.st.at(it.first)->fld.data(),
+                    fields.sp.at(it.first)->fld.data(),
+                    it.second.slice,
+                    rho.data(),
+                    exner.data(),
+                    dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        }
 
         // Calculate thermodynamic tendencies `thl` and `qt`,
         // from microphysics tendencies excluding sedimentation.
         calc_thermo_tendencies(
                 fields.st.at("thl")->fld.data(),
                 fields.st.at("qt")->fld.data(),
-                (*qr_tend_conversion).data(),
-                (*nr_tend_conversion).data(),
+                hydro_species.at("qr").conversion_tend,
+                hydro_species.at("nr").conversion_tend,
                 rho.data(),
                 exner.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k);
-
-        // Evaluate total tendencies `qr` and `nr` back from implicit solver.
-        calc_tendencies(
-                fields.st.at("qr")->fld.data(),
-                fields.st.at("nr")->fld.data(),
-                fields.sp.at("qr")->fld.data(),
-                fields.sp.at("nr")->fld.data(),
-                (*qr_slice).data(),
-                (*nr_slice).data(),
-                rho.data(),
-                exner.data(),
-                dt,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells,
                 k);
     }
 
-    // Store surface precipitation rates.
-    //rr_bot = (*qr_flux_new);
+    for (auto& it : hydro_species)
+    {
+        // Store surface precipitation rates.
+        for (int n=0; n<gd.ijcells; ++n)
+            it.second.precip_rate[n] = it.second.flux_new[n];
 
-    // Convert all units from `kg m-3 to `kg kg-1`.
-    for (const std::string& name : fields_to_convert)
-        convert_units_short(fields.ap.at(name)->fld.data(), !to_kgm3);
+        // Convert all units back from `kg m-3` to `kg kg-1` (mass) and `m-3` to `kg-1` (density)
+        convert_units_short(fields.ap.at(it.first)->fld.data(), !to_kgm3);
+    }
 
-    // Calculate tendencies.
-    stats.calc_tend(*fields.st.at("thl"), tend_name);
-    stats.calc_tend(*fields.st.at("qt" ), tend_name);
-    // stats.calc_tend(*fields.st.at("qi" ), tend_name);
-    stats.calc_tend(*fields.st.at("qr" ), tend_name);
-    // stats.calc_tend(*fields.st.at("qs" ), tend_name);
-    // stats.calc_tend(*fields.st.at("qg" ), tend_name);
-    // stats.calc_tend(*fields.st.at("qh" ), tend_name);
+    // Convert specific humidity from `kg m-3` to `kg kg-`
+    convert_units_short(fields.ap.at("qt")->fld.data(), !to_kgm3);
 
-    // stats.calc_tend(*fields.st.at("ni" ), tend_name);
-    stats.calc_tend(*fields.st.at("nr" ), tend_name);
-    // stats.calc_tend(*fields.st.at("ns" ), tend_name);
-    // stats.calc_tend(*fields.st.at("ng" ), tend_name);
-    // stats.calc_tend(*fields.st.at("nh" ), tend_name);
+//    // Calculate tendencies.
+//    stats.calc_tend(*fields.st.at("thl"), tend_name);
+//    stats.calc_tend(*fields.st.at("qt" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("qi" ), tend_name);
+//    stats.calc_tend(*fields.st.at("qr" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("qs" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("qg" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("qh" ), tend_name);
+//
+//    // stats.calc_tend(*fields.st.at("ni" ), tend_name);
+//    stats.calc_tend(*fields.st.at("nr" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("ns" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("ng" ), tend_name);
+//    // stats.calc_tend(*fields.st.at("nh" ), tend_name);
 
     // Release temporary fields.
     fields.release_tmp(ql);
     fields.release_tmp(qi);
     fields.release_tmp(T);
+    fields.release_tmp(tmp_slices);
 
     fields.release_tmp_xy(rain_mass);
     fields.release_tmp_xy(rain_diameter);
     fields.release_tmp_xy(mu_r);
     fields.release_tmp_xy(lambda_r);
-
-    fields.release_tmp_xy(vr_sedq_now);
-    fields.release_tmp_xy(vr_sedq_new);
-    fields.release_tmp_xy(qr_flux_now);
-    fields.release_tmp_xy(qr_flux_new);
-    fields.release_tmp_xy(qr_sum);
-    fields.release_tmp_xy(qr_impl);
-    fields.release_tmp_xy(qr_slice);
-    fields.release_tmp_xy(qr_tend_conversion);
-
-    fields.release_tmp_xy(vr_sedn_now);
-    fields.release_tmp_xy(vr_sedn_new);
-    fields.release_tmp_xy(nr_flux_now);
-    fields.release_tmp_xy(nr_flux_new);
-    fields.release_tmp_xy(nr_sum);
-    fields.release_tmp_xy(nr_impl);
-    fields.release_tmp_xy(nr_slice);
-    fields.release_tmp_xy(nr_tend_conversion);
 }
 #endif
 

@@ -129,6 +129,16 @@ struct Hydro_specie
     std::string bla;
 
     std::vector<TF> precip_rate;
+
+    // XY slices from tmp field, for implicit solver
+    TF* v_sed_now;
+    TF* v_sed_new;
+    TF* flux_now;
+    TF* flux_new;
+    TF* sum;
+    TF* impl;
+    TF* slice;
+    TF* conversion_tend;
 };
 
 template<typename TF>
