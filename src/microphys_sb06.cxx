@@ -64,9 +64,6 @@ namespace
     template<typename TF> constexpr TF rho_vel  = 0.4;                 // Exponent for density correction (value from ICON)
     template<typename TF> constexpr TF q_crit   = 1.e-9;               // Min rain liquid water for which calculations are performed (value from ICON)
 
-
-
-
     template<typename TF>
     void convert_unit(
             TF* const restrict a,
@@ -90,9 +87,6 @@ namespace
                 }
         }
     }
-
-
-
 
     template<typename TF>
     inline TF particle_meanmass(
@@ -298,6 +292,7 @@ namespace
                 val[ij] += tend[ij] * TF(dt);
             }
     }
+
 
     template<typename TF>
     void implicit_time(
@@ -685,6 +680,102 @@ namespace warm
     }
 }
 
+namespace cold
+{
+    // Kernels ported from ICON. All kernels use the same name as the ICON subroutines
+    template<typename TF> constexpr TF kc_autocon  = 9.44e+9;  //..Long-Kernel
+
+    template<typename TF>
+    void setup_cloud_autoconversion(
+            Particle<TF>& cloud,
+            Particle_cloud_coeffs<TF>& cloud_coeffs)
+    {
+        const TF nu = cloud.nu;
+        const TF mu = cloud.mu;
+
+        if (mu == 1.0)  // NOTE BvS: is this safe?
+        {
+            //.. see SB2001
+            cloud_coeffs.k_au =
+                    kc_autocon<TF> / cloud.x_max * (TF(1) / TF(20)) * (nu + TF(2)) * (nu + TF(4)) / fm::pow2(nu + TF(1));
+            cloud_coeffs.k_sc = kc_autocon<TF> * (nu + TF(2)) / (nu + TF(1));
+        }
+        else
+        {
+            throw std::runtime_error("Non SB01 autoconversion/selfcollection constants not (yet) setup...");
+            //!.. see Eq. (3.44) of Seifert (2002)
+            //cloud_coeffs%k_au = kc_autocon / cloud%x_max * (1.0_wp / 20.0_wp)  &
+            //     & * ( 2.0_wp * gfct((nu+4.0)/mu)**1                           &
+            //     &            * gfct((nu+2.0)/mu)**1 * gfct((nu+1.0)/mu)**2    &
+            //     &   - 1.0_wp * gfct((nu+3.0)/mu)**2 * gfct((nu+1.0)/mu)**2 )  &
+            //     &   / gfct((nu+2.0)/mu)**4
+            //cloud_coeffs%k_sc = kc_autocon * cloud_coeffs%c_z
+        }
+    }
+
+
+
+    template<typename TF>
+    void autoconversionSB(
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict qc,
+            Particle_cloud_coeffs<TF>& cloud_coeffs,
+            Particle<TF>& cloud,
+            Particle<TF>& rain,
+            const TF cloud_rho_v,  // cloud%rho_v(i,k) in ICON, constant per layer in uHH.
+            const TF Nc0,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Autoconversion of Seifert and Beheng (2001, Atmos. Res.)
+        // Formation of rain by coagulating cloud droplets
+
+        const TF k_1  = 6.00e+2;   //..Parameter for Phi
+        const TF k_2  = 0.68e+0;   //..Parameter fof Phi
+        const TF eps  = 1.00e-25;  // NOTE BvS: dangerous for float version MicroHH.
+        const TF x_s_i = TF(1) / cloud.x_max;
+        const TF dt_i = TF(1) / dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
+
+                if (qc[ijk] > q_crit<TF>)
+                {
+                    const TF n_c = Nc0; // cloud%n(i,k) in ICON
+                    const TF x_c = particle_meanmass(cloud, qc[ijk], n_c);
+
+                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ijk]) * fm::pow2(x_c) * dt * cloud_rho_v;
+                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(0.9));
+                    const TF phi = k_1 * std::pow(tau, k_2) * fm::pow3(TF(1) - std::pow(tau, k_2));
+                    au = au * (TF(1) + phi / fm::pow2(TF(1) - tau));
+
+                    nrt[ij] += au * dt_i * x_s_i;
+                    qrt[ij] += au * dt_i;
+
+                    //au  = MAX(MIN(q_c,au),0.0_wp)
+                    //sc  = cloud_coeffs%k_sc * q_c**2 * dt * cloud%rho_v(i,k)
+                    //rain%n(i,k)  = rain%n(i,k)  + au * x_s_i
+                    //rain%q(i,k)  = rain%q(i,k)  + au
+                    //cloud%n(i,k) = cloud%n(i,k) - MIN(n_c,sc)
+                    //cloud%q(i,k) = cloud%q(i,k) - au
+                }
+            }
+    }
+
+
+
+}
+
 template<typename TF>
 Microphys_sb06<TF>::Microphys_sb06(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -719,20 +810,20 @@ Microphys_sb06<TF>::Microphys_sb06(
     }
     else
     {
-        add_type("qi", "ice", "ice specific humidity", "kg kg-1", is_mass);
-        add_type("ni", "ice", "number density ice", "kg-1", !is_mass);
+        //add_type("qi", "ice", "ice specific humidity", "kg kg-1", is_mass);
+        //add_type("ni", "ice", "number density ice", "kg-1", !is_mass);
 
         add_type("qr", "rain", "rain specific humidity", "kg kg-1", is_mass);
         add_type("nr", "rain", "number density rain", "kg-1", !is_mass);
 
-        add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
-        add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
+        //add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
+        //add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
 
-        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
-        add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
+        //add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
+        //add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
 
-        add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
-        add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
+        //add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
+        //add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
     }
 
     const std::string group_name = "thermo";
@@ -798,6 +889,9 @@ Microphys_sb06<TF>::Microphys_sb06(
     // Moved function to after assignment to prevent overwriting.
     setup_particle_coeffs(cloud, cloud_coeffs);
     setup_particle_coeffs(rain, rain_coeffs);
+
+    // Setup autoconversion and selfcollection constants.
+    cold::setup_cloud_autoconversion(cloud, cloud_coeffs);
 
     // CvH: ICON overrides using the following code, but they are as far as I see the same values.
     // rain_coeffs%cmu0 = cfg_params%rain_cmu0
@@ -967,6 +1061,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         }
 
         // Density correction fall speeds
+        // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
         const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
         const TF rho_corr = std::exp(-rho_vel<TF>*hlp);
 
@@ -1004,6 +1099,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         if (sw_warm)
         {
             // Calculate microphysics processes.
+            // These are the "old" `2mom_warm` kernels ported from UCLA-LES/DALES.
+
             // Autoconversion; formation of rain drop by coagulating cloud droplets.
             warm::autoconversion(
                     hydro_types.at("qr").conversion_tend,
@@ -1079,6 +1176,28 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells, k);
+        }
+        else
+        {
+            // Calculate microphysics processes.
+            // These are the new kernels ported from ICON.
+
+            // Autoconversion; formation of rain drop by coagulating cloud droplets.
+            cold::autoconversionSB(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    ql->fld.data(),
+                    cloud_coeffs,
+                    cloud, rain,
+                    rho_corr,
+                    Nc0, dt,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+
         }
 
         for (auto& it : hydro_types)
