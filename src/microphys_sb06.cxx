@@ -727,7 +727,6 @@ namespace cold
             Particle<TF>& rain,
             const TF cloud_rho_v,  // cloud%rho_v(i,k) in ICON, constant per layer in uHH.
             const TF Nc0,
-            const double dt,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride, const int kstride,
@@ -740,7 +739,6 @@ namespace cold
         const TF k_2  = 0.68e+0;   //..Parameter fof Phi
         const TF eps  = 1.00e-25;  // NOTE BvS: dangerous for float version MicroHH.
         const TF x_s_i = TF(1) / cloud.x_max;
-        const TF dt_i = TF(1) / dt;
 
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
@@ -754,13 +752,13 @@ namespace cold
                     const TF n_c = Nc0; // cloud%n(i,k) in ICON
                     const TF x_c = particle_meanmass(cloud, qc[ijk], n_c);
 
-                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ijk]) * fm::pow2(x_c) * dt * cloud_rho_v;
+                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ijk]) * fm::pow2(x_c) * cloud_rho_v;    // NOTE `*dt` in ICON..
                     const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(0.9));
                     const TF phi = k_1 * std::pow(tau, k_2) * fm::pow3(TF(1) - std::pow(tau, k_2));
                     au = au * (TF(1) + phi / fm::pow2(TF(1) - tau));
 
-                    nrt[ij] += au * dt_i * x_s_i;
-                    qrt[ij] += au * dt_i;
+                    nrt[ij] += au * x_s_i;
+                    qrt[ij] += au;
 
                     //au  = MAX(MIN(q_c,au),0.0_wp)
                     //sc  = cloud_coeffs%k_sc * q_c**2 * dt * cloud%rho_v(i,k)
@@ -771,6 +769,52 @@ namespace cold
                 }
             }
     }
+
+
+    template<typename TF>
+    void accretionSB(
+            TF* const restrict qrt,
+            const TF* const restrict qr,
+            const TF* const restrict qc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Accretion: growth of raindrops collecting cloud droplets
+        // Accretion of Seifert and Beheng (2001, Atmos. Res.)
+
+        const TF k_r = 5.78;       // kernel
+        const TF k_1 = 5.00e-04;   // Phi function
+        const TF eps = 1.00e-25;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = i + j * jstride + k * kstride;
+
+                if (qc[ijk] > TF(0) && qr[ij] > TF(0))
+                {
+
+                    // ..accretion rate of SB2001
+                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(1));
+                    const TF phi = fm::pow4(tau/(tau+k_1));
+                    const TF ac  = k_r *  qc[ijk] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
+
+                    qrt[ij] += ac;
+
+                    //ac = MIN(q_c,ac)
+                    //x_c = particle_meanmass(cloud, q_c,n_c)
+                    //rain%q(i,k)  = rain%q(i,k)  + ac
+                    //cloud%q(i,k) = cloud%q(i,k) - ac
+                    //cloud%n(i,k) = cloud%n(i,k) - MIN(n_c,ac/x_c)
+                }
+            }
+    }
+
+
 
 
 
@@ -1192,12 +1236,20 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     cloud_coeffs,
                     cloud, rain,
                     rho_corr,
-                    Nc0, dt,
+                    Nc0,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
 
+            cold::accretionSB(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    ql->fld.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
         }
 
         for (auto& it : hydro_types)
