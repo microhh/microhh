@@ -816,7 +816,49 @@ namespace cold
 
 
 
+    template<typename TF>
+    void rain_selfcollectionSB(
+            TF* const restrict nrt,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            Particle<TF>& rain,
+            const TF rain_rho_v,  // rain%rho_v(i,k) in ICON, constant per layer in uHH.
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        // Selfcollection of Seifert and Beheng (2001, Atmos. Res.)                     *
 
+        // Parameters based on Seifert (2008, JAS)
+        const TF D_br = 1.10e-3;
+        const TF k_rr = 4.33e+0;
+        const TF k_br = 1.00e+3;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+
+                if (qr[ij] > TF(0))
+                {
+                    const TF xr = particle_meanmass(rain, qr[ij], nr[ij]);
+                    const TF Dr = particle_diameter(rain, xr);
+
+                    // Selfcollection as in SB2001
+                    const TF sc = k_rr * nr[ij] * qr[ij] * rain_rho_v;  // `*dt` in ICON
+
+                    // Breakup as in Seifert (2008, JAS), Eq. (A13)
+                    TF br = TF(0);
+                    if (Dr > TF(0.30e-3))
+                        br = (k_br * (Dr - D_br) + TF(1)) * sc;
+
+                    nrt[ij] += sc - br;
+                }
+            }
+    }
 
 }
 
@@ -1246,6 +1288,17 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("qr").slice,
                     ql->fld.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+
+            cold::rain_selfcollectionSB(
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    rain,
+                    rho_corr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
