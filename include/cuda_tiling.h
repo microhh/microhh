@@ -53,25 +53,21 @@ struct TilingStrategy {
             unsigned int unroll_factor_z,
             bool tile_contiguous_x,
             bool tile_contiguous_y,
-            bool tile_contiguous_z,
-            unsigned int blocks_per_sm_
+            bool tile_contiguous_z
     ):
             tile_factor_ {tile_factor_x, tile_factor_y, tile_factor_z},
             unroll_factor_ {unroll_factor_x, unroll_factor_y, unroll_factor_z},
-            tile_contiguous_ {tile_contiguous_x, tile_contiguous_y, tile_contiguous_z},
-            blocks_per_sm_ {blocks_per_sm_} {}
+            tile_contiguous_ {tile_contiguous_x, tile_contiguous_y, tile_contiguous_z} {}
 
     CUDA_HOST_DEVICE
     constexpr TilingStrategy(): TilingStrategy(
             32, 4, 1,
             1, 1, 1,
             1, 1, 1,
-            false, false, false,
-            1) {}
+            false, false, false) {}
 
     CUDA_HOST_DEVICE
     constexpr unsigned int block_size(size_t axis) const {
-        if (axis >= 3) return 1;
         return BlockSize::get(axis);
     }
 
@@ -90,21 +86,6 @@ struct TilingStrategy {
     constexpr unsigned int tile_contiguous(size_t axis) const {
         if (axis >= 3) return false;
         return tile_contiguous_[axis];
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_contiguous_x() const {
-        return tile_contiguous(0);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_contiguous_y() const {
-        return tile_contiguous(1);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_contiguous_z() const {
-        return tile_contiguous(2);
     }
 
     CUDA_HOST_DEVICE
@@ -133,61 +114,10 @@ struct TilingStrategy {
         return dim3(block_size(0), block_size(1), block_size(2));
     }
 
-    CUDA_HOST_DEVICE
-    constexpr unsigned int block_size_x() const {
-        return block_size(0);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int block_size_y() const {
-        return block_size(1);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int block_size_z() const {
-        return block_size(2);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_factor_x() const {
-        return tile_factor(0);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_factor_y() const {
-        return tile_factor(1);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_factor_z() const {
-        return tile_factor(2);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_size_x() const {
-        return tile_size(0);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_size_y() const {
-        return tile_size(1);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int tile_size_z() const {
-        return tile_size(2);
-    }
-
-    CUDA_HOST_DEVICE
-    constexpr unsigned int blocks_per_sm() const {
-        return blocks_per_sm_;
-    }
-
 private:
     unsigned int tile_factor_[3];
     unsigned int unroll_factor_[3];
     bool tile_contiguous_[3];
-    unsigned int blocks_per_sm_;
 };
 
 template <
@@ -202,14 +132,13 @@ template <
         unsigned int unroll_factor_z,
         bool tile_contiguous_x_,
         bool tile_contiguous_y_,
-        bool tile_contiguous_z_,
-        unsigned int blocks_sm_ = 1
+        bool tile_contiguous_z_
 >
 struct StaticTilingStrategy: TilingStrategy<StaticBlockSize<
         block_size_x_,
         block_size_y_,
         block_size_z_
-    >> {
+>> {
     using base_type = TilingStrategy<StaticBlockSize<block_size_x_, block_size_y_, block_size_z_>>;
 
 
@@ -223,12 +152,18 @@ struct StaticTilingStrategy: TilingStrategy<StaticBlockSize<
             unroll_factor_z,
             tile_contiguous_x_,
             tile_contiguous_y_,
-            tile_contiguous_z_,
-            blocks_sm_
+            tile_contiguous_z_
     ) {}
 };
 
-using DefaultTilingStrategy = StaticTilingStrategy<128, 1, 1, 1, 1, 1, 1, 1, 1, false, false, false>;
+struct DefaultTilingStrategy: TilingStrategy<DynBlockSize> {
+    using base_type = TilingStrategy<DynBlockSize>;
+
+    CUDA_HOST_DEVICE
+    constexpr DefaultTilingStrategy(): base_type(
+            1, 1, 1, 1, 1, 1, false, false, false
+    ) {}
+};
 
 struct Grid_layout
 {
@@ -264,6 +199,26 @@ struct Grid_layout
     int operator()(int i, int j, int k) const
     {
         return ii * i + jj * j + kk * k;
+    }
+
+    CUDA_HOST_DEVICE
+    bool operator==(const Grid_layout& that) const
+    {
+        return that.istart == istart &&
+                that.jstart == jstart &&
+                that.kstart == kstart &&
+                that.iend == iend &&
+                that.jend == jend &&
+                that.kend == kend &&
+                that.ii == ii &&
+                that.jj == jj &&
+                that.kk == kk;
+    }
+
+    CUDA_HOST_DEVICE
+    bool operator!=(const Grid_layout& that) const
+    {
+        return !(*this == that);
     }
 };
 
@@ -314,122 +269,123 @@ namespace levels
     };
 }
 
-template <typename F, typename Tiling = DefaultTilingStrategy, size_t BorderSize = 3>
-struct TilingKernel
+template <typename Tiling, typename F, typename... Args>
+CUDA_DEVICE
+void cta_execute_tiling_layer(
+        const Grid_layout& grid,
+        F fun,
+        Args&&... args)
 {
-    static constexpr Tiling tiling {};
-    static constexpr size_t border_size = BorderSize;
-    static constexpr dim3 block_size = tiling.block_size();
-    static constexpr int blocks_per_sm = tiling.blocks_per_sm();
+    static constexpr Tiling tiling = {};
 
-    static_assert(tiling.tile_size_x() > 0, "invalid tile_size_x");
-    static_assert(tiling.tile_size_y() > 0, "invalid tile_size_y");
-    static_assert(tiling.tile_size_z() > 0, "invalid tile_size_z");
+    const int thread_idx_x = tiling.block_size(0) > 1 ? threadIdx.x : 0;
+    const int xoffset = grid.istart + blockIdx.x * tiling.tile_size(0) +
+                        (tiling.tile_contiguous(0) ? thread_idx_x * tiling.tile_factor(0) : thread_idx_x);
+    const int xstep = (tiling.tile_contiguous(0) ? 1 : tiling.block_size(0));
 
-    CUDA_HOST_DEVICE
-    TilingKernel(F fun = {}) : fun_(fun) {}
+    if (tiling.block_size(0) > 1 && tiling.tile_factor(0) == 1 && xoffset >= grid.iend) return;
 
-    template <typename... Args>
-    CUDA_DEVICE
-    void process_cta_layer(const Grid_layout& grid, F fun, Args... args)
-    {
-        const int thread_idx_x = tiling.block_size_x() > 1 ? threadIdx.x : 0;
-        const int xoffset = grid.istart + blockIdx.x * tiling.tile_size_x() +
-                            (tiling.tile_contiguous_x() ? thread_idx_x * tiling.tile_factor_x() : thread_idx_x);
+    const int thread_idx_y = tiling.block_size(1) > 1 ? threadIdx.y : 0;
+    const int yoffset = grid.jstart + blockIdx.y * tiling.tile_size(1) +
+                        (tiling.tile_contiguous(1) ? thread_idx_y * tiling.tile_factor(1) : thread_idx_y);
+    const int ystep = (tiling.tile_contiguous(1) ? 1 : tiling.block_size(1));
 
-        if (tiling.block_size_x() > 1 && tiling.tile_factor_x() == 1 && xoffset >= grid.iend) return;
-
-        const int thread_idx_y = tiling.block_size_y() > 1 ? threadIdx.y : 0;
-        const int yoffset = grid.jstart + blockIdx.y * tiling.tile_size_y() +
-                            (tiling.tile_contiguous_y() ? thread_idx_y * tiling.tile_factor_y() : thread_idx_y);
-
-        if (tiling.block_size_y() > 1 && tiling.tile_factor_y() == 1 && yoffset >= grid.jend) return;
+    if (tiling.block_size(1) > 1 && tiling.tile_factor(1) == 1 && yoffset >= grid.jend) return;
 
 #pragma unroll(tiling.unroll_factor(1))
-        for (int dy = 0; dy < tiling.tile_factor_y(); dy++)
-        {
-            const int j = yoffset + dy * (tiling.tile_contiguous_y() ? 1 : tiling.block_size_y());
-            if (tiling.tile_factor_y() > 1 && j >= grid.jend) break;
+    for (int dy = 0; dy < tiling.tile_factor(1); dy++)
+    {
+        const int j = yoffset + dy * ystep;
+        if (tiling.tile_factor(1) > 1 && j >= grid.jend) break;
 
 #pragma unroll(tiling.unroll_factor(0))
-            for (int dx = 0; dx < tiling.tile_factor_x(); dx++)
-            {
-                const int i = xoffset + dx * (tiling.tile_contiguous_x() ? 1 : tiling.block_size_x());
-                if (tiling.tile_factor_x() > 1 && i >= grid.iend) break;
-
-                fun_(grid, i, j, args...);
-            }
-        }
-    }
-
-    template <typename... Args>
-    CUDA_DEVICE
-    void process_cta(const Grid_layout& grid, F fun, Args... args)
-    {
-        const int thread_idx_z = tiling.block_size_z() > 1 ? threadIdx.z : 0;
-        const int block_idx_z = blockIdx.z;
-        const int zoffset = grid.kstart + block_idx_z * tiling.tile_size_z() +
-                thread_idx_z * (tiling.tile_contiguous_z() ?  tiling.tile_factor_z() : 1);
-        const int zstep = (tiling.tile_contiguous_z() ? 1 : tiling.block_size_z());
-
-        const int zlow = zoffset;
-        const int zhigh = zoffset + (tiling.tile_factor_z() - 1) * zstep;
-
-        if (border_size != 0 && zlow >= grid.kstart + border_size && zhigh <= grid.kend - border_size + 1)
+        for (int dx = 0; dx < tiling.tile_factor(0); dx++)
         {
-#pragma unroll (tiling.unroll_factor(2))
-            for (int dz = 0; dz < tiling.tile_factor_z(); dz++)
-            {
-                const int k = zoffset + dz * zstep;
-                levels::Interior level;
-                process_cta_layer(grid, fun, k, level, args...);
-            }
-        }
-        else
-        {
-#pragma unroll (tiling.unroll_factor(2))
-            for (int dz = 0; dz < tiling.tile_factor_z(); dz++)
-            {
-                const int k = zoffset + dz * zstep;
-                if (tiling.tile_size_z() > 1 && k >= grid.kend) break;
+            const int i = xoffset + dx * xstep;
+            if (tiling.tile_factor(0) > 1 && i >= grid.iend) break;
 
-                levels::General level {k, grid.kstart, grid.kend};
-                process_cta_layer(grid, fun, k, level, args...);
-            }
+            fun(grid, i, j, args...);
         }
     }
+}
 
-    template <typename... Args>
-    CUDA_DEVICE
-    void operator()(const Grid_layout& grid, Args... args)
+template <int border_size, typename Tiling, typename F, typename... Args>
+CUDA_DEVICE
+void cta_execute_tiling_border(
+    const Grid_layout& grid,
+    F fun,
+    Args&&... args
+) {
+    static constexpr Tiling tiling = {};
+
+    const int thread_idx_z = tiling.block_size(2) > 1 ? threadIdx.z : 0;
+    const int block_idx_z = blockIdx.z;
+    const int zoffset = grid.kstart + block_idx_z * tiling.tile_size(2) +
+                        thread_idx_z * (tiling.tile_contiguous(2) ?  tiling.tile_factor(2) : 1);
+    const int zstep = (tiling.tile_contiguous(2) ? 1 : tiling.block_size(2));
+
+    const int zlow = zoffset;
+    const int zhigh = zoffset + (tiling.tile_factor(2) - 1) * zstep;
+
+    if (border_size != 0 && zlow >= grid.kstart + border_size && zhigh <= grid.kend - border_size + 1)
     {
-        process_cta(grid, F{}, args...);
+#pragma unroll (tiling.unroll_factor(2))
+        for (int dz = 0; dz < tiling.tile_factor(2); dz++)
+        {
+            const int k = zoffset + dz * zstep;
+            levels::Interior level;
+            cta_execute_tiling_layer<Tiling>(grid, fun, k, level, args...);
+        }
     }
+    else
+    {
+#pragma unroll (tiling.unroll_factor(2))
+        for (int dz = 0; dz < tiling.tile_factor(2); dz++)
+        {
+            const int k = zoffset + dz * zstep;
+            if (tiling.tile_size(2) > 1 && k >= grid.kend) break;
 
-private:
-    F fun_;
-};
+            levels::General level {k, grid.kstart, grid.kend};
+            cta_execute_tiling_layer<Tiling>(grid, fun, k, level, args...);
+        }
+    }
+}
+template <typename Tiling = DefaultTilingStrategy, typename F, typename... Args>
+CUDA_DEVICE
+void cta_execute_tiling(
+        const Grid_layout& grid,
+        F fun,
+        Args&&... args
+) {
+    cta_execute_tiling_border<0, Tiling>(
+        grid, fun, args...);
+}
 
 
 template <typename F, typename... Args>
-//CUDA_KERNEL_BOUNDS(F::block_size.x * F::block_size.y * F::block_size.z, F::blocks_per_sm)
 __global__
-void kernel_wrapper(Args... args)
-{
-    F{}(args...);
+void tiling_kernel(Grid_layout grid, Args... args) {
+    cta_execute_tiling(grid, F{}, args...);
 }
 
+#ifndef __CUDACC_RTC__
 /// TODO: move to better location.
-struct SourceLocation
+struct GridFunctorMeta
 {
+    CUDA_HOST_DEVICE
+    constexpr GridFunctorMeta(const char* file, int line, const char* name) :
+            file_(file), line_(line), name_(name) {}
 
     CUDA_HOST_DEVICE
-    constexpr SourceLocation(const char* file_name, int line) : file_name_(file_name), line_(line) {}
-
-    CUDA_HOST_DEVICE
-    const char* file_name() const
+    const char* name() const
     {
-        return file_name_;
+        return name_;
+    }
+
+    CUDA_HOST_DEVICE
+    const char* file() const
+    {
+        return file_;
     }
 
     CUDA_HOST_DEVICE
@@ -439,12 +395,15 @@ struct SourceLocation
     }
 
 private:
-    const char* const file_name_;
+    const char* const file_;
+    const char* const name_;
     const int line_;
 };
 
-#define DEFINE_KERNEL_CONSTANTS \
-    static constexpr SourceLocation source_location = SourceLocation(__FILE__, __LINE__);
-
+#define DEFINE_GRID_KERNEL(name) \
+    static constexpr ::GridFunctorMeta functor_description = {__FILE__, __LINE__, name};
+#else
+#define DEFINE_GRID_KERNEL(name) /* nothing */
+#endif
 
 #endif //MICROHHC_CUDA_TILING_H
