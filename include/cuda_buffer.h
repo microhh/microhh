@@ -100,7 +100,7 @@ void cuda_copy(Src&& src, Dst&& dst)
     cuda_raw_copy(
             static_cast<const void*>(src_view.data()),
             static_cast<void*>(dst_view.data()),
-            src.size());
+            src.size_in_bytes());
 }
 
 /**
