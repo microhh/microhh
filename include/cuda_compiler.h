@@ -72,22 +72,22 @@ template <typename T>
 struct KernelArgConvert<T&&>: KernelArgConvert<T> {};
 
 template <typename T>
-struct KernelArgConvert<cuda_vector<T>> {
+struct KernelArgConvert<cuda_span<T>> {
     using type = T*;
 
-    static kernel_launcher::CudaSpan<T> call(cuda_vector<T>& input) {
+    static kernel_launcher::CudaSpan<T> call(cuda_span<T> input) {
         return {input.data(), input.size()};
     }
 };
 
 template <typename T>
-struct KernelArgConvert<const cuda_vector<T>> {
-    using type = const T*;
+struct KernelArgConvert<const cuda_span<T>>: KernelArgConvert<cuda_span<T>> {};
 
-    static kernel_launcher::CudaSpan<const T> call(const cuda_vector<T>& input) {
-        return {input.data(), input.size()};
-    }
-};
+template <typename T>
+struct KernelArgConvert<cuda_vector<T>>: KernelArgConvert<cuda_span<const T>> {};
+
+template <typename T>
+struct KernelArgConvert<const cuda_vector<T>>: KernelArgConvert<cuda_span<const T>> {};
 
 template <typename F, typename... Args>
 void launch_grid_kernel(

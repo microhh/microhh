@@ -125,7 +125,7 @@ kl::KernelBuilder GridKernel::build() const {
                 TILE_CONTIGUOUS_Z
             >;
 
-            cta_execute_tiling<Tiling>(gd, F{}, args...);
+            cta_execute_tiling_border<3, Tiling>(gd, F{}, args...);
         }
     )";
 
