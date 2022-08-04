@@ -107,19 +107,19 @@ class Boundary_surface : public Boundary<TF>
         std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
-        TF* z0m_g;
-        TF* z0h_g;
-        TF* obuk_g;
-        TF* ustar_g;
+        TF* z0m_g = nullptr;
+        TF* z0h_g = nullptr;
+        TF* obuk_g = nullptr;
+        TF* ustar_g = nullptr;
 
-        TF* dudz_mo_g;
-        TF* dvdz_mo_g;
-        TF* dbdz_mo_g;
+        TF* dudz_mo_g = nullptr;
+        TF* dvdz_mo_g = nullptr;
+        TF* dbdz_mo_g = nullptr;
 
-        int* nobuk_g;
+        int* nobuk_g = nullptr;
 
-        float* zL_sl_g;
-        float* f_sl_g;
+        float* zL_sl_g = nullptr;
+        float* f_sl_g = nullptr;
         #endif
 
         Boundary_type thermobc;
