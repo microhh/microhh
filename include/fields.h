@@ -180,6 +180,8 @@ class Fields
 
         cuda_vector<TF> rhoref_g;  ///< Reference density at full levels at device
         cuda_vector<TF> rhorefh_g; ///< Reference density at half levels at device
+        cuda_vector<TF> rhorefi_g;  ///< Reciprocal of rhoref
+        cuda_vector<TF> rhorefhi_g; ///< Reciprocal of rhorefh
 
     private:
         Master& master;

@@ -357,6 +357,8 @@ void Fields<TF>::prepare_device()
     // Reference profiles
     rhoref_g.resize(gd.kcells);
     rhorefh_g.resize(gd.kcells);
+    rhorefi_g.resize(gd.kcells);
+    rhorefhi_g.resize(gd.kcells);
 
     // copy all the data to the GPU
     forward_device();
@@ -394,6 +396,8 @@ void Fields<TF>::clear_device()
 
     rhoref_g.free();
     rhorefh_g.free();
+    rhorefi_g.free();
+    rhorefhi_g.free();
 
     // Free the tmp fields
     for (auto& it : atmp_g)
@@ -433,8 +437,20 @@ void Fields<TF>::forward_device()
     for (auto& it : sts)
         forward_field_device(it.second->fld_g, it.second->fld.data(), sgd.ncells);
 
-    forward_field_device(rhoref_g,  rhoref.data() , gd.kcells);
-    forward_field_device(rhorefh_g, rhorefh.data(), gd.kcells);
+    forward_field_device(rhoref_g,   rhoref.data() , gd.kcells);
+    forward_field_device(rhorefh_g,  rhorefh.data(), gd.kcells);
+
+    // Calculate reciprocal of rho
+    std::vector<TF> rhorefi(gd.kcells);
+    std::vector<TF> rhorefhi(gd.kcells);
+
+    for (int k = 0; k < gd.kcells; k++) {
+        rhorefi[k] = 1.0 / rhoref[k];
+        rhorefhi[k] = 1.0 / rhorefh[k];
+    }
+
+    forward_field_device(rhorefi_g,  rhorefi.data() , gd.kcells);
+    forward_field_device(rhorefhi_g, rhorefhi.data(), gd.kcells);
 }
 
 /**

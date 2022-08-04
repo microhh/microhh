@@ -676,21 +676,21 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
         gd,
         fields.mt.at("u")->fld_g.view(),
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
+        fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
     launch_grid_kernel<advec_2i5::advec_v_g<TF>>(
         gd,
         fields.mt.at("v")->fld_g.view(),
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
+        fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
     launch_grid_kernel<advec_2i5::advec_w_g<TF>>(
         gd,
         fields.mt.at("w")->fld_g.view(),
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.rhoref_g, fields.rhorefh_g, gd.dzhi_g, gd.dxi, gd.dyi);
+        fields.rhoref_g, fields.rhorefhi_g, gd.dzhi_g, gd.dxi, gd.dyi);
     cuda_check_error();
 
     for (const std::string& s : sp_limit)
