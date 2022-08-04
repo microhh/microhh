@@ -379,17 +379,17 @@ private:
 public:
     cuda_span<value_type> view() noexcept
     {
-        return cuda_span<value_type>(derived().data(), derived().size());
+        return {derived().data(), derived().size()};
     }
 
     cuda_span<const_value_type> view() const noexcept
     {
-        return cuda_span<const_value_type>(derived().data(), derived().size());
+        return {derived().data(), derived().size()};
     }
 
     cuda_span<const value_type> cview() const noexcept
     {
-        return cuda_span<value_type>(derived().data(), derived().size());
+        return {derived().data(), derived().size()};
     }
 
 private:
