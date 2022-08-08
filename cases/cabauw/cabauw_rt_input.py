@@ -282,7 +282,6 @@ if __name__ == '__main__':
         for f in to_copy:
             shutil.copy(f, work_dir)
 
-    """
     # Generate all cases.
     # Base cases with rt/2s.
     generate_case(use_rt=True)
@@ -303,7 +302,6 @@ if __name__ == '__main__':
     generate_case(use_rt=True, spppsqp=128)
     generate_case(use_rt=True, spppsqp=64)
     generate_case(use_rt=True, spppsqp=32)
-    """
 
     # Homogenized heating rates - sw only
     generate_case(use_rt=True, homogenize_hr_sw=True, homogenize_hr_lw=False)
