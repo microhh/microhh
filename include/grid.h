@@ -144,7 +144,7 @@ class Grid
         TF utrans; // Galilean transformation velocity in x-direction.
         TF vtrans; // Galilean transformation velocity in y-direction.
 
-        const Grid_data<TF>& get_grid_data();
+        const Grid_data<TF>& get_grid_data() const;
         Grid_order get_spatial_order() const { return spatial_order; }
 
         void set_minimum_ghost_cells(int, int, int);

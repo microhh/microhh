@@ -32,8 +32,7 @@
 
 struct GridKernel: kernel_launcher::KernelDescriptor {
     GridKernel(
-        std::string kernel_name,
-        std::string file_name,
+        GridFunctor meta,
         kernel_launcher::TypeInfo functor_type,
         std::vector<kernel_launcher::TypeInfo> param_types,
         Grid_layout grid);
@@ -43,8 +42,7 @@ struct GridKernel: kernel_launcher::KernelDescriptor {
     size_t hash() const override;
 
 private:
-    std::string kernel_name;
-    std::string kernel_file;
+    GridFunctor meta;
     kernel_launcher::TypeInfo functor_type;
     std::vector<kernel_launcher::TypeInfo> param_types;
     Grid_layout grid;
@@ -95,20 +93,21 @@ void launch_grid_kernel(
         Args&&... args
 )
 {
+    GridFunctor meta = F::meta;
     dim3 problem_size = {
             uint(gd.iend - gd.istart),
             uint(gd.jend - gd.jstart),
             uint(gd.kend - gd.kstart)};
 
     auto fallback = [&] {
-        dim3 block_size = {32, 2, 2};
+        dim3 block_size = meta.block_size;
         dim3 grid_size = {
                 (problem_size.x / block_size.x) + bool(problem_size.x % block_size.x != 0),
                 (problem_size.y / block_size.y) + bool(problem_size.y % block_size.y != 0),
                 (problem_size.z / block_size.z) + bool(problem_size.z % block_size.z != 0)
         };
 
-        tiling_kernel<F><<<grid_size, block_size>>>(
+        grid_tiling_kernel<F><<<grid_size, block_size>>>(
                 gd,
                 typename KernelArgConvert<Args>::type(args)...);
     };
@@ -121,10 +120,8 @@ void launch_grid_kernel(
             kernel_launcher::into_kernel_arg(KernelArgConvert<Args>::call(args))...
     };
 
-    GridFunctorMeta meta = F::functor_description;
     GridKernel kernel(
-        meta.name(),
-        meta.file(),
+        meta,
         kernel_launcher::TypeInfo::of<F>(),
         std::move(param_types),
         gd
@@ -149,8 +146,20 @@ void launch_grid_kernel(
 )
 {
     launch_grid_kernel<F>(
-        Grid_layout::from_grid_data(gd),
-        std::forward<Args>(args)...
+            Grid_layout::from_grid_data(gd),
+            std::forward<Args>(args)...
+    );
+}
+
+template <typename F, typename TF, typename... Args>
+void launch_grid_kernel(
+        const Grid<TF> &grid,
+        Args&&... args
+)
+{
+    launch_grid_kernel<F>(
+            Grid_layout::from_grid_data(grid.get_grid_data()),
+            std::forward<Args>(args)...
     );
 }
 
