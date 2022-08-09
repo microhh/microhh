@@ -269,46 +269,6 @@ namespace levels
     };
 }
 
-template <typename Tiling, typename F, typename... Args>
-CUDA_DEVICE
-void cta_execute_tiling_layer(
-        const Grid_layout& grid,
-        F fun,
-        Args&&... args)
-{
-    static constexpr Tiling tiling = {};
-
-    const int thread_idx_x = tiling.block_size(0) > 1 ? threadIdx.x : 0;
-    const int xoffset = grid.istart + blockIdx.x * tiling.tile_size(0) +
-                        (tiling.tile_contiguous(0) ? thread_idx_x * tiling.tile_factor(0) : thread_idx_x);
-    const int xstep = (tiling.tile_contiguous(0) ? 1 : tiling.block_size(0));
-
-    if (tiling.block_size(0) > 1 && tiling.tile_factor(0) == 1 && xoffset >= grid.iend) return;
-
-    const int thread_idx_y = tiling.block_size(1) > 1 ? threadIdx.y : 0;
-    const int yoffset = grid.jstart + blockIdx.y * tiling.tile_size(1) +
-                        (tiling.tile_contiguous(1) ? thread_idx_y * tiling.tile_factor(1) : thread_idx_y);
-    const int ystep = (tiling.tile_contiguous(1) ? 1 : tiling.block_size(1));
-
-    if (tiling.block_size(1) > 1 && tiling.tile_factor(1) == 1 && yoffset >= grid.jend) return;
-
-#pragma unroll(tiling.unroll_factor(1))
-    for (int dy = 0; dy < tiling.tile_factor(1); dy++)
-    {
-        const int j = yoffset + dy * ystep;
-        if (tiling.tile_factor(1) > 1 && j >= grid.jend) break;
-
-#pragma unroll(tiling.unroll_factor(0))
-        for (int dx = 0; dx < tiling.tile_factor(0); dx++)
-        {
-            const int i = xoffset + dx * xstep;
-            if (tiling.tile_factor(0) > 1 && i >= grid.iend) break;
-
-            fun(grid, i, j, args...);
-        }
-    }
-}
-
 template <int border_size, typename Tiling, typename F, typename... Args>
 CUDA_DEVICE
 void cta_execute_tiling_border(
@@ -316,37 +276,86 @@ void cta_execute_tiling_border(
     F fun,
     Args&&... args
 ) {
-    static constexpr Tiling tiling = {};
+    constexpr Tiling tiling = {};
+
+    const int thread_idx_x = tiling.block_size(0) > 1 ? threadIdx.x : 0;
+    const int xlow = grid.istart + blockIdx.x * tiling.tile_size(0) +
+                        (tiling.tile_contiguous(0) ? thread_idx_x * tiling.tile_factor(0) : thread_idx_x);
+    const int xstep = (tiling.tile_contiguous(0) ? 1 : tiling.block_size(0));
+
+    const int thread_idx_y = tiling.block_size(1) > 1 ? threadIdx.y : 0;
+    const int ylow = grid.jstart + blockIdx.y * tiling.tile_size(1) +
+                        (tiling.tile_contiguous(1) ? thread_idx_y * tiling.tile_factor(1) : thread_idx_y);
+    const int ystep = (tiling.tile_contiguous(1) ? 1 : tiling.block_size(1));
 
     const int thread_idx_z = tiling.block_size(2) > 1 ? threadIdx.z : 0;
-    const int block_idx_z = blockIdx.z;
-    const int zoffset = grid.kstart + block_idx_z * tiling.tile_size(2) +
+    const int zlow = grid.kstart + blockIdx.z * tiling.tile_size(2) +
                         thread_idx_z * (tiling.tile_contiguous(2) ?  tiling.tile_factor(2) : 1);
     const int zstep = (tiling.tile_contiguous(2) ? 1 : tiling.block_size(2));
 
-    const int zlow = zoffset;
-    const int zhigh = zoffset + (tiling.tile_factor(2) - 1) * zstep;
+    const int xhigh = xlow + (tiling.tile_factor(0) - 1) * xstep;
+    const int yhigh = ylow + (tiling.tile_factor(1) - 1) * ystep;
+    const int zhigh = zlow + (tiling.tile_factor(2) - 1) * zstep;
 
-    if (border_size != 0 && zlow >= grid.kstart + border_size && zhigh <= grid.kend - border_size + 1)
+    // Fast path where all indices are within bounds. No bounds checks (=branches) needed.
+    if (xhigh < grid.iend && yhigh < grid.jend
+            && zlow >= grid.kstart + border_size && zhigh < grid.kend - border_size)
     {
 #pragma unroll (tiling.unroll_factor(2))
         for (int dz = 0; dz < tiling.tile_factor(2); dz++)
         {
-            const int k = zoffset + dz * zstep;
-            levels::Interior level;
-            cta_execute_tiling_layer<Tiling>(grid, fun, k, level, args...);
+            const int k = zlow + dz * zstep;
+
+#pragma unroll (tiling.unroll_factor(1))
+            for (int dy = 0; dy < tiling.tile_factor(1); dy++)
+            {
+                const int j = ylow + dy * ystep;
+
+#pragma unroll (tiling.unroll_factor(0))
+                for (int dx = 0; dx < tiling.tile_factor(0); dx++)
+                {
+                    const int i = xlow + dx * xstep;
+
+                    if (border_size > 0)
+                    {
+                        levels::Interior level;
+                        fun(grid, i, j, k, level, args...);
+                    }
+                    else
+                    {
+                        levels::General level {k, grid.kstart, grid.kend};
+                        fun(grid, i, j, k, level, args...);
+                    }
+                }
+            }
         }
     }
     else
     {
-#pragma unroll (tiling.unroll_factor(2))
+        if (tiling.tile_factor(0) == 1 && xlow >= grid.iend) return;
+        if (tiling.tile_factor(1) == 1 && ylow >= grid.jend) return;
+        if (tiling.tile_factor(2) == 1 && zlow >= grid.kend) return;
+
+        // Unrolling is useless because of all the branches inside.
         for (int dz = 0; dz < tiling.tile_factor(2); dz++)
         {
-            const int k = zoffset + dz * zstep;
-            if (tiling.tile_size(2) > 1 && k >= grid.kend) break;
-
+            const int k = zlow + dz * zstep;
+            if (tiling.tile_factor(2) > 1 && k >= grid.kend) break;
             levels::General level {k, grid.kstart, grid.kend};
-            cta_execute_tiling_layer<Tiling>(grid, fun, k, level, args...);
+
+            for (int dy = 0; dy < tiling.tile_factor(1); dy++)
+            {
+                const int j = ylow + dy * ystep;
+                if (tiling.tile_factor(1) > 1 && j >= grid.jend) break;
+
+                for (int dx = 0; dx < tiling.tile_factor(0); dx++)
+                {
+                    const int i = xlow + dx * xstep;
+                    if (tiling.tile_factor(0) > 1 && i >= grid.iend) break;
+
+                    fun(grid, i, j, k, level, args...);
+                }
+            }
         }
     }
 }
@@ -364,46 +373,32 @@ void cta_execute_tiling(
 
 template <typename F, typename... Args>
 __global__
-void tiling_kernel(Grid_layout grid, Args... args) {
+void grid_tiling_kernel(Grid_layout grid, Args... args) {
     cta_execute_tiling(grid, F{}, args...);
 }
 
 #ifndef __CUDACC_RTC__
 /// TODO: move to better location.
-struct GridFunctorMeta
+struct GridFunctor
 {
-    CUDA_HOST_DEVICE
-    constexpr GridFunctorMeta(const char* file, int line, const char* name) :
-            file_(file), line_(line), name_(name) {}
+    constexpr GridFunctor(const char* file, int line, const char* name, int border_size=0, dim3 block_size={32, 2, 2}) :
+            file(file),
+            line(line),
+            name(name),
+            border_size(border_size),
+            block_size(block_size) {}
 
-    CUDA_HOST_DEVICE
-    const char* name() const
-    {
-        return name_;
-    }
-
-    CUDA_HOST_DEVICE
-    const char* file() const
-    {
-        return file_;
-    }
-
-    CUDA_HOST_DEVICE
-    int lineno() const
-    {
-        return line_;
-    }
-
-private:
-    const char* const file_;
-    const char* const name_;
-    const int line_;
+    const char* const file;
+    const char* const name;
+    const int line;
+    const dim3 block_size;
+    const int border_size;
 };
 
-#define DEFINE_GRID_KERNEL(name) \
-    static constexpr ::GridFunctorMeta functor_description = {__FILE__, __LINE__, name};
+#define DEFINE_GRID_KERNEL(...) \
+    static constexpr ::GridFunctor meta = {__FILE__, __LINE__, __VA_ARGS__};
 #else
-#define DEFINE_GRID_KERNEL(name) /* nothing */
+#define DEFINE_GRID_KERNEL(...) /* nothing */
 #endif
 
 #endif //MICROHHC_CUDA_TILING_H

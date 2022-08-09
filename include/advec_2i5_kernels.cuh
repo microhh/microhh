@@ -36,7 +36,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_u_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5_u")
+        DEFINE_GRID_KERNEL("advec_2i5__advec_u", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -139,7 +139,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_v_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5_v")
+        DEFINE_GRID_KERNEL("advec_2i5__advec_v", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -247,7 +247,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_w_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5_w")
+        DEFINE_GRID_KERNEL("advec_2i5__advec_w", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -343,14 +343,14 @@ namespace advec_2i5
     template<typename TF>
     struct advec_s_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5_s")
+        DEFINE_GRID_KERNEL("advec_2i5__advec_s", 3)
 
         template <typename Level>
         CUDA_DEVICE
         void operator()(Grid_layout g, const int i, const int j, const int k, const Level level,
                 TF* __restrict__ st, const TF* __restrict__ s,
                 const TF* __restrict__ u, const TF* __restrict__ v,  const TF* __restrict__ w,
-                const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                 const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
             const int ii = g.ii;
@@ -386,60 +386,60 @@ namespace advec_2i5
             {
                 st[ijk] +=
                         // w*ds/dz -> second order interpolation for fluxtop, fluxbot=0 as w=0
-                        - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])) / rhoref[k] * dzi[k];
+                        - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])) * rhorefi[k] * dzi[k];
             }
             else if (level.distance_to_start() == 1)
             {
                 st[ijk] +=
                         // w*ds/dz -> second order interpolation for fluxbot, fourth order for fluxtop
                         - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k]
+                            - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) * rhorefi[k] * dzi[k]
 
-                        + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
+                        + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) * rhorefi[k] * dzi[k];
             }
             else if (level.distance_to_start() == 2)
             {
                 st[ijk] +=
                         // w*ds/dz -> fourth order interpolation for fluxbot, sixth for fluxtop
                         - ( rhorefh[k+1] * w[ijk+kk1] * interp6_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
-                            - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k]
+                            - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k]
 
                         + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp5_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
-                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
             else if (level.distance_to_end() == 2)
             {
                 st[ijk] +=
                         // w*ds/dz -> fourth order interpolation for fluxtop, sixth order for fluxbot
                         - ( rhorefh[k+1] * w[ijk+kk1] * interp4_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k]
+                            - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) * rhorefi[k] * dzi[k]
 
                         + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp3_ws(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) * rhorefi[k] * dzi[k];
             }
             else if (level.distance_to_end() == 1)
             {
                 st[ijk] +=
                         // w*ds/dz -> second order interpolation for fluxtop, fourth order for fluxbot
                         - ( rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
-                            - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k]
+                            - rhorefh[k  ] * w[ijk    ] * interp4_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k]
 
-                        + ( -rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                        + ( -rhorefh[k  ] * fabs(w[ijk    ]) * interp3_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
             else if (level.distance_to_end() == 0)
             {
                 st[ijk] +=
                         // w*ds/dz -> second order interpolation for fluxbot, fluxtop=0 as w=0
-                        - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
+                        - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) * rhorefi[k] * dzi[k];
             }
             else
             {
                 st[ijk] +=
                         - ( rhorefh[k+1] * w[ijk+kk1] * interp6_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
-                            - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k]
+                            - rhorefh[k  ] * w[ijk    ] * interp6_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) * rhorefi[k] * dzi[k]
 
                         + ( rhorefh[k+1] * fabs(w[ijk+kk1]) * interp5_ws(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3])
-                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * fabs(w[ijk    ]) * interp5_ws(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) * rhorefi[k] * dzi[k];
             }
         }
     };
@@ -447,26 +447,28 @@ namespace advec_2i5
 
     // Implementation flux limiter according to Koren, 1993.
     template<typename TF> __device__
-    inline TF flux_lim_g(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+    inline TF flux_lim_g(const TF u, TF sm2, TF sm1, TF sp1, TF sp2)
     {
         const TF eps = TF(1.e-12);
 
-        if (u >= TF(0.))
+        if (u < TF(0.))
         {
-            const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
-            const TF phi = max(
-                    TF(0.),
-                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+            // swap
+            TF tmp1 = sm1;
+            sm1 = sp1;
+            sp1 = tmp1;
+
+            // swap
+            TF tmp = sm2;
+            sm2 = sp2;
+            sp2 = tmp;
         }
-        else
-        {
-            const TF two_r = TF(2.) * (sm1-sp1+eps) / (sp1-sp2+eps);
-            const TF phi = max(
-                    TF(0.),
-                    min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
-        }
+
+        const TF two_r = TF(2.) * (sp1-sm1+eps) / (sm1-sm2+eps);
+        const TF phi = max(
+                TF(0.),
+                min( two_r, min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+        return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
     }
 
     template<typename TF> __device__
@@ -507,29 +509,27 @@ namespace advec_2i5
         }
     }
 
-    template<typename TF> __global__
-    void advec_s_lim_g(
-            TF* __restrict__ st, const TF* __restrict__ s,
-            const TF* __restrict__ u, const TF* __restrict__ v,  const TF* __restrict__ w,
-            const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
-            const TF* __restrict__ dzi, const TF dxi, const TF dyi,
-            const int jj, int kk,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend)
+    template<typename TF>
+    struct advec_s_lim_g
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
+        DEFINE_GRID_KERNEL("advec_2i5__advec_s_lim", 3)
 
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int jj1 = 1*jj;
-        const int jj2 = 2*jj;
-        const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-
-        if (i < iend && j < jend && k < kend)
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(Grid_layout g, const int i, const int j, const int k, const Level level,
+                        TF* __restrict__ st, const TF* __restrict__ s,
+                        const TF* __restrict__ u, const TF* __restrict__ v,  const TF* __restrict__ w,
+                        const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
+                        const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
+            const int ii1 = 1*g.ii;
+            const int ii2 = 2*g.ii;
+            const int jj1 = 1*g.jj;
+            const int jj2 = 2*g.jj;
+            const int kk = g.kk;
+            const int kk1 = 1*g.kk;
+            const int kk2 = 2*g.kk;
+
             const int ijk = i + j*jj1 + k*kk1;
             st[ijk] +=
                     - ( flux_lim_g(u[ijk+ii1], s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
@@ -538,70 +538,67 @@ namespace advec_2i5
                     - ( flux_lim_g(v[ijk+jj1], s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                         - flux_lim_g(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi;
 
-            if (k >= kstart+2 && k < kend-2)
+            if (level.distance_to_start() >= 2 && level.distance_to_start() >= 2)
             {
                 st[ijk] +=
                         - ( rhorefh[k+1] * flux_lim_g(w[ijk+kk], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * flux_lim_g(w[ijk   ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
-            else if (k == kstart)
+            else if (level.distance_to_start() == 0)
             {
                 st[ijk] +=
-                        - ( rhorefh[k+1] * flux_lim_bot_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
+                        - ( rhorefh[k+1] * flux_lim_bot_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) * rhorefi[k] * dzi[k];
             }
-            else if (k == kstart+1)
+            else if (level.distance_to_start() == 1)
             {
                 st[ijk] +=
                         - ( rhorefh[k+1] * flux_lim_g    (w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * flux_lim_bot_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * flux_lim_bot_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
-            else if (k == kend-2)
+            else if (level.distance_to_end() == 1)
             {
                 st[ijk] +=
                         - ( rhorefh[k+1] * flux_lim_top_g(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                            - rhorefh[k  ] * flux_lim_g    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                            - rhorefh[k  ] * flux_lim_g    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
-            else if (k == kend-1)
+            else if (level.distance_to_end() == 0)
             {
                 st[ijk] +=
                         - (
-                                - rhorefh[k  ] * flux_lim_top_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                                - rhorefh[k  ] * flux_lim_top_g(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * rhorefi[k] * dzi[k];
             }
         }
-    }
+    };
 
-
-    template<typename TF> __global__
-    void calc_cfl_g(TF* const __restrict__ tmp1,
-                    const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
-                    const TF* __restrict__ dzi, const TF dxi, const TF dyi,
-                    const int jj, const int kk,
-                    const int istart, const int jstart, const int kstart,
-                    const int iend, const int jend, const int kend)
+    template<typename TF>
+    struct calc_cfl_g
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
+        DEFINE_GRID_KERNEL("advec_2i5__calc_cfl_g", 2)
 
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int ii3 = 3;
-        const int jj1 = 1*jj;
-        const int jj2 = 2*jj;
-        const int jj3 = 3*jj;
-        const int kk1 = 1*kk;
-        const int kk2 = 2*kk;
-        const int kk3 = 3*kk;
-
-        const int ijk = i + j*jj + k*kk;
-
-        if (i < iend && j < jend && k < kend)
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(Grid_layout g, const int i, const int j, const int k, const Level level,
+                    TF* const __restrict__ tmp1,
+                    const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+                    const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
-            if (k == kstart || k == kend-1)
+            const int ii1 = 1;
+            const int ii2 = 2;
+            const int ii3 = 3;
+            const int jj1 = 1*g.jj;
+            const int jj2 = 2*g.jj;
+            const int jj3 = 3*g.jj;
+            const int kk1 = 1*g.kk;
+            const int kk2 = 2*g.kk;
+            const int kk3 = 3*g.kk;
+
+            const int ijk = i + j*g.jj + k*g.kk;
+
+            if (level.distance_to_start() == 0 || level.distance_to_end() == 0)
                 tmp1[ijk] = fabs(interp6_ws(u[ijk-ii2], u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]))*dxi
                             + fabs(interp6_ws(v[ijk-jj2], v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]))*dyi
                             + fabs(interp2(w[ijk], w[ijk+kk1]))*dzi[k];
-            else if (k == kstart+1 || k == kend-2)
+            else if (level.distance_to_start() == 1 || level.distance_to_end() == 1)
                 tmp1[ijk] = fabs(interp6_ws(u[ijk-ii2], u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]))*dxi
                             + fabs(interp6_ws(v[ijk-jj2], v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]))*dyi
                             + fabs(interp4_ws(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]))*dzi[k];
@@ -610,7 +607,7 @@ namespace advec_2i5
                             + fabs(interp6_ws(v[ijk-jj2], v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]))*dyi
                             + fabs(interp6_ws(w[ijk-kk2], w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2], w[ijk+kk3]))*dzi[k];
         }
-    }
+    };
 }
 
 
