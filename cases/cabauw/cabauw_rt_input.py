@@ -272,7 +272,7 @@ if __name__ == '__main__':
                 'cabauw.ini', 'cabauw_input.nc', 'run_gpu.slurm',
                 'cloud_coefficients_lw.nc', 'cloud_coefficients_sw.nc',
                 'coefficients_lw.nc', 'coefficients_sw.nc', 'van_genuchten_parameters.nc']
-        to_copy = [microhh_bin, 'microhh_tools.py', 'cross_to_nc.py', 'tracking.py']
+        to_copy = [microhh_bin]
 
         work_dir = '{0}/{1}_{2}'.format(scratch_path, itot, job_name)
         os.mkdir(work_dir)
@@ -283,26 +283,32 @@ if __name__ == '__main__':
             shutil.copy(f, work_dir)
 
     # Generate all cases.
-    # Base cases with rt/2s.
+    # Reference `rt` and `2s` cases:
     generate_case(use_rt=True)
     generate_case(use_rt=False)
 
-    # Homogenized surface radiation.
+    # Sensitivity "samples per pixel per spectral quadrature point".
+    # Cases `rt-s032`, `rt-s064` and `rt-s128`:
+    generate_case(use_rt=True, spppsqp=32)
+    generate_case(use_rt=True, spppsqp=64)
+    generate_case(use_rt=True, spppsqp=128)
+
+    # Homogenized surface solar radiation.
+    # Cases `rt-hom` and `2s-hom`:
     generate_case(use_rt=True, homogenize_sw=True)
     generate_case(use_rt=False, homogenize_sw=True)
 
+    # Homogenized heating rates - sw only
+    # Cases `rt-hom-hr` and `2s-hom-hr`:
+    generate_case(use_rt=True, homogenize_hr_sw=True)
+    generate_case(use_rt=False, homogenize_hr_sw=True)
+
+
+    # Cases not used for the paper:
+    # Surface shortwave and longwave radiation homogenisation;
     generate_case(use_rt=True, homogenize_sw=True, homogenize_lw=True)
     generate_case(use_rt=False, homogenize_sw=True, homogenize_lw=True)
 
-    # Homogenized heating rates.
+    # Homogenized heating rates of both longwave and shortwave:
     generate_case(use_rt=True, homogenize_hr_sw=True, homogenize_hr_lw=True)
     generate_case(use_rt=False, homogenize_hr_sw=True, homogenize_hr_lw=True)
-
-    # Sensitivity "samples per pixel per spectral quadrature point" (what a name).
-    generate_case(use_rt=True, spppsqp=128)
-    generate_case(use_rt=True, spppsqp=64)
-    generate_case(use_rt=True, spppsqp=32)
-
-    # Homogenized heating rates - sw only
-    generate_case(use_rt=True, homogenize_hr_sw=True, homogenize_hr_lw=False)
-    generate_case(use_rt=False, homogenize_hr_sw=True, homogenize_hr_lw=False)
