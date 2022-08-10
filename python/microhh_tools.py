@@ -151,6 +151,8 @@ class Read_namelist:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
                     if isinstance(value, list):
+                        if not isinstance(value[0], str):
+                            value = [str(x) for x in value]
                         value = ','.join(value)
                     elif isinstance(value, bool):
                         value = '1' if value else '0'
