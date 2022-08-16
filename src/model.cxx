@@ -371,7 +371,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol);
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
@@ -438,7 +438,7 @@ void Model<TF>::exec()
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
                     if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
                     {
-                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats);
+                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats, *aerosol);
                     }
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
@@ -611,6 +611,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
 
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
+        aerosol  ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);

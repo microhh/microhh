@@ -38,6 +38,7 @@
 #include "timeloop.h"
 #include "fast_math.h"
 #include "boundary_cyclic.h"
+#include "aerosol.h"
 
 // RRTMGP headers.
 #include "Array.h"
@@ -49,6 +50,7 @@
 #include "Rte_sw.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Aerosol_optics.h"
 
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
@@ -129,7 +131,6 @@ namespace
             }
         };
     }
-
 
     Gas_optics_rrtmgp load_and_init_gas_optics(
             Master& master,
@@ -395,6 +396,47 @@ namespace
                 lut_extice, lut_ssaice, lut_asyice);
     }
 
+    Aerosol_optics load_and_init_aerosol_optics(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band = coef_nc.get_dimension_size("band_sw");
+        int nspecies_phobic = coef_nc.get_dimension_size("hydrophobic");
+        int nspecies_philic = coef_nc.get_dimension_size("hydrophilic");
+        int nrh = coef_nc.get_dimension_size("relative_humidity");
+
+        std::vector rh_upper = coef_nc.get_variable<Float>("relative_humidity2", {nrh});
+
+        std::vector band_lims_wvn_lower(coef_nc.get_variable<Float>("wavenumber1_sw", {n_band}));
+        std::vector band_lims_wvn_upper(coef_nc.get_variable<Float>("wavenumber2_sw", {n_band}));
+        band_lims_wvn_lower.insert(band_lims_wvn_lower.end(), band_lims_wvn_upper.begin(), band_lims_wvn_upper.end());
+
+        Array<Float,2> band_lims_wvn((band_lims_wvn_lower), {2, n_band});
+
+        // Read look-up table coefficients.
+        Array<Float,2> mext_phobic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
+        Array<Float,2> ssa_phobic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
+        Array<Float,2> g_phobic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
+
+        Array<Float,3> mext_philic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {nspecies_philic, nrh, n_band}), {n_band, nrh, nspecies_philic});
+        Array<Float,3> ssa_philic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {nspecies_philic, nrh, n_band}), {n_band, nrh, nspecies_philic});
+        Array<Float,3> g_philic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {nspecies_philic, nrh, n_band}), {n_band, nrh, nspecies_philic});
+
+        return Aerosol_optics(
+                band_lims_wvn, rh_upper,
+                mext_phobic, ssa_phobic, g_phobic,
+                mext_philic, ssa_philic, g_philic);
+    }
 
     void calc_tendency(
             Float* restrict thlt_rad,
@@ -585,6 +627,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
+    sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
@@ -949,6 +992,121 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
 }
 
 template<typename TF>
+void Radiation_rrtmgp<TF>::solve_shortwave_column(
+        std::unique_ptr<Optical_props_arry>& optical_props,
+        std::unique_ptr<Optical_props_2str>& optical_props_aerosols,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
+        Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+        Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
+        const Gas_concs& gas_concs,
+        const Gas_optics_rrtmgp& kdist_sw,
+        const Array<Float,2>& col_dry,
+        const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Array<Float,1>& mu0,
+        const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
+        const Float tsi_scaling,
+        const int n_lay,
+        const Array<Float, 2>& mr01, const Array<Float, 2>& mr02, const Array<Float, 2>& mr03, const Array<Float, 2>& mr04,
+        const Array<Float, 2>& mr05, const Array<Float, 2>& mr06, const Array<Float, 2>& mr07, const Array<Float, 2>& mr08,
+        const Array<Float, 2>& mr09, const Array<Float, 2>& mr10, const Array<Float, 2>& mr11, const Array<Float, 2>& rh)
+{
+    const int n_col = 1;
+    const int n_lev = n_lay + 1;
+
+    // Check the dimension ordering.
+    const int top_at_1 = p_lay({1, 1}) < p_lay({1, n_lay});
+
+    // Create the field for the top of atmosphere source.
+    const int n_gpt = kdist_sw.get_ngpt();
+    Array<Float,2> toa_src({n_col, n_gpt});
+
+    kdist_sw.gas_optics(
+            p_lay,
+            p_lev,
+            t_lay,
+            gas_concs,
+            optical_props,
+            toa_src,
+            col_dry);
+
+    if (tsi_scaling >= 0)
+        for (int igpt=1; igpt<=n_gpt; ++igpt)
+            toa_src({1, igpt}) *= tsi_scaling;
+
+
+    Array<Float, 2> dpg({1, n_lay});
+    for (int ilay = 1; ilay <= n_lay; ++ilay)
+        dpg({1, ilay}) = (p_lev({1, ilay}) - p_lev({1, ilay + 1})) / 9.81;
+
+    aerosol_sw->aerosol_optics(mr01, mr02, mr03, mr04, mr05, mr06,
+                               mr07, mr08, mr09, mr10, mr11, rh, dpg, *optical_props_aerosols);
+
+//        optical_props_aerosols->delta_scale();
+
+    add_to(
+            dynamic_cast<Optical_props_2str&>(*optical_props),
+            dynamic_cast<Optical_props_2str&>(*optical_props_aerosols));
+
+
+    std::unique_ptr<Fluxes_broadband> fluxes =
+            std::make_unique<Fluxes_broadband>(n_col, n_lev);
+
+    Array<Float,3> gpt_flux_up    ({n_col, n_lev, n_gpt});
+    Array<Float,3> gpt_flux_dn    ({n_col, n_lev, n_gpt});
+    Array<Float,3> gpt_flux_dn_dir({n_col, n_lev, n_gpt});
+
+    Rte_sw::rte_sw(
+            optical_props,
+            top_at_1,
+            mu0,
+            toa_src,
+            sfc_alb_dir,
+            sfc_alb_dif,
+            Array<Float,2>(),
+            gpt_flux_up,
+            gpt_flux_dn,
+            gpt_flux_dn_dir);
+
+    fluxes->reduce(
+            gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
+            optical_props, top_at_1);
+
+    // Find the index where p_lev exceeds p_top.
+    int idx_top=1;
+    for (; idx_top<=n_lev; ++idx_top)
+    {
+        if (p_lev({1, idx_top}) < p_top)
+            break;
+    }
+
+    // Calculate the interpolation factors.
+    const int idx_bot = idx_top - 1;
+    const Float fac_bot = (p_top - p_lev({1, idx_top})) / (p_lev({1, idx_bot}) - p_lev({1, idx_top}));
+    const Float fac_top = 1. - fac_bot;
+
+    // Interpolate the top boundary conditions.
+    for (int igpt=1; igpt<=n_gpt; ++igpt)
+    {
+        const Float flux_dn_tot = fac_bot * gpt_flux_dn    ({1, idx_bot, igpt}) + fac_top * gpt_flux_dn    ({1, idx_top, igpt});
+        const Float flux_dn_dir = fac_bot * gpt_flux_dn_dir({1, idx_bot, igpt}) + fac_top * gpt_flux_dn_dir({1, idx_top, igpt});
+        // Divide out the cosine of the solar zenith angle.
+        flux_dn_dir_inc({1, igpt}) = flux_dn_dir / mu0({1});
+        flux_dn_dif_inc({1, igpt}) = flux_dn_tot - flux_dn_dir;
+    }
+
+    // Copy the data to the output.
+    for (int ilev=1; ilev<=n_lev; ++ilev)
+        for (int icol=1; icol<=n_col; ++icol)
+        {
+            flux_up    ({icol, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
+            flux_dn    ({icol, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
+            flux_dn_dir({icol, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
+            flux_net   ({icol, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
+        }
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::create_diffuse_filter()
 {
     if (!sw_diffuse_filter)
@@ -1023,6 +1181,36 @@ void Radiation_rrtmgp<TF>::create_column(
 
     // 3. Read background profiles on pressure levels
     read_background_profiles(rad_nc, gas_concs_col);
+
+    // 3a. Read aerosol background profiles
+    aermr01_col.set_dims({n_col, n_lay_col});
+    aermr02_col.set_dims({n_col, n_lay_col});
+    aermr03_col.set_dims({n_col, n_lay_col});
+    aermr04_col.set_dims({n_col, n_lay_col});
+    aermr05_col.set_dims({n_col, n_lay_col});
+    aermr06_col.set_dims({n_col, n_lay_col});
+    aermr07_col.set_dims({n_col, n_lay_col});
+    aermr08_col.set_dims({n_col, n_lay_col});
+    aermr09_col.set_dims({n_col, n_lay_col});
+    aermr10_col.set_dims({n_col, n_lay_col});
+    aermr11_col.set_dims({n_col, n_lay_col});
+    rh_col.set_dims({n_col, n_lay_col});
+
+    if (sw_aerosol)
+    {
+        aermr01_col = rad_nc.get_variable<Float>("aermr01", {n_lay_col, n_col});
+        aermr02_col = rad_nc.get_variable<Float>("aermr02", {n_lay_col, n_col});
+        aermr03_col = rad_nc.get_variable<Float>("aermr03", {n_lay_col, n_col});
+        aermr04_col = rad_nc.get_variable<Float>("aermr04", {n_lay_col, n_col});
+        aermr05_col = rad_nc.get_variable<Float>("aermr05", {n_lay_col, n_col});
+        aermr06_col = rad_nc.get_variable<Float>("aermr06", {n_lay_col, n_col});
+        aermr07_col = rad_nc.get_variable<Float>("aermr07", {n_lay_col, n_col});
+        aermr08_col = rad_nc.get_variable<Float>("aermr08", {n_lay_col, n_col});
+        aermr09_col = rad_nc.get_variable<Float>("aermr09", {n_lay_col, n_col});
+        aermr10_col = rad_nc.get_variable<Float>("aermr10", {n_lay_col, n_col});
+        aermr11_col = rad_nc.get_variable<Float>("aermr11", {n_lay_col, n_col});
+        rh_col = rad_nc.get_variable<Float>("rh", {n_lay_col, n_col});
+    }
 
     // 4. Call the column solvers for longwave and shortwave.
     if (sw_longwave)
@@ -1157,19 +1345,41 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         Array<Float,1> mu0({n_col});
         mu0({1}) = std::max(this->mu0, Constants::mu0_min<Float>);
 
-        solve_shortwave_column(
-                optical_props_sw,
-                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
-                gas_concs_col,
-                *kdist_sw,
-                col_dry,
-                p_lay_col, p_lev_col,
-                t_lay_col, t_lev_col,
-                mu0,
-                sfc_alb_dir, sfc_alb_dif,
-                tsi_scaling,
-                n_lay_col);
+        if (sw_aerosol)
+        {
+            optical_props_aerosol = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *aerosol_sw);
+            solve_shortwave_column(
+                    optical_props_sw, optical_props_aerosol,
+                    sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+                    sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
+                    gas_concs_col,
+                    *kdist_sw,
+                    col_dry,
+                    p_lay_col, p_lev_col,
+                    t_lay_col, t_lev_col,
+                    mu0,
+                    sfc_alb_dir, sfc_alb_dif,
+                    tsi_scaling,
+                    n_lay_col,
+                    aermr01_col, aermr02_col, aermr03_col, aermr04_col, aermr05_col, aermr06_col, aermr07_col,
+                    aermr08_col, aermr09_col, aermr10_col, aermr11_col, rh_col);
+        }
+        else
+        {
+            solve_shortwave_column(
+                    optical_props_sw,
+                    sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+                    sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
+                    gas_concs_col,
+                    *kdist_sw,
+                    col_dry,
+                    p_lay_col, p_lev_col,
+                    t_lay_col, t_lev_col,
+                    mu0,
+                    sfc_alb_dir, sfc_alb_dif,
+                    tsi_scaling,
+                    n_lay_col);
+        }
 
         // Save the reference profile fluxes in the stats.
         if (stats.get_switch())
@@ -1271,6 +1481,12 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
     cloud_sw = std::make_unique<Cloud_optics>(
             load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
+    if (sw_aerosol)
+    {
+        aerosol_sw = std::make_unique<Aerosol_optics>(
+                load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+    }
+
     // Set up the statistics.
     if (stats.get_switch())
     {
@@ -1336,25 +1552,47 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
     Array<Float,1> mu0({n_col});
     mu0({1}) = this->mu0;
 
-    solve_shortwave_column(
-            optical_props_sw,
-            sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, p_top,
-            gas_concs_col,
-            *kdist_sw,
-            col_dry,
-            p_lay_col, p_lev_col,
-            t_lay_col, t_lev_col,
-            mu0,
-            sfc_alb_dir, sfc_alb_dif,
-            tsi_scaling,
-            n_lay_col);
+    if (sw_aerosol)
+    {
+        optical_props_aerosol = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *aerosol_sw);
+        solve_shortwave_column(
+                optical_props_sw, optical_props_aerosol,
+                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, p_top,
+                gas_concs_col,
+                *kdist_sw,
+                col_dry,
+                p_lay_col, p_lev_col,
+                t_lay_col, t_lev_col,
+                mu0,
+                sfc_alb_dir, sfc_alb_dif,
+                tsi_scaling,
+                n_lay_col,
+                aermr01_col, aermr02_col, aermr03_col, aermr04_col, aermr05_col, aermr06_col, aermr07_col,
+                aermr08_col, aermr09_col, aermr10_col, aermr11_col, rh_col);
+    }
+    else
+    {
+        solve_shortwave_column(
+                optical_props_sw,
+                sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
+                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, p_top,
+                gas_concs_col,
+                *kdist_sw,
+                col_dry,
+                p_lay_col, p_lev_col,
+                t_lay_col, t_lev_col,
+                mu0,
+                sfc_alb_dir, sfc_alb_dif,
+                tsi_scaling,
+                n_lay_col);
+    }
 }
 
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>& aerosol)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1390,6 +1628,44 @@ void Radiation_rrtmgp<TF>::exec(
         Array<Float,2> flux_net({gd.imax*gd.jmax, gd.ktot+1});
 
         const bool compute_clouds = true;
+
+        // get aerosol mixing ratios
+        std::vector<Float> aermr01(gd.ktot);
+        std::vector<Float> aermr02(gd.ktot);
+        std::vector<Float> aermr03(gd.ktot);
+        std::vector<Float> aermr04(gd.ktot);
+        std::vector<Float> aermr05(gd.ktot);
+        std::vector<Float> aermr06(gd.ktot);
+        std::vector<Float> aermr07(gd.ktot);
+        std::vector<Float> aermr08(gd.ktot);
+        std::vector<Float> aermr09(gd.ktot);
+        std::vector<Float> aermr10(gd.ktot);
+        std::vector<Float> aermr11(gd.ktot);
+
+        if (sw_aerosol)
+        {
+            aerosol.get_radiation_fields(aermr01, aermr02, aermr03, aermr04, aermr05, aermr06, aermr07,
+                                         aermr08, aermr09, aermr10, aermr11);
+        }
+
+        Array<Float,2> aermr01_a(aermr01, {1, gd.ktot});
+        Array<Float,2> aermr02_a(aermr02, {1, gd.ktot});
+        Array<Float,2> aermr03_a(aermr03, {1, gd.ktot});
+        Array<Float,2> aermr04_a(aermr04, {1, gd.ktot});
+        Array<Float,2> aermr05_a(aermr05, {1, gd.ktot});
+        Array<Float,2> aermr06_a(aermr06, {1, gd.ktot});
+        Array<Float,2> aermr07_a(aermr07, {1, gd.ktot});
+        Array<Float,2> aermr08_a(aermr08, {1, gd.ktot});
+        Array<Float,2> aermr09_a(aermr09, {1, gd.ktot});
+        Array<Float,2> aermr10_a(aermr10, {1, gd.ktot});
+        Array<Float,2> aermr11_a(aermr11, {1, gd.ktot});
+
+        // get the relative humidity and dpg (= pressure difference divided by g)
+        std::vector<Float> dpg(gd.ktot);
+        auto relative_humidity = fields.get_tmp();
+        thermo.get_aerosol_radiation_fields(dpg, *relative_humidity);
+        Array<Float,2> dpg_a(dpg, {1, gd.ktot});
+        Array<Float,2> rh_a(relative_humidity->fld, {gd.imax*gd.jmax, gd.ktot});
 
         try
         {
@@ -1469,11 +1745,25 @@ void Radiation_rrtmgp<TF>::exec(
                 Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
                 if (is_day(this->mu0))
                 {
-                    exec_shortwave(
-                            thermo, timeloop, stats,
-                            flux_up, flux_dn, flux_dn_dir, flux_net,
-                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                            compute_clouds, gd.imax*gd.jmax);
+                    if (sw_aerosol)
+                    {
+                        exec_shortwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_dn_dir, flux_net,
+                                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                aermr01_a, aermr02_a, aermr03_a, aermr04_a, aermr05_a, aermr06_a, aermr07_a,
+                                aermr08_a, aermr09_a, aermr10_a, aermr11_a,
+                                rh_a, dpg_a,
+                                compute_clouds, gd.imax * gd.jmax);
+                    }
+                    else
+                    {
+                        exec_shortwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_dn_dir, flux_net,
+                                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                compute_clouds, gd.imax * gd.jmax);
+                    }
 
                     calc_tendency(
                             fields.sd.at("thlt_rad")->fld.data(),
@@ -1553,11 +1843,25 @@ void Radiation_rrtmgp<TF>::exec(
                     {
                         if (is_day(this->mu0))
                         {
-                            exec_shortwave(
-                                    thermo, timeloop, stats,
-                                    flux_up, flux_dn, flux_dn_dir, flux_net,
-                                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                                    !compute_clouds, gd.imax*gd.jmax);
+                            if (sw_aerosol)
+                            {
+                                exec_shortwave(
+                                        thermo, timeloop, stats,
+                                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                        aermr01_a, aermr02_a, aermr03_a, aermr04_a, aermr05_a, aermr06_a, aermr07_a,
+                                        aermr08_a, aermr09_a, aermr10_a, aermr11_a,
+                                        rh_a, dpg_a,
+                                        !compute_clouds, gd.imax * gd.jmax);
+                            }
+                            else
+                            {
+                                exec_shortwave(
+                                        thermo, timeloop, stats,
+                                        flux_up, flux_dn, flux_dn_dir, flux_net,
+                                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                        !compute_clouds, gd.imax * gd.jmax);
+                            }
                         }
                         do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
                         do_gcs(*fields.sd.at("sw_flux_dn_clear"), flux_dn);
@@ -1581,6 +1885,8 @@ void Radiation_rrtmgp<TF>::exec(
         fields.release_tmp(h2o);
         fields.release_tmp(clwp);
         fields.release_tmp(ciwp);
+
+        fields.release_tmp(relative_humidity);
     }
 
     // Always add the tendency.
@@ -1710,7 +2016,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>& aerosol)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1758,6 +2064,45 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     Array<Float,2> ciwp_a(
             std::vector<Float>(it, it + n_cols * gd.ktot), {n_cols, gd.ktot});
+
+    // get aerosol mixing ratios for column locations
+    // the aerosol mixing ratios are independent of x and y, thus the same function as for the full fields can be used
+    std::vector<Float> aermr01(gd.ktot);
+    std::vector<Float> aermr02(gd.ktot);
+    std::vector<Float> aermr03(gd.ktot);
+    std::vector<Float> aermr04(gd.ktot);
+    std::vector<Float> aermr05(gd.ktot);
+    std::vector<Float> aermr06(gd.ktot);
+    std::vector<Float> aermr07(gd.ktot);
+    std::vector<Float> aermr08(gd.ktot);
+    std::vector<Float> aermr09(gd.ktot);
+    std::vector<Float> aermr10(gd.ktot);
+    std::vector<Float> aermr11(gd.ktot);
+
+    if (sw_aerosol)
+    {
+        aerosol.get_radiation_fields(aermr01, aermr02, aermr03, aermr04, aermr05, aermr06, aermr07,
+                                     aermr08, aermr09, aermr10, aermr11);
+    }
+
+    Array<Float,2> aermr01_a(aermr01, {1, gd.ktot});
+    Array<Float,2> aermr02_a(aermr02, {1, gd.ktot});
+    Array<Float,2> aermr03_a(aermr03, {1, gd.ktot});
+    Array<Float,2> aermr04_a(aermr04, {1, gd.ktot});
+    Array<Float,2> aermr05_a(aermr05, {1, gd.ktot});
+    Array<Float,2> aermr06_a(aermr06, {1, gd.ktot});
+    Array<Float,2> aermr07_a(aermr07, {1, gd.ktot});
+    Array<Float,2> aermr08_a(aermr08, {1, gd.ktot});
+    Array<Float,2> aermr09_a(aermr09, {1, gd.ktot});
+    Array<Float,2> aermr10_a(aermr10, {1, gd.ktot});
+    Array<Float,2> aermr11_a(aermr11, {1, gd.ktot});
+
+    // get the relative humidity and dpg (= pressure difference divided by g)
+    std::vector<Float> dpg(gd.ktot);
+    auto relative_humidity = fields.get_tmp();
+    thermo.get_aerosol_radiation_columns(dpg, *relative_humidity, col_i, col_j);
+    Array<Float,2> dpg_a(dpg, {1, gd.ktot});
+    Array<Float,2> rh_a(relative_humidity->fld, {n_cols, gd.ktot});
 
     // Output arrays.
     Array<Float,2> flux_up    ({n_cols, gd.ktot+1});
@@ -1853,24 +2198,50 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
             else
             {
-                exec_shortwave(
-                        thermo, timeloop, stats,
-                        flux_up, flux_dn, flux_dn_dir, flux_net,
-                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                        compute_clouds, n_cols);
-
+                if (sw_aerosol)
+                {
+                    exec_shortwave(
+                            thermo, timeloop, stats,
+                            flux_up, flux_dn, flux_dn_dir, flux_net,
+                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                            aermr01_a, aermr02_a, aermr03_a, aermr04_a, aermr05_a, aermr06_a, aermr07_a,
+                            aermr08_a, aermr09_a, aermr10_a, aermr11_a,
+                            rh_a, dpg_a,
+                            compute_clouds, n_cols);
+                }
+                else
+                {
+                    exec_shortwave(
+                            thermo, timeloop, stats,
+                            flux_up, flux_dn, flux_dn_dir, flux_net,
+                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                            compute_clouds, n_cols);
+                }
                 save_column(flux_up, "sw_flux_up");
                 save_column(flux_dn, "sw_flux_dn");
                 save_column(flux_dn_dir, "sw_flux_dn_dir");
 
                 if (sw_clear_sky_stats)
                 {
-                    exec_shortwave(
-                            thermo, timeloop, stats,
-                            flux_up, flux_dn, flux_dn_dir, flux_net,
-                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
-                            !compute_clouds, n_cols);
-
+                    if (sw_aerosol)
+                    {
+                        exec_shortwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_dn_dir, flux_net,
+                                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                aermr01_a, aermr02_a, aermr03_a, aermr04_a, aermr05_a, aermr06_a, aermr07_a,
+                                aermr08_a, aermr09_a, aermr10_a, aermr11_a,
+                                rh_a, dpg_a,
+                                !compute_clouds, n_cols);
+                    }
+                    else
+                    {
+                        exec_shortwave(
+                                thermo, timeloop, stats,
+                                flux_up, flux_dn, flux_dn_dir, flux_net,
+                                t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                !compute_clouds, n_cols);
+                    }
                     save_column(flux_up, "sw_flux_up_clear");
                     save_column(flux_dn, "sw_flux_dn_clear");
                     save_column(flux_dn_dir, "sw_flux_dn_dir_clear");
@@ -1890,6 +2261,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     }
 
     fields.release_tmp(tmp);
+    fields.release_tmp(relative_humidity);
 }
 #endif
 
@@ -2101,6 +2473,279 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     }
 }
 
+
+template<typename TF>
+void Radiation_rrtmgp<TF>::exec_shortwave(
+        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+        const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Array<Float,2>& h2o, const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
+        const Array<Float, 2>& aermr01, const Array<Float, 2>& aermr02, const Array<Float, 2>& aermr03,
+        const Array<Float, 2>& aermr04, const Array<Float, 2>& aermr05, const Array<Float, 2>& aermr06,
+        const Array<Float, 2>& aermr07, const Array<Float, 2>& aermr08, const Array<Float, 2>& aermr09,
+        const Array<Float, 2>& aermr10, const Array<Float, 2>& aermr11,
+        const Array<Float, 2>& rh, const Array<Float, 2>& dpg,
+        const bool compute_clouds, const int n_col)
+{
+    // How many profiles are solved simultaneously?
+    constexpr int n_col_block = 4;
+
+    auto& gd = grid.get_grid_data();
+
+    const int n_lay = gd.ktot;
+    const int n_lev = gd.ktot+1;
+
+    const int n_blocks = n_col / n_col_block;
+    const int n_col_block_left = n_col % n_col_block;
+
+    // Store the number of bands and gpt in a variable.
+    const int n_bnd = kdist_sw->get_nband();
+    const int n_gpt = kdist_sw->get_ngpt();
+
+    // Check the dimension ordering. The top is not at 1 in MicroHH, but the surface is.
+    const int top_at_1 = 0;
+
+    // Define the pointers for the subsetting.
+    std::unique_ptr<Optical_props_arry> optical_props_subset =
+            std::make_unique<Optical_props_2str>(n_col_block, n_lay, *kdist_sw);
+    std::unique_ptr<Optical_props_2str> cloud_optical_props_subset =
+            std::make_unique<Optical_props_2str>(n_col_block, n_lay, *cloud_sw);
+    std::unique_ptr<Optical_props_2str> aerosol_optical_props_subset =
+            std::make_unique<Optical_props_2str>(n_col_block, n_lay, *aerosol_sw);
+
+    std::unique_ptr<Optical_props_arry> optical_props_left =
+            std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *kdist_sw);
+    std::unique_ptr<Optical_props_2str> cloud_optical_props_left =
+            std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *cloud_sw);
+    std::unique_ptr<Optical_props_2str> aerosol_optical_props_left =
+            std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *aerosol_sw);
+
+    // Define the arrays that contain the subsets.
+    std::vector<Float> p  = thermo.get_basestate_vector("p");
+    std::vector<Float> ph = thermo.get_basestate_vector("ph");
+    Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
+    Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
+
+    // Create the boundary conditions
+    Array<Float,1> mu0(std::vector<Float>(1, this->mu0), {1});
+    Array<Float,2> sfc_alb_dir(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
+    Array<Float,2> sfc_alb_dif(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
+
+    // Create the field for the top of atmosphere source.
+    Array<Float,2> toa_src({n_col, n_gpt});
+
+    gas_concs.set_vmr("h2o", h2o);
+    Array<Float,2> col_dry({n_col, n_lay});
+    Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
+
+    // Lambda function for solving optical properties subset.
+    auto call_kernels = [&](
+            const int col_s_in, const int col_e_in,
+            std::unique_ptr<Optical_props_arry>& optical_props_subset_in,
+            std::unique_ptr<Optical_props_2str>& cloud_optical_props_in,
+            std::unique_ptr<Optical_props_2str>& aerosol_optical_props_in,
+            const Array<Float,1>& mu0_subset_in,
+            const Array<Float,2>& toa_src_subset_in,
+            const Array<Float,2>& sfc_alb_dir_subset_in,
+            const Array<Float,2>& sfc_alb_dif_subset_in,
+            const Array<Float,2>& sw_flux_dn_dif_inc_subset_in,
+            std::unique_ptr<Fluxes_broadband>& fluxes)
+    {
+        const int n_col_in = col_e_in - col_s_in + 1;
+
+        Gas_concs gas_concs_subset(gas_concs, col_s_in, n_col_in);
+        Array<Float,2> toa_src_dummy({n_col_in, n_gpt});
+
+        // 1. Solve the gas optical properties.
+        kdist_sw->gas_optics(
+                p_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
+                t_lay.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                gas_concs_subset,
+                optical_props_subset_in,
+                toa_src_dummy,
+                col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
+
+        // 2. Solve the cloud optical properties.
+        if (compute_clouds)
+        {
+            Array<Float,2> clwp_subset(clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> ciwp_subset(ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+            // Compute the effective droplet radius.
+            Array<Float,2> rel({n_col_in, n_lay});
+            Array<Float,2> rei({n_col_in, n_lay});
+
+            const Float sig_g = 1.34;
+            const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
+
+            // CvH: Numbers according to RCEMIP.
+            const Float Nc0 = 100.e6;
+            const Float Ni0 = 1.e5;
+
+            const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
+            const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+
+            for (int ilay=1; ilay<=n_lay; ++ilay)
+            {
+                // const Float layer_mass = (p_lev({1, ilay}) - p_lev({1, ilay+1})) / Constants::grav<Float>;
+                const Float layer_thickness = gd.dz[ilay + gd.kstart - 1];
+
+                for (int icol=1; icol<=n_col_in; ++icol)
+                {
+                    // Parametrization according to Martin et al., 1994 JAS. Fac multiplication taken from DALES.
+                    // CvH: Potentially better using moments from microphysics.
+                    Float rel_value = clwp_subset({icol, ilay}) > Float(0.) ?
+                        1.e6 * fac * std::pow((clwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Nc0_rho_w, (1./3.)) : Float(0.);
+
+                    // Limit the values between 2.5 and 21.5 (limits of cloud optics lookup table).
+                    rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
+
+                    // Calculate the effective radius of ice from the mass and the number concentration.
+                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
+                        1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
+
+                    // Limit the values between 10. and 180 (limits of cloud optics lookup table).
+                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
+                }
+            }
+
+            // Convert to g/m2.
+            for (int i=0; i<clwp_subset.size(); ++i)
+                clwp_subset.v()[i] *= 1e3;
+
+            for (int i=0; i<ciwp_subset.size(); ++i)
+                ciwp_subset.v()[i] *= 1e3;
+
+            cloud_sw->cloud_optics(
+                    clwp_subset, ciwp_subset,
+                    rel, rei,
+                    *cloud_optical_props_in);
+
+            cloud_optical_props_in->delta_scale();
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str&>(*cloud_optical_props_in));
+        }
+
+        //2a. Solve the aerosol optical properties.
+            Array<Float,2> aermr01_subset(aermr01.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr02_subset(aermr02.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr03_subset(aermr03.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr04_subset(aermr04.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr05_subset(aermr05.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr06_subset(aermr06.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr07_subset(aermr07.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr08_subset(aermr08.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr09_subset(aermr09.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr10_subset(aermr10.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> aermr11_subset(aermr11.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> rh_subset(rh.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+            Array<Float,2> dpg_subset(dpg.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}));
+
+            aerosol_sw->aerosol_optics(
+                    aermr01_subset, aermr02_subset, aermr03_subset, aermr04_subset,
+                    aermr05_subset, aermr06_subset,aermr07_subset, aermr08_subset,
+                    aermr09_subset, aermr10_subset, aermr11_subset,
+                    rh_subset, dpg_subset,
+                    *aerosol_optical_props_in);
+
+//            aerosol_optical_props_in->delta_scale();
+
+            // Add the aerosol optical props to the gas&cloud optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str &>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str &>(*aerosol_optical_props_in));
+
+        // 3. Solve the fluxes.
+        Array<Float,3> gpt_flux_up    ({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn    ({n_col_in, n_lev, n_gpt});
+        Array<Float,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});
+
+        Rte_sw::rte_sw(
+                optical_props_subset_in,
+                top_at_1,
+                mu0_subset_in,
+                toa_src_subset_in,
+                sfc_alb_dir_subset_in,
+                sfc_alb_dif_subset_in,
+                sw_flux_dn_dif_inc_subset_in,
+                gpt_flux_up,
+                gpt_flux_dn,
+                gpt_flux_dn_dir);
+
+        // 4. Reduce the fluxes to the needed information.
+        fluxes->reduce(
+                gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir,
+                optical_props_subset_in, top_at_1);
+
+        // Copy the data to the output.
+        for (int ilev=1; ilev<=n_lev; ++ilev)
+            for (int icol=1; icol<=n_col_in; ++icol)
+            {
+                flux_up    ({icol+col_s_in-1, ilev}) = fluxes->get_flux_up    ()({icol, ilev});
+                flux_dn    ({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn    ()({icol, ilev});
+                flux_dn_dir({icol+col_s_in-1, ilev}) = fluxes->get_flux_dn_dir()({icol, ilev});
+                flux_net   ({icol+col_s_in-1, ilev}) = fluxes->get_flux_net   ()({icol, ilev});
+            }
+    };
+
+    for (int b=1; b<=n_blocks; ++b)
+    {
+        const int col_s = (b-1) * n_col_block + 1;
+        const int col_e =  b    * n_col_block;
+
+        Array<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
+        Array<Float,2> toa_src_subset = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+
+        std::unique_ptr<Fluxes_broadband> fluxes_subset =
+                std::make_unique<Fluxes_broadband>(n_col_block, n_lev);
+
+        call_kernels(
+                col_s, col_e,
+                optical_props_subset,
+                cloud_optical_props_subset,
+                aerosol_optical_props_subset,
+                mu0_subset,
+                toa_src_subset,
+                sfc_alb_dir_subset,
+                sfc_alb_dif_subset,
+                sw_flux_dn_dif_inc_subset,
+                fluxes_subset);
+    }
+
+    if (n_col_block_left > 0)
+    {
+        const int col_s = n_col - n_col_block_left + 1;
+        const int col_e = n_col;
+
+        Array<Float,1> mu0_left = mu0.subset({{ {col_s, col_e} }});
+        Array<Float,2> toa_src_left = sw_flux_dn_dir_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+        Array<Float,2> sfc_alb_dir_left = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sfc_alb_dif_left = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array<Float,2> sw_flux_dn_dif_inc_left = sw_flux_dn_dif_inc.subset({{ {col_s, col_e}, {1, n_gpt} }});
+
+        std::unique_ptr<Fluxes_broadband> fluxes_left =
+                std::make_unique<Fluxes_broadband>(n_col_block_left, n_lev);
+
+        call_kernels(
+                col_s, col_e,
+                optical_props_left,
+                cloud_optical_props_left,
+                aerosol_optical_props_left,
+                mu0_left,
+                toa_src_left,
+                sfc_alb_dir_left,
+                sfc_alb_dif_left,
+                sw_flux_dn_dif_inc_left,
+                fluxes_left);
+    }
+}
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(

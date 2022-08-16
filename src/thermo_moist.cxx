@@ -1545,6 +1545,63 @@ void Thermo_moist<TF>::get_radiation_fields(
 }
 
 template<typename TF>
+void Thermo_moist<TF>::get_aerosol_radiation_fields(
+        std::vector<TF>& dp_g, Field3d<TF>& relative_humidity)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Calculate the relative humidity
+    auto rh = fields.get_tmp();
+    get_thermo_field(*rh, "rh", true, true);
+
+    // strip off the ghost cells
+    for (int k=gd.kstart; k<gd.kend; ++k)
+    {
+        const int k_nogc = k-gd.kgc;
+        dp_g[k_nogc] = (bs.prefh.data()[k] - bs.prefh.data()[k+1]) / Constants::grav<TF>;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                const int ijk_nogc = (i-gd.igc) + (j-gd.jgc)*gd.imax + (k-gd.kgc)*gd.imax*gd.jmax;
+                relative_humidity.fld.data()[ijk_nogc] = rh->fld.data()[ijk];
+
+            }
+    }
+    fields.release_tmp(rh);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::get_aerosol_radiation_columns(
+        std::vector<TF>& dp_g, Field3d<TF>& relative_humidity, std::vector<int>& col_i, std::vector<int>& col_j)
+{
+    auto &gd = grid.get_grid_data();
+    const int n_cols = col_i.size();
+
+    // Calculate the relative humidity
+    auto rh = fields.get_tmp();
+    get_thermo_field(*rh, "rh", true, true);
+
+    for (int k = gd.kstart; k < gd.kend; ++k)
+    {
+        const int k_nogc = k - gd.kgc;
+        dp_g[k_nogc] = (bs.prefh.data()[k] - bs.prefh.data()[k + 1]) / Constants::grav<TF>;
+
+        for (int n = 0; n < n_cols; ++n)
+        {
+            const int i = col_i[n];
+            const int j = col_j[n];
+
+            const int ijk = i + j * gd.icells + k * gd.ijcells;
+            const int ijk_out = n + (k - gd.kgc) * n_cols;
+
+            relative_humidity.fld.data()[ijk_out] = rh->fld.data()[ijk];
+        }
+    }
+    fields.release_tmp(rh);
+}
+
+template<typename TF>
 void Thermo_moist<TF>::get_radiation_columns(
     Field3d<TF>& tmp, std::vector<int>& col_i, std::vector<int>& col_j) const
 {

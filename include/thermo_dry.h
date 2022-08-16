@@ -107,7 +107,11 @@ class Thermo_dry : public Thermo<TF>
         // Functions which are not implemented and throw error
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
+        void get_aerosol_radiation_fields(std::vector<TF>&, Field3d<TF>&)
+            { throw std::runtime_error("Function get_aerosol_radiation_fields not implemented"); }
+        void get_aerosol_radiation_columns(std::vector<TF>&, Field3d<TF>&, std::vector<int>&, std::vector<int>& )
+            { throw std::runtime_error("Function get_aerosol_radiation_columns not implemented");}
+    void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,

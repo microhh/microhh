@@ -126,7 +126,7 @@ void Radiation_prescribed<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 #ifndef USECUDA
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&)
 {
 }
 #endif
