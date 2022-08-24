@@ -117,9 +117,9 @@ kl::KernelBuilder GridKernel::build() const {
                 TILE_FACTOR_X,
                 TILE_FACTOR_Y,
                 TILE_FACTOR_Z,
-                UNROLL_FACTOR_X,
-                UNROLL_FACTOR_Y,
-                UNROLL_FACTOR_Z,
+                LOOP_UNROLL_DEPTH >= 1 ? TILE_FACTOR_X : 1,
+                LOOP_UNROLL_DEPTH >= 2 ? TILE_FACTOR_Y : 1,
+                LOOP_UNROLL_DEPTH >= 3 ? TILE_FACTOR_Z : 1,
                 TILE_CONTIGUOUS_X,
                 TILE_CONTIGUOUS_Y,
                 TILE_CONTIGUOUS_Z
@@ -129,7 +129,7 @@ kl::KernelBuilder GridKernel::build() const {
         }
     )";
 
-    std::vector<uint32_t> block_size_x = {32, 64, 128, 256};
+    std::vector<uint32_t> block_size_x = {16, 32, 64, 128, 256};
     std::vector<uint32_t> block_size_y = {1, 2, 4, 8};
     std::vector<uint32_t> block_size_z = {1, 2, 4, 8};
 
@@ -137,12 +137,19 @@ kl::KernelBuilder GridKernel::build() const {
     auto bx = builder.tune("BLOCK_SIZE_X", block_size_x, meta.block_size.x);
     auto by = builder.tune("BLOCK_SIZE_Y", block_size_y, meta.block_size.y);
     auto bz = builder.tune("BLOCK_SIZE_Z", block_size_z, meta.block_size.z);
-
-    auto tx = builder.tune_define("TILE_FACTOR_X", {1, 2, 4});
-    auto ty = builder.tune_define("TILE_FACTOR_Y", {1, 2, 4});
-    auto tz = builder.tune_define("TILE_FACTOR_Z", {1, 2, 4, 8});
-
     auto blocks_per_sm = builder.tune_define("BLOCKS_PER_SM", {1, 2, 3, 4, 5, 6});
+
+    auto tx = builder.tune_define("TILE_FACTOR_X", {1, 2, 3, 4});
+    auto ty = builder.tune_define("TILE_FACTOR_Y", {1, 2, 3, 4});
+    auto tz = builder.tune_define("TILE_FACTOR_Z", {1, 2, 3, 4, 8});
+
+    // How many loops to unroll
+    // - 0: no unroll
+    // - 1: only inner loop
+    // - 2: two inner loops
+    // - 3: all loops
+    builder.tune_define("LOOP_UNROLL_DEPTH", {3, 2, 1, 0});
+
 
     builder
         .block_size(bx, by, bz)
