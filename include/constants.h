@@ -23,9 +23,6 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <climits>
-#include <cmath>
-
 namespace Constants
 {
     template<typename TF> constexpr TF kappa = 0.4;           // von Karman constant
@@ -95,6 +92,6 @@ namespace Constants
     const double        dsmall = 1.e-9;
     const double        dbig   = 1.e9;
     const double        dhuge  = 1.e30;
-    const unsigned long ulhuge = ULONG_MAX;
+    const unsigned long ulhuge = ~0UL; //== ULONG_MAX;
 }
 #endif
