@@ -308,8 +308,6 @@ void Boundary_surface<TF>::prepare_device()
 
     const int dmemsize2d = gd.ijcells*sizeof(TF);
     const int imemsize2d = gd.ijcells*sizeof(int);
-    const int dimemsize  = gd.icells*sizeof(TF);
-    const int iimemsize  = gd.icells*sizeof(int);
 
     // 2D fields:
     cuda_safe_call(cudaMalloc(&obuk_g,    dmemsize2d));

@@ -1073,7 +1073,7 @@ void Boundary_surface_lsm<TF>::backward_device()
     auto& gd = grid.get_grid_data();
 
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
-    const int int_memsize_ij = gd.ijcells*sizeof(int);
+//    const int int_memsize_ij = gd.ijcells*sizeof(int);
 
     // NOTE: only copy back the required/useful data...
     cuda_safe_call(cudaMemcpy(obuk.data(),  obuk_g,  tf_memsize_ij, cudaMemcpyDeviceToHost));
