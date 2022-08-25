@@ -154,7 +154,7 @@ namespace diff_smag2 {
                 TF RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
 
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                 evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else if (surface_model == Surface_model::Enabled)
@@ -164,7 +164,7 @@ namespace diff_smag2 {
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
 
                 // Mason mixing length
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                 evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
             }
             else
@@ -198,7 +198,7 @@ namespace diff_smag2 {
             const int ijk = i + j*jj + k*kk;
             const int ij = i + j*jj;
 
-            const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+            const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
             evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk]);
         }
     }
