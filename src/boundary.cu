@@ -466,25 +466,25 @@ void Boundary<TF>::set_prognostic_outflow_bcs()
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_z0m_g()
+cuda_vector<TF>& Boundary<TF>::get_z0m_g()
 {
     throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dudz_g()
+cuda_vector<TF>& Boundary<TF>::get_dudz_g()
 {
     throw std::runtime_error("Function get_dudz_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dvdz_g()
+cuda_vector<TF>& Boundary<TF>::get_dvdz_g()
 {
     throw std::runtime_error("Function get_dvdz_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dbdz_g()
+cuda_vector<TF>& Boundary<TF>::get_dbdz_g()
 {
     throw std::runtime_error("Function get_dbdz_g() not implemented in base boundary.");
 }

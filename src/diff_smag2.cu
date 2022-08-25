@@ -61,16 +61,14 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
             mlen[k] = std::pow(cs * std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.)), n_mason);
     }
 
-    const int nmemsize = gd.kcells*sizeof(TF);
-    cuda_safe_call(cudaMalloc(&mlen_g, nmemsize));
-    cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), nmemsize, cudaMemcpyHostToDevice));
+    mlen_g.allocate(gd.kcells);
+    cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), mlen_g.size_in_bytes(), cudaMemcpyHostToDevice));
 }
 #endif
 
 template<typename TF>
 void Diff_smag2<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(mlen_g));
 }
 
 #ifdef USECUDA
@@ -98,11 +96,11 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     // Use surface model.
     if (boundary.get_switch() != "default")
     {
-        TF* z0m_g   = boundary.get_z0m_g();
+        auto& z0m_g   = boundary.get_z0m_g();
 
         // Get MO gradients velocity:
-        TF* dudz_g  = boundary.get_dudz_g();
-        TF* dvdz_g  = boundary.get_dvdz_g();
+        auto& dudz_g  = boundary.get_dudz_g();
+        auto& dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
         launch_grid_kernel<calc_strain2_g<TF, Surface_model::Enabled>>(
@@ -133,7 +131,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
             thermo.get_thermo_field_g(*tmp1, "N2", false);
 
             // Get MO gradient buoyancy:
-            TF* dbdz_g  = boundary.get_dbdz_g();
+            auto& dbdz_g  = boundary.get_dbdz_g();
 
             // Calculate eddy viscosity
             TF tPri = 1./tPr;

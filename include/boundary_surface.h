@@ -60,10 +60,10 @@ class Boundary_surface : public Boundary<TF>
         void forward_device();  // TMP BVS
         void backward_device(); // TMP BVS
 
-        TF* get_z0m_g()  { return z0m_g; };
-        TF* get_dudz_g() { return dudz_mo_g; };
-        TF* get_dvdz_g() { return dvdz_mo_g; };
-        TF* get_dbdz_g() { return dbdz_mo_g; };
+        cuda_vector<TF>& get_z0m_g()  { return z0m_g; };
+        cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
+        cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
+        cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -107,14 +107,14 @@ class Boundary_surface : public Boundary<TF>
         std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
-        TF* z0m_g = nullptr;
-        TF* z0h_g = nullptr;
-        TF* obuk_g = nullptr;
-        TF* ustar_g = nullptr;
+        cuda_vector<TF> z0m_g;
+        cuda_vector<TF> z0h_g;
+        cuda_vector<TF> obuk_g;
+        cuda_vector<TF> ustar_g;
 
-        TF* dudz_mo_g = nullptr;
-        TF* dvdz_mo_g = nullptr;
-        TF* dbdz_mo_g = nullptr;
+        cuda_vector<TF> dudz_mo_g;
+        cuda_vector<TF> dvdz_mo_g;
+        cuda_vector<TF> dbdz_mo_g;
 
         int* nobuk_g = nullptr;
 

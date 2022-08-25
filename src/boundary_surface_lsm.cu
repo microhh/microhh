@@ -899,12 +899,12 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&obuk_g,  tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&ustar_g, tf_memsize_ij));
 
-    cuda_safe_call(cudaMalloc(&z0m_g,   tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&z0h_g,   tf_memsize_ij));
+    z0m_g.allocate(gd.ijcells);
+    z0h_g.allocate(gd.ijcells);
 
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&dbdz_mo_g, tf_memsize_ij));
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
+    dbdz_mo_g.allocate(gd.ijcells);
 
     if (sw_constant_z0)
     {
@@ -1098,13 +1098,6 @@ void Boundary_surface_lsm<TF>::clear_device()
     // Monin-Obukhov stuff:
     cuda_safe_call(cudaFree(obuk_g));
     cuda_safe_call(cudaFree(ustar_g));
-
-    cuda_safe_call(cudaFree(z0m_g));
-    cuda_safe_call(cudaFree(z0h_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-    cuda_safe_call(cudaFree(dbdz_mo_g));
 
     if (sw_constant_z0)
     {

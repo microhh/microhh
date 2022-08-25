@@ -310,13 +310,13 @@ void Boundary_surface<TF>::prepare_device()
     const int imemsize2d = gd.ijcells*sizeof(int);
 
     // 2D fields:
-    cuda_safe_call(cudaMalloc(&obuk_g,    dmemsize2d));
-    cuda_safe_call(cudaMalloc(&ustar_g,   dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0m_g,     dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0h_g,     dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+    obuk_g.allocate(gd.ijcells);
+    ustar_g.allocate(gd.ijcells);
+    z0m_g.allocate(gd.ijcells);
+    z0h_g.allocate(gd.ijcells);
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
+    dbdz_mo_g.allocate(gd.ijcells);
 
     // Lookuk table:
     if (sw_constant_z0)
@@ -375,15 +375,6 @@ void Boundary_surface<TF>::backward_device()
 template<typename TF>
 void Boundary_surface<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(obuk_g ));
-    cuda_safe_call(cudaFree(ustar_g));
-    cuda_safe_call(cudaFree(z0m_g));
-    cuda_safe_call(cudaFree(z0h_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-    cuda_safe_call(cudaFree(dbdz_mo_g));
-
     if (sw_constant_z0)
     {
         cuda_safe_call(cudaFree(nobuk_g));

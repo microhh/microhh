@@ -137,11 +137,11 @@ void Boundary_surface_bulk<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&obuk_g,  dmemsize2d));
     cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
 
-    cuda_safe_call(cudaMalloc(&z0m_g, dmemsize2d));
+    z0m_g.allocate(gd.ijcells);
 
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
+    dbdz_mo_g.allocate(gd.ijcells);
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
@@ -190,12 +190,6 @@ void Boundary_surface_bulk<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
-
-    cuda_safe_call(cudaFree(z0m_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-    cuda_safe_call(cudaFree(dbdz_mo_g));
 }
 
 #ifdef USECUDA
