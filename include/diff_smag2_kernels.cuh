@@ -140,32 +140,54 @@ namespace diff_smag2 {
             const TF* __restrict__ z,
             const TF tPri)
         {
-            const TF n_mason = TF(2);
+//            const TF n_mason = TF(2);
 
-            const int kstart = gd.kstart;
             const int jj = gd.jj;
             const int kk = gd.kk;
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (level.distance_to_start() == 0 && surface_model == Surface_model::Enabled)
+            if (surface_model == Surface_model::Enabled)
             {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                TF RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+//                TF RitPrratio;
+//
+//                if (level.distance_to_start() == 0)
+//                {
+//                    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+//                    RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
+//                }
+//                else
+//                {
+//                    // Add the buoyancy production to the TKE
+//                    RitPrratio = N2[ijk] / evisc[ijk] * tPri;
+//                }
 
-                const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
-            }
-            else if (surface_model == Surface_model::Enabled)
-            {
-                // Add the buoyancy production to the TKE
-                TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
+//                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
+
+//                // Mason mixing length
+//                const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+//                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
+                TF RitPrratio;
+
+                if (level.distance_to_start() == 0)
+                {
+                    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+                    RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
+                }
+                else
+                {
+                    // Add the buoyancy production to the TKE
+                    RitPrratio = N2[ijk] / evisc[ijk] * tPri;
+                }
+
                 RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
 
                 // Mason mixing length
-                const TF mlen = pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
+                const TF m = mlen0[k];
+                const TF r = fm::pow2(Constants::kappa<TF>*(z[k] + z0m[ij]));
+                const TF mlen_squared = (m * r) / (m + r); // == 1/(1/r + 1/m)
+                evisc[ijk] = mlen_squared * sqrt(evisc[ijk] * (TF(1.) - RitPrratio));
+
             }
             else
             {
