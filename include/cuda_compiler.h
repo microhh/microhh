@@ -25,10 +25,13 @@
 
 #include <type_traits>
 
-#include "kernel_launcher.h"
-#include "kernel_launcher/registry.h"
+#include "tools.h"
 #include "cuda_buffer.h"
 #include "cuda_tiling.h"
+
+#ifdef ENABLE_KERNEL_LAUNCHER
+#include "kernel_launcher.h"
+#include "kernel_launcher/registry.h"
 
 struct GridKernel: kernel_launcher::KernelDescriptor {
     GridKernel(
@@ -48,14 +51,24 @@ private:
     Grid_layout grid;
 };
 
+namespace kernel_launcher {
+    template <typename T>
+    struct IntoKernelArg<cuda_span<T>> {
+        static KernelArg convert(cuda_span<T> s) {
+            return KernelArg::for_array(s.data(), s.size());
+        }
+    };
+}
+
 void launch_kernel(
         cudaStream_t stream,
         dim3 problem_size,
         GridKernel kernel,
         const std::vector<kernel_launcher::KernelArg>& args);
+#endif
 
 template <typename T>
-struct KernelArgConvert {
+struct convert_kernel_arg {
     using type = T;
 
     static T call(T input) {
@@ -64,28 +77,28 @@ struct KernelArgConvert {
 };
 
 template <typename T>
-struct KernelArgConvert<T&>: KernelArgConvert<T> {};
+struct convert_kernel_arg<T&>: convert_kernel_arg<T> {};
 
 template <typename T>
-struct KernelArgConvert<T&&>: KernelArgConvert<T> {};
+struct convert_kernel_arg<T&&>: convert_kernel_arg<T> {};
 
 template <typename T>
-struct KernelArgConvert<cuda_span<T>> {
+struct convert_kernel_arg<cuda_span<T>> {
     using type = T*;
 
-    static kernel_launcher::CudaSpan<T> call(cuda_span<T> input) {
+    static cuda_span<T> call(cuda_span<T> input) {
         return {input.data(), input.size()};
     }
 };
 
 template <typename T>
-struct KernelArgConvert<const cuda_span<T>>: KernelArgConvert<cuda_span<T>> {};
+struct convert_kernel_arg<const cuda_span<T>>: convert_kernel_arg<cuda_span<T>> {};
 
 template <typename T>
-struct KernelArgConvert<cuda_vector<T>>: KernelArgConvert<cuda_span<const T>> {};
+struct convert_kernel_arg<cuda_vector<T>>: convert_kernel_arg<cuda_span<const T>> {};
 
 template <typename T>
-struct KernelArgConvert<const cuda_vector<T>>: KernelArgConvert<cuda_span<const T>> {};
+struct convert_kernel_arg<const cuda_vector<T>>: convert_kernel_arg<cuda_span<const T>> {};
 
 template <typename F, typename... Args>
 void launch_grid_kernel(
@@ -109,15 +122,17 @@ void launch_grid_kernel(
 
         grid_tiling_kernel<F><<<grid_size, block_size>>>(
                 gd,
-                typename KernelArgConvert<Args>::type(args)...);
+                typename convert_kernel_arg<Args>::type(args)...);
+        cuda_check_error();
     };
 
+#ifdef ENABLE_KERNEL_LAUNCHER
     std::vector<kernel_launcher::TypeInfo> param_types = {
-            kernel_launcher::TypeInfo::of<typename KernelArgConvert<Args>::type>()...
+            kernel_launcher::TypeInfo::of<typename convert_kernel_arg<Args>::type>()...
     };
 
     std::vector<kernel_launcher::KernelArg> kernel_args = {
-            kernel_launcher::into_kernel_arg(KernelArgConvert<Args>::call(args))...
+            kernel_launcher::into_kernel_arg(convert_kernel_arg<Args>::call(args))...
     };
 
     GridKernel kernel(
@@ -137,6 +152,9 @@ void launch_grid_kernel(
         std::cerr << "WARNING: error occurred while compiling kernel: " << e.what() << "\n";
         fallback();
     }
+#else
+    fallback();
+#endif
 }
 
 template <typename F, typename TF, typename... Args>

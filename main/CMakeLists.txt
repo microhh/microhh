@@ -42,5 +42,6 @@ target_link_libraries(microhh microhhc rte_rrtmgp_kernels rte_rrtmgp ${LIBS} m)
 
 if(USECUDA)
     target_link_libraries(microhh rte_rrtmgp_cuda rte_rrtmgp_kernels)
-    target_link_libraries(microhh kernel_launcher)
 endif()
+
+

@@ -24,4 +24,6 @@ include_directories("../include" "../rte-rrtmgp-cpp/include" SYSTEM ${INCLUDE_DI
 
 add_library(microhhc STATIC ${sourcefiles})
 
-target_link_libraries(microhhc kernel_launcher)
+if(USEKERNELLAUNCHER)
+    target_link_libraries(microhhc kernel_launcher)
+endif()

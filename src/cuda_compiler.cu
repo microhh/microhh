@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 
+#ifdef ENABLE_KERNEL_LAUNCHER
 #include "kernel_launcher.h"
 #include "cuda_compiler.h"
 
@@ -211,3 +212,4 @@ void launch_kernel(
         .lookup(std::move(kernel))
         .launch(stream, problem_size, args);
 }
+#endif
