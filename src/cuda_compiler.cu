@@ -7,7 +7,7 @@
 
 namespace kl = kernel_launcher;
 
-std::string& home_directory() {
+const std::string& home_directory() {
     static std::string dir = "";
     if (dir.empty()) {
         std::string result;
@@ -122,8 +122,8 @@ kl::KernelBuilder GridKernel::build() const {
                 LOOP_UNROLL_DEPTH >= 2 ? TILE_FACTOR_Y : 1,
                 LOOP_UNROLL_DEPTH >= 3 ? TILE_FACTOR_Z : 1,
                 TILE_CONTIGUOUS_X,
-                TILE_CONTIGUOUS_Y,
-                TILE_CONTIGUOUS_Z
+                TILE_CONTIGUOUS_YZ,
+                TILE_CONTIGUOUS_YZ
             >;
 
             cta_execute_tiling_border<BORDER_SIZE, Tiling>(gd, F{}, args...);
@@ -131,8 +131,8 @@ kl::KernelBuilder GridKernel::build() const {
     )";
 
     std::vector<uint32_t> block_size_x = {16, 32, 64, 128, 256};
-    std::vector<uint32_t> block_size_y = {1, 2, 4, 8};
-    std::vector<uint32_t> block_size_z = {1, 2, 4, 8};
+    std::vector<uint32_t> block_size_y = {1, 2, 4, 8, 16};
+    std::vector<uint32_t> block_size_z = {1, 2, 4, 8, 16};
 
     kl::KernelBuilder builder("kernel", kl::KernelSource("kernel.cu", source));
     auto bx = builder.tune("BLOCK_SIZE_X", block_size_x, meta.block_size.x);
@@ -142,7 +142,7 @@ kl::KernelBuilder GridKernel::build() const {
 
     auto tx = builder.tune_define("TILE_FACTOR_X", {1, 2, 3, 4});
     auto ty = builder.tune_define("TILE_FACTOR_Y", {1, 2, 3, 4});
-    auto tz = builder.tune_define("TILE_FACTOR_Z", {1, 2, 3, 4, 8});
+    auto tz = builder.tune_define("TILE_FACTOR_Z", {1, 2, 3, 4, 8, 16, 32});
 
     // How many loops to unroll
     // - 0: no unroll
@@ -151,6 +151,8 @@ kl::KernelBuilder GridKernel::build() const {
     // - 3: all loops
     builder.tune_define("LOOP_UNROLL_DEPTH", {3, 2, 1, 0});
 
+    // Tiling is contiguous or block strided
+    builder.tune_define("TILE_CONTIGUOUS_YZ", {0, 1});
 
     builder
         .block_size(bx, by, bz)
@@ -173,19 +175,17 @@ kl::KernelBuilder GridKernel::build() const {
         .define("UNROLL_FACTOR_Y", ty)
         .define("UNROLL_FACTOR_Z", tz)
         .define("TILE_CONTIGUOUS_X", "0")
-        .define("TILE_CONTIGUOUS_Y", "1")
-        .define("TILE_CONTIGUOUS_Z", "1")
         .define("BORDER_SIZE", std::to_string(meta.border_size));
 
     builder.compiler_flags(
             "--restrict",
             "-std=c++17",
-            "-I" + home_directory() + "/include"
-    );
+            "-I" + home_directory() + "/include");
 
     auto threads_per_block = bx * by * bz;
     builder.restriction(threads_per_block >= 64 && threads_per_block <= 1024);
     builder.restriction(threads_per_block * blocks_per_sm <= 2048);
+    builder.restriction(tx * ty * tz <= 32);
 
     builder.template_arg(functor_type);
     for (const auto& p: param_types) {
