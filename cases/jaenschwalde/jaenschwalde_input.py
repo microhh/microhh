@@ -92,6 +92,7 @@ nc_v = nc_group_init.createVariable('v' , float_type, ('z'))
 nc_th = nc_group_init.createVariable('thl', float_type, ('z'))
 nc_qt = nc_group_init.createVariable('qt', float_type, ('z'))
 nc_co2 = nc_group_init.createVariable('co2', float_type, ('z'))
+nc_co2_inflow = nc_group_init.createVariable('co2_inflow', float_type, ('z'))
 
 nc_z [:] = z[:]
 nc_u [:] = u[:]
@@ -99,6 +100,7 @@ nc_v [:] = v[:]
 nc_th[:] = th[:]
 nc_qt[:] = qt[:]
 nc_co2[:] = co2[:]
+nc_co2_inflow[:] = co2[:]
 
 nc_file.close()
 
