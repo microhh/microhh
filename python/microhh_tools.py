@@ -528,6 +528,7 @@ def compare_bitwise(f1, f2):
 
     return cmp_python, cmp_os
 
+
 def restart_post(origin, timestr):
     file_names = glob.glob('*.' + timestr)
     not_identical = False
@@ -594,6 +595,8 @@ def execute(command):
         raise Exception(
             '\'{}\' returned \'{}\'.'.format(
                 command, sp.returncode))
+
+    return sp.returncode
 
 
 def run_cases(cases, executable, mode, outputfile=''):
