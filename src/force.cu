@@ -115,11 +115,12 @@ namespace
     }
 
     template<typename TF> __global__
-    void advec_wls_2nd_g(TF* const __restrict__ st, TF* const __restrict__ s,
-                         const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
-                         const int istart, const int jstart, const int kstart,
-                         const int iend,   const int jend,   const int kend,
-                         const int jj,     const int kk)
+    void advec_wls_2nd_mean_g(
+            TF* const __restrict__ st, const TF* const __restrict__ s,
+            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -130,9 +131,32 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             if (wls[k] > 0.)
-                st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
+                st[ijk] -= wls[k] * (s[k]-s[k-1])*dzhi[k];
             else
-                st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
+                st[ijk] -= wls[k] * (s[k+1]-s[k])*dzhi[k+1];
+        }
+    }
+
+    template<typename TF> __global__
+    void advec_wls_2nd_local_g(
+            TF* const __restrict__ st, const TF* const __restrict__ s,
+            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int jj,     const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            if (wls[k] > 0.)
+                st[ijk] -= wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
+            else
+                st[ijk] -= wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
         }
     }
 
@@ -253,7 +277,8 @@ void Force<TF>::prepare_device()
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 
-    if (swwls == Large_scale_subsidence_type::Mean_field)
+    if (swwls == Large_scale_subsidence_type::Mean_field ||
+        swwls == Large_scale_subsidence_type::Local_field)
     {
         cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
@@ -289,7 +314,8 @@ void Force<TF>::clear_device()
 
     }
 
-    if (swwls == Large_scale_subsidence_type::Mean_field)
+    if (swwls == Large_scale_subsidence_type::Mean_field ||
+        swwls == Large_scale_subsidence_type::Local_field)
     {
         cuda_safe_call(cudaFree(wls_g));
         tdep_wls->clear_device();
@@ -416,10 +442,35 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
     if (swwls == Large_scale_subsidence_type::Mean_field)
     {
+        if (swwls_mom)
+            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_g<<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_mean_g, wls_g, gd.dzhi_g,
+            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+                fields.st.at(it.first)->fld_g,
+                fields.sp.at(it.first)->fld_mean_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*it.second, tend_name_subs);
+        }
+    }
+    else if (swwls == Large_scale_subsidence_type::Local_field)
+    {
+        if (swwls_mom)
+            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+
+        for (auto& it : fields.st)
+        {
+            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+                fields.st.at(it.first)->fld_g,
+                fields.sp.at(it.first)->fld_g,
+                wls_g, gd.dzhi_g,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -454,8 +505,11 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_geo.at("v_geo")->update_time_dependent_prof_g(vg_g, timeloop);
     }
 
-    if (swwls == Large_scale_subsidence_type::Mean_field)
+    if (swwls == Large_scale_subsidence_type::Mean_field ||
+        swwls == Large_scale_subsidence_type::Local_field)
+    {
         tdep_wls->update_time_dependent_prof_g(wls_g, timeloop);
+    }
 }
 #endif
 
