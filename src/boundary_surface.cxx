@@ -388,9 +388,6 @@ Boundary_surface<TF>::Boundary_surface(
 template<typename TF>
 Boundary_surface<TF>::~Boundary_surface()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template<typename TF>
