@@ -9,8 +9,11 @@ import microhh_tools as mht
 modes = ['cpu', 'cpumpi', 'gpu']
 precs = ['dp', 'sp']
 
-les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip+lasso missing
+les_cases   = ['bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip']  # dycoms+lasso missing
 dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
+
+# Cases which require an additional preprocessing script.
+additional_pre = {'rcemip': {'link_coefficients.py': None}}
 
 les_options = {
         'grid': {'itot': 16, 'jtot': 16, 'xsize': 1600, 'ysize': 1600},
@@ -41,9 +44,14 @@ for prec in precs:
         experiment   = '{}_{}'.format(prec, mode)
 
         for case in les_cases:
+            pre = {}
+            if case in additional_pre:
+                pre = additional_pre[case]
+
             failed += mht.run_case(case,
                     les_options, mpi_options,
-                    microhh_exec, mode, case, experiment)
+                    microhh_exec, mode, case, experiment,
+                    additional_pre_py=pre)
 
         for case in dns_cases:
             failed += mht.run_case(case,
