@@ -21,6 +21,7 @@
  */
 
 #ifndef FAST_MATH_H
+#define FAST_MATH_H
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
@@ -53,6 +54,12 @@ namespace Fast_math
     CUDA_MACRO inline TF pow7(const TF a)
     {
         return a*a*a*a*a*a*a;
+    }
+
+    template<typename TF>
+    CUDA_MACRO inline TF pow9(const TF a)
+    {
+        return a*a*a*a*a*a*a*a*a;
     }
 }
 #endif

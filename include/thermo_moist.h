@@ -76,12 +76,14 @@ class Thermo_moist : public Thermo<TF>
         void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
-        void get_buoyancy_surf(Field3d<TF>&, bool);
-        void get_buoyancy_fluxbot(Field3d<TF>&, bool);
-        void get_T_bot(Field3d<TF>&, bool);
-        const std::vector<TF>& get_p_vector() const;
-        const std::vector<TF>& get_ph_vector() const;
-        const std::vector<TF>& get_exner_vector() const;
+        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const;
+        void get_land_surface_fields(
+            std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool);
+        void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
+        void get_buoyancy_fluxbot(std::vector<TF>&, bool);
+        void get_temperature_bot(Field3d<TF>&, bool);
+        const std::vector<TF>& get_basestate_vector(std::string) const;
         TF get_db_ref() const;
 
         int get_bl_depth();
@@ -95,10 +97,19 @@ class Thermo_moist : public Thermo<TF>
         void clear_device();
         void forward_device();
         void backward_device();
+
         void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
+        void get_buoyancy_surf_g(TF*, TF*, TF*);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
         TF* get_basestate_fld_g(std::string);
+        void set_sun_location(Timeloop<TF>&);
+        void set_background_column_shortwave(Thermo<TF>&);
+
+        void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const;
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*);
         #endif
 
         // Empty functions that are allowed to pass.
@@ -115,13 +126,16 @@ class Thermo_moist : public Thermo<TF>
 
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_operators<TF> field3d_operators;
+        Field3d_io<TF> field3d_io;
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         bool swcross_b;
         bool swcross_ql;
         bool swcross_qi;
+        bool swcross_qlqi;
         bool swcross_qsat;
+        bool swcross_qlqithv;
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
@@ -137,7 +151,7 @@ class Thermo_moist : public Thermo<TF>
         {
             Basestate_type swbasestate;
             bool swupdatebasestate;
-            TF pbot;   ///< Surface pressure.
+            TF pbot;    ///< Surface pressure.
             TF thvref0; ///< Reference potential temperature in case of Boussinesq
 
             std::vector<TF> thl0;
@@ -160,6 +174,8 @@ class Thermo_moist : public Thermo<TF>
             TF* prefh_g;
             TF* exnref_g;
             TF* exnrefh_g;
+            TF* rhoref_g;
+            TF* rhorefh_g;
         };
 
         Background_state bs;

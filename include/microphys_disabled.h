@@ -46,21 +46,28 @@ class Microphys_disabled : public Microphys<TF>
         virtual ~Microphys_disabled();
 
         void init() {};
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) {};
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) {};
         void exec(Thermo<TF>&, const double, Stats<TF>&) {};
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double) {};
+        void exec_column(Column<TF>&) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
 
+        void get_surface_rain_rate(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
+        #ifdef USECUDA
+        void get_surface_rain_rate_g(TF*);
         void prepare_device() {};
         void clear_device() {};
         void backward_device() {};
+        #endif
 
     private:
         using Microphys<TF>::swmicrophys;
+        using Microphys<TF>::grid;
 };
 #endif

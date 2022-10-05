@@ -30,7 +30,10 @@
 #  define CUDA_MACRO
 #endif
 
+
 #include <iostream>
+#include <iomanip>
+
 #include "constants.h"
 #include "fast_math.h"
 
@@ -71,6 +74,12 @@ namespace Thermo_moist_functions
         return grav<TF>/thvref * (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
     }
 
+    template<typename TF>
+    CUDA_MACRO inline TF virtual_temperature_flux_no_ql(const TF thl, const TF thlflux, const TF qt, const TF qtflux)
+    {
+        return (thlflux * (TF(1.) - (TF(1.)-Rv<TF>/Rd<TF>)*qt) - (TF(1.)-Rv<TF>/Rd<TF>)*thl*qtflux);
+    }
+
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
     template<typename TF>
@@ -103,7 +112,7 @@ namespace Thermo_moist_functions
         const TF x = std::max(TF(-100.), T-T0<TF>);
         #endif
 
-        return TF(611.15)*std::exp(22.452*x / (272.55+x));
+        return TF(611.15)*std::exp(TF(22.452)*x / (TF(272.55)+x));
     }
 
     template<typename TF>
@@ -132,6 +141,13 @@ namespace Thermo_moist_functions
     }
 
     template<typename TF>
+    CUDA_MACRO inline TF esat(const TF T)
+    {
+        const TF alpha = water_fraction(T);
+        return alpha*esat_liq(T) + (TF(1.)-alpha)*esat_ice(T);
+    }
+
+    template<typename TF>
     CUDA_MACRO inline TF dqsatdT_liq(const TF p, const TF T)
     {
         const TF den = p - esat_liq(T)*(TF(1.) - ep<TF>);
@@ -143,6 +159,13 @@ namespace Thermo_moist_functions
     {
         const TF den = p - esat_ice(T)*(TF(1.) - ep<TF>);
         return (ep<TF>/den + (TF(1.) - ep<TF>)*ep<TF>*esat_ice(T)/pow2(den)) * Ls<TF>*esat_ice(T) / (Rv<TF>*pow2(T));
+    }
+
+    template<typename TF>
+    CUDA_MACRO inline TF dqsatdT(const TF p, const TF T)
+    {
+        const TF alpha = water_fraction(T);
+        return alpha*dqsatdT_liq(p,T) + (TF(1.)-alpha)*dqsatdT_ice(p,T);
     }
 
     template<typename TF>
@@ -255,7 +278,13 @@ namespace Thermo_moist_functions
         {
             std::string error = "Non-converging saturation adjustment: thl, qt, p = "
                 + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
             throw std::runtime_error(error);
+            #endif
         }
 
         return ans;

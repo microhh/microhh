@@ -14,7 +14,7 @@ opt_mpi = {
         'master': {'npx': 2, 'npy': 2}}
 
 opt_small = {
-        'grid': {'itot': 8, 'jtot': 8},
+        'grid': {'itot': 8, 'jtot': 8, 'xsize': 800, 'ysize': 800},
         'time': {'endtime': 3600, 'savetime': 1800}}
 
 opt_nostats = {
@@ -25,10 +25,10 @@ mht.merge_options(opt_small_nostats, opt_nostats)
 
 # Case configuration dicts with name label for permutations.
 dict_opts = {
-        'all_enabled': {},
+        'default': {},
         'vapor': {'thermo': {'swthermo': 'vapor'}},
-        'basestate': {'thermo': {'swupdatebasestate': 0}},
-        'basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
+        'fixed_basestate': {'thermo': {'swupdatebasestate': 0}},
+        'fixed_basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
 
 
 if __name__ == '__main__':

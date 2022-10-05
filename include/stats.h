@@ -30,6 +30,7 @@ class Master;
 class Input;
 class Netcdf_file;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Advec;
 template<typename> class Diff;
@@ -77,6 +78,7 @@ struct Mask
     std::unique_ptr<Netcdf_variable<int>> iter_var;
     std::unique_ptr<Netcdf_variable<TF>> time_var;
     Prof_map<TF> profs;
+    Prof_map<TF> soil_profs;
     Time_series_map<TF> tseries;
 };
 
@@ -90,7 +92,7 @@ template<typename TF>
 class Stats
 {
     public:
-        Stats(Master&, Grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
+        Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
         void init(double);
@@ -117,10 +119,14 @@ class Stats
                 const std::string&, const std::string&,
                 const std::string&, const std::string&, const std::string&,
                 Stats_whitelist_type = Stats_whitelist_type::Default);
-        void add_profs(const Field3d<TF>&, const std::string&, std::vector<std::string>, const std::string&);
-        void add_tendency(const Field3d<TF>&, const std::string&, const std::string&, const std::string&, const std::string& group_name="tend");
+        void add_profs(
+                const Field3d<TF>&, const std::string&, std::vector<std::string>, const std::string&);
+        void add_tendency(
+                const Field3d<TF>&, const std::string&, const std::string&,
+                const std::string&, const std::string& group_name="tend");
 
-        void add_covariance(const Field3d<TF>&, const Field3d<TF>&, const std::string&, const std::string& group_name="covariances");
+        void add_covariance(
+                const Field3d<TF>&, const Field3d<TF>&, const std::string&, const std::string& group_name="covariances");
 
         void add_fixed_prof(
                 const std::string&, const std::string&,
@@ -147,6 +153,7 @@ class Stats
 
         void calc_stats(const std::string&, const Field3d<TF>&, const TF, const TF);
         void calc_stats_2d(const std::string&, const std::vector<TF>&, const TF);
+        void calc_stats_soil(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string&, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string&, const Field3d<TF>&, const TF, const TF, const int);
         void calc_tend(Field3d<TF>&, const std::string&);
@@ -158,6 +165,7 @@ class Stats
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Advec<TF>& advec;
         Diff<TF>& diff;
@@ -169,6 +177,8 @@ class Stats
         std::vector<std::regex> whitelist;
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
+        std::vector<std::string> varlist_soil;
+        
         void add_operation(std::vector<std::string>&, const std::string&, const std::string&);
         void sanitize_operations_vector(const std::string&, std::vector<std::string>&);
         bool is_blacklisted(const std::string&, Stats_whitelist_type = Stats_whitelist_type::Default);
@@ -186,24 +196,33 @@ class Stats
         // Tendency calculations
         std::map<std::string, std::vector<std::string>> tendency_order;
 
-        void calc_flux_2nd(TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
-                          const int, const int, const int, const int, const int, const int, const int, const int);
-        void calc_flux_4th(TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*, const int*, const unsigned int* const, const unsigned int, const int* const,
-                        const int, const int, const int, const int, const int, const int, const int, const int);
-        void calc_grad_2nd(TF* const restrict, const TF* const restrict, const TF* const restrict,
-                            const unsigned int* const, const unsigned int, const int* const,
-                            const int, const int, const int, const int, const int, const int, const int, const int);
-        void calc_grad_4th(TF* const restrict, const TF* const restrict, const TF* const restrict,
+        void calc_flux_2nd(
+                TF*, const TF* const, const TF* const, const TF, TF* const, const TF* const, TF*,
+                const int*, const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_flux_4th(
+                TF*, const TF* const, const TF* const, TF* const, const TF* const, TF*,
+                const int*, const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_grad_2nd(
+                TF* const restrict, const TF* const restrict, const TF* const restrict,
                 const unsigned int* const, const unsigned int, const int* const,
                 const int, const int, const int, const int, const int, const int, const int, const int);
-        void calc_diff_2nd(TF* restrict, TF* restrict, const TF* restrict, TF, const int*,
-            const unsigned int* const, const unsigned int, const int* const,
-            const int, const int, const int, const int, const int, const int, const int, const int);
-        void calc_diff_2nd(TF* restrict, TF* restrict w, TF* restrict,
+        void calc_grad_4th(
+                TF* const restrict, const TF* const restrict, const TF* const restrict,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(
+                TF* restrict, TF* restrict, const TF* restrict, TF, const int*,
+                const unsigned int* const, const unsigned int, const int* const,
+                const int, const int, const int, const int, const int, const int, const int, const int);
+        void calc_diff_2nd(
+                TF* restrict, TF* restrict w, TF* restrict,
                 TF* restrict, const TF* restrict,
                 TF* restrict, TF* restrict, const TF, const int*,
                 const unsigned int* const, const unsigned int, const int* const,
-                const TF, const TF, const int, const int, const int, const int, const int, const int, const int, const int);
+                const TF, const TF, const int, const int, const int, const int,
+                const int, const int, const int, const int);
         void calc_diff_4th(
                 TF* restrict, TF* restrict, const TF* restrict,
                 const TF, const int*,

@@ -199,13 +199,17 @@ void Master::wait_all()
     reqsn = 0;
 }
 
-// do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
+// CvH obsolete: do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
 void Master::broadcast(char *data, int datasize, int mpiid_to_send)
 {
     MPI_Bcast(data, datasize, MPI_CHAR, mpiid_to_send, md.commxy);
 }
 
-// overloaded broadcast functions
+void Master::broadcast(signed char *data, int datasize, int mpiid_to_send)
+{
+    MPI_Bcast(data, datasize, MPI_SIGNED_CHAR, mpiid_to_send, md.commxy);
+}
+
 void Master::broadcast(int* data, int datasize, int mpiid_to_send)
 {
     MPI_Bcast(data, datasize, MPI_INT, mpiid_to_send, md.commxy);

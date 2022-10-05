@@ -90,6 +90,7 @@ double Master::get_wall_clock_time()
 
 // All broadcasts return directly, because there is nothing to broadcast.
 void Master::broadcast(char* data, int datasize, int mpiid_to_send) {}
+void Master::broadcast(signed char* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(int* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(unsigned long* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(double* data, int datasize, int mpiid_to_send) {}

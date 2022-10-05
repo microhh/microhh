@@ -32,7 +32,7 @@ def calc_p_q_T_thl_o3(z):
     q_tb = q_0 * np.exp(-z_t/z_q1) * np.exp(-(z_t/z_q2)**2)
     q -= q_tb + q_t
 
-    i_above_zt = np.where(z > z_t)
+    i_above_zt = np.where(z >= z_t)
     q[i_above_zt] = q_t
     
     gamma = 6.7e-3
@@ -71,7 +71,7 @@ nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=T
 
 ### RADIATION INIT ###
 # Radiation profiles.
-z_top = 100.e3
+z_top = 70.e3
 dz = 500.
 z  = np.arange(dz/2, z_top, dz)
 zh = np.arange(   0, z_top-dz/2, dz)
@@ -112,18 +112,18 @@ nc_T_lev = nc_group_rad.createVariable("t_lev", float_type, ("lev"))
 nc_T_lay[:] = T_lay[:]
 nc_T_lev[:] = T_lev[:]
 
-nc_CO2 = nc_group_rad.createVariable("co2", float_type, ("lay"))
-nc_CH4 = nc_group_rad.createVariable("ch4", float_type, ("lay"))
-nc_N2O = nc_group_rad.createVariable("n2o", float_type, ("lay"))
+nc_CO2 = nc_group_rad.createVariable("co2", float_type)
+nc_CH4 = nc_group_rad.createVariable("ch4", float_type)
+nc_N2O = nc_group_rad.createVariable("n2o", float_type)
 nc_O3  = nc_group_rad.createVariable("o3" , float_type, ("lay"))
 nc_H2O = nc_group_rad.createVariable("h2o", float_type, ("lay"))
-nc_N2  = nc_group_rad.createVariable("n2" , float_type, ("lay"))
-nc_O2  = nc_group_rad.createVariable("o2" , float_type, ("lay"))
+nc_N2  = nc_group_rad.createVariable("n2" , float_type)
+nc_O2  = nc_group_rad.createVariable("o2" , float_type)
 
-nc_CFC11 = nc_group_rad.createVariable("cfc11", float_type, ("lay"))
-nc_CFC12 = nc_group_rad.createVariable("cfc12", float_type, ("lay"))
-nc_CFC22 = nc_group_rad.createVariable("cfc22", float_type, ("lay"))
-nc_CCL4  = nc_group_rad.createVariable("ccl4" , float_type, ("lay"))
+nc_CFC11 = nc_group_rad.createVariable("cfc11", float_type)
+nc_CFC12 = nc_group_rad.createVariable("cfc12", float_type)
+nc_CFC22 = nc_group_rad.createVariable("cfc22", float_type)
+nc_CCL4  = nc_group_rad.createVariable("ccl4" , float_type)
 
 nc_CO2[:] = co2
 nc_CH4[:] = ch4
@@ -172,18 +172,18 @@ nc_group_init = nc_file.createGroup("init");
 nc_thl = nc_group_init.createVariable("thl", float_type, ("z"))
 nc_qt  = nc_group_init.createVariable("qt" , float_type, ("z"))
 
-nc_CO2 = nc_group_init.createVariable("co2", float_type, ("z"))
-nc_CH4 = nc_group_init.createVariable("ch4", float_type, ("z"))
-nc_N2O = nc_group_init.createVariable("n2o", float_type, ("z"))
+nc_CO2 = nc_group_init.createVariable("co2", float_type)
+nc_CH4 = nc_group_init.createVariable("ch4", float_type)
+nc_N2O = nc_group_init.createVariable("n2o", float_type)
 nc_O3  = nc_group_init.createVariable("o3" , float_type, ("z"))
 nc_H2O = nc_group_init.createVariable("h2o", float_type, ("z"))
-nc_N2  = nc_group_init.createVariable("n2" , float_type, ("z"))
-nc_O2  = nc_group_init.createVariable("o2" , float_type, ("z"))
+nc_N2  = nc_group_init.createVariable("n2" , float_type)
+nc_O2  = nc_group_init.createVariable("o2" , float_type)
 
-nc_CFC11 = nc_group_init.createVariable("cfc11", float_type, ("z"))
-nc_CFC12 = nc_group_init.createVariable("cfc12", float_type, ("z"))
-nc_CFC22 = nc_group_init.createVariable("cfc22", float_type, ("z"))
-nc_CCL4  = nc_group_init.createVariable("ccl4" , float_type, ("z"))
+nc_CFC11 = nc_group_init.createVariable("cfc11", float_type)
+nc_CFC12 = nc_group_init.createVariable("cfc12", float_type)
+nc_CFC22 = nc_group_init.createVariable("cfc22", float_type)
+nc_CCL4  = nc_group_init.createVariable("ccl4" , float_type)
 
 nc_thl[:] = thl[:]
 nc_qt [:] = qt [:]
@@ -191,7 +191,7 @@ nc_qt [:] = qt [:]
 nc_CO2[:] = co2
 nc_CH4[:] = ch4
 nc_N2O[:] = n2o
-nc_O3 [:] = o3
+nc_O3 [:] = o3[:]
 nc_H2O[:] = qt[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2

@@ -40,11 +40,13 @@ class Field3d_operators
         void calc_mean_profile(TF* const, const TF* const); // Calculate mean profile into fld_mean
         void calc_mean_profile_nogc(TF* const, const TF* const, bool); // Calculate mean profile into fld_mean
         void subtract_mean_profile(TF* const, const TF* const); // Calculate mean profile into fld_mean
+        TF calc_mean_2d(const TF* const); // Calculate mean from 2D field
         TF calc_mean(const TF* const); // Calculate volume-weighted mean.
         TF calc_max(const TF* const);
 
         #ifdef USECUDA
         void calc_mean_profile_g(TF* const, const TF* const); // Calculate mean profile into fld_mean
+        TF calc_mean_2d_g(const TF* const); // Calculate mean from 2D (xy) field.
         TF calc_mean_g(const TF* const); // Calculate volume-weighted mean.
         TF calc_max_g(const TF* const);
         #endif

@@ -26,6 +26,7 @@
 #include <algorithm>    // std::count
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
@@ -36,8 +37,13 @@
 namespace
 {
     template<typename TF>
-    void calc_lngrad_4th(const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi4,
-            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_lngrad_4th(
+            const TF* const restrict a, TF* const restrict lngrad,
+            TF dxi, TF dyi, const TF* const restrict dzi4,
+            int icells, int ijcells,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         using namespace Finite_difference::O4;
 
@@ -126,8 +132,12 @@ namespace
 
     template<typename TF>
     void calc_lngrad_2nd(
-            const TF* const restrict a, TF* const restrict lngrad, TF dxi, TF dyi, const TF* const restrict dzi,
-            int icells, int ijcells, int istart, int iend, int jstart, int jend, int kstart, int kend)
+            const TF* const restrict a, TF* const restrict lngrad,
+            TF dxi, TF dyi, const TF* const restrict dzi,
+            int icells, int ijcells,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         using namespace Finite_difference::O2;
 
@@ -155,8 +165,13 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_path(const TF* const restrict data, TF* const restrict tmp, const TF* const restrict rhoref, const TF* const restrict dz,
-            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_path(
+            const TF* const restrict data, TF* const restrict tmp,
+            const TF* const restrict rhoref, const TF* const restrict dz,
+            int jj, int kk,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
     // Path is integrated in first full level, set to zero first
     for (int j=jstart; j<jend; j++)
@@ -180,8 +195,13 @@ namespace
     }
 
     template<typename TF>
-    void calc_cross_height_threshold(const TF* const restrict data, TF* const restrict height, const TF* const restrict z, TF threshold, bool upward, TF fillvalue,
-            int jj, int kk, int istart, int iend, int jstart, int jend, int kstart, int kend)
+    void calc_cross_height_threshold(
+            const TF* const restrict data, TF* const restrict height,
+            const TF* const restrict z, TF threshold, bool upward, TF fillvalue,
+            int jj, int kk,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
     {
         // Set height to NetCDF fill value
         for (int j=jstart; j<jend; j++)
@@ -229,9 +249,11 @@ namespace
 }
 
 template<typename TF>
-Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin),
-    field3d_io(master, grid)
+Cross<TF>::Cross(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+    master(masterin), grid(gridin), soil_grid(soilgridin),
+    fields(fieldsin), field3d_io(master, grid)
 {
     swcross = inputin.get_item<bool>("cross", "swcross", "", false);
 
@@ -250,12 +272,14 @@ Cross<TF>::Cross(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
             throw std::runtime_error(msg);
         }
 
-        // get the list of indices at which to take cross sections
+        // Get the list of locations at which to take cross sections
         xy = inputin.get_list<TF>("cross", "xy", "", std::vector<TF>());
         xz = inputin.get_list<TF>("cross", "xz", "", std::vector<TF>());
         yz = inputin.get_list<TF>("cross", "yz", "", std::vector<TF>());
-    }
 
+        // Get the list of vertical soil locations
+        xy_soil = inputin.get_list<TF>("cross", "xy_soil", "", std::vector<TF>());
+    }
 }
 
 template<typename TF>
@@ -267,15 +291,11 @@ Cross<TF>::~Cross()
 template<typename TF>
 int Cross<TF>::check_save(int error, char* filename)
 {
-    master.print_message("Saving \"%s\" ... ", filename);
     if (error == 0)
-    {
-        master.print_message("OK\n");
         return 0;
-    }
     else
     {
-        master.print_message("FAILED\n");
+        master.print_message("Saving \"%s\" ... FAILED\n", filename);
         return 1;
     }
 }
@@ -287,8 +307,6 @@ void Cross<TF>::init(double ifactor)
         return;
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
-
-    field3d_io.init();
 }
 
 template<typename TF>
@@ -296,8 +314,9 @@ void Cross<TF>::create()
 {
     int temploc, temploch, hoffset;
 
-    auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
+    auto& gd  = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+    auto& md  = master.get_MPI_data();
 
     // Find nearest full and half grid locations of xz cross-sections.
     for (auto& it: xz)
@@ -438,6 +457,35 @@ void Cross<TF>::create()
         }
     }
 
+    // Find nearest index of XY cross-sections in soil
+    for (auto& z : xy_soil)
+    {
+        if (z > 0 || z < sgd.zsize)
+        {
+            std::string msg = std::to_string(z) + " in [cross][xy_soil] is outside soil";
+            throw std::runtime_error(msg);
+        }
+        else
+        {
+            for (int k=sgd.kstart; k<sgd.kend; ++k)
+            {
+                if ((z >= sgd.zh[k]) && (z < sgd.zh[k+1]))
+                {
+                    temploc = k - sgd.kgc;
+                    break;
+                }
+            }
+
+            if (std::find(kxy_soil.begin(), kxy_soil.end(), temploc) != kxy_soil.end()) // Check for duplicate entries
+                master.print_warning("Removed duplicate entry z=%f for [cross][xy_soil]=%f\n", sgd.z[temploc+sgd.kgc], z);
+            else // Add to cross-list
+            {
+                kxy_soil.push_back(temploc);
+                master.print_message("Added XY cross at z=%f (k=%i) for [cross][xy_soil]=%f\n", sgd.z[temploc+sgd.kgc],temploc, z);
+            }
+        }
+    }
+
     /* All classes (fields, thermo, boundary) have removed their cross-variables from
        crosslist by now. If it isnt empty, print warnings for invalid variables */
     if (crosslist.size() > 0)
@@ -529,7 +577,8 @@ int Cross<TF>::cross_simple(
         for (auto& it: jxzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(field3d_io.save_xz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(
+                    field3d_io.save_xz_slice(data, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
     }
     else
@@ -537,7 +586,8 @@ int Cross<TF>::cross_simple(
         for (auto& it: jxz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-            nerror += check_save(field3d_io.save_xz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(
+                    field3d_io.save_xz_slice(data, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
     }
 
@@ -547,7 +597,8 @@ int Cross<TF>::cross_simple(
         for (auto& it: ixzh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(field3d_io.save_yz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(
+                    field3d_io.save_yz_slice(data, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
     }
     else
@@ -555,7 +606,8 @@ int Cross<TF>::cross_simple(
         for (auto& it: ixz)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-            nerror += check_save(field3d_io.save_yz_slice(data, tmp, filename, it), filename);
+            nerror += check_save(
+                    field3d_io.save_yz_slice(data, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
     }
 
@@ -565,7 +617,7 @@ int Cross<TF>::cross_simple(
         for (auto& it: kxyh)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it+gd.kgc), filename);
         }
     }
     else
@@ -573,7 +625,7 @@ int Cross<TF>::cross_simple(
         for (auto& it: kxy)
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it), filename);
+            nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it+gd.kgc), filename);
         }
     }
     fields.release_tmp(tmpfld);
@@ -622,22 +674,25 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
     for (auto& it: jxz)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
-        nerror += check_save(field3d_io.save_xz_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(
+                field3d_io.save_xz_slice(lngrad, tmp, filename, it, gd.kstart, gd.kend),filename);
     }
 
     // loop over the index arrays to save all yz cross sections
     for (auto& it: ixz)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
-        nerror += check_save(field3d_io.save_yz_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(
+                field3d_io.save_yz_slice(lngrad, tmp, filename, it, gd.kstart, gd.kend),filename);
     }
 
     // loop over the index arrays to save all xy cross sections
     for (auto& it: kxy)
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
-        nerror += check_save(field3d_io.save_xy_slice(lngrad, tmp, filename, it),filename);
+        nerror += check_save(field3d_io.save_xy_slice(lngrad, tmp, filename, it+gd.kgc),filename);
     }
+
     fields.release_tmp(tmpfld);
     fields.release_tmp(lngradfld);
 
@@ -653,7 +708,12 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
     auto tmp = tmpfld->fld.data();
     auto& gd = grid.get_grid_data();
 
-    calc_cross_path<TF>(data, tmp, fields.rhoref.data(), gd.dz.data(), gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    calc_cross_path<TF>(
+            data, tmp, fields.rhoref.data(), gd.dz.data(),
+            gd.icells, gd.ijcells,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend);
 
     nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], name, iotime);
     fields.release_tmp(tmpfld);
@@ -682,10 +742,52 @@ int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Cross_dir
 
     TF fillvalue = -1e-9; //TODO: SET FILL VALUE
     bool isupward = (direction == Cross_direction::Bottom_to_top);
-    calc_cross_height_threshold<TF>(data, height, gd.z.data(), threshold, isupward, fillvalue, gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
+    calc_cross_height_threshold<TF>(
+            data, height, gd.z.data(), threshold, isupward, fillvalue,
+            gd.icells, gd.ijcells,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend);
 
     nerror += cross_plane(height, name, iotime);
     fields.release_tmp(tmpfld);
+    return nerror;
+}
+
+template<typename TF>
+int Cross<TF>::cross_soil(
+        TF* restrict data, const std::string& name, const int iotime)
+{
+    auto& sgd = soil_grid.get_grid_data();
+
+    int nerror = 0;
+    char filename[256];
+
+    auto tmpfld = fields.get_tmp();
+    auto tmp = tmpfld->fld.data();
+
+    for (auto& it: jxz)
+    {
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
+        nerror += check_save(
+                field3d_io.save_xz_slice(data, tmp, filename, it, sgd.kstart, sgd.kend), filename);
+    }
+
+    for (auto& it: ixz)
+    {
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
+        nerror += check_save(
+                field3d_io.save_yz_slice(data, tmp, filename, it, sgd.kstart, sgd.kend), filename);
+    }
+
+    for (auto& it: kxy_soil)
+    {
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
+        nerror += check_save(field3d_io.save_xy_slice(data, tmp, filename, it+sgd.kgc), filename);
+    }
+
+    fields.release_tmp(tmpfld);
+
     return nerror;
 }
 

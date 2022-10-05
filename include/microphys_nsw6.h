@@ -56,21 +56,27 @@ class Microphys_nsw6 : public Microphys<TF>
         virtual ~Microphys_nsw6();
 
         void init();
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&);
         void exec(Thermo<TF>&, const double, Stats<TF>&);
 
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double);
+        void exec_column(Column<TF>&);
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_cross(Cross<TF>&, unsigned long);
 
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
 
+        void get_surface_rain_rate(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
-        void prepare_device() {};
-        void clear_device() {};
-        void backward_device() {};
+        #ifdef USECUDA
+        void get_surface_rain_rate_g(TF*);
+        void prepare_device();
+        void clear_device();
+        void backward_device();
+        #endif
 
     private:
         using Microphys<TF>::swmicrophys;
@@ -80,7 +86,7 @@ class Microphys_nsw6 : public Microphys<TF>
         using Microphys<TF>::field3d_operators;
 
         bool swmicrobudget;     // Output full microphysics budget terms
-        TF cflmax;              // Max CFL number in microphysics sedimentation
+        double cflmax;          // Max CFL number in microphysics sedimentation
 
         std::vector<std::string> crosslist; // Cross-sections handled by this class
 
@@ -88,11 +94,17 @@ class Microphys_nsw6 : public Microphys<TF>
         const std::string tend_longname = "Microphysics";
 
         // Variables for microphysics.
-        TF N_d; // Number concentration of cloud water (cm-3)
-        double cfl_max; // CFL due to precipitation.
+        TF Nc0; // Number concentration of cloud water (cm-3)
 
         std::vector<TF> rr_bot; // Rain rate at the bottom.
         std::vector<TF> rs_bot; // Snow rate at the bottom.
         std::vector<TF> rg_bot; // Graupel rate at the bottom.
+
+        #ifdef USECUDA
+        TF* rr_bot_g;
+        TF* rs_bot_g;
+        TF* rg_bot_g;
+        #endif
+
 };
 #endif

@@ -760,8 +760,6 @@ void Immersed_boundary<TF>::init(Input& inputin, Cross<TF>& cross)
         else
             ++it;
     }
-
-    field3d_io.init();
 }
 
 template <typename TF>

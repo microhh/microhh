@@ -84,6 +84,13 @@ namespace
         return nc_get_vara_text(ncid, var_id, start.data(), count.data(), values.data());
     }
 
+    template<>
+    int nc_get_vara_wrapper(
+            int ncid, int var_id, const std::vector<size_t>& start, const std::vector<size_t>& count, std::vector<signed char>& values)
+    {
+        return nc_get_vara_schar(ncid, var_id, start.data(), count.data(), values.data());
+    }
+
     // Wrapper for the `nc_put_vara_TYPE` functions
     template<typename TF>
     int nc_put_vara_wrapper(
@@ -151,7 +158,7 @@ Netcdf_file::Netcdf_file(Master& master, const std::string& name, Netcdf_mode mo
         else if (mode == Netcdf_mode::Write)
             nc_check_code = nc_open(name.c_str(), NC_WRITE | NC_NETCDF4, &ncid);
         else if (mode == Netcdf_mode::Read)
-            nc_check_code = nc_open(name.c_str(), NC_NOWRITE | NC_NETCDF4, &ncid);
+            nc_check_code = nc_open(name.c_str(), NC_NOWRITE, &ncid);
     }
 
     try
@@ -720,11 +727,13 @@ template std::vector<double> Netcdf_handle::get_variable<double>(const std::stri
 template std::vector<float>  Netcdf_handle::get_variable<float> (const std::string&, const std::vector<int>&);
 template std::vector<int>    Netcdf_handle::get_variable<int>   (const std::string&, const std::vector<int>&);
 template std::vector<char>   Netcdf_handle::get_variable<char>  (const std::string&, const std::vector<int>&);
+template std::vector<signed char> Netcdf_handle::get_variable<signed char>(const std::string&, const std::vector<int>&);
 
 template double Netcdf_handle::get_variable<double>(const std::string&);
 template float  Netcdf_handle::get_variable<float> (const std::string&);
 template int    Netcdf_handle::get_variable<int>   (const std::string&);
 template char   Netcdf_handle::get_variable<char>  (const std::string&);
+template signed char Netcdf_handle::get_variable<signed char>(const std::string&);
 
 template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::get_variable<float> (std::vector<float>&,  const std::string&, const std::vector<int>&, const std::vector<int>&);

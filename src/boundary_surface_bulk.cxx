@@ -25,38 +25,19 @@
 #include "master.h"
 #include "input.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "boundary_surface_bulk.h"
+#include "boundary_surface_kernels.h"
+#include "monin_obukhov.h"
 #include "constants.h"
 
 namespace
 {
     namespace fm = Fast_math;
-
-    template<typename TF>
-    void calculate_du(
-            TF* restrict dutot, TF* restrict u, TF* restrict v, TF* restrict ubot, TF* restrict vbot,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        // calculate total wind
-        TF du2;
-        const TF minval = 1.e-1;
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                du2 = fm::pow2(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]))
-                    + fm::pow2(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]));
-                dutot[ij] = std::max(std::sqrt(du2), minval);
-            }
-
-    }
+    namespace most = Monin_obukhov;
+    namespace bsk = Boundary_surface_kernels;
 
     template<typename TF>
     void momentum_fluxgrad(
@@ -106,7 +87,6 @@ namespace
             TF* restrict ustar, TF* restrict obuk, TF* restrict dutot, TF* restrict bfluxbot, const TF Cm,
             const int istart, const int iend, const int jstart, const int jend, const int jj)
     {
-
         const double sqrt_Cm = sqrt(Cm);
 
         for (int j=jstart; j<jend; ++j)
@@ -122,8 +102,10 @@ namespace
 }
 
 template<typename TF>
-Boundary_surface_bulk<TF>::Boundary_surface_bulk(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Boundary<TF>(masterin, gridin, fieldsin, inputin)
+Boundary_surface_bulk<TF>::Boundary_surface_bulk(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+    Boundary<TF>(masterin, gridin, soilgridin, fieldsin, inputin)
 {
     swboundary = "surface_bulk";
 
@@ -136,17 +118,17 @@ Boundary_surface_bulk<TF>::Boundary_surface_bulk(Master& masterin, Grid<TF>& gri
 template<typename TF>
 Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Boundary_surface_bulk<TF>::create(
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column,
+        Cross<TF>& cross, Timeloop<TF>& timeloop)
 {
     const std::string group_name = "default";
 
-    Boundary<TF>::process_time_dependent(input, input_nc);
+    Boundary<TF>::process_time_dependent(input, input_nc, timeloop);
 
     // add variables to the statistics
     if (stats.get_switch())
@@ -154,6 +136,11 @@ void Boundary_surface_bulk<TF>::create(Input& input, Netcdf_handle& input_nc, St
         stats.add_time_series("ustar", "Surface friction velocity", "m s-1", group_name);
         stats.add_time_series("obuk", "Obukhov length", "m", group_name);
     }
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
 }
 
 template<typename TF>
@@ -166,7 +153,7 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
     process_input(inputin, thermo);
 
     // 3. Allocate and initialize the 2D surface fields.
-    init_surface();
+    init_surface(inputin);
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
@@ -175,8 +162,6 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
 template<typename TF>
 void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
-    z0m = inputin.get_item<TF>("boundary", "z0m", "");
-    z0h = inputin.get_item<TF>("boundary", "z0h", "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot != Boundary_type::Dirichlet_type)
@@ -200,23 +185,107 @@ void Boundary_surface_bulk<TF>::process_input(Input& inputin, Thermo<TF>& thermo
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::init_surface()
+void Boundary_surface_bulk<TF>::init_surface(Input& input)
 {
     auto& gd = grid.get_grid_data();
 
     obuk.resize(gd.ijcells);
     ustar.resize(gd.ijcells);
 
-    const int jj = gd.icells;
+    dudz_mo.resize(gd.ijcells);
+    dvdz_mo.resize(gd.ijcells);
+    dbdz_mo.resize(gd.ijcells);
+
+    z0m.resize(gd.ijcells);
+    z0h.resize(gd.ijcells);
+
+    // BvS TMP
+    const TF z0m_hom = input.get_item<TF>("boundary", "z0m", "");
+    const TF z0h_hom = input.get_item<TF>("boundary", "z0h", "");
+
+    std::fill(z0m.begin(), z0m.end(), z0m_hom);
+    std::fill(z0h.begin(), z0h.end(), z0h_hom);
 
     // Initialize the obukhov length on a small number.
-    for (int j=0; j<gd.jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<gd.icells; ++i)
+    std::fill(obuk.begin(), obuk.end(), Constants::dsmall);
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::load(const int iotime, Thermo<TF>& thermo)
+{
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
         {
-            const int ij = i + j*jj;
-            obuk[ij]  = Constants::dsmall;
+            master.print_message("FAILED\n");
+            nerror += 1;
         }
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
+    };
+
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error loading field(s)");
+
+    fields.release_tmp(tmp1);
+}
+
+template<typename TF>
+void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
+{
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    auto save_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int itime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        const int kslice = 0;
+        if (field3d_io.save_xy_slice(
+                field, tmp1->fld.data(), filename, kslice))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+    };
+
+    // MO gradients are always needed, as the calculation of the
+    // eddy viscosity use the gradients from the previous time step.
+    save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
+    save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+    save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
+
+    // Check for any failures.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error saving field(s)");
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>
@@ -228,6 +297,11 @@ void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
+void Boundary_surface_bulk<TF>::exec_column(Column<TF>& column)
+{
+}
+
+template<typename TF>
 void Boundary_surface_bulk<TF>::set_values()
 {
     // Call the base class function.
@@ -236,26 +310,36 @@ void Boundary_surface_bulk<TF>::set_values()
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     const TF zsl = gd.z[gd.kstart];
 
+    // Calculate (limited and filtered) total wind speed difference surface-atmosphere:
     auto dutot = fields.get_tmp();
 
-    // Calculate total wind speed difference with surface
-    calculate_du(dutot->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                fields.mp.at("u")->fld_bot.data(), fields.mp.at("v")->fld_bot.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-    boundary_cyclic.exec_2d(dutot->fld.data());
+    bsk::calc_dutot(
+            dutot->fld.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.jcells, gd.ijcells,
+            boundary_cyclic);
 
     // Calculate surface momentum fluxes and gradients
-    momentum_fluxgrad(fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
-                    fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
-                    fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
-                    fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
-                    dutot->fld.data(), bulk_cm, zsl,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    momentum_fluxgrad(
+            fields.mp.at("u")->flux_bot.data(),fields.mp.at("v")->flux_bot.data(),
+            fields.mp.at("u")->grad_bot.data(),fields.mp.at("v")->grad_bot.data(),
+            fields.mp.at("u")->fld.data(),fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),fields.mp.at("v")->fld_bot.data(),
+            dutot->fld.data(), bulk_cm, zsl,
+            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
 
     boundary_cyclic.exec_2d(fields.mp.at("u")->flux_bot.data());
     boundary_cyclic.exec_2d(fields.mp.at("v")->flux_bot.data());
@@ -274,13 +358,46 @@ void Boundary_surface_bulk<TF>::update_bcs(Thermo<TF>& thermo)
     }
 
     auto b= fields.get_tmp();
-    thermo.get_buoyancy_fluxbot(*b, false);
-    surface_scaling(ustar.data(), obuk.data(), dutot->fld.data(), b->flux_bot.data(), bulk_cm,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+    thermo.get_buoyancy_fluxbot(b->flux_bot, false);
+    surface_scaling(
+            ustar.data(), obuk.data(),
+            dutot->fld.data(), b->flux_bot.data(),
+            bulk_cm,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
 
     fields.release_tmp(b);
     fields.release_tmp(dutot);
 
+    // Calculate MO gradients
+    bsk::calc_duvdz_mo(
+            dudz_mo.data(), dvdz_mo.data(),
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("u")->fld_bot.data(),
+            fields.mp.at("v")->fld_bot.data(),
+            fields.mp.at("u")->flux_bot.data(),
+            fields.mp.at("v")->flux_bot.data(),
+            ustar.data(), obuk.data(), z0m.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart,
+            gd.icells, gd.ijcells);
+
+    auto buoy = fields.get_tmp();
+    thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
+
+    bsk::calc_dbdz_mo(
+            dbdz_mo.data(), buoy->flux_bot.data(),
+            ustar.data(), obuk.data(),
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+
+    fields.release_tmp(buoy);
 }
 #endif
 

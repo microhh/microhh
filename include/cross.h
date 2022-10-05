@@ -26,6 +26,7 @@
 class Master;
 class Input;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 
 enum class Cross_direction {Top_to_bottom, Bottom_to_top};
@@ -34,7 +35,7 @@ template<typename TF>
 class Cross
 {
     public:
-        Cross(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        Cross(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Cross();
 
         void init(double);
@@ -54,10 +55,12 @@ class Cross
         int cross_plane (TF*, std::string, int);
         int cross_path  (TF*, std::string, int);
         int cross_height_threshold(TF*, TF, Cross_direction, std::string, int);
+        int cross_soil  (TF*, const std::string&, const int);
 
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Field3d_io<TF> field3d_io;
 
@@ -70,18 +73,17 @@ class Cross
         std::vector<int> jxz;   ///< Index of nearest full y position of xz input
         std::vector<int> ixz;   ///< Index of nearest full x position of yz input
         std::vector<int> kxy;   ///< Index of nearest full height level of xy input
+
         std::vector<int> jxzh;  ///< Index of nearest half y position of xz input
         std::vector<int> ixzh;  ///< Index of nearest half x position of yz input
         std::vector<int> kxyh;  ///< Index of nearest half height level of xy input
+
         std::vector<TF> xz; ///< Y-position [m] xz cross from ini file
         std::vector<TF> yz; ///< X-position [m] yz cross from ini file
         std::vector<TF> xy; ///< Z-position [m] xy cross from ini file
 
-        std::vector<std::string> simple;
-        std::vector<std::string> bot;
-        std::vector<std::string> fluxbot;
-        std::vector<std::string> lngrad;
-        std::vector<std::string> path;
+        std::vector<int> kxy_soil;  ///< Index of nearest full soil level of xy cross-section
+        std::vector<TF> xy_soil;    ///< Z-position [m] of xy cross from ini file
 
         //int check_list(std::vector<std::string> *, FieldMap *, std::string crossname);
         int check_save(int, char *);

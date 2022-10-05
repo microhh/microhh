@@ -89,7 +89,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj+ k*kk;
-                    T[ijk] = exnref[k]*thref[k] + (th[ijk]-thref[k]);
+                    T[ijk] = exnref[k]*th[ijk];
                 }
     }
 
@@ -107,7 +107,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj+ k*kk;
-                    T[ijk] = exnrefh[k]*threfh[k] + (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
+                    T[ijk] = exnrefh[k]*interp2(th[ijk-kk], th[ijk]);
                 }
     }
 
@@ -125,7 +125,7 @@ namespace
             {
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+                T_bot[ij] = exnrefh[kstart]*interp2(th[ijk-kk], th[ijk]);
             }
     }
 
@@ -282,6 +282,33 @@ namespace
     }
 
     template<typename TF>
+    void calc_hydrostatic_pressure(
+                         TF* const restrict pref,   TF* const restrict prefh,
+                         TF* const restrict exnref, TF* const restrict exnrefh,
+                         const TF* const restrict thref,  const TF* const restrict threfh,
+                         const TF* const restrict z, const TF* const restrict zh,
+                         const TF* const restrict dz, const TF* const restrict dzh,
+                         const TF* const restrict dzhi, const TF pbot,
+                         const int kstart, const int kend, const int kcells)
+    {
+        prefh[kstart] = pbot;
+        pref [kstart] = pbot * std::exp(-grav<TF> * z[kstart] / (Rd<TF> * threfh[kstart] * exner(prefh[kstart])));
+        for (int k=kstart+1; k<kend+1; ++k)
+        {
+            prefh[k] = prefh[k-1] * std::exp(-grav<TF> * dz[k-1] / (Rd<TF> * thref[k-1] * exner(pref[k-1])));
+            pref [k] = pref [k-1] * std::exp(-grav<TF> * dzh[k ] / (Rd<TF> * threfh[k ] * exner(prefh[k ])));
+        }
+        pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
+
+        // Calculate exner
+        for (int k=0; k<kcells; ++k)
+        {
+            exnref[k]  = exner(pref[k] );
+            exnrefh[k] = exner(prefh[k]);
+        }
+    }
+
+    template<typename TF>
     int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
     {
         TF maxgrad = 0.;
@@ -365,6 +392,7 @@ template<typename TF>
 void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     auto& gd = grid.get_grid_data();
+    fields.set_calc_mean_profs(true);
 
     /* Setup base state:
        For anelastic setup, calculate reference density and temperature from input sounding
@@ -390,6 +418,7 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     }
     else
     {
+        bs.pbot = inputin.get_item<TF>("thermo", "pbot", "");
         bs.thref0 = inputin.get_item<TF>("thermo", "thref0", "");
 
         // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx.
@@ -398,13 +427,23 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
             bs.thref[k]  = bs.thref0;
             bs.threfh[k] = bs.thref0;
         }
+
+        // Calculate hydrostatic pressure
+        calc_hydrostatic_pressure(
+                bs.pref.data(), bs.prefh.data(),
+                bs.exnref.data(), bs.exnrefh.data(),
+                bs.thref.data(), bs.threfh.data(),
+                gd.z.data(), gd.zh.data(),
+                gd.dz.data(), gd.dzh.data(), gd.dzhi.data(),
+                bs.pbot, gd.kstart, gd.kend, gd.kcells);
     }
 
     // Init the toolbox classes.
     boundary_cyclic.init();
 
     // Process the time dependent surface pressure
-    tdep_pbot->create_timedep(input_nc);
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Set up output classes
     create_stats(stats);
@@ -505,40 +544,51 @@ void Thermo_dry<TF>::get_thermo_field(
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_fluxbot(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_fluxbot(
+        std::vector<TF>& bfluxbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    calc_buoyancy_fluxbot(
+            bfluxbot.data(),
+            fields.sp.at("th")->flux_bot.data(),
+            base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_buoyancy_surf(Field3d<TF>& b, bool is_stat)
+void Thermo_dry<TF>::get_buoyancy_surf(
+        std::vector<TF>& b, std::vector<TF>& bbot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
+    calc_buoyancy_bot(
+            b.data(), bbot.data(),
+            fields.sp.at("th")->fld.data(),
+            fields.sp.at("th")->fld_bot.data(),
+            base.thref.data(), base.threfh.data(),
+            gd.icells, gd.jcells,
+            gd.kstart, gd.ijcells);
 
-    calc_buoyancy_bot(b.fld.data(), b.fld_bot.data(), fields.sp.at("th")->fld.data(), fields.sp.at("th")->fld_bot.data(),
-                      base.thref.data(), base.threfh.data(),
-                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
-    calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
-                          gd.icells, gd.jcells, gd.kstart, gd.ijcells);
+    //calc_buoyancy_fluxbot(b.flux_bot.data(), fields.sp.at("th")->flux_bot.data(), base.threfh.data(),
+    //                      gd.icells, gd.jcells, gd.kstart, gd.ijcells);
 }
 
 template<typename TF>
-void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
+void Thermo_dry<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
     background_state base;
@@ -552,21 +602,25 @@ void Thermo_dry<TF>::get_T_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_p_vector() const
+const std::vector<TF>& Thermo_dry<TF>::get_basestate_vector(std::string name) const
 {
-    return bs.pref;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_ph_vector() const
-{
-    return bs.prefh;
-}
-
-template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_exner_vector() const
-{
-    return bs.exnref;
+    if (name == "p")
+        return bs.pref;
+    else if (name == "ph")
+        return bs.prefh;
+    else if (name == "exner")
+        return bs.exnref;
+    else if (name == "exnerh")
+        return bs.exnrefh;
+    else if (name == "th")
+        return bs.thref;
+    else if (name == "thh")
+        return bs.threfh;
+    else
+    {
+        std::string error = "Thermo_dry::get_basestate_vector() can't return \"" + name + "\"";
+        throw std::runtime_error(error);
+    }
 }
 
 template<typename TF>
@@ -715,8 +769,8 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     auto b = fields.get_tmp();
     b->loc = gd.sloc;
     get_thermo_field(*b, "b", true, true);
-    get_buoyancy_surf(*b, true);
-    get_buoyancy_fluxbot(*b, true);
+    get_buoyancy_surf(b->fld, b->fld_bot, true);
+    get_buoyancy_fluxbot(b->flux_bot, true);
 
     stats.calc_stats("b", *b, no_offset, no_threshold);
 
@@ -769,7 +823,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     if (swcross_b)
     {
         get_thermo_field(*b, "b", false, true);
-        get_buoyancy_fluxbot(*b, true);
+        get_buoyancy_fluxbot(b->flux_bot, true);
     }
 
     for (auto& it : crosslist)

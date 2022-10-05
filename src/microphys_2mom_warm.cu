@@ -26,14 +26,17 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+
 #include "boundary_cyclic.h"
 #include "thermo_moist_functions.h"
 #include "constants.h"
 #include "tools.h"
 #include "field3d_operators.h"
 #include "stats.h"
+#include "column.h"
 #include "microphys.h"
 #include "microphys_2mom_warm.h"
+#include "microphys_sedi_kernels.h"
 
 using namespace Constants;
 using namespace Thermo_moist_functions;
@@ -88,7 +91,7 @@ namespace micro
                 const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
                 const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), TF(3));    // UCLA-LES
                 //const TF phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3);    // SB06, Eq 6
-                const TF au_tend = rho[k] * kccxs * pow(ql[ijk], TF(2)) * pow(xc, TF(2)) *
+                const TF au_tend = rho_0<TF> * kccxs * pow(ql[ijk], TF(2)) * pow(xc, TF(2)) *
                                        (TF(1.) + phi_au / pow(TF(1.)-tau, TF(2))); // SB06, eq 4
 
                 qrt[ijk]  += au_tend;
@@ -223,7 +226,7 @@ namespace micro
     }
 }
 
-namespace sedimentation
+namespace sedimentation_2mom_warm
 {
     // Sedimentation from Stevens and Seifert (2008)
     template<typename TF> __global__
@@ -268,7 +271,6 @@ namespace sedimentation
         }
     }
 
-
     // Sedimentation from Stevens and Seifert (2008)
     // Overloaded version for only w_qr (could also be done with templates, but then you
     // have to pass something for w_nr...
@@ -312,176 +314,21 @@ namespace sedimentation
         }
     }
 
-
     template<typename TF> __global__
-    void set_bc_g(TF* __restrict__ w,
-                  const int istart, const int jstart, const int kstart,
-                  const int iend,   const int jend,   const int kend,
-                  const int icells, const int ijcells)
+    void copy_rain_rate(
+        TF* const __restrict__ rr_out,
+        const TF* const __restrict__ rr_in,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int icells)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
 
         if (i < iend && j < jend)
         {
-            const int ijkb = i + j*icells + kstart*ijcells;
-            const int ijkt = i + j*icells + kend  *ijcells;
-            const int kk = ijcells;
-
-            // Constant fall speed from lowest grid point to surface (?)
-            w[ijkb-kk] = w[ijkb];
-
-            // Zero velocity in top ghost cell
-            w[ijkt] = TF(0.);
-        }
-    }
-
-
-    template<typename TF> __global__
-    void calc_cfl_g(TF* const __restrict__ cfl, const TF* const __restrict__ w,
-                    const TF* const __restrict__ dzi, const TF dt,
-                    const int istart, const int jstart, const int kstart,
-                    const int iend,   const int jend,   const int kend,
-                    const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-        const int kk = ijcells;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*icells + k*ijcells;
-
-            cfl[ijk] = TF(0.25) * (w[ijk-kk] + w[ijk] + w[ijk] + w[ijk+kk]) * dzi[k] * dt;
-        }
-    }
-
-
-    template<typename TF> __global__
-    void calc_slope_g(TF* const __restrict__ slope, const TF* const __restrict__ fld,
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend,
-                      const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-        const int kk = ijcells;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*icells + k*ijcells;
-
-            slope[ijk] = minmod(fld[ijk]-fld[ijk-kk], fld[ijk+kk]-fld[ijk]);
-        }
-    }
-
-
-    template<typename TF> __global__
-    void calc_flux_g(TF* const __restrict__ flux, const TF* const __restrict__ fld,
-                     const TF* const __restrict__ slope, const TF* const __restrict__ cfl,
-                     const TF* const __restrict__ dz, const TF* const __restrict__ dzi,
-                     const TF* const __restrict__ rho,
-                     const int istart, const int jstart, const int kstart,
-                     const int iend,   const int jend,   const int kend,
-                     const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k <= kend)
-        {
-            const int ijk = i + j*icells + k*ijcells;
-
-            if (k == kend || cfl[ijk] < 1e-3)
-                flux[ijk] = TF(0.);
-            else
-            {
-                int kk;
-                TF dzz, cc;
-
-                kk         = k;      // current grid level
-                flux[ijk]  = TF(0);  // cumulative 'flux'
-                dzz        = TF(0);  // distance from zh[k]
-                cc         = fmin(TF(1), cfl[ijk]);
-                while (cc > 0 && kk < kend)
-                {
-                    const int ijk2 = i + j*icells + kk*ijcells;
-
-                    flux[ijk] += rho[kk] * (fld[ijk2] + TF(0.5) * slope[ijk2] * (TF(1.)-cc)) * cc * dz[kk];
-
-                    dzz += dz[kk];
-                    kk  += 1;
-                    cc   = min(TF(1.), cfl[ijk2] - dzz*dzi[kk]);
-                }
-            }
-        }
-    }
-
-
-    template<typename TF> __global__
-    void limit_flux_g(TF* const __restrict__ flux, const TF* const __restrict__ fld,
-                      const TF* const __restrict__ dz, const TF* const __restrict__ rho, const TF dt,
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend,
-                      const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        if (i < iend && j < jend)
-        {
-            for (int k=kend-1; k>kstart-1; k--)
-            {
-                const int ijk = i + j*icells + k*ijcells;
-
-                const TF ftot = fmin(flux[ijk], rho[k]*dz[k]*fld[ijk] - flux[ijk+ijcells]*dt);
-                flux[ijk] = -ftot / dt;
-            }
-        }
-    }
-
-
-    template<typename TF> __global__
-    void copy_rr_bot_g(
-                  TF* const __restrict__ rr_bot,
-                  const TF* const __restrict__ flux,
-                  const int istart, const int jstart, const int kstart,
-                  const int iend,   const int jend,
-                  const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        if (i < iend && j < jend)
-        {
-            const int ij  = i + j*icells;
-            const int ijk = ij + kstart*ijcells;
-
-            rr_bot[ij] = -flux[ijk];
-        }
-    }
-
-
-    template<typename TF> __global__
-    void calc_flux_div_g(TF* const __restrict__ fldt, const TF* const __restrict__ flux,
-                         const TF* const __restrict__ dzi, const TF* const __restrict__ rho,
-                         const int istart, const int jstart, const int kstart,
-                         const int iend,   const int jend,   const int kend,
-                         const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-        const int kk = ijcells;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*icells + k*ijcells;
-
-            fldt[ijk] += -(flux[ijk+kk] - flux[ijk]) / rho[k] * dzi[k];
+            const int ij = i + j*icells;
+            rr_out[ij] = rr_in[ij];
         }
     }
 }
@@ -502,7 +349,6 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
-
 
     // Remove negative values from the qr and nr fields
     micro::remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("qr")->fld_g,
@@ -570,7 +416,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     auto w_qr = fields.get_tmp_g();
     auto w_nr = fields.get_tmp_g();
 
-    sedimentation::calc_velocity_g<<<gridGPU, blockGPU>>>(
+    sedimentation_2mom_warm::calc_velocity_g<<<gridGPU, blockGPU>>>(
         w_qr->fld_g, w_nr->fld_g,
         fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -579,17 +425,19 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 2. Set the top and bottom velocity ghost cells
-    sedimentation::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
         w_qr->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    sedimentation::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
         w_nr->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -597,10 +445,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 3. Calculate CFL numbers for qr and nr
     auto cfl_qr = fields.get_tmp_g();
 
-    sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
         cfl_qr->fld_g, w_qr->fld_g, gd.dzi_g, TF(dt),
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -609,48 +458,53 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 4. Calculate slopes
     auto slope_qr = fields.get_tmp_g();
 
-    sedimentation::calc_slope_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_slope_g<<<gridGPU, blockGPU>>>(
         slope_qr->fld_g, fields.sp.at("qr")->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 5. Calculate sedimentation fluxes
     auto flux_qr = fields.get_tmp_g();
 
-    sedimentation::calc_flux_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_g<<<gridGPU, blockGPU>>>(
         flux_qr->fld_g, fields.sp.at("qr")->fld_g,
         slope_qr->fld_g, cfl_qr->fld_g,
         gd.dz_g, gd.dzi_g, fields.rhoref_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 6. Limit fluxes such that qr stays >= 0.
-    sedimentation::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
         flux_qr->fld_g, fields.sp.at("qr")->fld_g,
         gd.dz_g, fields.rhoref_g, TF(dt),
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 7. Calculate flux divergence
-    sedimentation::calc_flux_div_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_div_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, flux_qr->fld_g,
         gd.dzi_g, fields.rhoref_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 8. Store the surface precipitation rate
-    sedimentation::copy_rr_bot_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::copy_precip_rate_bot_g<<<grid2dGPU, block2dGPU>>>(
         rr_bot_g, flux_qr->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -662,10 +516,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 3. Calculate CFL numbers for qr and nr
     auto cfl_nr = fields.get_tmp_g();
 
-    sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
         cfl_nr->fld_g, w_nr->fld_g, gd.dzi_g, TF(dt),
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -674,40 +529,44 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 4. Calculate slopes
     auto slope_nr = fields.get_tmp_g();
 
-    sedimentation::calc_slope_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_slope_g<<<gridGPU, blockGPU>>>(
         slope_nr->fld_g, fields.sp.at("nr")->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 5. Calculate sedimentation fluxes
     auto flux_nr = fields.get_tmp_g();
 
-    sedimentation::calc_flux_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_g<<<gridGPU, blockGPU>>>(
         flux_nr->fld_g, fields.sp.at("nr")->fld_g,
         slope_nr->fld_g, cfl_nr->fld_g,
         gd.dz_g, gd.dzi_g, fields.rhoref_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 6. Limit fluxes such that nr stays >= 0.
-    sedimentation::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
         flux_nr->fld_g, fields.sp.at("nr")->fld_g,
         gd.dz_g, fields.rhoref_g, TF(dt),
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // 7. Calculate flux divergence
-    sedimentation::calc_flux_div_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_div_g<<<gridGPU, blockGPU>>>(
         fields.st.at("nr")->fld_g, flux_nr->fld_g,
         gd.dzi_g, fields.rhoref_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -716,14 +575,13 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     fields.release_tmp_g(flux_nr);
 
     cudaDeviceSynchronize();
+
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt"),  tend_name);
     stats.calc_tend(*fields.st.at("qr"),  tend_name);
     stats.calc_tend(*fields.st.at("nr"),  tend_name);
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const double dt)
 {
@@ -743,7 +601,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     // Calcuate sedimentation velocity qr, which is always higher than w_nr
     auto w_qr = fields.get_tmp_g();
 
-    sedimentation::calc_velocity_g<<<gridGPU, blockGPU>>>(
+    sedimentation_2mom_warm::calc_velocity_g<<<gridGPU, blockGPU>>>(
         w_qr->fld_g, fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -751,20 +609,22 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     cuda_check_error();
 
     // Set the top and bottom velocity ghost cells
-    sedimentation::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
         w_qr->fld_g,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Calculate CFL number
     auto cfl_qr = fields.get_tmp_g();
 
-    sedimentation::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
         cfl_qr->fld_g, w_qr->fld_g, gd.dzi_g, TF(dt),
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -776,14 +636,41 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     fields.release_tmp_g(cfl_qr);
 
     // Limit CFL at some small non-zero number
-    cfl = std::max(cfl, cfl_min<TF>);
+    cfl = fmax(cfl, cfl_min<TF>);
 
     const unsigned long idt_lim = idt * cflmax / cfl;
     return idt_lim;
 }
-#endif
 
-#ifdef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::get_surface_rain_rate_g(
+    TF* const __restrict__ rr_out)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
+
+    sedimentation_2mom_warm::copy_rain_rate<<<gridGPU, blockGPU>>>(
+        rr_out, rr_bot_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.icells);
+    cuda_check_error();
+}
+
+template<typename TF>
+void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot_g, no_offset);
+}
+
 template<typename TF>
 void Microphys_2mom_warm<TF>::prepare_device()
 {

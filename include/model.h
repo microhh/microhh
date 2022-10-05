@@ -32,6 +32,7 @@ class Data_block;
 class Netcdf_file;
 
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 
 template<typename> class Timeloop;
@@ -46,9 +47,11 @@ template<typename> class Force;
 template<typename> class Thermo;
 template<typename> class Microphys;
 template<typename> class Radiation;
+template<typename> class Land_surface;
 
 template<typename> class Decay;
 template<typename> class Limiter;
+template<typename> class Source;
 
 template<typename> class Stats;
 template<typename> class Budget;
@@ -77,6 +80,7 @@ class Model
         std::shared_ptr<Netcdf_file> input_nc;
 
         std::shared_ptr<Grid<TF>> grid;
+        std::shared_ptr<Soil_grid<TF>> soil_grid;
         std::shared_ptr<Fields<TF>> fields;
 
         std::shared_ptr<Timeloop<TF>> timeloop;
@@ -93,9 +97,11 @@ class Model
         std::shared_ptr<Thermo<TF>> thermo;
         std::shared_ptr<Microphys<TF>> microphys;
         std::shared_ptr<Radiation<TF>> radiation;
+        std::shared_ptr<Land_surface<TF>> lsm;
 
         std::shared_ptr<Decay<TF>> decay;
         std::shared_ptr<Limiter<TF>> limiter;
+        std::shared_ptr<Source<TF>> source;
 
         std::shared_ptr<Stats<TF>> stats;
         std::shared_ptr<Budget<TF>> budget;

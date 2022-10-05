@@ -21,6 +21,11 @@
  */
 
 #ifndef MONIN_OBUKHOV_H
+#define MONIN_OBUKHOV_H
+
+#include "fast_math.h"
+#include "constants.h"
+namespace fm = Fast_math;
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
@@ -45,7 +50,10 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF phim_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return TF(1.) + TF(4.8)*zeta;
+        //return TF(1.) + TF(4.8)*zeta;
+
+        // IFS
+        return TF(1) + TF(5)*zeta;
     }
 
     template<typename TF>
@@ -65,7 +73,10 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF phih_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return TF(1.) + TF(7.8)*zeta;
+        //return TF(1.) + TF(7.8)*zeta;
+
+        // IFS
+        return fm::pow2(TF(1) + TF(4)*zeta);
     }
 
     template<typename TF>
@@ -88,7 +99,15 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF psim_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return TF(-4.8)*zeta;
+        //return TF(-4.8)*zeta;
+
+        // IFS
+        constexpr TF a = TF(1);
+        constexpr TF b = TF(2)/TF(3);
+        constexpr TF c = TF(5);
+        constexpr TF d = TF(0.35);
+
+        return -b * (zeta - (c/d)) * std::exp(-d * zeta) - a*zeta - (b*c)/d;
     }
 
     template<typename TF>
@@ -102,7 +121,16 @@ namespace Monin_obukhov
     CUDA_MACRO inline TF psih_stable(const TF zeta)
     {
         // Hogstrom, 1988
-        return TF(-7.8)*zeta;
+        //return TF(-7.8)*zeta;
+
+        // IFS
+        constexpr TF a = TF(1);
+        constexpr TF b = TF(2)/TF(3);
+        constexpr TF c = TF(5);
+        constexpr TF d = TF(0.35);
+
+        return -b * (zeta - (c/d)) * std::exp(-d * zeta) - std::pow(TF(1)+ b*a*zeta, TF(1.5)) -(b*c)/d + TF(1);
+
     }
 
     template<typename TF>

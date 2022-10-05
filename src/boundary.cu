@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -92,6 +94,12 @@ namespace
         {
             if (sw == Boundary_type::Dirichlet_type)
                 a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
+
+            else if (sw == Boundary_type::Off_type)
+            {
+                atop[ij] = TF(3./2.)*a[ijk] - TF(1./2.)*a[ijk-kk];
+                a[ijk+kk] = TF(2.)*atop[ij] - a[ijk];
+            }
 
             else if (sw == Boundary_type::Neumann_type || sw == Boundary_type::Flux_type)
                 a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
@@ -237,7 +245,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Boundary<TF>::exec(Thermo<TF>& thermo)
+void Boundary<TF>::set_ghost_cells()
 {
     auto& gd = grid.get_grid_data();
 
@@ -248,17 +256,6 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
 
     dim3 grid2dGPU (gridi, gridj);
     dim3 block2dGPU(blocki, blockj);
-
-    // Cyclic boundary conditions, do this before the bottom BC's.
-    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
-    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
-    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
-
-    for (auto& it : fields.sp)
-        boundary_cyclic.exec_g(it.second->fld_g);
-
-    // Calculate the boundary values.
-    update_bcs(thermo);
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {
@@ -343,15 +340,7 @@ void Boundary<TF>::exec(Thermo<TF>& thermo)
         }
     }
 }
-#endif
-template<typename TF>
-void Boundary<TF>::clear_device()
-{
-    for(auto& it : tdep_bc)
-        it.second->clear_device();
-}
 
-#ifdef USECUDA
 template<typename TF>
 void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 {
@@ -395,6 +384,13 @@ void Boundary<TF>::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 #endif
 
 template<typename TF>
+void Boundary<TF>::clear_device()
+{
+    for(auto& it : tdep_bc)
+        it.second->clear_device();
+}
+
+template<typename TF>
 void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict aflux,
                         Boundary_type sw, TF aval, TF visc, TF offset)
 {
@@ -409,18 +405,18 @@ void Boundary<TF>::set_bc_g(TF* restrict a, TF* restrict agrad, TF* restrict afl
 
     if (sw == Boundary_type::Dirichlet_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(a, aval-offset,    gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(a, aval-offset, gd.icells, gd.jcells);
         cuda_check_error();
     }
     else if (sw == Boundary_type::Neumann_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, aval,       gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, aval, gd.icells, gd.jcells);
         set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, -aval*visc, gd.icells, gd.jcells);
         cuda_check_error();
     }
     else if (sw == Boundary_type::Flux_type)
     {
-        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, aval,       gd.icells, gd.jcells);
+        set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(aflux, aval, gd.icells, gd.jcells);
         set_bc_value_g<TF><<<grid2dGPU, block2dGPU>>>(agrad, -aval*visc, gd.icells, gd.jcells);
         cuda_check_error();
     }
@@ -437,9 +433,84 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     for (auto& it : tdep_bc)
     {
         it.second->update_time_dependent(sbc.at(it.first).bot,timeloop);
-        set_bc_g(fields.sp.at(it.first)->fld_bot_g, fields.sp.at(it.first)->grad_bot_g, fields.sp.at(it.first)->flux_bot_g,
-                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset);
+        set_bc_g(
+                fields.sp.at(it.first)->fld_bot_g,
+                fields.sp.at(it.first)->grad_bot_g,
+                fields.sp.at(it.first)->flux_bot_g,
+                sbc.at(it.first).bcbot,
+                sbc.at(it.first).bot,
+                fields.sp.at(it.first)->visc,
+                no_offset);
     }
+}
+
+template<typename TF>
+void Boundary<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+    boundary_cyclic.exec_g(fields.mp.at("u")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("v")->fld_g);
+    boundary_cyclic.exec_g(fields.mp.at("w")->fld_g);
+
+    for (auto& it : fields.sp)
+        boundary_cyclic.exec_g(it.second->fld_g);
+}
+
+template<typename TF>
+void Boundary<TF>::set_prognostic_outflow_bcs()
+{
+    // Overwrite here the ghost cells for the scalars with outflow BCs
+    for (auto& s : scalar_outflow)
+        boundary_outflow.exec(fields.sp.at(s)->fld_g, inflow_profiles_g.at(s));
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_z0m_g()
+{
+    throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_dudz_g()
+{
+    throw std::runtime_error("Function get_dudz_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_dvdz_g()
+{
+    throw std::runtime_error("Function get_dvdz_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+TF* Boundary<TF>::get_dbdz_g()
+{
+    throw std::runtime_error("Function get_dbdz_g() not implemented in base boundary.");
+}
+
+template<typename TF>
+void Boundary<TF>::prepare_device()
+{
+    auto& gd = grid.get_grid_data();
+    const int memsize = gd.kcells * sizeof(TF);
+
+    for (auto& scalar : scalar_outflow)
+    {
+        inflow_profiles_g.emplace(scalar, nullptr);
+        cuda_safe_call(cudaMalloc(&inflow_profiles_g.at(scalar), memsize));
+        cuda_safe_call(cudaMemcpy(inflow_profiles_g.at(scalar), inflow_profiles.at(scalar).data(), memsize, cudaMemcpyHostToDevice));
+    }
+}
+
+template<typename TF>
+void Boundary<TF>::forward_device()
+{
+}
+
+template<typename TF>
+void Boundary<TF>::backward_device()
+{
 }
 #endif
 

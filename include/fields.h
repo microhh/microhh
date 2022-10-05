@@ -30,6 +30,7 @@
 #include "field3d.h"
 #include "field3d_io.h"
 #include "field3d_operators.h"
+#include "boundary_cyclic.h"
 
 class Master;
 class Input;
@@ -37,6 +38,7 @@ class Netcdf_file;
 class Netcdf_handle;
 
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Stats;
 template<typename> class Advec;
 template<typename> class Diff;
@@ -44,12 +46,26 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Soil_field3d;
 template<typename> class Field3d_io;
 template<typename> class Field3Field3d_operators;
 template<typename> struct Mask;
 
 template<typename TF>
+struct Field2d
+{
+    std::vector<TF> fld;
+    #ifdef USECUDA
+    TF* fld_g;
+    #endif
+};
+
+template<typename TF>
 using Field_map = std::map<std::string, std::shared_ptr<Field3d<TF>>>;
+template<typename TF>
+using Soil_field_map = std::map<std::string, std::shared_ptr<Soil_field3d<TF>>>;
+template<typename TF>
+using Field_2d_map = std::map<std::string, std::shared_ptr<Field2d<TF>>>;
 
 enum class Fields_mask_type {Wplus, Wmin};
 
@@ -57,7 +73,7 @@ template<typename TF>
 class Fields
 {
     public:
-        Fields(Master&, Grid<TF>&, Input&); ///< Constructor of the fields class.
+        Fields(Master&, Grid<TF>&, Soil_grid<TF>&, Input&); ///< Constructor of the fields class.
         ~Fields(); ///< Destructor of the fields class.
 
         void init(Input&, Dump<TF>&, Cross<TF>&, const Sim_mode);  ///< Initialization of the field arrays.
@@ -88,6 +104,9 @@ class Fields
                 const std::string&, const std::string&,
                 const std::string&, const std::string&,
                 const std::array<int,3>&);
+
+        void init_prognostic_soil_field(const std::string&, const std::string&, const std::string&);
+        void init_prognostic_2d_field(const std::string&);
 
         std::string simplify_unit(const std::string, const std::string, const int = 1, const int = 1);
         void init_tmp_field();
@@ -121,8 +140,17 @@ class Fields
         Field_map<TF> sp; ///< Map containing all prognostic scalar field3d instances.
         Field_map<TF> st; ///< Map containing all prognostic scalar tendency field3d instances.
 
+        Soil_field_map<TF> sps; ///< Map containing all prognostic soil scalar fields.
+        Soil_field_map<TF> sts; ///< Map containing all prognostic soil scalar tendencies.
+
+        Field_2d_map<TF> ap2d; ///< Map containing all prognostic 2D fields.
+        Field_2d_map<TF> at2d; ///< Map containing all prognostic 2D field tendencies.
+
         std::shared_ptr<Field3d<TF>> get_tmp();
         void release_tmp(std::shared_ptr<Field3d<TF>>&);
+
+        std::shared_ptr<std::vector<TF>> get_tmp_xy();
+        void release_tmp_xy(std::shared_ptr<std::vector<TF>>&);
 
         #ifdef USECUDA
         std::shared_ptr<Field3d<TF>> get_tmp_g();
@@ -143,29 +171,33 @@ class Fields
         void backward_device(); ///< Copy of all fields required for statistics and output from device to host
         void clear_device();    ///< Deallocation of all fields at device
 
+        void forward_field_device(TF*, TF*, int);  ///< Copy of a single array from host to device
         void forward_field_device_3d (TF*, TF*);       ///< Copy of a single 3d field from host to device
         void forward_field_device_2d (TF*, TF*);       ///< Copy of a single 2d field from host to device
-        void forward_field_device_1d (TF*, TF*, int);  ///< Copy of a single array from host to device
+        void backward_field_device(TF*, TF*, int);  ///< Copy of a single array from device to host
         void backward_field_device_3d(TF*, TF*);       ///< Copy of a single 3d field from device to host
         void backward_field_device_2d(TF*, TF*);       ///< Copy of a single 2d field from device to host
-        void backward_field_device_1d(TF*, TF*, int);  ///< Copy of a single array from device to host
 
         TF* rhoref_g;  ///< Reference density at full levels at device
         TF* rhorefh_g; ///< Reference density at half levels at device
 
-
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Field3d_io<TF> field3d_io;
         Field3d_operators<TF> field3d_operators;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         bool calc_mean_profs;
 
         int n_tmp_fields;   ///< Number of temporary fields.
+        int n_tmp_fields_xy;   ///< Number of temporary fields.
 
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
+
+        std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
 
         std::mutex tmp_fld_mutex;
 
@@ -188,10 +220,12 @@ class Fields
                 std::vector<std::string>&,
                 std::vector<std::string>&);
 
-        // // masks
+        // Masks
         std::vector<std::string> available_masks;   // Vector with the masks that fields can provide
-        // void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);
-        // void calc_mask_wmin (double*, double*, double*, int*, int*, int*, double*);
+
+        // User input surface (or XY) masks
+        std::vector<std::string> xymasklist;
+        std::map<std::string, std::vector<TF>> xymasks;
 
         // perturbations
         TF rndamp;
@@ -218,5 +252,8 @@ class Fields
          */
         void forward_field3d_device(Field3d<TF> *);  ///< Copy of a complete Field3d instance from host to device
         void backward_field3d_device(Field3d<TF> *); ///< Copy of a complete Field3d instance from device to host
+
+        void forward_soil_field3d_device(Soil_field3d<TF> *);  ///< Copy of a complete Soil_field3d instance from host to device
+        void backward_soil_field3d_device(Soil_field3d<TF> *); ///< Copy of a complete Soil_field3d instance from device to host
 };
 #endif

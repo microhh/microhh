@@ -30,6 +30,7 @@
 #include "diff.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 
@@ -129,13 +130,13 @@ namespace
             const TF* const restrict ql, const TF* const restrict qi,
             const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
             const TF* const restrict dzi, const TF* const restrict dzhi,
-            const TF N_d, const TF dt,
+            const TF Nc0, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
     {
-        // Tomita Eq. 51. N_d is converted from SI units (m-3 instead of cm-3).
-        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((N_d*TF(1.e-6)) / TF(2.e3));
+        // Tomita Eq. 51. Nc0 is converted from SI units (m-3 instead of cm-3).
+        const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((Nc0*TF(1.e-6)) / TF(2.e3));
 
         for (int k=kstart; k<kend; ++k)
         {
@@ -327,15 +328,15 @@ namespace
                     // Tomita Eq. 54
                     const TF beta_2 = std::min( beta_gaut<TF>, beta_gaut<TF>*std::exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                    // Tomita Eq. 50. Our N_d is SI units, so conversion is applied.
+                    // Tomita Eq. 50. Our Nc0 is SI units, so conversion is applied.
                     TF P_raut = !(has_liq) ? TF(0.) :
-                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*N_d / (D_d*rho[k]*ql[ijk]));
+                        TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*Nc0 / (D_d*rho[k]*ql[ijk]));
 
                     // // Kharoutdinov and Kogan autoconversion.
                     // TF P_raut = (has_liq) ?
                     //     TF(1350.)
                     //     * std::pow(ql[ijk], TF(2.47))
-                    //     * std::pow(N_d * TF(1.e-6), TF(-1.79))
+                    //     * std::pow(Nc0 * TF(1.e-6), TF(-1.79))
                     //     : TF(0.);
 
                     // Seifert and Beheng autoconversion.
@@ -343,7 +344,7 @@ namespace
                     // const TF k_cc = TF(9.44e9); // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
                     // const TF nu_c = TF(1.); // SB06, Table 1., same as UCLA-LES
                     // const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow2(nu_c+1);
-                    // const TF xc  = rho[k] * ql[ijk] / N_d; // Mean mass of cloud drops [kg]
+                    // const TF xc  = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
                     // const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
                     // const TF phi_au = TF(600.) * std::pow(tau, TF(0.68)) * pow3(TF(1.) - pow(tau, TF(0.68))); // UCLA-LES
 
@@ -909,9 +910,8 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
 
     // Read microphysics switches and settings
     // swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
-
-    N_d = inputin.get_item<TF>("micro", "Nd", "", 100.e6); // CvH: 50 cm-3 do we need conversion, or do we stick with Tomita?
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
@@ -942,7 +942,9 @@ void Microphys_nsw6<TF>::init()
 }
 
 template<typename TF>
-void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_nsw6<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
     const std::string group_name = "thermo";
 
@@ -959,6 +961,13 @@ void Microphys_nsw6<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<T
         stats.add_tendency(*fields.st.at("qr") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qs") , "z", tend_name, tend_longname);
         stats.add_tendency(*fields.st.at("qg") , "z", tend_name, tend_longname);
+    }
+
+    if (column.get_switch())
+    {
+        column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
+        column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
+        column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
     }
 
     // Create cross sections
@@ -982,8 +991,8 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    const std::vector<TF>& p = thermo.get_p_vector();
-    const std::vector<TF>& exner = thermo.get_exner_vector();
+    const std::vector<TF>& p = thermo.get_basestate_vector("p");
+    const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
 
     conversion(
             fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
@@ -993,7 +1002,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             ql->fld.data(), qi->fld.data(),
             fields.rhoref.data(), exner.data(), p.data(),
             gd.dzi.data(), gd.dzhi.data(),
-            this->N_d, TF(dt),
+            this->Nc0, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
@@ -1074,6 +1083,17 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     stats.calc_stats_2d("rg", rg_bot, no_offset);
 }
 
+#ifndef USECUDA
+template<typename TF>
+void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot.data(), no_offset);
+    column.calc_time_series("rs", rs_bot.data(), no_offset);
+    column.calc_time_series("rg", rg_bot.data(), no_offset);
+}
+#endif
+
 template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
@@ -1152,7 +1172,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     // Prevent zero division.
     cfl = std::max(cfl, 1.e-5);
 
-    return idt * this->cfl_max / cfl;
+    return idt * this->cflmax / cfl;
 }
 #endif
 
@@ -1167,6 +1187,17 @@ void Microphys_nsw6<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     std::string message = "NSW6 microphysics scheme can not provide mask: \"" + mask_name +"\"";
     throw std::runtime_error(message);
+}
+
+template<typename TF>
+void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
+{
+    // Make a hard copy of the surface rain precipitation field
+    field = rr_bot;
+
+    // Add snow and graupel surface precipitation
+    std::transform(field.begin(), field.end(), rs_bot.begin(), field.begin(), std::plus<TF>());
+    std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
 
 template class Microphys_nsw6<double>;

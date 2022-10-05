@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2018 Chiel van Heerwaarden
+ * Copyright (c) 2011-2018 Thijs Heus
+ * Copyright (c) 2014-2018 Bart van Stratum
  * Copyright (c) 2018-2019 Elynn Wu
  *
  * This file is part of MicroHH
@@ -55,16 +55,31 @@ class Radiation_gcss : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         unsigned long get_time_limit(unsigned long);
+        void update_time_dependent(Timeloop<TF>&) {};
 
-        bool check_field_exists(std::string name);
-        void get_radiation_field(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        bool check_field_exists(const std::string& name);
+        void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&);
+
+        std::vector<TF>& get_surface_radiation(const std::string&)
+            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
 
         void exec_all_stats(
-                Stats<TF>&, Cross<TF>&, Dump<TF>&,
+                Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
-
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&)
+            { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
+
+        #ifdef USECUDA
+        void prepare_device() {}
+        void clear_device() {}
+        void forward_device() {}
+        void backward_device() {}
+        TF* get_surface_radiation_g(const std::string&)
+            { throw std::runtime_error("\"get_surface_radiation_g()\" is not implemented in radiation_disabled"); }
+        void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
+        #endif
 
     private:
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
@@ -78,11 +93,11 @@ class Radiation_gcss : public Radiation<TF>
         using Radiation<TF>::fields;
         using Radiation<TF>::field3d_operators;
 
-        std::vector<std::string> available_masks; // Vector with the masks
+        std::vector<std::string> available_masks;  // Vector with the masks
 
-        std::vector<std::string> crosslist; ///< List with all crosses from ini file.
+        std::vector<std::string> crosslist;        ///< List with all crosses from ini file.
         bool swcross_rflx;
-        std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.
+        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         TF lat;
         TF lon;
@@ -92,11 +107,6 @@ class Radiation_gcss : public Radiation<TF>
         TF div;
 
         const TF mu_min = 0.035;
-
-        #ifdef USECUDA
-        // GPU functions and variables
-        void get_radiation_field_g(Field3d<TF>&, std::string, Thermo<TF>&, Timeloop<TF>&);
-        #endif
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";

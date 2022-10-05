@@ -67,8 +67,6 @@ void Dump<TF>::init(double ifactor)
         return;
 
     isampletime = static_cast<unsigned long>(ifactor * sampletime);
-
-    field3d_io.init();
 }
 
 template<typename TF>
@@ -116,6 +114,7 @@ std::vector<std::string>& Dump<TF>::get_dumplist()
 template<typename TF>
 void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
 {
+    auto& gd = grid.get_grid_data();
     const double no_offset = 0.;
     char filename[256];
 
@@ -128,19 +127,18 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     }
     else
     {
-        master.print_message("Saving \"%s\" ... ", filename);
 
         auto tmp1 = fields.get_tmp();
         auto tmp2 = fields.get_tmp();
 
-        if (field3d_io.save_field3d(data, tmp1->fld.data(), tmp2->fld.data(), filename, no_offset))
+        if (field3d_io.save_field3d(
+                    data,
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
-            master.print_message("FAILED\n");
+            master.print_message("Saving \"%s\" ... FAILED\n", filename);
             throw std::runtime_error("Writing error in dump");
-        }
-        else
-        {
-            master.print_message("OK\n");
         }
 
         fields.release_tmp(tmp1);

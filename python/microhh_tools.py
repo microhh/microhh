@@ -1,21 +1,21 @@
-# 
+#
 #  MicroHH
 #  Copyright (c) 2011-2020 Chiel van Heerwaarden
 #  Copyright (c) 2011-2020 Thijs Heus
 #  Copyright (c) 2014-2020 Bart van Stratum
-# 
+#
 #  This file is part of MicroHH
-# 
+#
 #  MicroHH is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  MicroHH is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -41,7 +41,6 @@ from copy import deepcopy
 # -------------------------
 # General help functions
 # -------------------------
-
 
 def _int_or_float_or_str(value):
     """ Helper function: convert a string to int/float/str """
@@ -70,15 +69,18 @@ def _find_namelist_file():
         raise RuntimeError(
             'Can\'t find any .ini files in the current directory!')
     if len(namelist_file) > 1:
-        raise RuntimeError(
-            'There are multiple .ini files: {}'.format(namelist_file))
+        print('There are multiple .ini files:')
+        for i,f in enumerate(namelist_file):
+            print('{}: {}'.format(i, f))
+        print('Which one do you want to use: ', end='')
+        i = int(input())
+        return namelist_file[i]
     else:
         return namelist_file[0]
 
 # -------------------------
 # Classes and functions to read and write MicroHH things
 # -------------------------
-
 
 class Read_namelist:
     """ Reads a MicroHH .ini file to memory
@@ -148,6 +150,10 @@ class Read_namelist:
             for group in self.groups:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
+                    if isinstance(value, list):
+                        value = ','.join(value)
+                    elif isinstance(value, bool):
+                        value = '1' if value else '0'
                     f.write('{}={}\n'.format(variable, value))
                 f.write('\n')
 
@@ -252,12 +258,17 @@ class Read_grid:
         self.fin = open(filename, 'rb')
 
         self.dim = {}
+
+        self.dim['zh'] = np.zeros(ktot+1)
+
         self.dim['x'] = self.read(itot)
         self.dim['xh'] = self.read(itot)
         self.dim['y'] = self.read(jtot)
         self.dim['yh'] = self.read(jtot)
         self.dim['z'] = self.read(ktot)
-        self.dim['zh'] = self.read(ktot)
+        self.dim['zh'][:-1] = self.read(ktot)
+
+        self.dim['zh'][-1] = self.dim['z'][-1] + 2*(self.dim['z'][-1] - self.dim['zh'][-2])
 
         self.fin.close()
         del self.fin
@@ -303,13 +314,21 @@ class Create_ncfile():
             dimensions,
             precision='',
             compression=True):
-        self.ncfile = nc.Dataset(filename, "w", clobber=False)
+        self.ncfile = nc.Dataset(filename, "w", clobber=True)
         if not precision:
             precision = 'f{}'.format(grid.TF)
         elif precision == 'single':
             precision = 'f4'
         else:
             precision = 'f8'
+
+        half_level_vars = [
+            'w',
+            'sw_flux_dn', 'sw_flux_dn_dir', 'sw_flux_up',
+            'sw_flux_dn_clear', 'sw_flux_dn_dir_clear', 'sw_flux_up_clear',
+            'lw_flux_dn', 'lw_flux_up'
+            'lw_flux_dn_clear', 'lw_flux_up_clear']
+
         if(varname == 'u'):
             try:
                 dimensions['xh'] = dimensions.pop('x')
@@ -320,11 +339,12 @@ class Create_ncfile():
                 dimensions['yh'] = dimensions.pop('y')
             except KeyError:
                 pass
-        if(varname == 'w'):
+        if(varname in half_level_vars):
             try:
                 dimensions['zh'] = dimensions.pop('z')
             except KeyError:
                 pass
+
         # create dimensions in netCDF file
         self.dim = {}
         self.dimvar = {}
@@ -334,6 +354,7 @@ class Create_ncfile():
                 key, precision, (key))
             if key != 'time':
                 self.dimvar[key][:] = grid.dim[key][value]
+
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(
                 self.sortdims(
@@ -507,17 +528,25 @@ def compare_bitwise(f1, f2):
 
     return cmp_python, cmp_os
 
+
 def restart_post(origin, timestr):
     file_names = glob.glob('*.' + timestr)
+    not_identical = False
     for file_name in file_names:
         cmp_python, cmp_os = compare_bitwise('../' + origin + '/' + file_name, file_name)
 
         if not cmp_python and not cmp_os:
-            raise Warning('{} is not identical (python+OS)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (python+OS)'.format(file_name))
         elif not cmp_python:
-            raise Warning('{} is not identical (python)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (python)'.format(file_name))
         elif not cmp_os:
-            raise Warning('{} is not identical (OS)'.format(file_name))
+            not_identical = True
+            print_warning('{} is not identical (OS)'.format(file_name))
+
+    if not_identical:
+        raise Warning('One or more restart files are not identical.')
 
 
 def compare(origin, file, starttime=-1, vars={}):
@@ -566,6 +595,8 @@ def execute(command):
         raise Exception(
             '\'{}\' returned \'{}\'.'.format(
                 command, sp.returncode))
+
+    return sp.returncode
 
 
 def run_cases(cases, executable, mode, outputfile=''):
@@ -891,19 +922,41 @@ class Case:
 def run_case(
         case_name, options_in, options_mpi_in,
         executable='microhh', mode='cpu',
-        case_dir='.', experiment='local'):
+        case_dir='.', experiment='local',
+        additional_pre_py={}):
 
     options = deepcopy(options_in)
 
     if mode == 'cpumpi':
         merge_options(options, options_mpi_in)
 
-    cases = [
-        Case(
-            case_name,
-            casedir=case_dir,
-            rundir=experiment,
-            options=options)]
+    if additional_pre_py:
+        # Aarghh
+        pre = {'{}_input.py'.format(case_name): None}
+
+        files = [
+            '{}_input.py'.format(case_name),
+            '{}.ini'.format(case_name)]
+
+        for key, value in additional_pre_py.items():
+            pre[key] = value
+            files.append(key)
+
+        cases = [
+            Case(
+                case_name,
+                casedir=case_dir,
+                rundir=experiment,
+                options=options,
+                pre=pre,
+                files=files)]
+    else:
+        cases = [
+            Case(
+                case_name,
+                casedir=case_dir,
+                rundir=experiment,
+                options=options)]
 
     run_cases(
         cases,

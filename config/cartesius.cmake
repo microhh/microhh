@@ -14,13 +14,15 @@
 #####
 # Intel Compiler (in all other cases):
 # module purge
+# module load eb (Use the new software development and installation framework EasyBuild, currently implemented by SURFsara)
 # module load surfsara
-# module load compilerwrappers
-# module load 2019
-# module load CMake
-# module load intel/2018b
-# module load netCDF/4.6.1-intel-2018b
-# module load FFTW/3.3.8-intel-2018b
+# module load intel/2018a
+# module load CMake/3.7.2-intel-2016b (Loads as well the MPI and Intel Compiler)
+# module load cuDNN/7.0.5-CUDA-9.0.176 (Loads CUDA as well,cuDNN needed for Tensorflow-gpu)
+# module load netCDF/4.4.1.1-intel-2016b (Loads as well HDF5,cURL,sZIP)
+# module load netCDF-C++4/4.3.0-intel-2016b
+# module load FFTW/3.3.5-intel-2016b
+# module load Doxygen/1.8.11-intel-2016b
 
 # Use "lfs setstripe -c 50" in empty directories if large files need to be
 # written with MPI-IO. It hugely increases the IO performance.
@@ -44,12 +46,15 @@ endif()
 if(USEICC)
     set(USER_CXX_FLAGS "-std=c++14 -restrict")
     set(USER_CXX_FLAGS_RELEASE "-Ofast -xAVX -axCORE-AVX-I,CORE-AVX2,CORE-AVX512")
+    set(USER_FC_FLAGS_RELEASE "-Ofast -xAVX -axCORE-AVX-I,CORE-AVX2,CORE-AVX512")
     add_definitions(-DRESTRICTKEYWORD=restrict)
 else()
     set(USER_CXX_FLAGS "-std=c++14 -fopenmp")
     set(USER_CXX_FLAGS_RELEASE "-Ofast -march=ivybridge") # -march optimized for the CPU present in Cartesius GPU nodes
     add_definitions(-DRESTRICTKEYWORD=__restrict__)
 endif()
+
+add_definitions(-DUSE_CBOOL)
 
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 

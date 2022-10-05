@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -32,19 +34,20 @@
 #include "timeloop.h"
 #include "timedep.h"
 #include "finite_difference.h"
+#include "netcdf_interface.h"
 
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_bulk.h"
-// #include "boundary_surface_patch.h"
-// #include "boundary_patch.h"
+#include "boundary_surface_lsm.h"
 
 namespace
 {
-    template<typename TF>
+    template<typename TF, bool set_flux_grad>
     void set_bc(TF* const restrict a, TF* const restrict agrad, TF* const restrict aflux,
                 const Boundary_type sw, const TF aval, const TF visc, const TF offset,
                 const int icells, const int jcells)
@@ -69,7 +72,8 @@ namespace
                 {
                     const int ij = i + j*jj;
                     agrad[ij] = aval;
-                    aflux[ij] = -aval*visc;
+                    if (set_flux_grad)
+                        aflux[ij] = -aval*visc;
                 }
         }
         else if (sw == Boundary_type::Flux_type)
@@ -80,19 +84,80 @@ namespace
                 {
                     const int ij = i + j*jj;
                     aflux[ij] = aval;
-                    agrad[ij] = -aval/visc;
+                    if (set_flux_grad)
+                        agrad[ij] = -aval/visc;
                 }
         }
+    }
+
+    template<typename TF, bool set_flux_grad>
+    void set_bc_2d(
+            TF* const restrict a,
+            TF* const restrict agrad,
+            TF* const restrict aflux,
+            const TF* const restrict aval,
+            const Boundary_type sw, const TF visc,
+            const TF offset,
+            const int icells, const int jcells)
+    {
+        const int jj = icells;
+
+        if (sw == Boundary_type::Dirichlet_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    a[ij] = aval[ij] - offset;
+                }
+        }
+        else if (sw == Boundary_type::Neumann_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    agrad[ij] = aval[ij];
+                    if (set_flux_grad)
+                        aflux[ij] = -aval[ij]*visc;
+                }
+        }
+        else if (sw == Boundary_type::Flux_type)
+        {
+            for (int j=0; j<jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<icells; ++i)
+                {
+                    const int ij = i + j*jj;
+                    aflux[ij] = aval[ij];
+                    if (set_flux_grad)
+                        agrad[ij] = -aval[ij]/visc;
+                }
+        }
+    }
+
+    template<typename TF>
+    void interp_sbot_time(
+            TF* const restrict fld,
+            const TF* const restrict fld_prev,
+            const TF* const restrict fld_next,
+            const TF fac0, const TF fac1,
+            const int ijcells,
+            std::string name)
+    {
+        for (int i=0; i<ijcells; ++i)
+            fld[i] = fac0*fld_prev[i] + fac1*fld_next[i];
     }
 }
 
 template<typename TF>
-Boundary<TF>::Boundary(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin),
-    grid(gridin),
-    fields(fieldsin),
-    boundary_cyclic(master, grid),
-    field3d_io(master, grid)
+Boundary<TF>::Boundary(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& inputin) :
+        master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin),
+        boundary_cyclic(master, grid), boundary_outflow(master, grid, inputin), field3d_io(master, grid)
 {
     swboundary = "default";
 }
@@ -115,9 +180,11 @@ std::string Boundary<TF>::get_switch()
     return swboundary;
 }
 
+
 template<typename TF>
 void Boundary<TF>::process_bcs(Input& input)
 {
+
     std::string swbot = input.get_item<std::string>("boundary", "mbcbot", "");
     std::string swtop = input.get_item<std::string>("boundary", "mbctop", "");
 
@@ -148,6 +215,10 @@ void Boundary<TF>::process_bcs(Input& input)
         mbctop = Boundary_type::Neumann_type;
     else if (swtop == "neumann")
         mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "freeslip")
+        mbctop = Boundary_type::Neumann_type;
+    else if (swtop == "off")
+        mbctop = Boundary_type::Off_type;
     else if (swtop == "ustar")
         mbctop = Boundary_type::Ustar_type;
     else
@@ -194,7 +265,11 @@ void Boundary<TF>::process_bcs(Input& input)
         }
     }
 
+    // 2D sbot input:
     sbot_2d_list = input.get_list<std::string>("boundary", "sbot_2d_list", "", std::vector<std::string>());
+
+    // Read the scalars for which free inflow / outflow conditions are applied.
+    scalar_outflow = input.get_list<std::string>("boundary", "scalar_outflow", "", std::vector<std::string>());
 }
 
 template<typename TF>
@@ -211,24 +286,33 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
-
-    // Initialize the IO operators.
-    field3d_io.init();
 }
 
 template<typename TF>
-void Boundary<TF>::create(Input& input, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Boundary<TF>::create(
+        Input& input, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Column<TF>& column,
+        Cross<TF>& cross, Timeloop<TF>& timeloop)
 {
-    process_time_dependent(input, input_nc);
+    process_time_dependent(input, input_nc, timeloop);
+    process_inflow(input, input_nc);
 }
 
+template<typename TF>
+void Boundary<TF>::create_cold_start(Netcdf_handle& input_nc)
+{
+}
 
 template<typename TF>
-void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
+void Boundary<TF>::process_time_dependent(
+        Input& input, Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     // get the list of time varying variables
     bool swtimedep = input.get_item<bool>("boundary", "swtimedep"  , "", false);
-    std::vector<std::string> timedeplist = input.get_list<std::string>("boundary", "timedeplist", "", std::vector<std::string>());
+    std::vector<std::string> timedeplist = input.get_list<std::string>(
+            "boundary", "timedeplist", "", std::vector<std::string>());
 
     if (swtimedep)
     {
@@ -241,12 +325,14 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
         // See if there is data available for the surface boundary conditions.
         for (auto& it : fields.sp)
         {
+            std::string timedep_dim = "time_surface";
             std::string name = it.first+"_sbot";
+
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end())
             {
                 // Process the time dependent data.
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
-                tdep_bc.at(it.first)->create_timedep(input_nc);
+                tdep_bc.at(it.first)->create_timedep(input_nc, timedep_dim);
 
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -259,8 +345,131 @@ void Boundary<TF>::process_time_dependent(Input& input, Netcdf_handle& input_nc)
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
+    // Time varying 2D sbot input:
+    swtimedep_sbot_2d = input.get_item<bool>("boundary", "swtimedep_sbot_2d", "", false);
 
+    if (swtimedep_sbot_2d)
+    {
+        sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+
+        for (auto& fld : sbot_2d_list)
+        {
+            sbot_2d_prev.emplace(fld, std::vector<TF>(gd.ijcells));
+            sbot_2d_next.emplace(fld, std::vector<TF>(gd.ijcells));
+        }
+
+        const double time = timeloop.get_time();
+        const double ifactor = timeloop.get_ifactor();
+        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+        // Read first two input times
+        // IO time in integer format
+        itime_sbot_2d_prev = ifactor * int(time/sbot_2d_loadtime) * sbot_2d_loadtime;
+        itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+
+        // IO time accounting for iotimeprec
+        const unsigned long iotime0 = int(itime_sbot_2d_prev / iiotimeprec);
+        const unsigned long iotime1 = int(itime_sbot_2d_next / iiotimeprec);
+
+        auto tmp = fields.get_tmp();
+        int nerror = 0;
+
+        auto load_2d_field = [&](
+                TF* const restrict field, const std::string& name, const int time)
+        {
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), time);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            if (field3d_io.load_xy_slice(
+                    field, tmp->fld.data(), filename))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+
+            boundary_cyclic.exec_2d(field);
+        };
+
+        for (auto& fld : sbot_2d_list)
+        {
+            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot", iotime0);
+            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot", iotime1);
+        }
+
+        master.sum(&nerror, 1);
+        if (nerror)
+            throw std::runtime_error("Error loading time dependent sbot fields");
+
+        fields.release_tmp(tmp);
+    }
 }
+
+template<typename TF>
+void Boundary<TF>::process_inflow(
+        Input& input, Netcdf_handle& input_nc)
+{
+    auto& gd = grid.get_grid_data();
+
+    swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
+
+    Netcdf_group& init_group = input_nc.get_group("init");
+    for (auto& scalar : scalar_outflow)
+    {
+        std::vector<TF> prof = std::vector<TF>(gd.kcells);
+        if (!swtimedep_outflow)
+            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+        std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+        inflow_profiles.emplace(scalar, prof);
+    }
+
+    if (swtimedep_outflow)
+    {
+        #ifdef USECUDA
+        throw std::runtime_error("Time dependent outflow profiles are not (yet) implemented on the GPU.");
+        #endif
+
+        Netcdf_group& tdep_group = input_nc.get_group("timedep");
+        const TF offset = 0;
+
+        for (auto& scalar : scalar_outflow)
+        {
+            tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
+            tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+        }
+    }
+}
+
+#ifndef USECUDA
+template<typename TF>
+void Boundary<TF>::set_prognostic_cyclic_bcs()
+{
+    /* Set cyclic boundary conditions of the
+       prognostic 3D fields */
+
+    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
+    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
+
+    for (auto& it : fields.sp)
+        boundary_cyclic.exec(it.second->fld.data());
+}
+#endif
+
+
+#ifndef USECUDA
+template<typename TF>
+void Boundary<TF>::set_prognostic_outflow_bcs()
+{
+    // Overwrite here the ghost cells for the scalars with outflow BCs
+    for (auto& s : scalar_outflow)
+        boundary_outflow.exec(fields.sp.at(s)->fld.data(), inflow_profiles.at(s).data());
+}
+#endif
+
+
 #ifndef USECUDA
 template <typename TF>
 void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
@@ -268,32 +477,144 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     const Grid_data<TF>& gd = grid.get_grid_data();
 
     const TF no_offset = 0.;
+    const bool set_flux_grad = (swboundary == "default");
 
-    for (auto& it : tdep_bc)
+    if (swtimedep_sbot_2d)
     {
-        it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
-        set_bc<TF>(fields.sp.at(it.first)->fld_bot.data(), fields.sp.at(it.first)->grad_bot.data(), fields.sp.at(it.first)->flux_bot.data(),
-                sbc.at(it.first).bcbot, sbc.at(it.first).bot, fields.sp.at(it.first)->visc, no_offset, gd.icells, gd.jcells);
+        auto tmp = fields.get_tmp();
+        unsigned long itime = timeloop.get_itime();
+
+        if (itime > itime_sbot_2d_next)
+        {
+            // Read new surface sbot fields
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+            itime_sbot_2d_prev = itime_sbot_2d_next;
+            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
+
+            int nerror = 0;
+
+            // Swap 2D input fields
+            for (auto& fld : sbot_2d_list)
+            {
+                sbot_2d_prev.at(fld) = sbot_2d_next.at(fld);
+
+                // Read new time step
+                char filename[256];
+                std::string name = fld + "_bot";
+                std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                if (field3d_io.load_xy_slice(
+                        sbot_2d_next.at(fld).data(), tmp->fld.data(), filename))
+                {
+                    master.print_message("FAILED\n");
+                    nerror += 1;
+                }
+                else
+                    master.print_message("OK\n");
+
+                boundary_cyclic.exec_2d(sbot_2d_next.at(fld).data());
+            }
+
+            master.sum(&nerror, 1);
+            if (nerror)
+                throw std::runtime_error("Error loading time dependent sbot fields");
+        }
+
+        // Interpolate sbot to current time
+        const TF fac1 = TF(itime - itime_sbot_2d_prev ) / TF(itime_sbot_2d_next - itime_sbot_2d_prev);
+        const TF fac0 = TF(1) - fac1;
+
+        for (auto& fld : sbot_2d_list)
+        {
+            interp_sbot_time(
+                    tmp->fld_bot.data(),
+                    sbot_2d_prev.at(fld).data(),
+                    sbot_2d_next.at(fld).data(),
+                    fac0, fac1, gd.ijcells, fld);
+
+            if (set_flux_grad)
+                set_bc_2d<TF, true>(
+                        fields.sp.at(fld)->fld_bot.data(),
+                        fields.sp.at(fld)->grad_bot.data(),
+                        fields.sp.at(fld)->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(fld).bcbot,
+                        fields.sp.at(fld)->visc,
+                        no_offset, gd.icells, gd.jcells);
+            else
+                set_bc_2d<TF, false>(
+                        fields.sp.at(fld)->fld_bot.data(),
+                        fields.sp.at(fld)->grad_bot.data(),
+                        fields.sp.at(fld)->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(fld).bcbot,
+                        fields.sp.at(fld)->visc,
+                        no_offset, gd.icells, gd.jcells);
+        }
+
+        fields.release_tmp(tmp);
+    }
+    else
+    {
+        for (auto& it : tdep_bc)
+        {
+            it.second->update_time_dependent(sbc.at(it.first).bot, timeloop);
+
+            if (set_flux_grad)
+                set_bc<TF, true>(
+                    fields.sp.at(it.first)->fld_bot.data(),
+                    fields.sp.at(it.first)->grad_bot.data(),
+                    fields.sp.at(it.first)->flux_bot.data(),
+                    sbc.at(it.first).bcbot,
+                    sbc.at(it.first).bot,
+                    fields.sp.at(it.first)->visc,
+                    no_offset, gd.icells, gd.jcells);
+            else
+                set_bc<TF, false>(
+                    fields.sp.at(it.first)->fld_bot.data(),
+                    fields.sp.at(it.first)->grad_bot.data(),
+                    fields.sp.at(it.first)->flux_bot.data(),
+                    sbc.at(it.first).bcbot,
+                    sbc.at(it.first).bot,
+                    fields.sp.at(it.first)->visc,
+                    no_offset, gd.icells, gd.jcells);
+        }
+    }
+
+    if (swtimedep_outflow)
+    {
+        for (auto& it : tdep_outflow)
+            it.second->update_time_dependent_prof(inflow_profiles.at(it.first), timeloop);
     }
 }
 #endif
+
 
 template<typename TF>
 void Boundary<TF>::set_values()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    set_bc<TF>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
+    // For non-DNS boundaries, don't set the flux or gradient using
+    // `flux = -grad*visc` or `grad = -flux/visc`. Only the flux option
+    // is used by LES, and in that case, the gradient is set as the resolved gradient.
+    const bool set_flux_grad = (swboundary == "default");
+
+    set_bc<TF, true>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
            mbcbot, ubot, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
+    set_bc<TF, true>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
            mbcbot, vbot, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
-    set_bc<TF>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
+    set_bc<TF, true>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
            mbctop, utop, fields.visc, grid.utrans,
            gd.icells, gd.jcells);
-    set_bc<TF>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
+    set_bc<TF, true>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
            mbctop, vtop, fields.visc, grid.vtrans,
            gd.icells, gd.jcells);
 
@@ -301,9 +622,14 @@ void Boundary<TF>::set_values()
 
     for (auto& it : fields.sp)
     {
-        // Load 2D fields for bottom boundary from disk.
-        if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        if (swtimedep_sbot_2d && std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
+            // The time dependent 2D bc's are set in `update_time_dependent()`.
+            continue;
+        }
+        else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
+        {
+            // Load 2D fields for bottom boundary from disk.
             std::string filename = it.first + "_bot.0000000";
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
@@ -321,16 +647,31 @@ void Boundary<TF>::set_values()
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
             }
+            else
+                master.print_message("OK\n");
+
             fields.release_tmp(tmp);
         }
         else
         {
-            set_bc<TF>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
-                   sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
-                   gd.icells, gd.jcells);
-            set_bc<TF>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
-                   sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
-                   gd.icells, gd.jcells);
+            if (set_flux_grad)
+            {
+                set_bc<TF, true>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                       sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+                set_bc<TF, true>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                       sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+            }
+            else
+            {
+                set_bc<TF, false>(it.second->fld_bot.data(), it.second->grad_bot.data(), it.second->flux_bot.data(),
+                       sbc.at(it.first).bcbot, sbc.at(it.first).bot, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+                set_bc<TF, false>(it.second->fld_top.data(), it.second->grad_top.data(), it.second->flux_top.data(),
+                       sbc.at(it.first).bctop, sbc.at(it.first).top, it.second->visc, no_offset,
+                       gd.icells, gd.jcells);
+            }
         }
     }
 }
@@ -561,21 +902,18 @@ namespace
     }
 }
 
+template<typename TF>
+void Boundary<TF>::exec(
+        Thermo<TF>& thermo, Radiation<TF>& radiation,
+        Microphys<TF>& microphys, Timeloop<TF>& timeloop)
+{
+}
+
 #ifndef USECUDA
 template<typename TF>
-void Boundary<TF>::exec(Thermo<TF>& thermo)
+void Boundary<TF>::set_ghost_cells()
 {
-    boundary_cyclic.exec(fields.mp.at("u")->fld.data());
-    boundary_cyclic.exec(fields.mp.at("v")->fld.data());
-    boundary_cyclic.exec(fields.mp.at("w")->fld.data());
-
-    for (auto& it : fields.sp)
-        boundary_cyclic.exec(it.second->fld.data());
-
-    // Update the boundary values.
-    update_bcs(thermo);
-
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd = grid.get_grid_data();
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {
@@ -676,6 +1014,11 @@ void Boundary<TF>::exec_stats(Stats<TF>&)
 {
 }
 
+template<typename TF>
+void Boundary<TF>::exec_column(Column<TF>&)
+{
+}
+
 // Computational kernel for boundary calculation.
 namespace
 {
@@ -768,71 +1111,49 @@ void Boundary<TF>::update_slave_bcs()
 }
 
 template<typename TF>
-void Boundary<TF>::update_bcs(Thermo<TF>& thermo)
+const std::vector<TF>& Boundary<TF>::get_z0m() const
 {
+    throw std::runtime_error("Function get_z0m() not implemented in base boundary.");
 }
 
 template<typename TF>
-std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& input)
+const std::vector<TF>& Boundary<TF>::get_dudz() const
+{
+    throw std::runtime_error("Function get_dudz() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_dvdz() const
+{
+    throw std::runtime_error("Function get_dvdz() not implemented in base boundary.");
+}
+
+template<typename TF>
+const std::vector<TF>& Boundary<TF>::get_dbdz() const
+{
+    throw std::runtime_error("Function get_dbdz() not implemented in base boundary.");
+}
+
+template<typename TF>
+std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
+        Master& master, Grid<TF>& grid, Soil_grid<TF>& soil_grid, Fields<TF>& fields, Input& input)
 {
     std::string swboundary;
     swboundary = input.get_item<std::string>("boundary", "swboundary", "", "default");
 
-    // else if (swboundary == "surface_patch")
-    //     return new Boundary_surface_patch(modelin, inputin);
-    // else if (swboundary == "patch")
-    //     return new Boundary_patch(modelin, inputin);
-    // else if (swboundary == "default")
     if (swboundary == "default")
-        return std::make_shared<Boundary<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface")
-        return std::make_shared<Boundary_surface<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface<TF>>(master, grid, soil_grid, fields, input);
     else if (swboundary == "surface_bulk")
-        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, fields, input);
+        return std::make_shared<Boundary_surface_bulk<TF>>(master, grid, soil_grid, fields, input);
+    else if (swboundary == "surface_lsm")
+        return std::make_shared<Boundary_surface_lsm<TF>>(master, grid, soil_grid, fields, input);
     else
     {
         std::string msg = swboundary + " is an illegal value for swboundary";
         throw std::runtime_error(msg);
     }
-}
-/*
-template<typename TF>
-void Boundary<TF>::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        fieldh->fld_bot[i] = 1;
-
-    // Set atmospheric mask
-    for (int i=0; i<grid.ncells; ++i)
-    {
-        field ->data[i] = 1;
-        fieldh->data[i] = 1;
-    }
-}
-
-template<typename TF>
-void Boundary<TF>::get_surface_mask(Field3d* field)
-{
-    // Set surface mask
-    for (int i=0; i<grid.ijcells; ++i)
-        field->fld_bot[i] = 1;
-}
-
-*/
-template<typename TF>
-void Boundary<TF>::prepare_device()
-{
-}
-
-template<typename TF>
-void Boundary<TF>::forward_device()
-{
-}
-
-template<typename TF>
-void Boundary<TF>::backward_device()
-{
 }
 
 template class Boundary<double>;

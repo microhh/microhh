@@ -54,11 +54,12 @@ class Microphys
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&) = 0;
+        virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec(Thermo<TF>&, const double, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
+        virtual void exec_column(Column<TF>&) = 0;
 
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
@@ -66,10 +67,15 @@ class Microphys
         virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;
 
+        virtual void get_surface_rain_rate(std::vector<TF>&) = 0;
+
         // GPU functions and variables.
+        #ifdef USECUDA
+        virtual void get_surface_rain_rate_g(TF*) = 0;
         virtual void prepare_device() = 0;
         virtual void clear_device() = 0;
         virtual void backward_device() = 0;
+        #endif
 
     protected:
         Master& master;

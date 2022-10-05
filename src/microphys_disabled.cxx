@@ -47,5 +47,11 @@ unsigned long Microphys_disabled<TF>::get_time_limit(unsigned long idt, const do
     return Constants::ulhuge;
 }
 
+template<typename TF>
+void Microphys_disabled<TF>::get_surface_rain_rate(std::vector<TF>& field)
+{
+    std::fill(field.begin(), field.end(), TF(0));
+}
+
 template class Microphys_disabled<double>;
 template class Microphys_disabled<float>;

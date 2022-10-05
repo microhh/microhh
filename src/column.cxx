@@ -83,8 +83,18 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
 
     for (size_t n=0; n<coordx.size(); ++n)
     {
-        const int i = static_cast<int>(std::floor(coordx[n]/gd.dx));
-        const int j = static_cast<int>(std::floor(coordy[n]/gd.dy));
+        if ( (coordx[n] < 0) || (coordx[n] > gd.xsize) || (coordy[n] < 0) || (coordy[n] > gd.ysize) )
+        {
+            std::string error = "Column #" + std::to_string(n) + " is outside the domain!";
+            throw std::runtime_error(error);
+        }
+
+        int i = static_cast<int>(std::floor(coordx[n]/gd.dx));
+        int j = static_cast<int>(std::floor(coordy[n]/gd.dy));
+
+        // If column is at `xsize` or `ysize`, put it at itot/jtot-1:
+        i = std::min(i, gd.itot-1);
+        j = std::min(j, gd.jtot-1);
 
         columns.emplace_back(Column_struct{});
         columns.back().coord = {i, j};
@@ -133,11 +143,13 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         zh_var.insert(zh_nogc, {0});
 
         // create variables belonging to dimensions
-        col.iter_var = std::make_unique<Netcdf_variable<int>>(col.data_file->template add_variable<int>("iter", {"time"}));
+        col.iter_var = std::make_unique<Netcdf_variable<int>>(
+                col.data_file->template add_variable<int>("iter", {"time"}));
         col.iter_var->add_attribute("units", "-");
         col.iter_var->add_attribute("long_name", "Iteration number");
 
-        col.time_var = std::make_unique<Netcdf_variable<TF>>(col.data_file->template add_variable<TF>("time", {"time"}));
+        col.time_var = std::make_unique<Netcdf_variable<TF>>(
+                col.data_file->template add_variable<TF>("time", {"time"}));
         if (timeloop.has_utc_time())
             col.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
         else
@@ -213,6 +225,11 @@ void Column<TF>::exec(int iteration, double time, unsigned long itime)
             p.second.ncvar.insert(prof_nogc, time_height_index, time_height_size);
         }
 
+        for (auto& t : col.time_series)
+        {
+            t.second.ncvar.insert(t.second.data, time_index);
+        }
+
         // Synchronize the NetCDF file
         col.data_file->sync();
     }
@@ -228,7 +245,8 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
     // Create the NetCDF variable.
     for (auto& col : columns)
     {
-        Prof_var var{col.data_file->template add_variable<TF>(name, {"time", zloc}), std::vector<TF>(gd.kcells)};
+        Prof_var var{col.data_file->template add_variable<TF>(name, {"time", zloc}),
+            std::vector<TF>(gd.kcells)};
 
         var.ncvar.add_attribute("units", unit);
         var.ncvar.add_attribute("long_name", longname);
@@ -241,11 +259,99 @@ void Column<TF>::add_prof(std::string name, std::string longname, std::string un
     }
 }
 
+template<typename TF>
+void Column<TF>::add_time_series(std::string name, std::string longname, std::string unit)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Create the NetCDF variable.
+    for (auto& col : columns)
+    {
+        Time_var var{col.data_file->template add_variable<TF>(name, {"time"}), TF(0)};
+
+        var.ncvar.add_attribute("units", unit);
+        var.ncvar.add_attribute("long_name", longname);
+
+        // Insert the variable into the container.
+        col.time_series.emplace(
+                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(var)));
+
+        col.data_file->sync();
+    }
+}
+
+template<typename TF>
+void Column<TF>::get_column_locations(std::vector<int>& i, std::vector<int>& j)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy ) )
+        {
+            i.push_back(col.coord[0] % gd.imax + gd.istart);
+            j.push_back(col.coord[1] % gd.jmax + gd.jstart);
+        }
+}
+
 #ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_column(
-        std::string profname, const TF* const restrict data,
-        const TF offset)
+        std::string profname, const TF* const restrict data, const TF offset, const bool copy_from_gpu)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    const int jj = gd.icells;
+    const int kk = gd.ijcells;
+
+    for (auto& col : columns)
+    {
+        // Check if coordinate is in range.
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy) )
+        {
+            const int i_col = col.coord[0] % gd.imax + gd.istart;
+            const int j_col = col.coord[1] % gd.jmax + gd.jstart;
+
+            for (int k=0; k<gd.kcells; k++)
+            {
+                const int ijk = i_col + j_col*jj + k*kk;
+                col.profs.at(profname).data[k] = (data[ijk] + offset);
+            }
+        }
+    }
+}
+#endif
+
+template<typename TF>
+void Column<TF>::set_individual_column(
+        std::string profname, const TF* const restrict prof,
+        const TF offset, const int i_col, const int j_col)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+    {
+        // Check if coordinate is in range.
+        if ( (col.coord[0] / gd.imax == md.mpicoordx ) && (col.coord[1] / gd.jmax == md.mpicoordy) )
+        {
+            if (i_col == col.coord[0] % gd.imax + gd.istart &&
+                j_col == col.coord[1] % gd.jmax + gd.jstart)
+            {
+                for (int k=0; k<gd.kcells; k++)
+                    col.profs.at(profname).data[k] = (prof[k] + offset);
+                return;
+            }
+        }
+    }
+    throw std::runtime_error("Cant set individual column for i,j=" + std::to_string(i_col) + "," + std::to_string(j_col));
+}
+
+#ifndef USECUDA
+template<typename TF>
+void Column<TF>::calc_time_series(
+        std::string name, const TF* const restrict data, const TF offset)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -261,11 +367,8 @@ void Column<TF>::calc_column(
             const int i_col = col.coord[0] % gd.imax + gd.istart;
             const int j_col = col.coord[1] % gd.jmax + gd.jstart;
 
-            for (int k=0; k<gd.kcells; k++)
-            {
-                const int ijk = i_col + j_col*jj + k*kk;
-                col.profs.at(profname).data[k] = (data[ijk] + offset);
-            }
+            const int ij = i_col + j_col*jj;
+            col.time_series.at(name).data = data[ij] + offset;
         }
     }
 }

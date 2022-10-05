@@ -28,13 +28,18 @@
 #include <iostream>
 #include "fields.h"
 #include "grid.h"
+#include "soil_grid.h"
 #include "master.h"
 #include "column.h"
 #include "constants.h"
 #include "tools.h"
+#include "fast_math.h"
+#include "soil_field3d.h"
 
 namespace
 {
+    namespace fm = Fast_math;
+
     // TODO use interp2 functions instead of manual interpolation
     template<typename TF> __global__
     void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
@@ -51,7 +56,9 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            mom[ijk] = (0.5*(u[ijk]+u[ijk+ii]) + 0.5*(v[ijk]+v[ijk+jj]) + 0.5*(w[ijk]+w[ijk+kk]))*dz[k];
+            mom[ijk] = (TF(0.5)*(u[ijk]+u[ijk+ii])
+                      + TF(0.5)*(v[ijk]+v[ijk+jj])
+                      + TF(0.5)*(w[ijk]+w[ijk+kk]))*dz[k];
         }
     }
 
@@ -70,10 +77,93 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2))
-                       + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2))
-                       + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
+            tke[ijk] = ( TF(0.5)*(fm::pow2(u[ijk])+fm::pow2(u[ijk+ii]))
+                       + TF(0.5)*(fm::pow2(v[ijk])+fm::pow2(v[ijk+jj]))
+                       + TF(0.5)*(fm::pow2(w[ijk])+fm::pow2(w[ijk+kk])))*dz[k];
         }
+    }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        if (i < icells && j < jcells && k < kcells)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] = value;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value,
+            const int icells, const int jcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij = i + j*icells;
+            fld[ij] = value;
+        }
+    }
+
+    template<typename TF> __global__
+    void set_to_val_g(
+            TF* const __restrict__ fld, const TF value, const int kcells)
+    {
+        const int k = blockIdx.z;
+
+        if (k < kcells)
+            fld[k] = value;
+    }
+
+    template<typename TF>
+    void set_field3d_to_value(
+            Field3d<TF>* fld, const TF value, const Grid_data<TF>& gd)
+    {
+        const int blocki = gd.ithread_block;
+        const int blockj = gd.jthread_block;
+        const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+        const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+        dim3 gridGPU2(gridi, gridj, 1);
+        dim3 gridGPU3(gridi, gridj, gd.kcells);
+
+        dim3 blockGPU(blocki, blockj, 1);
+
+        //dim3 gridGPU1(1, 1, 1);
+        //dim3 blockGPU1(1, 1, gd.kcells);
+
+        set_to_val_g<<<gridGPU3, blockGPU>>>(
+                fld->fld_g, value,
+                gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        //set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
+        //cuda_check_error();
     }
 }
 
@@ -184,16 +274,22 @@ void Fields<TF>::exec()
 template<typename TF>
 std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 {
+    auto& gd = grid.get_grid_data();
     std::shared_ptr<Field3d<TF>> tmp;
 
     #pragma omp critical
     {
+        cudaDeviceSynchronize();
+
         // In case of insufficient tmp fields, allocate a new one.
         if (atmp_g.empty())
         {
             init_tmp_field_g();
             tmp = atmp_g.back();
             tmp->init_device();
+
+            // Initialise all values at zero
+            set_field3d_to_value(tmp.get(), TF(0), gd);
         }
         else
             tmp = atmp_g.back();
@@ -203,20 +299,7 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 
     // Assign to a huge negative number in case of debug mode.
     #ifdef __CUDACC_DEBUG__
-    auto& gd = grid.get_grid_data();
-
-    const int nblock = 256;
-    const int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-    const TF  huge   = -1e30;
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_g, gd.ncells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->flux_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_bot_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->grad_top_g, gd.ijcells, huge);
-    set_to_val<<<ngrid, nblock>>>(tmp->fld_mean_g, gd.kcells, huge);
-    cuda_check_error();
+    set_field3d_to_value(tmp.get(), TF(-1e30), gd);
     #endif
 
     return tmp;
@@ -225,7 +308,11 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp_g()
 template<typename TF>
 void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
 {
-    atmp_g.push_back(std::move(tmp));
+    #pragma omp critical
+    {
+        cudaDeviceSynchronize();
+        atmp_g.push_back(std::move(tmp));
+    }
 }
 #endif
 
@@ -236,16 +323,37 @@ template<typename TF>
 void Fields<TF>::prepare_device()
 {
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int ijmemsize  = gd.ijcells*sizeof(TF);
     const int nmemsize   = gd.ncells*sizeof(TF);
     const int nmemsize1d = gd.kcells*sizeof(TF);
+    const int nmemsize_soil = sgd.ncells*sizeof(TF);
 
-    // Prognostic fields
+
+    // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->init_device();
 
-    // Tendencies
+    // Tendencies atmosphere
     for (auto& it : at)
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
+
+    // Prognostic 2D fields
+    for (auto& it : ap2d)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, ijmemsize));
+
+    // Tendencies 2D fields
+    for (auto& it : at2d)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, ijmemsize));
+
+    // Prognostic fields soil
+    for (auto& it : sps)
+        it.second->init_device();
+
+    // Tendencies soil
+    for (auto& it : sts)
+        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
 
     // Reference profiles
     cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
@@ -261,10 +369,28 @@ void Fields<TF>::prepare_device()
 template<typename TF>
 void Fields<TF>::clear_device()
 {
+    // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->clear_device();
 
+    // Tendencies atmosphere
     for (auto& it : at)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
+    // Prognostic 2D fields
+    for (auto& it : ap2d)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
+    // Tendencies 2D fields
+    for (auto& it : at2d)
+        cuda_safe_call(cudaFree(it.second->fld_g));
+
+    // Prognostic fields soil
+    for (auto& it : sps)
+        it.second->clear_device();
+
+    // Tendencies soil
+    for (auto& it : sts)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
     cuda_safe_call(cudaFree(rhoref_g));
@@ -282,14 +408,34 @@ template<typename TF>
 void Fields<TF>::forward_device()
 {
     auto& gd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    // Prognostic fields atmosphere
     for (auto& it : a)
         forward_field3d_device(it.second.get());
 
+    // Tendencies atmosphere
     for (auto& it : at)
         forward_field_device_3d(it.second->fld_g, it.second->fld.data());
 
-    forward_field_device_1d(rhoref_g,  rhoref.data() , gd.kcells);
-    forward_field_device_1d(rhorefh_g, rhorefh.data(), gd.kcells);
+    // Prognostic 2D fields
+    for (auto& it : ap2d)
+        forward_field_device_2d(it.second->fld_g, it.second->fld.data());
+
+    // Tendencies 2D fields
+    for (auto& it : at2d)
+        forward_field_device_2d(it.second->fld_g, it.second->fld.data());
+
+    // Prognostic fields soil
+    for (auto& it : sps)
+        forward_soil_field3d_device(it.second.get());
+
+    // Tendencies soil
+    for (auto& it : sts)
+        forward_field_device(it.second->fld_g, it.second->fld.data(), sgd.ncells);
+
+    forward_field_device(rhoref_g,  rhoref.data() , gd.kcells);
+    forward_field_device(rhorefh_g, rhorefh.data(), gd.kcells);
 }
 
 /**
@@ -298,11 +444,21 @@ void Fields<TF>::forward_device()
 template<typename TF>
 void Fields<TF>::backward_device()
 {
+    auto& gd = grid.get_grid_data();
+
+    // Prognostic fields atmosphere
     for (auto& it : a)
         backward_field3d_device(it.second.get());
+
+    // Prognostic 2D fields
+    for (auto& it : ap2d)
+        backward_field_device_2d(it.second->fld.data(), it.second->fld_g);
+
+    // Prognostic fields soil.
+    for (auto& it : sps)
+        backward_soil_field3d_device(it.second.get());
 }
 
-/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
 /**
  * This function copies a field3d instance from host to device
  * @param fld Pointer to field3d instance
@@ -318,10 +474,29 @@ void Fields<TF>::forward_field3d_device(Field3d<TF>* fld)
     forward_field_device_2d(fld->grad_top_g, fld->grad_top.data());
     forward_field_device_2d(fld->flux_bot_g, fld->flux_bot.data());
     forward_field_device_2d(fld->flux_top_g, fld->flux_top.data());
-    forward_field_device_1d(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
+    forward_field_device(fld->fld_mean_g, fld->fld_mean.data(), gd.kcells);
 }
 
-/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
+/**
+ * This function copies a Soil_field3d instance from host to device
+ * @param fld Pointer to Soil_field3d instance
+ */
+template<typename TF>
+void Fields<TF>::forward_soil_field3d_device(Soil_field3d<TF>* fld)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int nmemsize  = sgd.ncells * sizeof(TF);
+    const int ijmemsize = agd.ijcells * sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(fld->fld_g,      fld->fld.data(),      nmemsize,  cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->fld_bot_g,  fld->fld_bot.data(),  ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->fld_top_g,  fld->fld_top.data(),  ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->flux_bot_g, fld->flux_bot.data(), ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(fld->flux_top_g, fld->flux_top.data(), ijmemsize, cudaMemcpyHostToDevice));
+}
+
 /**
  * This function copies a field3d instance from device to host
  * @param fld Pointer to field3d instance
@@ -337,7 +512,27 @@ void Fields<TF>::backward_field3d_device(Field3d<TF>* fld)
     backward_field_device_2d(fld->grad_top.data(), fld->grad_top_g);
     backward_field_device_2d(fld->flux_bot.data(), fld->flux_bot_g);
     backward_field_device_2d(fld->flux_top.data(), fld->flux_top_g);
-    backward_field_device_1d(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
+    backward_field_device(fld->fld_mean.data(), fld->fld_mean_g, gd.kcells);
+}
+
+/**
+ * This function copies a Soil_field3d instance from device to host
+ * @param fld Pointer to Soil_field3d instance
+ */
+template<typename TF>
+void Fields<TF>::backward_soil_field3d_device(Soil_field3d<TF>* fld)
+{
+    auto& agd = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int nmemsize = sgd.ncells * sizeof(TF);
+    const int ijmemsize = agd.ijcells * sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(fld->fld.data(),      fld->fld_g,      nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->fld_bot.data(),  fld->fld_bot_g,  ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->fld_top.data(),  fld->fld_top_g,  ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->flux_bot.data(), fld->flux_bot_g, ijmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(fld->flux_top.data(), fld->flux_top_g, ijmemsize, cudaMemcpyDeviceToHost));
 }
 
 /**
@@ -373,7 +568,7 @@ void Fields<TF>::forward_field_device_2d(TF* field_g, TF* field)
  * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
-void Fields<TF>::forward_field_device_1d(TF* field_g, TF* field, int ncells)
+void Fields<TF>::forward_field_device(TF* field_g, TF* field, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field_g, field, ncells*sizeof(TF), cudaMemcpyHostToDevice));
 }
@@ -411,7 +606,7 @@ void Fields<TF>::backward_field_device_2d(TF* field, TF* field_g)
  * @param ncells Number of (TF precision) values to copy
  */
 template<typename TF>
-void Fields<TF>::backward_field_device_1d(TF* field, TF* field_g, int ncells)
+void Fields<TF>::backward_field_device(TF* field, TF* field_g, int ncells)
 {
     cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(TF), cudaMemcpyDeviceToHost));
 }

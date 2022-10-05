@@ -11,7 +11,7 @@ endif()
 
 set(GNU_SED "gsed")
 
-set(USER_CXX_FLAGS "-std=c++17")
+set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
@@ -36,3 +36,4 @@ if(USECUDA)
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
+add_definitions(-DRTE_RRTMGP_USE_CBOOL)

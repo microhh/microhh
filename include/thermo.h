@@ -74,15 +74,19 @@ class Thermo
         virtual bool check_field_exists(std::string name) = 0;
         virtual void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool) = 0;
-        virtual void get_buoyancy_surf(Field3d<TF>&, bool) = 0;
-        virtual void get_buoyancy_fluxbot(Field3d<TF>&, bool) = 0;
-        virtual void get_T_bot(Field3d<TF>&, bool) = 0;
+        virtual void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool) = 0;
+        virtual void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+        virtual void get_buoyancy_fluxbot(std::vector<TF>&, bool) = 0;
+        virtual void get_temperature_bot(Field3d<TF>&, bool) = 0;
         virtual void get_prog_vars(std::vector<std::string>&) = 0;
+
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
-        virtual const std::vector<TF>& get_p_vector() const = 0;
-        virtual const std::vector<TF>& get_ph_vector() const = 0;
-        virtual const std::vector<TF>& get_exner_vector() const = 0;
+        virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
+        virtual void get_land_surface_fields(
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+
+        virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
         virtual TF get_db_ref() const = 0;
 
         virtual int get_bl_depth() = 0;
@@ -98,8 +102,14 @@ class Thermo
         virtual void backward_device() = 0;
         virtual void get_thermo_field_g(Field3d<TF>&, const std::string&, const bool) = 0;
         virtual void get_buoyancy_surf_g(Field3d<TF>&)  = 0;
+        virtual void get_buoyancy_surf_g(TF*, TF*, TF*)  = 0;
         virtual void get_buoyancy_fluxbot_g(Field3d<TF>&) = 0;
+        virtual void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*) = 0;
         virtual TF* get_basestate_fld_g(std::string) = 0;
+
+        virtual void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const = 0;
         #endif
 
     protected:

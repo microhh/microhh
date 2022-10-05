@@ -33,7 +33,9 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
 
-enum class Advection_type {Disabled, Advec_2, Advec_2i3, Advec_2i4, Advec_4, Advec_4m};
+enum class Advection_type {
+    Disabled, Advec_2, Advec_4, Advec_4m,
+    Advec_2i4, Advec_2i5, Advec_2i62, Advec_2i53};
 
 /**
  * Base class for the advection scheme. This class is abstract and only

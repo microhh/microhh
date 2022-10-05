@@ -32,6 +32,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "field3d.h"
+#include "soil_field3d.h"
 #include "input.h"
 #include "netcdf_interface.h"
 #include "defines.h"
@@ -109,10 +110,43 @@ namespace
     }
 
     template<typename TF>
+    void set_xy_mask(
+            TF* const restrict mask,
+            TF* const restrict maskh,
+            const TF* const restrict xymask,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+                    mask[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+                }
+
+        for (int k=kstart; k<kend+1; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*icells;
+                    const int ijk = ij + k*ijcells;
+                    maskh[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+                }
+    }
+
+    template<typename TF>
     TF calc_momentum_2nd(
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -141,7 +175,9 @@ namespace
     TF calc_tke_2nd(
             const TF* restrict u, const TF* restrict v, const TF* restrict w,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -173,7 +209,9 @@ namespace
     TF calc_mass(
             const TF* restrict s,
             const TF* restrict dz, const TF itot_jtot_zsize,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int jj, const int kk,
             Master& master)
     {
@@ -237,11 +275,13 @@ namespace
 }
 
 template<typename TF>
-Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
+Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin, Input& input) :
     master(masterin),
     grid(gridin),
+    soil_grid(soilgridin),
     field3d_io(master, grid),
-    field3d_operators(master, grid, *this)
+    field3d_operators(master, grid, *this),
+    boundary_cyclic(master, grid)
 {
     auto& gd = grid.get_grid_data();
     calc_mean_profs = false;
@@ -256,7 +296,8 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
     const std::string group_name = "default";
 
     // Initialize the passive scalars
-    std::vector<std::string> slist = input.get_list<std::string>("fields", "slist", "", std::vector<std::string>());
+    std::vector<std::string> slist = input.get_list<std::string>(
+            "fields", "slist", "", std::vector<std::string>());
     for (auto& s : slist)
     {
         init_prognostic_field(s, s, "-", group_name, gd.sloc);
@@ -280,6 +321,10 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Input& input) :
 
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
+
+    // Add user specified XY masks as available masks
+    xymasklist = input.get_list<std::string>("stats", "xymasklist", "", std::vector<std::string>());
+    available_masks.insert(available_masks.end(), xymasklist.begin(), xymasklist.end());
 }
 
 template<typename TF>
@@ -290,6 +335,10 @@ Fields<TF>::~Fields()
 template<typename TF>
 void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_mode sim_mode)
 {
+    auto& gd = grid.get_grid_data();
+
+    boundary_cyclic.init();
+
     int nerror = 0;
     // ALLOCATE ALL THE FIELDS
     // allocate the prognostic velocity fields
@@ -312,6 +361,18 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     for (auto& it : sd)
         nerror += it.second->init();
 
+    // allocate the prognostic soil fields
+    for (auto& it : sps)
+        nerror += it.second->init();
+    for (auto& it : sts)
+        nerror += it.second->init();
+
+    // Allocate the prognostic 2d fields
+    for (auto& it : ap2d)
+        it.second->fld.resize(gd.ijcells);
+    for (auto& it : at2d)
+        it.second->fld.resize(gd.ijcells);
+
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
     for (int i=0; i<n_tmp_fields; ++i)
         init_tmp_field();
@@ -325,9 +386,6 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     if (nerror)
         throw std::runtime_error("Error allocating fields");
 
-    // Get the grid data.
-    const Grid_data<TF>& gd = grid.get_grid_data();
-
     rhoref .resize(gd.kcells);
     rhorefh.resize(gd.kcells);
 
@@ -340,8 +398,9 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
 
-    // Init the toolbox classes.
-    field3d_io.init();
+    // Allocate user XY masks
+    for (auto& mask : xymasklist)
+        xymasks.emplace(mask, std::vector<TF>(gd.ijcells));
 
     // Set up output classes
     create_dump(dump);
@@ -485,10 +544,54 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
 template<typename TF>
 void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
 {
-    if (tmp == nullptr)
-        throw std::runtime_error("Cannot release a tmp field with value nullptr");
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp field with value nullptr");
 
-    atmp.push_back(std::move(tmp));
+        atmp.push_back(std::move(tmp));
+    }
+}
+
+template<typename TF>
+std::shared_ptr<std::vector<TF>> Fields<TF>::get_tmp_xy()
+{
+    auto& gd = grid.get_grid_data();
+    std::shared_ptr<std::vector<TF>> tmp;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (atmp_xy.empty())
+        {
+            static int ntmp_xy = 0;
+            ++ntmp_xy;
+            std::string fldname = "tmp_xy" + std::to_string(ntmp_xy);
+            std::string message = "Allocating temporary XY field: " + fldname;
+            master.print_message(message);
+
+            atmp_xy.push_back(std::make_shared<std::vector<TF>>(gd.ijcells));
+            tmp = atmp_xy.back();
+        }
+        else
+            tmp = atmp_xy.back();
+
+        atmp_xy.pop_back();
+    }
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_xy(std::shared_ptr<std::vector<TF>>& tmp)
+{
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp field with value nullptr");
+
+        atmp_xy.push_back(std::move(tmp));
+    }
 }
 
 template<typename TF>
@@ -500,18 +603,45 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
     auto& gd = grid.get_grid_data();
 
-    // Interpolate w to full level:
-    auto wf = get_tmp();
-    grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+    // User XY masks
+    if (xymasks.find(mask_name) != xymasks.end())
+    {
+        auto mask  = get_tmp();
+        auto maskh = get_tmp();
 
-    // Calculate masks
-    const TF threshold = 0;
-    if (mask_name == "wplus")
-        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
-    else if (mask_name == "wmin")
-        stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+        std::fill(mask->fld.begin(), mask->fld.end(), TF(0));
+        std::fill(maskh->fld.begin(), maskh->fld.end(), TF(0));
 
-    release_tmp(wf);
+        set_xy_mask(
+                mask->fld.data(),
+                maskh->fld.data(),
+                xymasks.at(mask_name).data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        const TF threshold = TF(0.5);
+        stats.set_mask_thres(mask_name, *mask, *maskh, threshold, Stats_mask_type::Plus);
+
+        release_tmp(mask);
+        release_tmp(maskh);
+    }
+    else
+    {
+        // Interpolate w to full level:
+        auto wf = get_tmp();
+        grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+
+        // Calculate masks
+        const TF threshold = 0;
+        if (mask_name == "wplus")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
+        else if (mask_name == "wmin")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+
+        release_tmp(wf);
+    }
 }
 
 template<typename TF>
@@ -526,6 +656,9 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
 
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
+
+    for (auto& it : sp)
+        stats.calc_stats_2d(it.first + "_bot", it.second->fld_bot, no_offset);
 
     stats.calc_stats("p", *sd.at("p"), no_offset, no_threshold);
 
@@ -606,6 +739,40 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+}
+
+template<typename TF>
+void Fields<TF>::init_prognostic_soil_field(
+        const std::string& fldname, const std::string& longname, const std::string& unit)
+{
+    if (sps.find(fldname)!=sps.end())
+    {
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
+    }
+
+    // add a new scalar variable
+    sps[fldname] = std::make_shared<Soil_field3d<TF>>(master, grid, soil_grid, fldname, longname, unit);
+
+    // add a new tendency for scalar variable
+    std::string fldtname  = fldname + "t";
+    std::string tlongname = "Tendency of " + longname;
+    std::string tunit     = simplify_unit(unit, "s-1");
+    sts[fldname] = std::make_shared<Soil_field3d<TF>>(master, grid, soil_grid, fldtname, tlongname, tunit);
+}
+
+template<typename TF>
+void Fields<TF>::init_prognostic_2d_field(const std::string& fldname)
+{
+    if (ap2d.find(fldname)!=ap2d.end())
+    {
+        std::string msg = fldname + " already exists";
+        throw std::runtime_error(msg);
+    }
+
+    // Add a new scalar variable
+    ap2d[fldname] = std::make_shared<Field2d<TF>>();
+    at2d[fldname] = std::make_shared<Field2d<TF>>();
 }
 
 template<typename TF>
@@ -798,6 +965,9 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+        // For cold start, initialise surface values with first model level values
+        std::fill(f.second->fld_bot.begin(), f.second->fld_bot.end(), prof[0]);
     }
 }
 
@@ -873,6 +1043,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
             }
         }
     }
+
+    // Add time series of scalar surface values
+    for (auto& it : sp)
+        stats.add_time_series(it.first + "_bot", "Surface " + it.second->longname, it.second->unit, it.second->group);
 }
 
 template<typename TF>
@@ -889,6 +1063,9 @@ void Fields<TF>::create_column(Column<TF>& column)
         for (auto& it : sp)
             column.add_prof(it.first, it.second->longname, it.second->unit, "z");
 
+        for (auto& it : sp)
+            column.add_time_series(it.first + "_bot", "Surface " + it.second->longname, it.second->unit);
+
         column.add_prof(sd.at("p")->name, sd.at("p")->longname, sd.at("p")->unit, "z");
     }
 }
@@ -896,6 +1073,7 @@ void Fields<TF>::create_column(Column<TF>& column)
 template<typename TF>
 void Fields<TF>::save(int n)
 {
+    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto tmp1 = get_tmp();
@@ -909,8 +1087,11 @@ void Fields<TF>::save(int n)
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
-        if (field3d_io.save_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset))
+        if (field3d_io.save_field3d(
+                    f.second->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
             master.print_message("FAILED\n");
             ++nerror;
@@ -927,12 +1108,13 @@ void Fields<TF>::save(int n)
     master.sum(&nerror, 1);
 
     if (nerror)
-        throw std::runtime_error("Error allocating fields");
+        throw std::runtime_error("Error saving 3D fields");
 }
 
 template<typename TF>
 void Fields<TF>::load(int n)
 {
+    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto tmp1 = get_tmp();
@@ -947,8 +1129,11 @@ void Fields<TF>::load(int n)
         std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
 
-        if (field3d_io.load_field3d(f.second->fld.data(), tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset))
+        if (field3d_io.load_field3d(
+                    f.second->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
         {
             master.print_message("FAILED\n");
             ++nerror;
@@ -957,6 +1142,23 @@ void Fields<TF>::load(int n)
         {
             master.print_message("OK\n");
         }
+    }
+
+    // Load surface (XY) masks
+    for (auto& mask : xymasks)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", mask.first.c_str(), n);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                mask.second.data(), tmp1->fld.data(), filename))
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+            master.print_message("OK\n");
     }
 
     release_tmp(tmp1);
@@ -1059,6 +1261,9 @@ void Fields<TF>::exec_column(Column<TF>& column)
 
     for (auto& it : sp)
         column.calc_column(it.first, it.second->fld.data(), no_offset);
+
+    for (auto& it : sp)
+        column.calc_time_series(it.first + "_bot", it.second->fld_bot.data(), no_offset);
 
     column.calc_column("p", sd.at("p")->fld.data(), no_offset);
 }

@@ -4,14 +4,14 @@ if(USEMPI)
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
   set(ENV{FC}  mpif90) # Fortran compiler for parallel build
 else()
-  set(ENV{CC}  gcc-9 ) # C compiler for serial build
-  set(ENV{CXX} g++-9 ) # C++ compiler for serial build
-  set(ENV{FC}  gfortran-9) # Fortran compiler for serial build
+  set(ENV{CC}  gcc-11) # C compiler for serial build
+  set(ENV{CXX} g++-11) # C++ compiler for serial build
+  set(ENV{FC}  gfortran-11) # Fortran compiler for serial build
 endif()
 
 set(GNU_SED "gsed")
 
-set(USER_CXX_FLAGS "-std=c++17")
+set(USER_CXX_FLAGS "-std=c++14")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
@@ -29,10 +29,11 @@ set(SZIP_LIB           "/usr/local/lib/libsz.dylib")
 set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
-if(USECUDA)
-  set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib/libcufft.dylib)
-  set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
-endif()
+# if(USECUDA)
+#   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+#   set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib/libcufft.dylib)
+#   set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
+# endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
+add_definitions(-DRTE_RRTMGP_USE_CBOOL)

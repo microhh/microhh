@@ -31,8 +31,10 @@
 #include "diff.h"
 #include "stats.h"
 #include "cross.h"
+#include "column.h"
 #include "thermo.h"
 #include "thermo_moist_functions.h"
+#include "fast_math.h"
 
 #include "constants.h"
 #include "microphys.h"
@@ -86,6 +88,8 @@ namespace
 // Microphysics calculated over entire 3D field
 namespace mp3d
 {
+    namespace fm = Fast_math;
+
     // Autoconversion: formation of rain drop by coagulating cloud droplets
     template<typename TF>
     void autoconversion(TF* const restrict qrt, TF* const restrict nrt,
@@ -99,7 +103,7 @@ namespace mp3d
         const TF x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
         const TF k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
         const TF nu_c   = 1;             // SB06, Table 1., same as UCLA-LES
-        const TF kccxs  = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2);
+        const TF kccxs  = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / fm::pow2(nu_c+1);
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -107,13 +111,13 @@ namespace mp3d
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min<TF>)
+                    if (ql[ijk] > ql_min<TF>)
                     {
                         const TF xc      = rho[k] * ql[ijk] / nc;    // Mean mass of cloud drops [kg]
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall);    // SB06, Eq 5
-                        const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * pow(TF(1.) - pow(tau, TF(0.68)), 3);    // UCLA-LES
-                        const TF au_tend = rho_0<TF> * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
-                                               (TF(1.) + phi_au / pow(TF(1.)-tau, 2)); // SB06, eq 4
+                        const TF phi_au  = TF(600.) * pow(tau, TF(0.68)) * fm::pow3(TF(1.) - pow(tau, TF(0.68)));    // UCLA-LES
+                        const TF au_tend = rho_0<TF> * kccxs * fm::pow2(ql[ijk]) * fm::pow2(xc) *
+                                               (TF(1.) + phi_au / fm::pow2(TF(1.)-tau)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend;
                         nrt[ijk]  += au_tend * rho[k] / x_star;
@@ -132,7 +136,7 @@ namespace mp3d
                    const int iend,   const int jend,   const int kend,
                    const int jj, const int kk)
     {
-        const TF k_cr  = 5.25; // SB06, p49
+        const TF k_cr = 5.25; // SB06, p49
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -140,11 +144,11 @@ namespace mp3d
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
+                    if (ql[ijk] > ql_min<TF> && qr[ijk] > qr_min<TF>)
                     {
                         const TF tau     = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
-                        const TF phi_ac  = pow(tau / (tau + TF(5e-5)), 4); // SB06, Eq 8
-                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0<TF> / rho[k], TF(0.5)); // SB06, Eq 7
+                        const TF phi_ac  = fm::pow4(tau / (tau + TF(5e-5))); // SB06, Eq 8
+                        const TF ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * sqrt(rho_0<TF> / rho[k]); // SB06, Eq 7
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  -= ac_tend;
@@ -178,7 +182,7 @@ namespace mp3d
                 {
                     const int ijk = i + j*icells + k*ijcells;
 
-                    if(qr[ijk] > qr_min<TF>)
+                    if (qr[ijk] > qr_min<TF>)
                     {
                         // Calculate mean rain drop mass and diameter
                         const TF mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
@@ -190,7 +194,7 @@ namespace mp3d
                     }
                     else
                     {
-                        w_qr[ijk] = 0.;
+                        w_qr[ijk] = TF(0.);
                     }
                 }
 
@@ -233,6 +237,8 @@ namespace mp3d
 // Microphysics calculated over 2D (xz) slices
 namespace mp2d
 {
+    namespace fm = Fast_math;
+
     // Calculate microphysics properties which are used in multiple routines
     template<typename TF>
     void prepare_microphysics_slice(TF* const restrict rain_mass, TF* const restrict rain_diameter,
@@ -251,7 +257,7 @@ namespace mp2d
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > qr_min<TF>)
+                if (qr[ijk] > qr_min<TF>)
                 {
                     rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
                     rain_diameter[ik] = calc_rain_diameter(rain_mass[ik]);
@@ -289,16 +295,16 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min<TF>)
+                if (qr[ijk] > qr_min<TF>)
                 {
                     const TF mr  = rain_mass[ik];
                     const TF dr  = rain_diameter[ik];
 
                     const TF T   = thl[ijk] * exner[k] + (Lv<TF> * ql[ijk]) / (cp<TF> * exner[k]); // Absolute temperature [K]
-                    const TF Glv = pow(Rv<TF> * T / (esat_liq(T) * D_v<TF>) +
-                                       (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                    const TF Glv = TF(1.) / (Rv<TF> * T / (esat_liq(T) * D_v<TF>) +
+                                       (Lv<TF> / (K_t<TF> * T)) * (Lv<TF> / (Rv<TF> * T) - TF(1.))); // Cond/evap rate (kg m-1 s-1)?
 
-                    const TF S   = (qt[ijk] - ql[ijk]) / qsat_liq(p[k], T) - 1; // Saturation
+                    const TF S   = (qt[ijk] - ql[ijk]) / qsat_liq(p[k], T) - TF(1.); // Saturation
                     const TF F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
                     const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
@@ -333,23 +339,25 @@ namespace mp2d
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if(qr[ijk] > qr_min<TF>)
+                if (qr[ijk] > qr_min<TF>)
                 {
                     // Calculate mean rain drop mass and diameter
                     const TF dr      = rain_diameter[ik];
                     const TF lambdar = lambda_r[ik];
 
                     // Selfcollection
-                    const TF sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(TF(1.) + kappa_rr /
-                                       lambdar * pow(pirhow<TF>, TF(1.)/TF(3.)), -9) * pow(rho_0<TF> / rho[k], TF(0.5));
+                    const TF sc_tend =
+                        -k_rr * nr[ijk] * qr[ijk]*rho[k] / fm::pow9(TF(1.) + kappa_rr /
+                        lambdar * pow(pirhow<TF>, TF(1.)/TF(3.))) * sqrt(rho_0<TF> / rho[k]);
+
                     nrt[ijk] += sc_tend;
 
                     // Breakup
                     const TF dDr = dr - D_eq;
-                    if(dr > 0.35e-3)
+                    if (dr > TF(0.35e-3))
                     {
                         TF phi_br;
-                        if(dr <= D_eq)
+                        if (dr <= D_eq)
                             phi_br = k_br1 * dDr;
                         else
                             phi_br = TF(2.) * exp(k_br2 * dDr) - TF(1.);
@@ -389,14 +397,14 @@ namespace mp2d
         // 1. Calculate sedimentation velocity at cell center
         for (int k=kstart; k<kend; k++)
         {
-            const TF rho_n = pow(TF(1.2) / rho[k], TF(0.5));
+            const TF rho_n = sqrt(TF(1.2) / rho[k]);
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
                 const int ijk = i + j*icells + k*ijcells;
                 const int ik  = i + k*icells;
 
-                if(qr[ijk] > qr_min<TF>)
+                if (qr[ijk] > qr_min<TF>)
                 {
                     // SS08:
                     w_qr[ik] = std::min(w_max, std::max(TF(0.1), rho_n * a_R - b_R * TF(pow(TF(1.) + c_R/lambda_r[ik], TF(-1.)*(mu_r[ik]+TF(4.))))));
@@ -417,8 +425,8 @@ namespace mp2d
             const int ik2  = i + (kend    )*icells;
             w_qr[ik1] = w_qr[ik1+kk2d];
             w_nr[ik1] = w_nr[ik1+kk2d];
-            w_qr[ik2] = TF(0);
-            w_nr[ik2] = TF(0);
+            w_qr[ik2] = TF(0.);
+            w_nr[ik2] = TF(0.);
         }
 
         // 2. Calculate CFL number using interpolated sedimentation velocity
@@ -448,8 +456,8 @@ namespace mp2d
         for (int i=istart; i<iend; i++)
         {
             const int ik  = i + kend*icells;
-            flux_qr[ik] = TF(0);
-            flux_nr[ik] = TF(0);
+            flux_qr[ik] = TF(0.);
+            flux_nr[ik] = TF(0.);
         }
 
         for (int k=kend-1; k>kstart-1; k--)
@@ -517,6 +525,7 @@ namespace mp2d
                 nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k];
             }
 
+
         // Store surface sedimentation flux
         // Sedimentation flux is already multiplied with density (see flux div. calculation), so
         // the resulting flux is in kg m-2 s-1, with rho_water = 1000 kg/m3 this equals a rain rate in mm s-1
@@ -540,7 +549,7 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "", 70e6);
+    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
@@ -567,7 +576,9 @@ void Microphys_2mom_warm<TF>::init()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump)
+void Microphys_2mom_warm<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
 {
     const std::string group_name = "thermo";
 
@@ -610,6 +621,12 @@ void Microphys_2mom_warm<TF>::create(Input& inputin, Netcdf_handle& input_nc, St
         stats.add_tendency(*fields.st.at("nr") , "z", tend_name, tend_longname);
     }
 
+    // Add variables to column statistics
+    if (column.get_switch())
+    {
+        column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
+    }
+
     // Create cross sections
     // 1. Variables that this class can calculate/provide:
     std::vector<std::string> allowed_crossvars = {"rr_bot"};
@@ -631,11 +648,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     // Get cloud liquid water specific humidity from thermodynamics
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql", false, false);
+    thermo.get_thermo_field(*ql, "ql_qi", false, false);
 
     // Get pressure and exner function from thermodynamics
-    std::vector<TF> p     = thermo.get_p_vector();
-    std::vector<TF> exner = thermo.get_exner_vector();
+    std::vector<TF> p     = thermo.get_basestate_vector("p");
+    std::vector<TF> exner = thermo.get_basestate_vector("exner");
 
     // Microphysics is handled in XZ slices, to
     // (1) limit the required number of tmp fields
@@ -757,8 +774,8 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         thermo.get_thermo_field(*ql, "ql", false, false);
 
         // Get pressure and exner function from thermodynamics
-        std::vector<TF> p     = thermo.get_p_vector();
-        std::vector<TF> exner = thermo.get_exner_vector();
+        std::vector<TF> p     = thermo.get_basestate_vector("p");
+        std::vector<TF> exner = thermo.get_basestate_vector("exner");
 
         // Microphysics is (partially) handled in XZ slices, to
         // (1) limit the required number of tmp fields
@@ -920,6 +937,15 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
     }
 }
 
+#ifndef USECUDA
+template<typename TF>
+void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
+{
+    const TF no_offset = 0.;
+    column.calc_time_series("rr", rr_bot.data(), no_offset);
+}
+#endif
+
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
@@ -989,22 +1015,12 @@ void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     }
 }
 
-#ifndef USECUDA
 template<typename TF>
-void Microphys_2mom_warm<TF>::prepare_device()
+void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
 {
+    // Make a hard copy of the surface precipitation field
+    field = rr_bot;
 }
-
-template<typename TF>
-void Microphys_2mom_warm<TF>::backward_device()
-{
-}
-
-template<typename TF>
-void Microphys_2mom_warm<TF>::clear_device()
-{
-}
-#endif
 
 template class Microphys_2mom_warm<double>;
 template class Microphys_2mom_warm<float>;

@@ -29,6 +29,7 @@
 
 class Master;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 class Input;
 enum class Sim_mode;
@@ -47,8 +48,8 @@ template<typename TF>
 class Timeloop
 {
     public:
-        Timeloop(Master&, Grid<TF>&, Fields<TF>&,
-                Input&, const Sim_mode);
+        Timeloop(Master&, Grid<TF>&, Soil_grid<TF>&,
+                Fields<TF>&, Input&, const Sim_mode);
         ~Timeloop();
 
         void step_time();
@@ -78,21 +79,25 @@ class Timeloop
         double get_time() const { return time; }
         double get_dt() const { return dt; }
         double get_ifactor() const { return ifactor; }
+        unsigned long get_iiotimeprec() const { return iiotimeprec; }
         unsigned long get_itime() const { return itime; }
         unsigned long get_idt() const { return idt; }
         unsigned long get_isavetime() const { return isavetime; }
         int get_iotime() const { return iotime; }
         int get_iteration() const { return iteration; }
+        int get_substep() const { return substep; }
 
         // Functions for UTC time support.
         bool has_utc_time() const { return flag_utc_time; }
         std::string get_datetime_utc_start_string() const;
         double calc_day_of_year() const;
         double calc_hour_of_day() const;
+        int get_year() const;
 
     private:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
 
         timeval start;

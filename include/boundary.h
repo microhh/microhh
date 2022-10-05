@@ -27,21 +27,32 @@
 
 #include "timedep.h"
 #include "boundary_cyclic.h"
+#include "boundary_outflow.h"
 #include "field3d_io.h"
 
 class Master;
 class Netcdf_handle;
 template<typename> class Grid;
+template<typename> class Soil_grid;
 template<typename> class Fields;
 template<typename> class Diff;
 template<typename> class Thermo;
 template<typename> class Timedep;
 template<typename> class Stats;
+template<typename> class Column;
+template<typename> class Cross;
+template<typename> class Field3d;
+template<typename> class Timeloop;
+template<typename> class Radiation;
+template<typename> class Microphys;
 
 class Input;
 
 enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+
+// Size of lookup table in Boundary_surface
+const int nzL_lut = 10000;
 
 /**
  * Structure containing the boundary options and values per 3d field.
@@ -64,50 +75,64 @@ template<typename TF>
 class Boundary
 {
     public:
-        Boundary(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
+        Boundary(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Constuctor of the boundary class.
         virtual ~Boundary(); ///< Destructor of the boundary class.
 
-        static std::shared_ptr<Boundary> factory(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
+        static std::shared_ptr<Boundary> factory(
+            Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
         virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
-        virtual void create(Input&, Netcdf_handle&, Stats<TF>&); ///< Create the fields.
+        virtual void create_cold_start(Netcdf_handle&); ///< Create fields for cold start.
+        virtual void create(
+                Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
+                Cross<TF>&, Timeloop<TF>&); ///< Create the fields.
 
         virtual void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
-        virtual void exec(Thermo<TF>&); ///< Update the boundary conditions.
+        virtual void set_ghost_cells(); ///< Set the top and bottom ghost cells
         virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
-        virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
-        // virtual void exec_cross();       ///< Execute cross sections of surface
+        void set_prognostic_cyclic_bcs();
+        void set_prognostic_outflow_bcs();
 
-        // virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
-        // virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
+        virtual void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
+        virtual void exec_stats(Stats<TF>&); ///< Execute statistics of surface
+        virtual void exec_column(Column<TF>&); ///< Execute column statistics of surface
+        virtual void exec_cross(Cross<TF>&, unsigned long) {}; ///< Execute cross statistics of surface
+
+        virtual void load(const int, Thermo<TF>&) {};
+        virtual void save(const int, Thermo<TF>&) {};
+
+        // Get functions for various 2D fields
+        virtual const std::vector<TF>& get_z0m() const;
+        virtual const std::vector<TF>& get_dudz() const;
+        virtual const std::vector<TF>& get_dvdz() const;
+        virtual const std::vector<TF>& get_dbdz() const;
 
         std::string get_switch();
 
-        // GPU functions and variables
+        #ifdef USECUDA
+        virtual TF* get_z0m_g();
+        virtual TF* get_dudz_g();
+        virtual TF* get_dvdz_g();
+        virtual TF* get_dbdz_g();
+
         virtual void prepare_device();
         virtual void forward_device();
         virtual void backward_device();
-
-        TF z0m;
-        TF z0h;
-        std::vector<TF> ustar;
-        std::vector<TF> obuk;
-        std::vector<int> nobuk;
-
-        TF* obuk_g;
-        TF* ustar_g;
-        int* nobuk_g;
+        virtual void clear_device();
+        #endif
 
     protected:
         Master& master;
         Grid<TF>& grid;
+        Soil_grid<TF>& soil_grid;
         Fields<TF>& fields;
         Boundary_cyclic<TF> boundary_cyclic;
         Field3d_io<TF> field3d_io;
+        Boundary_outflow<TF> boundary_outflow;
 
         std::string swboundary;
 
@@ -124,22 +149,35 @@ class Boundary
 
         std::map<std::string, Timedep<TF>*> tdep_bc;
 
+        // Spatial sbot input:
         std::vector<std::string> sbot_2d_list;
 
+        // Scalar in/outflow
+        std::vector<std::string> scalar_outflow;
+        std::map<std::string, std::vector<TF>> inflow_profiles;
+        bool swtimedep_outflow;
+        std::map<std::string, Timedep<TF>*> tdep_outflow;
+
+        // Time varying spatial sbot input:
+        bool swtimedep_sbot_2d;
+        unsigned int sbot_2d_loadtime;
+        std::map<std::string, std::vector<TF>> sbot_2d_prev;
+        std::map<std::string, std::vector<TF>> sbot_2d_next;
+        unsigned long itime_sbot_2d_prev;
+        unsigned long itime_sbot_2d_next;
+
         void process_bcs(Input&); ///< Process the boundary condition settings from the ini file.
+        void process_time_dependent(Input&, Netcdf_handle&, Timeloop<TF>&); ///< Process the time dependent settings from the ini file.
+        void process_inflow(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
 
-        void process_time_dependent(Input&, Netcdf_handle&); ///< Process the time dependent settings from the ini file.
         #ifdef USECUDA
-        void clear_device();
+        std::map<std::string, TF*> inflow_profiles_g;
         #endif
-
-        // void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
         // GPU functions and variables
         void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
 
     private:
-        virtual void update_bcs(Thermo<TF>&); // Update the boundary values.
         virtual void update_slave_bcs(); // Update the slave boundary values.
 };
 #endif

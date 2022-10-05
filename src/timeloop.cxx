@@ -30,20 +30,26 @@
 #include "input.h"
 #include "master.h"
 #include "grid.h"
+#include "soil_grid.h"
+#include "soil_field3d.h"
 #include "fields.h"
 #include "timeloop.h"
 #include "defines.h"
 #include "constants.h"
 
 template<typename TF>
-Timeloop<TF>::Timeloop(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
-        Input& input, const Sim_mode sim_mode) :
+Timeloop<TF>::Timeloop(
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Fields<TF>& fieldsin, Input& input, const Sim_mode sim_mode) :
     master(masterin),
     grid(gridin),
+    soil_grid(soilgridin),
     fields(fieldsin),
     flag_utc_time(false),
     ifactor(1e9)
 {
+    setenv("TZ", "utc", 1);
+
     substep = 0;
 
     // Obligatory parameters.
@@ -136,6 +142,8 @@ void Timeloop<TF>::set_time_step_limit()
     }
 
     idtlim = std::min(idtlim, isavetime - itime % isavetime);
+    if (itime < iendtime)
+        idtlim = std::min(idtlim, iendtime - itime);
 }
 
 template<typename TF>
@@ -344,24 +352,54 @@ namespace
 template<typename TF>
 void Timeloop<TF>::exec()
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
+    auto& gd  = grid.get_grid_data();
+    auto& sgd = soil_grid.get_grid_data();
+
+    const int kstart_2d = 0;
+    const int kend_2d = 1;
 
     if (rkorder == 3)
     {
+        // Atmospheric fields
         for (auto& f : fields.at)
             rk3<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells, gd.ncells);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk3<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells, sgd.ncells);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk3<TF>(fields.ap2d.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
+                    gd.icells, gd.ijcells, gd.ijcells);
 
         substep = (substep+1) % 3;
     }
 
     if (rkorder == 4)
     {
+        // Atmospheric fields
         for (auto& f : fields.at)
             rk4<TF>(fields.ap.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells, gd.ncells);
+
+        // Soil fields
+        for (auto& f : fields.sts)
+            rk4<TF>(fields.sps.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, sgd.kstart, sgd.kend,
+                    gd.icells, gd.ijcells, sgd.ncells);
+
+        // 2D fields
+        for (auto& f : fields.at2d)
+            rk4<TF>(fields.ap2d.at(f.first)->fld.data(), f.second->fld.data(), substep, dt,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, kstart_2d, kend_2d,
+                    gd.icells, gd.ijcells, gd.ijcells);
 
         substep = (substep+1) % 5;
     }
@@ -525,6 +563,16 @@ double Timeloop<TF>::calc_day_of_year() const
                             + tm_actual.tm_min*60.
                             + tm_actual.tm_sec + std::fmod(time, 1.) ) / 86400.;
     return tm_actual.tm_yday+1. + frac_day; // Counting starts at 0 in std::tm, thus add 1.
+}
+
+template<typename TF>
+int Timeloop<TF>::get_year() const
+{
+    if (!flag_utc_time)
+        throw std::runtime_error("No datetime in UTC specified");
+
+    std::tm tm_actual = calc_tm_actual(tm_utc_start, time);
+    return tm_actual.tm_year;
 }
 
 template<typename TF>
