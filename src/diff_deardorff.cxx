@@ -36,11 +36,13 @@
 #include "fast_math.h"
 
 #include "diff_deardorff.h"
+#include "diffusion_kernels.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
+    namespace dk = Diffusion_kernels;
 
     // SvdL, 07.06.22, minimum value of the eddy diffusivities (as in DALES). What would be a suitable value here?
     // for now, set this to zero as molecular viscosity is anyway added in the diffusion functions
@@ -74,118 +76,6 @@ namespace
     boundary_cyclic.exec(a);
     }
 
-
-    template <typename TF, Surface_model surface_model>
-    void calc_strain2(
-            TF* const restrict strain2,
-            const TF* const restrict u,
-            const TF* const restrict v,
-            const TF* const restrict w,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
-            const TF* const restrict z,
-            const TF* const restrict dzi,
-            const TF* const restrict dzhi,
-            const TF dxi, const TF dyi,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-
-        // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
-        if (surface_model == Surface_model::Enabled)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + kstart*kk;
-
-                    strain2[ijk] = TF(2.)*(
-                            // du/dx + du/dx
-                            + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
-
-                            // dv/dy + dv/dy
-                            + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
-
-                            // dw/dz + dw/dz
-                            + fm::pow2((w[ijk+kk]-w[ijk])*dzi[kstart])
-
-                            // du/dy + dv/dx
-                            + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
-
-                            // du/dz
-                            + TF(0.5)*fm::pow2(TF(-0.5)*(ufluxbot[ij]+ufluxbot[ij+ii]) /
-                                (Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
-
-                            // dw/dx
-                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
-
-                            // dv/dz
-                            + TF(0.5)*fm::pow2(TF(-0.5)*(vfluxbot[ij]+vfluxbot[ij+jj]) /
-                                    (Constants::kappa<TF>*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]))
-
-                            // dw/dy
-                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
-
-                    // Add a small number to avoid zero divisions
-                    strain2[ijk] += Constants::dsmall;
-                }
-        }
-
-        for (int k=kstart+k_offset; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    strain2[ijk] = TF(2.)*(
-                            // du/dx + du/dx
-                            + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
-
-                            // dv/dy + dv/dy
-                            + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
-
-                            // dw/dz + dw/dz
-                            + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
-
-                            // du/dy + dv/dx
-                            + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
-
-                            // du/dz + dw/dx
-                            + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
-
-                            // dv/dz + dw/dy
-                            + TF(0.125)*fm::pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
-                            + TF(0.125)*fm::pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
-                            + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                            + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
-
-                    // Add a small number to avoid zero divisions.
-                    strain2[ijk] += Constants::dsmall;
-                }
-    }
 
     // SvdL, 07.06.22: not sure yet how to implement deardorff in resolved walls. For now, only works with surface_model=Enabled
     template <typename TF, Surface_model surface_model>
@@ -309,7 +199,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-      // SvdL, 07.06.22: still fix for resolved walls
+       // SvdL, 07.06.22: still fix for resolved walls
        if (surface_model == Surface_model::Disabled)
        {
            // for (int k=kstart; k<kend; ++k)
@@ -1365,7 +1255,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         diff_u<TF, Surface_model::Enabled>(
                 fields.mt.at("u")->fld.data(),
@@ -1602,49 +1492,39 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     // That would be a simple fix.. https://github.com/dalesteam/dales/blob/master/src/modsubgrid.f90
     // Which additional fix would be needed again?
 
-    // Calculate strain rate using MO for velocity gradients lowest level.
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
-        calc_strain2<TF, Surface_model::Enabled>(
-                str2_tmp->fld.data(),
+    if (boundary.get_switch() != "default")
+    {
+        // Calculate strain rate using MO for velocity gradients lowest level.
+        const std::vector<TF>& dudz = boundary.get_dudz();
+        const std::vector<TF>& dvdz = boundary.get_dvdz();
+
+        dk::calc_strain2<TF, true>(
+                fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                fields.mp.at("u")->flux_bot.data(),
-                fields.mp.at("v")->flux_bot.data(),
-                boundary.ustar.data(), boundary.obuk.data(),
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                dudz.data(),
+                dvdz.data(),
+                gd.z.data(),
+                gd.dzi.data(),
+                gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
-
-    // Calculate strain rate using resolved boundaries.
+    }
     else
     {
+        // Calculate strain rate using resolved boundaries.
         throw std::runtime_error("Resolved wall not (yet) supported in Deardorff diffusion");
-
-        //calc_strain2<TF, Surface_model::Disabled>(
-        //        str2_tmp->fld.data(),
-        //        fields.mp.at("u")->fld.data(),
-        //        fields.mp.at("v")->fld.data(),
-        //        fields.mp.at("w")->fld.data(),
-        //        fields.mp.at("u")->flux_bot.data(),
-        //        fields.mp.at("v")->flux_bot.data(),
-        //        nullptr, nullptr,
-        //        gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
-        //        1./gd.dx, 1./gd.dy,
-        //        gd.istart, gd.iend,
-        //        gd.jstart, gd.jend,
-        //        gd.kstart, gd.kend,
-        //        gd.icells, gd.ijcells);
     }
 
     // Start with retrieving the stability information
     if ( !sw_buoy )
     {
         // Calculate eddy viscosity using MO at lowest model level
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
             calc_evisc_neutral<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
                     fields.sp.at("sgstke12")->fld.data(),
@@ -1698,7 +1578,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
         thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+        if (boundary.get_switch() != "default")
         {
             calc_evisc<TF, Surface_model::Enabled>(
                     fields.sd.at("evisc")->fld.data(),
@@ -1862,24 +1742,30 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
     // Calculate budget terms
     auto tmp = fields.get_tmp();
-
-    // Calculate strain rate
     auto strain2 = fields.get_tmp();
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
-        calc_strain2<TF, Surface_model::Enabled>(
-                strain2->fld.data(),
+
+    if (boundary.get_switch() != "default")
+    {
+        // Calculate strain rate using MO for velocity gradients lowest level.
+        const std::vector<TF>& dudz = boundary.get_dudz();
+        const std::vector<TF>& dvdz = boundary.get_dvdz();
+
+        dk::calc_strain2<TF, true>(
+                fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                fields.mp.at("u")->flux_bot.data(),
-                fields.mp.at("v")->flux_bot.data(),
-                boundary.ustar.data(), boundary.obuk.data(),
-                gd.z.data(), gd.dzi.data(), gd.dzhi.data(),
+                dudz.data(),
+                dvdz.data(),
+                gd.z.data(),
+                gd.dzi.data(),
+                gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+    }
     else
         throw std::runtime_error("Resolved wall not (yet) supported in Deardorff diffusion");
 
@@ -1974,7 +1860,7 @@ void Diff_deardorff<TF>::diff_flux(
     // Just a dummy value; scalars have their own evisc, so no Prandtl number needed..
     const TF tPr_one = TF(1.);
 
-    if (boundary.get_switch() == "surface" || boundary.get_switch() == "surface_bulk")
+    if (boundary.get_switch() != "default")
     {
         // Calculate the boundary fluxes.
         calc_diff_flux_bc(
