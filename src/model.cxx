@@ -131,7 +131,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
@@ -637,12 +637,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
     }
-
-    // Handle the routines that share computations between stats, cross, and dump.
-    radiation->exec_all_stats(
-            *stats, *cross, *dump,
-            *thermo, *timeloop,
-            itime, iotime);
 
     if (stats->do_statistics(itime))
     {

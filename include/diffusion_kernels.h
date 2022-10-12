@@ -24,12 +24,13 @@
 #define DIFFUSION_KERNELS_H
 
 #include "fast_math.h"
+#include "boundary.h"
 
 namespace Diffusion_kernels
 {
     namespace fm = Fast_math;
 
-    template <typename TF, bool surface_model>
+    template <typename TF, Surface_model surface_model>
     void calc_strain2(
             TF* const restrict strain2,
             const TF* const restrict u,
@@ -47,12 +48,12 @@ namespace Diffusion_kernels
             const int jj, const int kk)
     {
         const int ii = 1;
-        const int k_offset = surface_model ? 1 : 0;
+        const int k_offset = (surface_model == Surface_model::Enabled) ? 1 : 0;
 
         const TF zsl = z[kstart];
 
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
-        if (surface_model)
+        if (surface_model == Surface_model::Enabled)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep

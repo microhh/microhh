@@ -48,8 +48,6 @@ namespace
     // for now, set this to zero as molecular viscosity is anyway added in the diffusion functions
     template<typename TF> constexpr TF mvisc = 0.;//1e-5;
 
-    enum class Surface_model {Enabled, Disabled};
-
     template <typename TF>
     void check_for_minval(TF* const restrict a,
             const int istart, const int iend,
@@ -85,8 +83,6 @@ namespace
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict dzhi,
@@ -148,9 +144,9 @@ namespace
             //        evisc[ijkt+kk] = evisc[ijkt];
             //    }
         }
-        // SvdL, 07.06.22: this part below should be fine, but has to be tested.
         else
         {
+            // SvdL, 07.06.22: this part below should be fine, but has to be tested.
             for (int k=kstart; k<kend; ++k)
                 for (int j=jstart; j<jend; ++j)
                     #pragma ivdep
@@ -181,16 +177,12 @@ namespace
             const TF* const restrict v,
             const TF* const restrict w,
             const TF* const restrict N2,
-            const TF* const restrict ufluxbot,
-            const TF* const restrict vfluxbot,
-            const TF* const restrict bfluxbot,
-            const TF* const restrict ustar,
-            const TF* const restrict obuk,
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict dzi,
+            const TF* const restrict z0m,
             const TF dx, const TF dy,
-            const TF z0m, const TF cn, const TF cm,
+            const TF cn, const TF cm,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -266,6 +258,7 @@ namespace
                 }
             }
             */
+
             // tentativechange, SvdL: counter loopt hier direct vanaf kstart
             for (int k=kstart; k<kend; ++k) // See above, this counter thus starts at kstart
             {
@@ -276,6 +269,7 @@ namespace
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
+                        const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
                         mlen = mlen0; // reset at every iteration of j,i
@@ -288,7 +282,7 @@ namespace
                         fac  = std::min(mlen0, mlen);
                         // Apply Mason's wall correction here, as in DALES
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m), n_mason))), TF(1.)/n_mason);
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                         kvisc = cm * fac * sgstke12[ijk];
 
                         // Formally, this is only Km (momentum). Kh is calculated when needed.
@@ -311,9 +305,9 @@ namespace
             const TF* const restrict N2,
             const TF* const restrict z,
             const TF* const restrict dz,
+            const TF* const restrict z0m,
             const TF dx, const TF dy,
-            const TF z0m, const TF cn,
-            const TF ch1, const TF ch2,
+            const TF cn, const TF ch1, const TF ch2,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -377,6 +371,7 @@ namespace
                     #pragma ivdep
                     for (int i=istart; i<iend; ++i)
                     {
+                        const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
                         mlen = mlen0; // reset at every iteration of j,i
@@ -389,7 +384,7 @@ namespace
                         fac  = std::min(mlen0, mlen);
                         // Apply Mason's wall correction here, as in DALES
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m), n_mason))), TF(1.)/n_mason);
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                         kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
 
                         // Also, as in DALES: enforce minimum eddy viscosity (mvisc)
@@ -1392,7 +1387,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     const std::vector<TF>& dvdz = boundary.get_dvdz();
     const std::vector<TF>& z0m = boundary.get_z0m();
 
-    dk::calc_strain2<TF, true>(
+    dk::calc_strain2<TF, Surface_model::Enabled>(
             fields.sd.at("evisc")->fld.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
@@ -1418,8 +1413,6 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                fields.mp.at("u")->flux_bot.data(),
-                fields.mp.at("v")->flux_bot.data(),
                 gd.z.data(), gd.dz.data(),
                 gd.dzhi.data(), z0m.data(),
                 gd.dx, gd.dy, gd.zsize,
@@ -1449,7 +1442,6 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     {
         // Assume buoyancy calculation is needed
         auto buoy_tmp = fields.get_tmp();
-        thermo.get_buoyancy_fluxbot(*buoy_tmp, false);
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
         calc_evisc<TF, Surface_model::Enabled>(
@@ -1459,13 +1451,10 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
                 buoy_tmp->fld.data(),
-                fields.mp.at("u")->flux_bot.data(),
-                fields.mp.at("v")->flux_bot.data(),
-                buoy_tmp->flux_bot.data(),
-                boundary.ustar.data(), boundary.obuk.data(),
-                gd.z.data(), gd.dz.data(), gd.dzi.data(),
+                gd.z.data(), gd.dz.data(),
+                gd.dzi.data(), z0m.data(),
                 gd.dx, gd.dy,
-                boundary.z0m, this->cn, this->cm,
+                this->cn, this->cm,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
@@ -1479,8 +1468,9 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 fields.sd.at("evisc")->fld.data(),
                 fields.sp.at("sgstke12")->fld.data(),
                 buoy_tmp->fld.data(),
-                gd.z.data(), gd.dz.data(), gd.dx, gd.dy,
-                boundary.z0m, this->cn, this->ch1, this->ch2,
+                gd.z.data(), gd.dz.data(), z0m.data(),
+                gd.dx, gd.dy,
+                this->cn, this->ch1, this->ch2,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
@@ -1587,7 +1577,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
     const std::vector<TF>& dvdz = boundary.get_dvdz();
     const std::vector<TF>& z0m = boundary.get_z0m();
 
-    dk::calc_strain2<TF, true>(
+    dk::calc_strain2<TF, Surface_model::Enabled>(
             fields.sd.at("evisc")->fld.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),

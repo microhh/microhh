@@ -44,8 +44,6 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diffusion_kernels;
 
-    enum class Surface_model {Enabled, Disabled};
-
     template <typename TF, Surface_model surface_model>
     void calc_evisc_neutral(
             TF* const restrict evisc,
@@ -945,7 +943,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
         const std::vector<TF>& dudz = boundary.get_dudz();
         const std::vector<TF>& dvdz = boundary.get_dvdz();
 
-        dk::calc_strain2<TF, true>(
+        dk::calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
