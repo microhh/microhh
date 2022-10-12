@@ -1388,7 +1388,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
     const std::vector<TF>& z0m = boundary.get_z0m();
 
     dk::calc_strain2<TF, Surface_model::Enabled>(
-            fields.sd.at("evisc")->fld.data(),
+            str2_tmp->fld.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
             fields.mp.at("w")->fld.data(),
