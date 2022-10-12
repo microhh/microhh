@@ -71,7 +71,7 @@ namespace
                         a[ijk] = Constants::sgstke12_min<TF>;
                 }
 
-    boundary_cyclic.exec(a);
+        boundary_cyclic.exec(a);
     }
 
 
@@ -272,17 +272,17 @@ namespace
                         const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
-                        mlen = mlen0; // reset at every iteration of j,i
-
-                        if( N2[ijk] > 0 ) // only if stably stratified, adapt length scale
-                        {
+                        if (N2[ijk] > 0) // only if stably stratified, adapt length scale
                             mlen = cn * sgstke12[ijk] / std::sqrt(N2[ijk]);
-                        }
+                        else
+                            mlen = mlen0;
 
                         fac  = std::min(mlen0, mlen);
+
                         // Apply Mason's wall correction here, as in DALES
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+
                         kvisc = cm * fac * sgstke12[ijk];
 
                         // Formally, this is only Km (momentum). Kh is calculated when needed.
@@ -290,8 +290,7 @@ namespace
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
                     }
             }
-
-       }
+        }
 
         boundary_cyclic.exec(evisc);
     }
@@ -391,7 +390,7 @@ namespace
                         evisch[ijk] = std::max(kvisc, mvisc<TF>);
                     }
             }
-       }
+        }
 
         boundary_cyclic.exec(evisch);
     }
@@ -416,13 +415,15 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // Calculate shear production of TKE based on Deardorff (1980)
-                    // S2 appears to be simply 2*(strain squared). Therefore, use strain2[ijk] ( * 2 which
+                    // S2 appears to be simply 2*(strain squared). Therefore, use strain2[ijk] * 2 which
                     // drops out again after division with 2*sgstke12)
                     // https://github.com/dalesteam/dales/blob/master/src/modsubgrid.f90
 
-                    at[ijk] += evisc[ijk] * strain2[ijk] / a[ijk];
+                    // Note BvS for SvdL: the strain rate calculation in DALES also seems to be
+                    // 2*S, but they still dive by `2*e12`...?
+                    //at[ijk] += evisc[ijk] * strain2[ijk] / a[ijk];
+                    at[ijk] += evisc[ijk] * strain2[ijk] / (TF(2)*a[ijk]);
                 }
-
     }
 
     template <typename TF>
@@ -446,7 +447,6 @@ namespace
                     // Calculate buoyancy destruction of TKE based on Deardorff (1980)
                     at[ijk] -= evisch[ijk] * N2[ijk] / a[ijk] / TF(2.);
                 }
-
     }
 
     template <typename TF>
@@ -496,7 +496,7 @@ namespace
                     // SvdL, 07.06.22: quite strange (so check later), because why would l (fac) be altered by the Mason correction, but mlen0 not.
                     // Why wouldn't both have to be altered?
                     // Calculate dissipation of TKE based on Deardorff (1980)
-                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(2.)) / fac / TF(2.);
+                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(2.)) / (TF(2)*fac);
                 }
         }
     }
@@ -1537,6 +1537,9 @@ void Diff_deardorff<TF>::create_stats(Stats<TF>& stats)
         // Always add statistics of eddy viscosity for momentum (!)
         stats.add_profs(*fields.sd.at("evisc"), "z", {"mean", "2"}, group_name_default);
 
+        // Add strain rate
+        stats.add_prof("strain_rate", "Strain rate squared", "s-2", "z", group_name_default);
+
         // Always add profiles of shear production and dissipation of sgstke12
         stats.add_prof("sgstke12_shear", "Shear production term in (SGS TKE)^(1/2) budget", "m2 s-3", "z" , group_name_tke);
         stats.add_prof("sgstke12_diss", "Dissipation term in (SGS TKE)^(1/2) budget", "m2 s-3", "z" , group_name_tke);
@@ -1578,7 +1581,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
     const std::vector<TF>& z0m = boundary.get_z0m();
 
     dk::calc_strain2<TF, Surface_model::Enabled>(
-            fields.sd.at("evisc")->fld.data(),
+            strain2->fld.data(),
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
             fields.mp.at("w")->fld.data(),
@@ -1592,6 +1595,8 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
+    stats.calc_stats("strain_rate", *strain2, no_offset, no_threshold);
 
     //
     // Shear production
