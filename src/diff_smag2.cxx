@@ -941,8 +941,6 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
 
     if (boundary.get_switch() != "default")
     {
-        const std::vector<TF>& z0m = boundary.get_z0m();
-
         // Calculate strain rate using MO for velocity gradients lowest level.
         const std::vector<TF>& dudz = boundary.get_dudz();
         const std::vector<TF>& dvdz = boundary.get_dvdz();
