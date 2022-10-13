@@ -45,14 +45,14 @@
 
 namespace 
 {
-#include "../cases/jaenschwalde/include/tm5_ifs_Parameters.h"
-#include "../cases/jaenschwalde/include/tm5_ifs_Global.h"
-#include "../cases/jaenschwalde/include/tm5_ifs_Sparse.h"
-#include "../cases/jaenschwalde/include/tm5_ifs_Integrator.c"      /* needs to be modified */
-#include "../cases/jaenschwalde/include/tm5_ifs_Function.c"        /* needs to be modified */
-#include "../cases/jaenschwalde/include/tm5_ifs_LinearAlgebra.c"
-#include "../cases/jaenschwalde/include/tm5_ifs_JacobianSP.c"
-#include "../cases/jaenschwalde/include/tm5_ifs_Jacobian.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Parameters.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Global.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Sparse.h"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Integrator.c"      /* needs to be modified */
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Function.c"        /* needs to be modified */
+#include "../cases/jaenschwalde/include/tm5_ifs_22_LinearAlgebra.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_JacobianSP.c"
+#include "../cases/jaenschwalde/include/tm5_ifs_22_Jacobian.c"
 	
 
 double C[NSPEC];                         /* Concentration of all species */
@@ -198,6 +198,73 @@ double CFACTOR;                          /* Conversion factor for concentration 
 		return (KH2O *J_O1D) / (KH2O + KN2 + KO2);
 	}           
 
+	template<typename TF>
+        TF TROE_ev_no2oh(TF kzero, TF mzero, TF kinf, 
+                             TF fmulti, TF MN2, TF TEMP)
+        {
+              TF k0T, kinfT;
+              k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2;
+              kinfT = kinf;
+              return (k0T * kinfT * 
+       	              pow(fmulti, (log10((TF)0.4) / ((TF)1. + pow((log10(k0T/kinfT)), 2))))) /
+	              (k0T + kinfT);
+        }
+	template<typename TF>
+	TF TROE_no2no3(TF kzero, TF mzero, TF kinf, 
+       	    TF minf, TF fmulti, TF MN2, TF TEMP)
+        {
+              TF k0T, kinfT;
+              k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2;
+              kinfT = kinf * pow((TEMP/(TF)300.), minf);
+              return (k0T * kinfT * pow(fmulti, log10((TF)0.35) / ((TF)1. + pow(log10(k0T/kinfT), 2)))) / (k0T + kinfT);
+        }
+
+	template<typename TF>
+        TF TROE_n2o5(TF kzero, TF mzero, TF kinf, 
+       	    TF minf, TF fmulti, TF MN2, TF c1, 
+	    TF c2, TF TEMP)
+        {
+               TF k0T, kinfT;
+               k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2 * exp(c1/TEMP);
+               kinfT = kinf * pow((TEMP/(TF)300.), minf) * exp(c2/TEMP);
+               return (k0T * kinfT * pow(fmulti, 
+       	              log10((TF)0.35) / ((TF)1. + pow(log10(k0T/kinfT), 2)))) / (k0T + kinfT);
+        }
+
+	template<typename TF>
+        TF RK28(TF k0a, TF k0ea, TF k2a, 
+            TF k2ea, TF k3a, TF k3ea, 
+	    TF MN2, TF TEMP)
+        {
+             TF k0, k2, k3;
+             k0 = k0a * exp(k0ea/TEMP);
+             k2 = (k2a * exp(k2ea/TEMP)) * MN2;
+             k3 = k3a * exp(k3ea/TEMP);
+             return k0 + k3 * k2 / (k3 + k2);
+        }  
+
+	template<typename TF>
+        TF kho2o3(TF A, TF b, TF C, TF TEMP) 
+	{
+            return A * pow((TEMP/(TF)300.), b) * exp(C/TEMP);
+        }  
+
+	template<typename TF>
+        TF EPR_ev(TF A1, TF C1, TF A2, TF C2, TF mmult, TF TEMP) 
+        {               
+              TF K1, K2, EPR_p;
+	      K1 = A1 * exp(C1/TEMP);
+	      K2 = A2 * exp(C2/TEMP) * mmult;
+	      EPR_p = (K1 + K2);
+              return EPR_p;
+        }
+
+	template<typename TF>
+        TF kohch4(TF A, TF b, TF C, TF TEMP)
+        {
+              return A * pow(TEMP, b) * exp(C/TEMP);
+        }
+
 
     template<typename TF>
     void isop_stat(
@@ -331,67 +398,65 @@ double CFACTOR;                          /* Conversion factor for concentration 
                     VAR[ind_OH]      = std::max((oh[ijk]    +toh[ijk]   *sdt)*CFACTOR,(TF)0.0);
 		    //coh += oh[ijk];
 		    //noh += 1;
-
-		    RCONST[0] = (ARR3((TF)1.7E-12,(TF)-940.,TEMP));
-		    RCONST[1] = (ARR3((TF)1.E-14,(TF)-490.,TEMP));
-		    RCONST[2] = (ARR3((TF)4.8E-11,(TF)250.,TEMP));
-		    RCONST[3] = (EPR((TF)3.E-13,(TF)460.,(TF)2.1E-33,(TF)920.,(TF)1.4E-21,(TF)2200.,C_M,C_H2O,
-			     TEMP));
-		    RCONST[4] = (ARR3((TF)2.9E-12,(TF)-160.,TEMP));
-		    RCONST[5] = (ARR3((TF)2.8E-12,(TF)-1800.,TEMP)*C_H2);
-		    RCONST[6] = (ARR3((TF)3.E-12,(TF)-1500.,TEMP));
-		    RCONST[7] = (ARR3((TF)3.3E-12,(TF)270.,TEMP));
-		    RCONST[8] = (TROE_no2oh((TF)3.2E-30,(TF)4.5,(TF)3.E-11,(TF)10.,C_M,TEMP));
-		    RCONST[9] = (ARR3((TF)2.45E-12,(TF)-1775.,TEMP));
-		    RCONST[10] = (ARR3((TF)2.8E-12,(TF)300.,TEMP));
-		    RCONST[11] = (ARR3((TF)3.8E-13,(TF)780.,TEMP)*((TF)1.-((TF)1./((TF)1.+ARR3((TF)498.,(TF)-1160.,
-			      TEMP)))));
-		    RCONST[12] = (ARR3((TF)3.8E-13,(TF)780.,TEMP)*((TF)1./((TF)1.+ARR3((TF)498.,(TF)-1160.,
-			      TEMP))));
-		    RCONST[13] = (ARR3((TF)3.8E-12,(TF)200.,TEMP));
-		    RCONST[14] = 2e-11;
-		    RCONST[15] = (TROE_cooh((TF)5.9E-33,(TF)1.4,(TF)1.1E-12,(TF)-1.3,(TF)1.5E-13,(TF)-0.6,(TF)2.1E9,
+                    RCONST[0] = (ARR3((TF)1.7E-12,(TF)-940.,TEMP));
+                    RCONST[1] = (kho2o3((TF)2.03E-16,(TF)4.57,(TF)693.,TEMP));
+                    RCONST[2] = (ARR3((TF)4.8E-11,(TF)250.,TEMP));
+                    RCONST[3] = (EPR_ev((TF)2.2E-13,(TF)600.,(TF)1.9E-33,(TF)980.,C_M,TEMP));
+                    RCONST[4] = (ARR3((TF)2.9E-12,(TF)-160.,TEMP));
+                    RCONST[5] = (ARR3((TF)2.8E-12,(TF)-1800.,TEMP)*C_H2);
+                    RCONST[6] = (ARR3((TF)1.4E-12,(TF)-1310.,TEMP));
+                    RCONST[7] = (ARR3((TF)1.4E-13,(TF)-2470.,TEMP));
+                    RCONST[8] = (ARR3((TF)1.8E-11,(TF)110.,TEMP));
+                    RCONST[9] = (TROE_no2no3((TF)3.6E-30,(TF)-4.1,(TF)1.9E-12,(TF)0.2,(TF)10.,C_M,TEMP));
+                    RCONST[10] = (TROE_n2o5((TF)1.E-3,(TF)-3.5,(TF)9.7E14,(TF)0.1,(TF)10.,C_M,(TF)-11000.,(TF)-11080.,TEMP));
+                    RCONST[11] = (ARR3((TF)3.6E-12,(TF)270.,TEMP));
+                    RCONST[12] = (TROE_ev_no2oh((TF)3.3E-30,(TF)-3.,(TF)4.1E-11,(TF)10.,C_M,TEMP));
+                    RCONST[13] = (TF)4E-12;
+                    RCONST[14] = (RK28((TF)2.4E-14,(TF)460.,(TF)6.51E-34,(TF)1335.,(TF)2.69E-17,(TF)2199.,C_M, TEMP));
+                    RCONST[15] = (TF)4.E-4;
+                    RCONST[16] = (kohch4((TF)9.65E-20,(TF)2.58,(TF)-1082.,TEMP));
+                    RCONST[17] = (ARR3((TF)3.8E-13,(TF)780.,TEMP));
+                    RCONST[18] = (ARR3((TF)3.8E-13,(TF)780.,TEMP));
+                    RCONST[19] = (ARR3((TF)1.82E-13,(TF)416.,TEMP));
+		    RCONST[20] = (TF)1.2E-12;
+                    RCONST[21] = (ARR3((TF)3.8E-12,(TF)200.,TEMP));
+                    RCONST[22] = (ARR3((TF)5.5E-12,(TF)125.,TEMP));
+		    RCONST[23] = (TF)5.8E-16;
+		    RCONST[24] = (TROE_cooh((TF)5.9E-33,(TF)1.4,(TF)1.1E-12,(TF)-1.3,(TF)1.5E-13,(TF)-0.6,(TF)2.1E9,
 			      (TF)-6.1,(TF)0.6,C_M,TEMP));
-		    RCONST[16] = (ARR3((TF)5.5E-12,(TF)125.,TEMP));
-	    	    RCONST[17] = (ARR3((TF)5.5E-15,(TF)-1880.0,TEMP));
-		    RCONST[18] = (k3rd_iupac((TF)8.6E-27,(TF)3.5,(TF)3.E-11,(TF)1.,(TF)0.6,C_M,(TF)0.5,TEMP));
-                    RCONST[19] = (usr_O3_hv_H2O(TEMP,C_M,C_H2O,jval[Pj_o31d]));
-                    RCONST[20] = (jval[Pj_no2]);
-                    RCONST[21] = (jval[Pj_ch2or]);
-                    RCONST[22] = (jval[Pj_ch2om]);
-		    RCONST[23] = (jval[Pj_ch3o2h]);
-		    RCONST[24] = (jval[Pj_h2o2]);
-		    RCONST[25] = (ARR3((TF)1.4E-13,(TF)-2470.,TEMP));
-		    RCONST[26] = (ARR3((TF)1.8E-11,(TF)110.,TEMP));
-		    RCONST[27] = (TROE_ifs((TF)3.6E-30,(TF)4.1,(TF)1.9E-12,(TF)-0.2,(TF)10.,C_M,TEMP));
-		    RCONST[28] = ((TROE_ifs2((TF)1.3E-3,(TF)-3.5,(TF)9.7E14,(TF)0.1,(TF)10.,C_M,(TF)-11000.,
-			      (TF)-11080.,TEMP)+(TF)7.348E-5));
-		    RCONST[29] = (TF)4e-12;
-		    RCONST[30] = (TF)1.5e-21;
-		    RCONST[31] = (ARR3((TF)4.6E-13,(TF)-1155.,TEMP));
+                    RCONST[25] = (ARR3((TF)9.5E-14,(TF)390.,TEMP));
+                    RCONST[26] = (ARR3((TF)5.5E-15,(TF)-1880.0,TEMP));
+                    RCONST[27] = (k3rd_iupac((TF)8.6E-27,(TF)3.5,(TF)3.E-11,(TF)1.,(TF)0.6,C_M,(TF)0.5,TEMP));
+                    RCONST[28] = (ARR3((TF)4.6E-13,(TF)-1155.,TEMP));
+                    RCONST[29] = (usr_O3_hv_H2O(TEMP,C_M,C_H2O,jval[Pj_o31d]));
+                    RCONST[30] = (jval[Pj_no2]);
+                    RCONST[31] = (jval[Pj_n2o5]);
 		    RCONST[32] = (jval[Pj_no3]);
-		    RCONST[33] = (jval[Pj_n2o5]);
-		    RCONST[34] = (erh);
-		    RCONST[35] = (eno);
+		    RCONST[33] = (jval[Pj_ch3o2h]);
+		    RCONST[34] = (jval[Pj_ch2om]);
+		    RCONST[35] = (jval[Pj_ch2or]);
+		    RCONST[36] = (jval[Pj_h2o2]);
+                    RCONST[37] = (eno);
+                    RCONST[38] = (erh);
                     if (k==kstart) {
-			    RCONST[36] = vdo3[ij]/dz[k];
-			    RCONST[37] = vdno[ij]/dz[k];
-			    RCONST[38] = vdno2[ij]/dz[k];
-			    RCONST[39] = vdhno3[ij]/dz[k];
-			    RCONST[40] = vdrooh[ij]/dz[k];
-			    RCONST[41] = vdh2o2[ij]/dz[k];
-			    RCONST[42] = vdhcho[ij]/dz[k];
+			    RCONST[39] = vdo3[ij]/dz[k];
+			    RCONST[40] = vdno[ij]/dz[k];
+			    RCONST[41] = vdno2[ij]/dz[k];
+			    RCONST[42] = vdhno3[ij]/dz[k];
+			    RCONST[43] = vdh2o2[ij]/dz[k];
+			    RCONST[44] = vdhcho[ij]/dz[k];
+			    RCONST[45] = vdrooh[ij]/dz[k];
 		    }
 		    else {
-			    RCONST[36] = TF(0.0);
-			    RCONST[37] = TF(0.0);
-			    RCONST[38] = TF(0.0);
 			    RCONST[39] = TF(0.0);
 			    RCONST[40] = TF(0.0);
 			    RCONST[41] = TF(0.0);
 			    RCONST[42] = TF(0.0);
+			    RCONST[43] = TF(0.0);
+			    RCONST[44] = TF(0.0);
+			    RCONST[45] = TF(0.0);
 		    }
-		    FIX[0] = 1800.0e-9*CFACTOR;   // methane concentation
+		    FIX[0] = (TF)1800.0e-9*CFACTOR;   // methane concentation
                     FIX[1] = C_M;        // air density
 		    FIX[2] = (TF)1.0;    // species added to emit   
 
