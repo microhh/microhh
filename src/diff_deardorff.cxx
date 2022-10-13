@@ -395,11 +395,10 @@ namespace
         boundary_cyclic.exec(evisch);
     }
 
-    // SvdL, 07.06.22: functions specifically for the balance of sgs tke are introduced here.
     template <typename TF>
     void sgstke_shear_tend(
-            TF* const restrict at,
-            const TF* const restrict a,
+            TF* const restrict e12t,
+            const TF* const restrict e12,
             const TF* const restrict evisc,
             const TF* const restrict strain2,
             const int istart, const int iend,
@@ -414,15 +413,9 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    // Calculate shear production of TKE based on Deardorff (1980)
-                    // S2 appears to be simply 2*(strain squared). Therefore, use strain2[ijk] * 2 which
-                    // drops out again after division with 2*sgstke12)
-                    // https://github.com/dalesteam/dales/blob/master/src/modsubgrid.f90
-
-                    // Note BvS for SvdL: the strain rate calculation in DALES also seems to be
-                    // 2*S, but they still dive by `2*e12`...?
-                    //at[ijk] += evisc[ijk] * strain2[ijk] / a[ijk];
-                    at[ijk] += evisc[ijk] * strain2[ijk] / (TF(2)*a[ijk]);
+                    // NOTE: `strain2` is defined/calculated as:
+                    // S^2 = 0.5 * (dui/dxj + duj/dxi)^2 = dui/dxj * (dui/dxj + duj/dxi)
+                    e12t[ijk] += evisc[ijk] * strain2[ijk] / (TF(2)*e12[ijk]);
                 }
     }
 
