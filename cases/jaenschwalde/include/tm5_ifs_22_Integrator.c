@@ -346,7 +346,8 @@ int Rosenbrock(double Y[], double Tstart, double Tend,
    } /* end if */
    
   /*~~~>  Unit Roundoff (1+Roundoff>1)   */
-   Roundoff = WLAMCH('E');
+   /* Roundoff = WLAMCH('E'); */
+   Roundoff = 2.220e-16;   /* MK from mac osx */
 
   /*~~~>  Lower bound on the step size: (positive value) */
    Hmin = RPAR[0];
