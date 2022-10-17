@@ -1,3 +1,9 @@
+"""
+Simplified Jaenschwalde setup.
+Profiles are slightly idealised, from 04:00 UTC ERA5 data.
+Wind is rotated to be perfectly westerly.
+"""
+
 import matplotlib.pyplot as pl
 import numpy as np
 import netCDF4 as nc
@@ -31,54 +37,37 @@ with open('jaenschwalde.ini') as f:
         if(line.split('=')[0]=='ysize'):
             ysize = float(line.split('=')[1])
 
-dz = zsize / kmax
-
-z = np.arange(0.5*dz, zsize, dz)
-u = np.zeros(z.size)
-v = np.zeros(z.size)
-th = np.zeros(z.size)
-qt = np.zeros(z.size)
-co2 = np.zeros(z.size)
-
-# well mixed profile with jump
-th0 = 290.           # Bulk potential temperature
-dth = 2.             # Potential temperature inversion
-dthdz = 0.006        # Free troposphere lapse rate
-
-qt0 = 5e-3          # Bulk specific humidity
-dqt = -2e-3          # Specific humidity temperature inversion
-dqtdz = -0.003e-3    # Free troposphere lapse rate
-
-dzi = 200            # Inversion thickness
-zi = 1000.           # Boundary layer depth
-u0 = 3               # Zonal wind speed
-v0 = 0.              # Meridional wind speed
-co20 = 400e-6        # CO2 concentration (vmr, -)
-
+# Enable resolved plume rise:
 sw_plume_rise = True
 
-for k in range(kmax):
-    if(z[k] <= zi - 0.5*dzi):
-        th[k] = th0
-        qt[k] = qt0
-    elif(z[k] <= zi + 0.5*dzi):
-        th[k] = th0 + dth/dzi * (z[k]-(zi-0.5*dzi))
-        qt[k] = qt0 + dqt/dzi * (z[k]-(zi-0.5*dzi))
-    else:
-        th[k] = th0 + dth + dthdz*(z[k]-(zi+0.5*dzi))
-        qt[k] = qt0 + dqt + dqtdz*(z[k]-(zi+0.5*dzi))
+# Vertical grid LES
+dz = zsize / kmax
+z = np.arange(0.5*dz, zsize, dz)
 
-"""
-pl.figure()
-pl.subplot(121)
-pl.plot(th, z)
-pl.subplot(122)
-pl.plot(qt*1e3, z)
-"""
+v_thl = np.array([285.7, 291.9, 293, 297.4, 307])
+z_thl = np.array([0, 400, 2000, 2500, 5000])
+thl = np.interp(z, z_thl, v_thl)
 
-u[:] = u0
-v[:] = v0
-co2[:] = co20
+z_qt = np.array([0, 400, 2000, 2500, 5000])
+v_qt = np.array([6.2, 4.93, 3.61, 1, 0.3])/1000
+qt = np.interp(z, z_qt, v_qt)
+
+z_u = np.array([0, 270, 3000, 5000])
+v_u = np.array([2.3, 8.5, 0.6, 5.7])
+u = np.interp(z, z_u, v_u)
+
+v = np.zeros(kmax)
+co2 = np.zeros(kmax)
+
+# Surface fluxes, again idealised from ERA5.
+t0 = 4*3600
+t1 = 16*3600
+td1 = 12*3600
+td2 = 14*3600
+
+time = np.linspace(t0, t1, 32)
+wthl = 0.17   * np.sin(np.pi * (time-t0) / td1)
+wqt  = 8.3e-5 * np.sin(np.pi * (time-t0) / td2)
 
 # Write input NetCDF file
 nc_file = nc.Dataset('jaenschwalde_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
@@ -97,10 +86,20 @@ nc_co2_inflow = nc_group_init.createVariable('co2_inflow', float_type, ('z'))
 nc_z [:] = z[:]
 nc_u [:] = u[:]
 nc_v [:] = v[:]
-nc_th[:] = th[:]
+nc_th[:] = thl[:]
 nc_qt[:] = qt[:]
 nc_co2[:] = co2[:]
 nc_co2_inflow[:] = co2[:]
+
+nc_group_tdep = nc_file.createGroup('timedep');
+nc_group_tdep.createDimension("time_surface", time.size)
+nc_time_surface = nc_group_tdep.createVariable("time_surface", float_type, ("time_surface"))
+nc_thl_sbot = nc_group_tdep.createVariable("thl_sbot", float_type, ("time_surface"))
+nc_qt_sbot = nc_group_tdep.createVariable("qt_sbot" , float_type, ("time_surface"))
+
+nc_time_surface[:] = time
+nc_thl_sbot[:] = wthl
+nc_qt_sbot[:] = wqt
 
 nc_file.close()
 
@@ -117,8 +116,9 @@ if sw_plume_rise:
     z0 = 120
     sigma_z = 25
 else:
-    z0 = 300
-    sigma_z = 100
+    # The heights and sigma are from Dominik's .csv profiles, curve fitted with Python.
+    z0 = 299.68    # of 599.69 for high
+    sigma_z = 122.37
 
 # x,y spacing towers:
 dx = 290
@@ -175,14 +175,14 @@ if sw_plume_rise:
     strength = constant_list(strength_co2, 9) + ',' + \
                constant_list(strength_T, 9) + ',' + \
                constant_list(strength_q, 9)
-    sw_vmr = constant_list(True, 9) + ',' + \
-             constant_list(False, 9) + ',' + \
-             constant_list(False,  9)
+    sw_vmr = constant_list('true', 9) + ',' + \
+             constant_list('false', 9) + ',' + \
+             constant_list('false',  9)
     repeat = 3
 else:
     source_list = constant_list('co2', 9)
     strength = constant_list(strength_co2, 9)
-    sw_vmr = constant_list(True, 9)
+    sw_vmr = constant_list('true', 9)
     repeat = 1
 
 print('sourcelist={}'.format(source_list))
