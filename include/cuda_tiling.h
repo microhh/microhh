@@ -1,10 +1,6 @@
 #ifndef MICROHHC_CUDA_TILING_H
 #define MICROHHC_CUDA_TILING_H
 
-#ifndef __CUDACC_RTC__
-#include "grid.h"
-#endif
-
 #ifdef __CUDACC__
 #define CUDA_DEVICE __device__ __forceinline__
 #define CUDA_HOST_DEVICE __host__ CUDA_DEVICE
@@ -12,10 +8,21 @@
 #define CUDA_KERNEL_BOUNDS(threads_per_block, blocks_per_sm) CUDA_KERNEL __launch_bounds__(threads_per_block, blocks_per_sm)
 #define CUDA_ASSUME(expr) __builtin_assume(expr)
 #define CUDA_EXPECT(expr) __builtin_expect(expr)
+
+#ifdef __CUDACC_RTC__
+#define CUDA_RUNTIME_COMPILATION (1)
+#else
+#define CUDA_RUNTIME_COMPILATION (0)
+#endif
 #else
 #define CUDA_HOST_DEVICE
 #define CUDA_ASSUME(expr) do {} while ()
 #define CUDA_EXPECT(expr) do {} while ()
+#define CUDA_RUNTIME_COMPILATION (0)
+#endif
+
+#if !CUDA_RUNTIME_COMPILATION
+#include "grid.h"
 #endif
 
 struct DynBlockSize {
@@ -177,7 +184,14 @@ struct Grid_layout
     const int jj;
     const int kk;
 
-#ifndef __CUDACC_RTC__
+#if !CUDA_RUNTIME_COMPILATION
+    /**
+     * Initialize `Grid_layout` from a `Grid_data`. This is only available
+     *
+     * @tparam TF
+     * @param gd
+     * @return
+     */
     template <typename TF>
     static Grid_layout from_grid_data(const Grid_data<TF>& gd)
     {
@@ -226,6 +240,7 @@ namespace levels
 {
     struct Interior
     {
+        static_assert(sizeof(int) == 4, "int should be 4 bytes");
         constexpr static int MAX_VALUE = ~(1 << 31);
 
         CUDA_HOST_DEVICE
@@ -250,7 +265,6 @@ namespace levels
             dist_end_ = kend - k - 1;
         }
 
-
         CUDA_HOST_DEVICE
         int distance_to_start() const
         {
@@ -269,9 +283,9 @@ namespace levels
     };
 }
 
-template <int border_size, typename Tiling, typename F, typename... Args>
+template <int edge_levels, typename Tiling, typename F, typename... Args>
 CUDA_DEVICE
-void cta_execute_tiling_border(
+void cta_execute_tiling_with_edges(
     const Grid_layout& grid,
     dim3 block_index,
     F fun,
@@ -281,12 +295,12 @@ void cta_execute_tiling_border(
 
     const int thread_idx_x = tiling.block_size(0) > 1 ? threadIdx.x : 0;
     const int xlow = grid.istart + block_index.x * tiling.tile_size(0) +
-                        (tiling.tile_contiguous(0) ? thread_idx_x * tiling.tile_factor(0) : thread_idx_x);
+                        thread_idx_x * (tiling.tile_contiguous(0) ? tiling.tile_factor(0) : 1);
     const int xstep = (tiling.tile_contiguous(0) ? 1 : tiling.block_size(0));
 
     const int thread_idx_y = tiling.block_size(1) > 1 ? threadIdx.y : 0;
     const int ylow = grid.jstart + block_index.y * tiling.tile_size(1) +
-                        (tiling.tile_contiguous(1) ? thread_idx_y * tiling.tile_factor(1) : thread_idx_y);
+                        thread_idx_y * (tiling.tile_contiguous(1) ? tiling.tile_factor(1) : 1);
     const int ystep = (tiling.tile_contiguous(1) ? 1 : tiling.block_size(1));
 
     const int thread_idx_z = tiling.block_size(2) > 1 ? threadIdx.z : 0;
@@ -300,7 +314,7 @@ void cta_execute_tiling_border(
 
     // Fast path where all indices are within bounds. No bounds checks (=branches) needed.
     if (xhigh < grid.iend && yhigh < grid.jend
-            && zlow >= grid.kstart + border_size && zhigh < grid.kend - border_size)
+            && zlow >= grid.kstart + edge_levels && zhigh < grid.kend - edge_levels)
     {
 #pragma unroll (tiling.unroll_factor(2))
         for (int dz = 0; dz < tiling.tile_factor(2); dz++)
@@ -317,7 +331,7 @@ void cta_execute_tiling_border(
                 {
                     const int i = xlow + dx * xstep;
 
-                    if (border_size > 0)
+                    if (edge_levels > 0)
                     {
                         levels::Interior level;
                         fun(grid, i, j, k, level, args...);
@@ -333,11 +347,12 @@ void cta_execute_tiling_border(
     }
     else
     {
+        // early exit if initial (x, y, z) is out of bounds
         if (tiling.tile_factor(0) == 1 && xlow >= grid.iend) return;
         if (tiling.tile_factor(1) == 1 && ylow >= grid.jend) return;
         if (tiling.tile_factor(2) == 1 && zlow >= grid.kend) return;
 
-        // Unrolling is useless because of all the branches inside.
+        // Note: we do not unroll these loops. It provides no benefit because of all the branches inside.
         for (int dz = 0; dz < tiling.tile_factor(2); dz++)
         {
             const int k = zlow + dz * zstep;
@@ -368,7 +383,7 @@ void cta_execute_tiling(
         F fun,
         Args&&... args
 ) {
-    cta_execute_tiling_border<0, Tiling>(
+    cta_execute_tiling_with_edges<0, Tiling>(
         grid, block_index, fun, args...);
 }
 
@@ -379,22 +394,59 @@ void grid_tiling_kernel(Grid_layout grid, Args... args) {
     cta_execute_tiling(grid, blockIdx, F{}, args...);
 }
 
-#ifndef __CUDACC_RTC__
+/**
+ * Unravels a flat one-dimensional index into a three-dimensional index.
+ *
+ * @param flat_index The input index. Can be at most `shape.x * shape.y * shape.z`.
+ * @param shape The dimensions along each of the three axes.
+ * @param permutation_index What order to unravel each dimension. There are six possible permutations of 3 dimensions.
+ *                          This argument should be between 0 and 5.
+ */
+CUDA_DEVICE
+dim3 unravel_dim3(unsigned int flat_index, dim3 shape, int permutation_index) {
+    unsigned int permutations[6][3] = {
+            {0, 1, 2},
+            {0, 2, 1},
+            {1, 0, 2},
+            {1, 2, 0},
+            {2, 0, 1},
+            {2, 1, 0}
+    };
+
+    unsigned int sizes[3] = {shape.x, shape.y, shape.z};
+    unsigned int indices[3];
+    unsigned int axis;
+
+    axis = permutations[permutation_index][0];
+    indices[axis] = flat_index % sizes[axis];
+    flat_index /= sizes[axis];
+
+    axis = permutations[permutation_index][1];
+    indices[axis] = flat_index % sizes[axis];
+    flat_index /= sizes[axis];
+
+    axis = permutations[permutation_index][2];
+    indices[axis] = flat_index;  // Should be < sizes[axis]
+
+    return {indices[0], indices[1], indices[2]};
+}
+
+#if !CUDA_RUNTIME_COMPILATION
 /// TODO: move to better location.
 struct GridFunctor
 {
-    constexpr GridFunctor(const char* file, int line, const char* name, int border_size=0, dim3 block_size={32, 2, 2}) :
+    constexpr GridFunctor(const char* file, int line, const char* name, int edge_levels=0, dim3 block_size={32, 2, 2}) :
             file(file),
             line(line),
             name(name),
-            border_size(border_size),
+            edge_levels(edge_levels),
             block_size(block_size) {}
 
     const char* const file;
     const char* const name;
     const int line;
     const dim3 block_size;
-    const int border_size;
+    const int edge_levels;
 };
 
 #define DEFINE_GRID_KERNEL(...) \

@@ -7,43 +7,44 @@
 
 namespace kl = kernel_launcher;
 
-const std::string& home_directory() {
-    static std::string dir = "";
-    if (dir.empty()) {
-        std::string result;
-        const char *env = getenv("MICROHH_HOME");
+const std::string& find_home_directory() {
+    std::string result;
+    const char *env = getenv("MICROHH_HOME");
 
-        // Check environment KEY
-        if (env) {
-            result = env;
-        }
-
-        // No success, try from __FILE__
-        if (result.empty()) {
-            std::string file = __FILE__;
-            size_t index = file.rfind("/src/");
-
-            if (index != std::string::npos) {
-                result = file.substr(0, index);
-            }
-        }
-
-        // No success, try "."?
-        if (result.empty()) {
-            result = ".";
-        }
-
-        if (result.back() != '/') {
-            result += "/";
-        }
-
-        if (env == nullptr) {
-            std::cerr << "WARNING: environment variable MICROHH_HOME is not set, best guess: " << result << "\n";
-        }
-
-        dir = result;
+    // Check environment KEY
+    if (env) {
+        result = env;
     }
 
+    // No success, try from __FILE__
+    if (result.empty()) {
+        std::string file = __FILE__;
+        size_t index = file.rfind("/src/");
+
+        if (index != std::string::npos) {
+            result = file.substr(0, index);
+        }
+    }
+
+    // No success, try "."?
+    if (result.empty()) {
+        result = ".";
+    }
+
+    // Add trailing slash
+    if (result.back() != '/') {
+        result += "/";
+    }
+
+    if (env == nullptr) {
+        std::cerr << "WARNING: environment variable MICROHH_HOME is not set, best guess: " << result << "\n";
+    }
+
+    return result;
+}
+
+const std::string& home_directory() {
+    static std::string dir = find_home_directory();
     return dir;
 }
 
@@ -99,28 +100,8 @@ kl::KernelBuilder GridKernel::build() const {
         __global__
         __launch_bounds__(BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z, BLOCKS_PER_SM)
         void kernel(Args... args) {
-            unsigned int permutations[6][3] = {
-                {0, 1, 2},
-                {0, 2, 1},
-                {1, 0, 2},
-                {1, 2, 0},
-                {2, 0, 1},
-                {2, 1, 0}
-            };
-
-            unsigned int permutation[3] = {
-                permutations[AXES_PERMUTATION][0],
-                permutations[AXES_PERMUTATION][1],
-                permutations[AXES_PERMUTATION][2]
-            };
-            unsigned int num_blocks[3] = {NUM_BLOCKS_X, NUM_BLOCKS_Y, NUM_BLOCKS_Z};
-
-            unsigned int flat_index = blockIdx.x;
-            unsigned int nd_index[3];
-            nd_index[permutation[0]] = flat_index % num_blocks[permutation[0]];
-            nd_index[permutation[1]] = (flat_index / num_blocks[permutation[0]]) % num_blocks[permutation[1]];
-            nd_index[permutation[2]] = flat_index / (num_blocks[permutation[0]] * num_blocks[permutation[1]]);
-            dim3 block_index = {nd_index[0], nd_index[1], nd_index[2]};
+            dim3 num_blocks = {NUM_BLOCKS_X, NUM_BLOCKS_Y, NUM_BLOCKS_Z};
+            dim3 block_index = unravel_dim3(blockIdx.x, num_blocks, AXES_PERMUTATION);
 
             Grid_layout gd = {
                 GRID_START_I,
@@ -141,15 +122,15 @@ kl::KernelBuilder GridKernel::build() const {
                 TILE_FACTOR_X,
                 TILE_FACTOR_Y,
                 TILE_FACTOR_Z,
-                LOOP_UNROLL_DEPTH >= 1 ? TILE_FACTOR_X : 1,
-                LOOP_UNROLL_DEPTH >= 2 ? TILE_FACTOR_Y : 1,
-                LOOP_UNROLL_DEPTH >= 3 ? TILE_FACTOR_Z : 1,
+                UNROLL_FACTOR_X,
+                UNROLL_FACTOR_Y,
+                UNROLL_FACTOR_Z,
                 TILE_CONTIGUOUS_X,
-                TILE_CONTIGUOUS_YZ,
-                TILE_CONTIGUOUS_YZ
+                TILE_CONTIGUOUS_Y,
+                TILE_CONTIGUOUS_Z
             >;
 
-            cta_execute_tiling_border<BORDER_SIZE, Tiling>(gd, block_index, F{}, args...);
+            cta_execute_tiling_with_edges<EDGE_LEVELS, Tiling>(gd, block_index, F{}, args...);
         }
     )";
 
@@ -172,17 +153,19 @@ kl::KernelBuilder GridKernel::build() const {
     // - 1: only inner loop
     // - 2: two inner loops
     // - 3: all loops
-    builder.tune_define("LOOP_UNROLL_DEPTH", {3, 2, 1, 0});
-
-    // Tiling is contiguous or block strided
-    builder.tune_define("TILE_CONTIGUOUS_YZ", {0, 1});
+    auto unroll_depth = builder.tune_define("LOOP_UNROLL_DEPTH", {3, 2, 1, 0});
 
     // What order to unravel the block index.
     builder.tune_define("AXES_PERMUTATION", {0, 1, 2, 3, 4, 5});
 
+    // Tiling is contiguous or block strided
+    auto tile_cont = builder.tune_define("TILE_CONTIGUOUS_XY", {0, 1});
+
+    // Number of thread blocks
     auto nx = kl::div_ceil(grid.iend - grid.istart, bx * tx);
     auto ny = kl::div_ceil(grid.jend - grid.jstart, by * ty);
     auto nz = kl::div_ceil(grid.kend - grid.kstart, bz * tz);
+
     builder
         .block_size(bx, by, bz)
         .grid_size(nx * ny * nz);
@@ -203,17 +186,23 @@ kl::KernelBuilder GridKernel::build() const {
         .define("NUM_BLOCKS_X", nx)
         .define("NUM_BLOCKS_Y", ny)
         .define("NUM_BLOCKS_Z", nz)
-        .define("UNROLL_FACTOR_X", tx)
-        .define("UNROLL_FACTOR_Y", ty)
-        .define("UNROLL_FACTOR_Z", tz)
+        .define("UNROLL_FACTOR_X", kl::ifelse(unroll_depth >= 1, tx, 1))
+        .define("UNROLL_FACTOR_Y", kl::ifelse(unroll_depth >= 2, ty, 1))
+        .define("UNROLL_FACTOR_Z", kl::ifelse(unroll_depth >= 3, tz, 1))
         .define("TILE_CONTIGUOUS_X", "0")
-        .define("BORDER_SIZE", std::to_string(meta.border_size));
+        .define("TILE_CONTIGUOUS_Y", tile_cont)
+        .define("TILE_CONTIGUOUS_Z", tile_cont)
+        .define("EDGE_LEVELS", std::to_string(meta.edge_levels));
 
     builder.compiler_flags(
             "--restrict",
             "-std=c++17",
             "-I" + home_directory() + "/include");
 
+    // restrictions:
+    // - Threads per block should not too small (>=64) or too big (<=1024)
+    // - Threads per SM should not be too big (<=2048)
+    // - Items per thread should not be too many (<= 32)
     auto threads_per_block = bx * by * bz;
     builder.restriction(threads_per_block >= 64 && threads_per_block <= 1024);
     builder.restriction(threads_per_block * blocks_per_sm <= 2048);
