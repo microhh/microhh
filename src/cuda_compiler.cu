@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <unistd.h>
 
 #ifdef ENABLE_KERNEL_LAUNCHER
 #include "kernel_launcher.h"
@@ -7,46 +8,7 @@
 
 namespace kl = kernel_launcher;
 
-const std::string& find_home_directory() {
-    std::string result;
-    const char *env = getenv("MICROHH_HOME");
-
-    // Check environment KEY
-    if (env) {
-        result = env;
-    }
-
-    // No success, try from __FILE__
-    if (result.empty()) {
-        std::string file = __FILE__;
-        size_t index = file.rfind("/src/");
-
-        if (index != std::string::npos) {
-            result = file.substr(0, index);
-        }
-    }
-
-    // No success, try "."?
-    if (result.empty()) {
-        result = ".";
-    }
-
-    // Add trailing slash
-    if (result.back() != '/') {
-        result += "/";
-    }
-
-    if (env == nullptr) {
-        std::cerr << "WARNING: environment variable MICROHH_HOME is not set, best guess: " << result << "\n";
-    }
-
-    return result;
-}
-
-const std::string& home_directory() {
-    static std::string dir = find_home_directory();
-    return dir;
-}
+const std::string& home_directory();
 
 GridKernel::GridKernel(
         GridFunctor meta,
@@ -127,7 +89,7 @@ kl::KernelBuilder GridKernel::build() const {
                 UNROLL_FACTOR_Z,
                 TILE_CONTIGUOUS_X,
                 TILE_CONTIGUOUS_Y,
-                TILE_CONTIGUOUS_Z
+                TILE_CONTIGUOUS_Z,
             >;
 
             cta_execute_tiling_with_edges<EDGE_LEVELS, Tiling>(gd, block_index, F{}, args...);
@@ -216,21 +178,91 @@ kl::KernelBuilder GridKernel::build() const {
     return builder;
 }
 
-void launch_kernel(
+std::string find_home_directory() {
+    std::string result;
+    const char *env = getenv("MICROHH_HOME");
+
+    // Check environment KEY
+    if (env) {
+        result = env;
+    }
+
+    // No success, try from __FILE__
+    if (result.empty()) {
+        std::string file = __FILE__;
+        size_t index = file.rfind("/src/");
+
+        if (index != std::string::npos) {
+            result = file.substr(0, index);
+        }
+    }
+
+    // No success, try "cwd"?
+    if (result.empty()) {
+        char buffer[1024] = {0};
+
+       if (getcwd(buffer, sizeof(buffer)) != nullptr) {
+           result = buffer;
+       }
+    }
+
+    // No success, try "."
+    if (result.empty()) {
+        result = ".";
+    }
+
+    // Add trailing slash
+    if (result.back() != '/') {
+        result += "/";
+    }
+
+    if (env == nullptr) {
+        std::cerr << "WARNING: environment variable MICROHH_HOME is not set, best guess: " << result << "\n";
+    }
+
+    return result;
+}
+
+const std::string& home_directory() {
+    static std::string dir = find_home_directory();
+    return dir;
+}
+
+bool launch_kernel(
         cudaStream_t stream,
         dim3 problem_size,
-        GridKernel kernel,
+        GridKernel grid_kernel,
         const std::vector<kl::KernelArg>& args
 ) {
     static bool initialized = false;
-    if (!initialized) {
-        initialized = true;
-        kernel_launcher::set_global_wisdom_directory(home_directory() + "wisdom");
-        kernel_launcher::set_global_tuning_directory(home_directory() + "tuning");
+    static bool error_state = false;
+
+    // If an exception was thrown at some point, just return false immediately.
+    if (error_state) {
+        return false;
     }
 
-    kernel_launcher::default_registry()
-        .lookup(std::move(kernel))
-        .launch(stream, problem_size, args);
+    kl::AnyKernelDescriptor kernel = std::move(grid_kernel);
+
+    try {
+        if (!initialized) {
+            initialized = true;
+            kernel_launcher::set_global_wisdom_directory(home_directory() + "wisdom");
+            kernel_launcher::set_global_tuning_directory(home_directory() + "tuning");
+        }
+
+        kernel_launcher::default_registry()
+                .lookup(kernel)
+                .launch(stream, problem_size, args);
+        return true;
+    } catch (const std::exception &e) {
+        kl::log_warning() << "error occurred while compiling the following kernel: " <<
+                kernel.descriptor().tuning_key() << ":" << "\n"  << e.what() << std::endl;
+        kl::log_warning() << "CUDA dynamic kernel compilation is now disabled and the application is in FALLBACK mode. "
+                             "No more new kernels will be compiled using Kernel Launcher." << std::endl;
+
+        error_state = true;
+        return false;
+    }
 }
 #endif

@@ -24,6 +24,7 @@
 #define CUDA_COMPILER_H
 
 #include <type_traits>
+#include <functional>
 
 #include "tools.h"
 #include "cuda_buffer.h"
@@ -60,7 +61,7 @@ namespace kernel_launcher {
     };
 }
 
-void launch_kernel(
+bool launch_kernel(
         cudaStream_t stream,
         dim3 problem_size,
         GridKernel kernel,
@@ -112,20 +113,6 @@ void launch_grid_kernel(
             uint(gd.jend - gd.jstart),
             uint(gd.kend - gd.kstart)};
 
-    auto fallback = [&] {
-        dim3 block_size = meta.block_size;
-        dim3 grid_size = {
-                (problem_size.x / block_size.x) + bool(problem_size.x % block_size.x != 0),
-                (problem_size.y / block_size.y) + bool(problem_size.y % block_size.y != 0),
-                (problem_size.z / block_size.z) + bool(problem_size.z % block_size.z != 0)
-        };
-
-        grid_tiling_kernel<F><<<grid_size, block_size>>>(
-                gd,
-                typename convert_kernel_arg<Args>::type(args)...);
-        cuda_check_error();
-    };
-
 #ifdef ENABLE_KERNEL_LAUNCHER
     std::vector<kernel_launcher::TypeInfo> param_types = {
             kernel_launcher::TypeInfo::of<typename convert_kernel_arg<Args>::type>()...
@@ -142,19 +129,30 @@ void launch_grid_kernel(
         gd
     );
 
-    try {
-        launch_kernel(
-                nullptr,
-                problem_size,
-                std::move(kernel),
-                kernel_args);
-    } catch (const std::exception& e) {
-        std::cerr << "WARNING: error occurred while compiling kernel: " << e.what() << "\n";
-        fallback();
+    bool success = launch_kernel(
+            nullptr,
+            problem_size,
+            std::move(kernel),
+            kernel_args);
+
+    // If the kernel was launched successfully, exit the function now.
+    if (success) {
+        return;
     }
-#else
-    fallback();
 #endif
+
+    // Fallback function. This kernel is called either if kernel_launcher is disabled or if `launch_kernel` failed.
+    dim3 block_size = meta.block_size;
+    dim3 grid_size = {
+            (problem_size.x / block_size.x) + bool(problem_size.x % block_size.x != 0),
+            (problem_size.y / block_size.y) + bool(problem_size.y % block_size.y != 0),
+            (problem_size.z / block_size.z) + bool(problem_size.z % block_size.z != 0)
+    };
+
+    grid_tiling_kernel<F><<<grid_size, block_size>>>(
+            gd,
+            typename convert_kernel_arg<Args>::type(args)...);
+    cuda_check_error();
 }
 
 template <typename F, typename TF, typename... Args>
