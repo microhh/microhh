@@ -326,7 +326,7 @@ namespace advec_2i5
 
                         - ( rhoref[k-1] * fabs(interp2(w[ijk-kk1    ], w[ijk    ])) * interp3_ws(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * rhorefhi[k] * dzhi[k];
             }
-            else if ( (k >= g.kstart+2) && (k < g.kend-1) )
+            else if (level.distance_to_start() >= 2 && level.distance_to_end() >= 2)
             {
                 wt[ijk] +=
                         // w*dw/dz
