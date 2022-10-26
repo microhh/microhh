@@ -1081,7 +1081,7 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     // Liquid water
     get_thermo_field_g(*output, "ql", false);
 
-    calc_path_g<<<gridGPU, blockGPU>>>(
+    calc_path_g<TF><<<gridGPU, blockGPU>>>(
         output->fld_bot_g,
         output->fld_g,
         bs.rhoref_g,
@@ -1097,7 +1097,7 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     // Ice ice baby
     get_thermo_field_g(*output, "qi", false);
 
-    calc_path_g<<<gridGPU, blockGPU>>>(
+    calc_path_g<TF><<<gridGPU, blockGPU>>>(
         output->fld_bot_g,
         output->fld_g,
         bs.rhoref_g,
@@ -1133,7 +1133,7 @@ void Thermo_moist<TF>::get_radiation_fields_g(
     dim3 gridGPU(gridi, gridj, gd.ktot+1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_radiation_fields_g<<<gridGPU, blockGPU>>>(
+    calc_radiation_fields_g<TF><<<gridGPU, blockGPU>>>(
             T.fld_g, T_h.fld_g, qv.fld_g,
             clwp.fld_g, ciwp.fld_g, T_h.fld_bot_g,
             fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
@@ -1177,7 +1177,7 @@ void Thermo_moist<TF>::get_radiation_columns_g(
     dim3 gridGPU(gridi, gridj);
     dim3 blockGPU(blocki, blockj);
 
-    calc_radiation_columns_g<<<gridGPU, blockGPU>>>(
+    calc_radiation_columns_g<TF><<<gridGPU, blockGPU>>>(
             t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
             fields.sp.at("thl")->fld_g,
             fields.sp.at("qt")->fld_g,
@@ -1210,7 +1210,7 @@ void Thermo_moist<TF>::get_land_surface_fields_g(
     dim3 gridGPU (gridi, gridj, 1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_land_surface_fields<<<gridGPU, blockGPU>>>(
+    calc_land_surface_fields<TF><<<gridGPU, blockGPU>>>(
         T_bot, T_a, vpd, qsat_bot, dqsatdT_bot,
         fields.sp.at("thl")->fld_bot_g,
         fields.sp.at("thl")->fld_g,
