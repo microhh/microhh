@@ -247,8 +247,8 @@ bool launch_kernel(
     try {
         if (!initialized) {
             initialized = true;
-            kernel_launcher::set_global_wisdom_directory(home_directory() + "wisdom");
-            kernel_launcher::set_global_tuning_directory(home_directory() + "tuning");
+            kernel_launcher::append_global_wisdom_directory(home_directory() + "wisdom");
+            kernel_launcher::set_global_tuning_directory(home_directory() + "captures");
         }
 
         kernel_launcher::default_registry()
@@ -259,7 +259,7 @@ bool launch_kernel(
         kl::log_warning() << "error occurred while compiling the following kernel: " <<
                 kernel.descriptor().tuning_key() << ":" << "\n"  << e.what() << std::endl;
         kl::log_warning() << "CUDA dynamic kernel compilation is now disabled and the application is in FALLBACK mode. "
-                             "No more new kernels will be compiled using Kernel Launcher." << std::endl;
+                             "No more kernels will be executed using Kernel Launcher." << std::endl;
 
         error_state = true;
         return false;
