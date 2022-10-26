@@ -99,6 +99,29 @@ kl::KernelBuilder GridKernel::build() const {
         __global__
         __launch_bounds__(BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z, BLOCKS_PER_SM)
         void kernel(Args... args) {
+            unsigned int permutations[6][3] = {
+                {0, 1, 2},
+                {0, 2, 1},
+                {1, 0, 2},
+                {1, 2, 0},
+                {2, 0, 1},
+                {2, 1, 0}
+            };
+
+            unsigned int permutation[3] = {
+                permutations[AXES_PERMUTATION][0],
+                permutations[AXES_PERMUTATION][1],
+                permutations[AXES_PERMUTATION][2]
+            };
+            unsigned int num_blocks[3] = {NUM_BLOCKS_X, NUM_BLOCKS_Y, NUM_BLOCKS_Z};
+
+            unsigned int flat_index = blockIdx.x;
+            unsigned int nd_index[3];
+            nd_index[permutation[0]] = flat_index % num_blocks[permutation[0]];
+            nd_index[permutation[1]] = (flat_index / num_blocks[permutation[0]]) % num_blocks[permutation[1]];
+            nd_index[permutation[2]] = flat_index / (num_blocks[permutation[0]] * num_blocks[permutation[1]]);
+            dim3 block_index = {nd_index[0], nd_index[1], nd_index[2]};
+
             Grid_layout gd = {
                 GRID_START_I,
                 GRID_START_J,
@@ -126,7 +149,7 @@ kl::KernelBuilder GridKernel::build() const {
                 TILE_CONTIGUOUS_YZ
             >;
 
-            cta_execute_tiling_border<BORDER_SIZE, Tiling>(gd, F{}, args...);
+            cta_execute_tiling_border<BORDER_SIZE, Tiling>(gd, block_index, F{}, args...);
         }
     )";
 
@@ -154,9 +177,15 @@ kl::KernelBuilder GridKernel::build() const {
     // Tiling is contiguous or block strided
     builder.tune_define("TILE_CONTIGUOUS_YZ", {0, 1});
 
+    // What order to unravel the block index.
+    builder.tune_define("AXES_PERMUTATION", {0, 1, 2, 3, 4, 5});
+
+    auto nx = kl::div_ceil(grid.iend - grid.istart, bx * tx);
+    auto ny = kl::div_ceil(grid.jend - grid.jstart, by * ty);
+    auto nz = kl::div_ceil(grid.kend - grid.kstart, bz * tz);
     builder
         .block_size(bx, by, bz)
-        .grid_divisors(bx * tx, by * ty, bz * tz);
+        .grid_size(nx * ny * nz);
 
     builder
         .define(bx)
@@ -171,6 +200,9 @@ kl::KernelBuilder GridKernel::build() const {
         .define("GRID_STRIDE_I", std::to_string(grid.ii))
         .define("GRID_STRIDE_J", std::to_string(grid.jj))
         .define("GRID_STRIDE_K", std::to_string(grid.kk))
+        .define("NUM_BLOCKS_X", nx)
+        .define("NUM_BLOCKS_Y", ny)
+        .define("NUM_BLOCKS_Z", nz)
         .define("UNROLL_FACTOR_X", tx)
         .define("UNROLL_FACTOR_Y", ty)
         .define("UNROLL_FACTOR_Z", tz)

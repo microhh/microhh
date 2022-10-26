@@ -273,23 +273,24 @@ template <int border_size, typename Tiling, typename F, typename... Args>
 CUDA_DEVICE
 void cta_execute_tiling_border(
     const Grid_layout& grid,
+    dim3 block_index,
     F fun,
     Args&&... args
 ) {
     constexpr Tiling tiling = {};
 
     const int thread_idx_x = tiling.block_size(0) > 1 ? threadIdx.x : 0;
-    const int xlow = grid.istart + blockIdx.x * tiling.tile_size(0) +
+    const int xlow = grid.istart + block_index.x * tiling.tile_size(0) +
                         (tiling.tile_contiguous(0) ? thread_idx_x * tiling.tile_factor(0) : thread_idx_x);
     const int xstep = (tiling.tile_contiguous(0) ? 1 : tiling.block_size(0));
 
     const int thread_idx_y = tiling.block_size(1) > 1 ? threadIdx.y : 0;
-    const int ylow = grid.jstart + blockIdx.y * tiling.tile_size(1) +
+    const int ylow = grid.jstart + block_index.y * tiling.tile_size(1) +
                         (tiling.tile_contiguous(1) ? thread_idx_y * tiling.tile_factor(1) : thread_idx_y);
     const int ystep = (tiling.tile_contiguous(1) ? 1 : tiling.block_size(1));
 
     const int thread_idx_z = tiling.block_size(2) > 1 ? threadIdx.z : 0;
-    const int zlow = grid.kstart + blockIdx.z * tiling.tile_size(2) +
+    const int zlow = grid.kstart + block_index.z * tiling.tile_size(2) +
                         thread_idx_z * (tiling.tile_contiguous(2) ?  tiling.tile_factor(2) : 1);
     const int zstep = (tiling.tile_contiguous(2) ? 1 : tiling.block_size(2));
 
@@ -363,18 +364,19 @@ template <typename Tiling = DefaultTilingStrategy, typename F, typename... Args>
 CUDA_DEVICE
 void cta_execute_tiling(
         const Grid_layout& grid,
+        dim3 block_index,
         F fun,
         Args&&... args
 ) {
     cta_execute_tiling_border<0, Tiling>(
-        grid, fun, args...);
+        grid, block_index, fun, args...);
 }
 
 
 template <typename F, typename... Args>
 __global__
 void grid_tiling_kernel(Grid_layout grid, Args... args) {
-    cta_execute_tiling(grid, F{}, args...);
+    cta_execute_tiling(grid, blockIdx, F{}, args...);
 }
 
 #ifndef __CUDACC_RTC__
