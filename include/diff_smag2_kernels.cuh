@@ -36,7 +36,7 @@ namespace diff_smag2 {
 
     template<typename TF, Surface_model surface_model>
     struct calc_strain2_g {
-        DEFINE_GRID_KERNEL("diff_smag2__calc_strain2", 1)
+        DEFINE_GRID_KERNEL("diff_smag2::calc_strain2", 1)
 
         template <typename Level>
         CUDA_DEVICE
@@ -126,7 +126,7 @@ namespace diff_smag2 {
 
     template<typename TF, Surface_model surface_model>
     struct evisc_g {
-        DEFINE_GRID_KERNEL("diff_smag2__evisc", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::evisc", surface_model == Surface_model::Enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE
@@ -290,7 +290,7 @@ namespace diff_smag2 {
 
     template<typename TF, Surface_model surface_model>
     struct diff_uvw_g {
-        DEFINE_GRID_KERNEL("diff_smag2__diff_uvw", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::diff_uvw", surface_model == Surface_model::Enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE
@@ -435,7 +435,7 @@ namespace diff_smag2 {
 
     template<typename TF, Surface_model surface_model>
     struct diff_c_g {
-        DEFINE_GRID_KERNEL("diff_smag2__diff_c", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::diff_c", surface_model == Surface_model::Enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE

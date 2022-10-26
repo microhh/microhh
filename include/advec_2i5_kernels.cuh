@@ -36,7 +36,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_u_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__advec_u", 3)
+        DEFINE_GRID_KERNEL("advec_2i5::advec_u", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -139,7 +139,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_v_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__advec_v", 3)
+        DEFINE_GRID_KERNEL("advec_2i5::advec_v", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -247,7 +247,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_w_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__advec_w", 3)
+        DEFINE_GRID_KERNEL("advec_2i5::advec_w", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -343,7 +343,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_s_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__advec_s", 3)
+        DEFINE_GRID_KERNEL("advec_2i5::advec_s", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -512,7 +512,7 @@ namespace advec_2i5
     template<typename TF>
     struct advec_s_lim_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__advec_s_lim", 3)
+        DEFINE_GRID_KERNEL("advec_2i5::advec_s_lim", 3)
 
         template <typename Level>
         CUDA_DEVICE
@@ -573,7 +573,7 @@ namespace advec_2i5
     template<typename TF>
     struct calc_cfl_g
     {
-        DEFINE_GRID_KERNEL("advec_2i5__calc_cfl_g", 2)
+        DEFINE_GRID_KERNEL("advec_2i5::calc_cfl_g", 2)
 
         template <typename Level>
         CUDA_DEVICE

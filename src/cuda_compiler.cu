@@ -27,11 +27,11 @@ std::string GridKernel::tuning_key() const {
         auto base = p.remove_pointer().remove_const();
 
         if (base == kl::type_of<float>()) {
-            return name + "_float";
+            return name + "@float";
         }
 
         if (base == kl::type_of<double>()) {
-            return name + "_double";
+            return name + "@double";
         }
     }
 
