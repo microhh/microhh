@@ -54,14 +54,32 @@ size_t GridKernel::hash() const {
 }
 
 kl::KernelBuilder GridKernel::build() const {
+    std::stringstream args;
+    std::stringstream params;
+
+    for (int i = 0; i < param_types.size(); i++) {
+        if (i != 0) {
+            args << ", ";
+            params << ", ";
+        }
+
+        params << param_types[i].name() << " ";
+        if (param_types[i].is_pointer()) {
+            params << "__restrict__ ";
+        }
+
+        params << "a" << i;
+        args << "a" << i;
+    }
+
     std::string source = "#include \"" + std::string(meta.file) + "\"\n";
     source += R"(
         #include "cuda_tiling.h"
 
-        template <typename F, typename... Args>
+        template <typename F>
         __global__
         __launch_bounds__(BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z, BLOCKS_PER_SM)
-        void kernel(Args... args) {
+        void kernel()" + params.str() + R"() {
             dim3 num_blocks = {NUM_BLOCKS_X, NUM_BLOCKS_Y, NUM_BLOCKS_Z};
             dim3 block_index = unravel_dim3(blockIdx.x, num_blocks, AXES_PERMUTATION);
 
@@ -89,10 +107,10 @@ kl::KernelBuilder GridKernel::build() const {
                 UNROLL_FACTOR_Z,
                 TILE_CONTIGUOUS_X,
                 TILE_CONTIGUOUS_Y,
-                TILE_CONTIGUOUS_Z,
+                TILE_CONTIGUOUS_Z
             >;
 
-            cta_execute_tiling_with_edges<EDGE_LEVELS, Tiling>(gd, block_index, F{}, args...);
+            cta_execute_tiling_with_edges<EDGE_LEVELS, Tiling>(gd, block_index, F{}, )" + args.str() + R"();
         }
     )";
 
@@ -129,6 +147,7 @@ kl::KernelBuilder GridKernel::build() const {
     auto nz = kl::div_ceil(grid.kend - grid.kstart, bz * tz);
 
     builder
+        .template_arg(functor_type)
         .block_size(bx, by, bz)
         .grid_size(nx * ny * nz);
 
@@ -170,10 +189,6 @@ kl::KernelBuilder GridKernel::build() const {
     builder.restriction(threads_per_block * blocks_per_sm <= 2048);
     builder.restriction(tx * ty * tz <= 32);
 
-    builder.template_arg(functor_type);
-    for (const auto& p: param_types) {
-        builder.template_arg(p);
-    }
 
     return builder;
 }
