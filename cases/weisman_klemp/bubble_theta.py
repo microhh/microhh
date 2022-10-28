@@ -51,7 +51,7 @@ for k in range(kminbub,kmaxbub):
         for i in range(iminbub,imaxbub):
             dist = math.sqrt( ((xbub - i*dx)/lxybub)**2 + ((ybub - j*dy)/lxybub)**2 + ((zbub - k*dz)/lzbub)**2)
             if (dist < 1.0):
-                thl[k, j, i] = thl[k, j, i] + bubamp * np.cos(dist*np.pi/2)**2
+                thl[k, j, i] = thl[k, j, i] + bubamp * np.cos(dist*np.pi/2)**2 + bubamp * 0.01*(np.random.rand() - 0.5)
 
 thl.tofile("thl.0000000")
 
