@@ -44,6 +44,7 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diffusion_kernels;
 
+    // SvdL, 07-11-2022: probably both mvisc and check_for_minval are not redundant.. check later and change accordingly
     // SvdL, 07.06.22, minimum value of the eddy diffusivities (as in DALES). What would be a suitable value here?
     // for now, set this to zero as molecular viscosity is anyway added in the diffusion functions
     template<typename TF> constexpr TF mvisc = 0.;//1e-5;
@@ -67,8 +68,8 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // SvdL, 08.07.22: after initialization of sgstke12 field, still do check if values exceed minimum value
-                    if ( a[ijk] < Constants::sgstke12_min<TF>)
-                        a[ijk] = Constants::sgstke12_min<TF>;
+                    if ( a[ijk] < Constants::sgstke_min<TF>)
+                        a[ijk] = Constants::sgstke_min<TF>;
                 }
 
         boundary_cyclic.exec(a);
@@ -79,7 +80,7 @@ namespace
     template <typename TF, Surface_model surface_model>
     void calc_evisc_neutral(
             TF* const restrict evisc,
-            const TF* const restrict sgstke12,
+            const TF* const restrict a,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -158,7 +159,7 @@ namespace
                         // Apply Mason's wall correction here, as in DALES
                         const TF fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason)
                                   + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-                        const TF kvisc = cm * fac * sgstke12[ijk];
+                        const TF kvisc = cm * fac * std::sqrt(a[ijk]);
 
                         // Also, as in DALES: enforce minimum eddy viscosity (mvisc)
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
@@ -172,7 +173,7 @@ namespace
     template<typename TF, Surface_model surface_model>
     void calc_evisc(
             TF* const restrict evisc,
-            const TF* const restrict sgstke12,
+            const TF* const restrict a,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -273,7 +274,7 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if (N2[ijk] > 0) // only if stably stratified, adapt length scale
-                            mlen = cn * sgstke12[ijk] / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
                         else
                             mlen = mlen0;
 
@@ -283,7 +284,7 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                        kvisc = cm * fac * sgstke12[ijk];
+                        kvisc = cm * fac * std::sqrt(a[ijk]);
 
                         // Formally, this is only Km (momentum). Kh is calculated when needed.
                         // Also, as in DALES: enforce minimum eddy viscosity (mvisc)
@@ -300,7 +301,7 @@ namespace
     void calc_evisc_heat(
             TF* const restrict evisch,
             const TF* const restrict evisc,
-            const TF* const restrict sgstke12,
+            const TF* const restrict a,
             const TF* const restrict N2,
             const TF* const restrict z,
             const TF* const restrict dz,
@@ -377,7 +378,7 @@ namespace
 
                         if( N2[ijk] > 0 ) // only if stably stratified, adapt length scale
                         {
-                            mlen = cn * sgstke12[ijk] / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
                         }
 
                         fac  = std::min(mlen0, mlen);
@@ -397,8 +398,8 @@ namespace
 
     template <typename TF>
     void sgstke_shear_tend(
-            TF* const restrict e12t,
-            const TF* const restrict e12,
+            TF* const restrict at,
+            const TF* const restrict a, // SvdL, 07-11-2022: not even necessary to pass.
             const TF* const restrict evisc,
             const TF* const restrict strain2,
             const int istart, const int iend,
@@ -415,14 +416,14 @@ namespace
 
                     // NOTE: `strain2` is defined/calculated as:
                     // S^2 = 0.5 * (dui/dxj + duj/dxi)^2 = dui/dxj * (dui/dxj + duj/dxi)
-                    e12t[ijk] += evisc[ijk] * strain2[ijk] / (TF(2)*e12[ijk]);
+                    at[ijk] += evisc[ijk] * strain2[ijk];
                 }
     }
 
     template <typename TF>
     void sgstke_buoy_tend(
             TF* const restrict at,
-            const TF* const restrict a,
+            const TF* const restrict a, // SvdL, 07-11-2022: not even necessary to pass.
             const TF* const restrict evisch,
             const TF* const restrict N2,
             const int istart, const int iend,
@@ -438,7 +439,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     // Calculate buoyancy destruction of TKE based on Deardorff (1980)
-                    at[ijk] -= evisch[ijk] * N2[ijk] / a[ijk] / TF(2.);
+                    at[ijk] -= evisch[ijk] * N2[ijk];
                 }
     }
 
@@ -478,7 +479,7 @@ namespace
 
                     if( N2[ijk] > 0 ) // only if stably stratified, adapt length scale
                     {
-                        mlen = cn * a[ijk] / std::sqrt(N2[ijk]);
+                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
                     }
 
                     fac  = std::min(mlen0, mlen);
@@ -489,7 +490,7 @@ namespace
                     // SvdL, 07.06.22: quite strange (so check later), because why would l (fac) be altered by the Mason correction, but mlen0 not.
                     // Why wouldn't both have to be altered?
                     // Calculate dissipation of TKE based on Deardorff (1980)
-                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(2.)) / (TF(2)*fac);
+                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
                 }
         }
     }
@@ -529,7 +530,7 @@ namespace
                     // SvdL, 07.06.22: quite strange (so check later), because why would l (fac) be altered by the Mason correction, but mlen0 not.
                     // Why wouldn't both have to be altered?
                     // Calculate dissipation of TKE based on Deardorff (1980)
-                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(2.)) / fac / TF(2.);
+                    at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac ;
                 }
         }
     }
@@ -869,101 +870,101 @@ namespace
                 }
     }
 
-    // SvdL, 07.06.22: Because of the rewriting in sqrt(sgstke), an additional factor two comes in the diffusion (see DALES paper).
-    // this factor then cancels with the 0.5 in the averaging of eddy viscosity (see below). Therefore, a separate diffusion function is required for the diffusion of sgstke12
-    template <typename TF, Surface_model surface_model>
-    void diff_sgstke12(
-            TF* const restrict at,
-            const TF* const restrict a,
-            const TF* const restrict dzi,
-            const TF* const restrict dzhi,
-            const TF dxidxi, const TF dyidyi,
-            const TF* const restrict evisc,
-            const TF* const restrict fluxbot,
-            const TF* const restrict fluxtop,
-            const TF* const restrict rhoref,
-            const TF* const restrict rhorefh,
-            const TF visc,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-
-        const int ii = 1;
-
-        if (surface_model == Surface_model::Enabled)
-        {
-            // bottom boundary
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + kstart*kk;
-                    const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
-                    const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
-                    const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF evisct = (evisc[ijk   ]+evisc[ijk+kk]) + TF(2.)*visc;
-
-                    at[ijk] +=
-                             + ( evisce*(a[ijk+ii]-a[ijk   ])
-                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
-                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
-                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                             + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-                               ) / rhoref[kstart] * dzi[kstart];
-                }
-
-            // top boundary
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + (kend-1)*kk;
-                    const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
-                    const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
-                    const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF eviscb = (evisc[ijk-kk]+evisc[ijk   ]) + TF(2.)*visc;
-
-                    at[ijk] +=
-                             + ( evisce*(a[ijk+ii]-a[ijk   ])
-                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
-                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
-                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                             + (-rhorefh[kend  ] * Constants::sgstke12_min<TF> // SvdL (9.7.21): quick & dirty: just put this to sgstke12_min as DALES. Should be a better way to do this? Still leaves possibility of flux of sgstke12 from top
-                               - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
-                             // + (-rhorefh[kend  ] * fluxtop[ij]
-                             //   - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
-                }
-        }
-
-        for (int k=kstart+k_offset; k<kend-k_offset; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
-                    const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
-                    const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
-                    const TF evisct = (evisc[ijk   ]+evisc[ijk+kk]) + TF(2.)*visc;
-                    const TF eviscb = (evisc[ijk-kk]+evisc[ijk   ]) + TF(2.)*visc;
-
-                    at[ijk] +=
-                             + ( evisce*(a[ijk+ii]-a[ijk   ])
-                               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
-                             + ( eviscn*(a[ijk+jj]-a[ijk   ])
-                               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-                             + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
-                               - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
-                }
-    }
+    // // SvdL, 07.06.22: Because of the rewriting in sqrt(sgstke), an additional factor two comes in the diffusion (see DALES paper).
+    // // this factor then cancels with the 0.5 in the averaging of eddy viscosity (see below). Therefore, a separate diffusion function is required for the diffusion of sgstke12
+    // template <typename TF, Surface_model surface_model>
+    // void diff_sgstke12(
+    //         TF* const restrict at,
+    //         const TF* const restrict a,
+    //         const TF* const restrict dzi,
+    //         const TF* const restrict dzhi,
+    //         const TF dxidxi, const TF dyidyi,
+    //         const TF* const restrict evisc,
+    //         const TF* const restrict fluxbot,
+    //         const TF* const restrict fluxtop,
+    //         const TF* const restrict rhoref,
+    //         const TF* const restrict rhorefh,
+    //         const TF visc,
+    //         const int istart, const int iend,
+    //         const int jstart, const int jend,
+    //         const int kstart, const int kend,
+    //         const int jj, const int kk)
+    // {
+    //     constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+    //
+    //     const int ii = 1;
+    //
+    //     if (surface_model == Surface_model::Enabled)
+    //     {
+    //         // bottom boundary
+    //         for (int j=jstart; j<jend; ++j)
+    //             #pragma ivdep
+    //             for (int i=istart; i<iend; ++i)
+    //             {
+    //                 const int ij  = i + j*jj;
+    //                 const int ijk = i + j*jj + kstart*kk;
+    //                 const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
+    //                 const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
+    //                 const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF evisct = (evisc[ijk   ]+evisc[ijk+kk]) + TF(2.)*visc;
+    //
+    //                 at[ijk] +=
+    //                          + ( evisce*(a[ijk+ii]-a[ijk   ])
+    //                            - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+    //                          + ( eviscn*(a[ijk+jj]-a[ijk   ])
+    //                            - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+    //                          + ( rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+    //                            ) / rhoref[kstart] * dzi[kstart];
+    //             }
+    //
+    //         // top boundary
+    //         for (int j=jstart; j<jend; ++j)
+    //             #pragma ivdep
+    //             for (int i=istart; i<iend; ++i)
+    //             {
+    //                 const int ij  = i + j*jj;
+    //                 const int ijk = i + j*jj + (kend-1)*kk;
+    //                 const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
+    //                 const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
+    //                 const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF eviscb = (evisc[ijk-kk]+evisc[ijk   ]) + TF(2.)*visc;
+    //
+    //                 at[ijk] +=
+    //                          + ( evisce*(a[ijk+ii]-a[ijk   ])
+    //                            - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+    //                          + ( eviscn*(a[ijk+jj]-a[ijk   ])
+    //                            - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+    //                          + (-rhorefh[kend  ] * Constants::sgstke12_min<TF> // SvdL (9.7.21): quick & dirty: just put this to sgstke12_min as DALES. Should be a better way to do this? Still leaves possibility of flux of sgstke12 from top
+    //                            - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
+    //                          // + (-rhorefh[kend  ] * fluxtop[ij]
+    //                          //   - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
+    //             }
+    //     }
+    //
+    //     for (int k=kstart+k_offset; k<kend-k_offset; ++k)
+    //         for (int j=jstart; j<jend; ++j)
+    //             #pragma ivdep
+    //             for (int i=istart; i<iend; ++i)
+    //             {
+    //                 const int ijk = i + j*jj + k*kk;
+    //                 const TF evisce = (evisc[ijk   ]+evisc[ijk+ii]) + TF(2.)*visc;
+    //                 const TF eviscw = (evisc[ijk-ii]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF eviscn = (evisc[ijk   ]+evisc[ijk+jj]) + TF(2.)*visc;
+    //                 const TF eviscs = (evisc[ijk-jj]+evisc[ijk   ]) + TF(2.)*visc;
+    //                 const TF evisct = (evisc[ijk   ]+evisc[ijk+kk]) + TF(2.)*visc;
+    //                 const TF eviscb = (evisc[ijk-kk]+evisc[ijk   ]) + TF(2.)*visc;
+    //
+    //                 at[ijk] +=
+    //                          + ( evisce*(a[ijk+ii]-a[ijk   ])
+    //                            - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi
+    //                          + ( eviscn*(a[ijk+jj]-a[ijk   ])
+    //                            - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+    //                          + ( rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+    //                            - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
+    //             }
+    // }
 
     // SGS_TODO, SvdL, 07.06.22: maximum dnmul is given by absolute maximum of
     // either evisc and evisch. So would be better to pass both fields and do a
@@ -995,6 +996,7 @@ namespace
         return dnmul;
     }
 
+    // SvdL, 07-11-2022: CHECK! / DO NOT compare statistics output fluxes at the moment to each other (for scalars), because tPr is still wrong here? Or check?
     //** SvdL (9.07.21): without the proper recalculation of the Prandtl number, these fluxes are not correct??
     // or are they, because the correct viscosity for scalars is passed?
     template <typename TF, Surface_model surface_model>
@@ -1132,11 +1134,11 @@ Diff_deardorff<TF>::Diff_deardorff(
     sw_buoy = (sw_thermo == "0") ? false : true;
 
     // As in Deardorff (1980) work with square root of sgs-tke:
-    fields.init_prognostic_field("sgstke12", "Square root of SGS TKE", "m s-1", group_name, gd.sloc);
+    fields.init_prognostic_field("sgstke", "Square root of SGS TKE", "m2 s-2", group_name, gd.sloc);
 
     // SGS_TODO, SvdL, 07.06.22: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ... I'll have to check
     // maybe it was just because of a call to a non-existing variable?
-    fields.sp.at("sgstke12")->visc = inputin.get_item<TF>("fields", "svisc", "sgstke12");
+    fields.sp.at("sgstke")->visc = inputin.get_item<TF>("fields", "svisc", "sgstke");
 
     fields.init_diagnostic_field("evisc",  "Eddy viscosity for momentum", "m2 s-1", group_name, gd.sloc);
 
@@ -1238,7 +1240,8 @@ void Diff_deardorff<TF>::create(Stats<TF>& stats)
     // tentativechange, SvdL, 08.06.22: maybe also not the best spot, but check here if initialized sgstke12 is non-zero (> minvalue).
     // if not, force minimum value here at start of simulation. Field should have been filled already.
     // this is actually an ugly position, but alternative to writing additional lines/calls in model.cxx or fields.cxx
-    check_for_minval<TF>(fields.sp.at("sgstke12")->fld.data(),
+    // for new NORMAL SGS TKE, minimum value of 0 should suffice.. better to use the standard limiter for this?
+    check_for_minval<TF>(fields.sp.at("sgstke")->fld.data(),
                       gd.istart, gd.iend,
                       gd.jstart, gd.jend,
                       gd.kstart, gd.kend,
@@ -1303,24 +1306,28 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
 
     for (auto it : fields.st)
     {
-        if( it.first == "sgstke12" ) // sgstke12 diffuses with Km AND separate diffusion function
+        if( it.first == "sgstke" ) // sgstke diffuses with Km
         {
-            diff_sgstke12<TF, Surface_model::Enabled>(
-                    it.second->fld.data(),
-                    fields.sp.at(it.first)->fld.data(),
-                    gd.dzi.data(), gd.dzhi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.sp.at(it.first)->flux_bot.data(), fields.sp.at(it.first)->flux_top.data(),
-                    fields.rhoref.data(), fields.rhorefh.data(),
-                    fields.sp.at(it.first)->visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+            // SvdL, 07-11-2022: normal SGS TKE can use standard scalar diffusion function, but with Km
+                diff_c<TF, Surface_model::Enabled>(
+                        it.second->fld.data(),
+                        fields.sp.at(it.first)->fld.data(),
+                        gd.dzi.data(), gd.dzhi.data(),
+                        1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                        fields.sd.at("evisc")->fld.data(),
+                        fields.sp.at(it.first)->flux_bot.data(),
+                        fields.sp.at(it.first)->flux_top.data(),
+                        fields.rhoref.data(), fields.rhorefh.data(),
+                        fields.sp.at(it.first)->visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
         }
         else // all other scalars, diffuse with Kh
+        // SvdL, 4-11-2022: fixed mistake in buoyancy switch (added the !)
         {
-            if( sw_buoy ) // if no buoyancy, Kh = Km
+            if( !sw_buoy ) // if no buoyancy, Kh = Km
             {
                 diff_c<TF, Surface_model::Enabled>(
                         it.second->fld.data(),
@@ -1402,7 +1409,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
         // Calculate eddy viscosity using MO at lowest model level
         calc_evisc_neutral<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
@@ -1417,8 +1424,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 boundary_cyclic);
 
         sgstke_diss_tend_neutral<TF>(
-                fields.st.at("sgstke12")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.st.at("sgstke")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 gd.z.data(),
                 gd.dz.data(),
                 z0m.data(),
@@ -1439,7 +1446,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
 
         calc_evisc<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
@@ -1459,7 +1466,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
         calc_evisc_heat<TF, Surface_model::Enabled>(
                 fields.sd.at("eviscs")->fld.data(),
                 fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 buoy_tmp->fld.data(),
                 gd.z.data(), gd.dz.data(), z0m.data(),
                 gd.dx, gd.dy,
@@ -1474,8 +1481,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
         // to calculate them in `exec_viscosity`, but otherwise strain^2 has to be
         // recalculated in diff->exec()...
         sgstke_buoy_tend<TF>(
-                fields.st.at("sgstke12")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.st.at("sgstke")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 fields.sd.at("eviscs")->fld.data(),
                 buoy_tmp->fld.data(),
                 gd.istart, gd.iend,
@@ -1484,8 +1491,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.icells, gd.ijcells);
 
         sgstke_diss_tend<TF>(
-                fields.st.at("sgstke12")->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.st.at("sgstke")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 buoy_tmp->fld.data(),
                 gd.z.data(),
                 gd.dz.data(),
@@ -1504,8 +1511,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
 
     // SGS_TODO, SvdL, 07.06.22: indeed check that factor 2 of strain^2 is accounted for, or not?
     sgstke_shear_tend<TF>(
-            fields.st.at("sgstke12")->fld.data(),
-            fields.sp.at("sgstke12")->fld.data(),
+            fields.st.at("sgstke")->fld.data(),
+            fields.sp.at("sgstke")->fld.data(),
             fields.sd.at("evisc")->fld.data(),
             str2_tmp->fld.data(),
             gd.istart, gd.iend,
@@ -1534,13 +1541,13 @@ void Diff_deardorff<TF>::create_stats(Stats<TF>& stats)
         stats.add_prof("strain_rate", "Strain rate squared", "s-2", "z", group_name_default);
 
         // Always add profiles of shear production and dissipation of sgstke12
-        stats.add_prof("sgstke12_shear", "Shear production term in (SGS TKE)^(1/2) budget", "m2 s-3", "z" , group_name_tke);
-        stats.add_prof("sgstke12_diss", "Dissipation term in (SGS TKE)^(1/2) budget", "m2 s-3", "z" , group_name_tke);
+        stats.add_prof("sgstke_shear", "Shear production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+        stats.add_prof("sgstke_diss", "Dissipation term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
 
         if (sw_buoy)
         {
             stats.add_profs(*fields.sd.at("eviscs"), "z", {"mean", "2"}, group_name_default);
-            stats.add_prof("sgstke12_buoy", "Buoyancy production term in (SGS TKE)^(1/2) budget", "m2 s-3", "z" , group_name_tke);
+            stats.add_prof("sgstke_buoy", "Buoyancy production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
         }
 
         stats.add_tendency(*fields.mt.at("u"), "z",  tend_name, tend_longname);
@@ -1598,7 +1605,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
     sgstke_shear_tend<TF>(
             tmp->fld.data(),
-            fields.sp.at("sgstke12")->fld.data(),
+            fields.sp.at("sgstke")->fld.data(),
             fields.sd.at("evisc")->fld.data(),
             strain2->fld.data(),
             gd.istart, gd.iend,
@@ -1622,7 +1629,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
         sgstke_diss_tend<TF>(
                 tmp->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 N2->fld.data(),
                 gd.z.data(),
                 gd.dz.data(),
@@ -1637,7 +1644,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("sgstke12_diss", *tmp, no_offset, no_threshold);
+        stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
 
         //
         // Buoyancy production/destruction
@@ -1646,7 +1653,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
         sgstke_buoy_tend<TF>(
                 tmp->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 fields.sd.at("eviscs")->fld.data(),
                 N2->fld.data(),
                 gd.istart, gd.iend,
@@ -1654,7 +1661,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("sgstke12_buoy", *tmp, no_offset, no_threshold);
+        stats.calc_stats("sgstke_buoy", *tmp, no_offset, no_threshold);
 
         fields.release_tmp(N2);
     }
@@ -1664,7 +1671,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 
         sgstke_diss_tend_neutral<TF>(
                 tmp->fld.data(),
-                fields.sp.at("sgstke12")->fld.data(),
+                fields.sp.at("sgstke")->fld.data(),
                 gd.z.data(),
                 gd.dz.data(),
                 z0m.data(),
@@ -1676,7 +1683,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        stats.calc_stats("sgstke12_diss", *tmp, no_offset, no_threshold);
+        stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
     }
 
     fields.release_tmp(tmp);
@@ -1733,7 +1740,7 @@ void Diff_deardorff<TF>::diff_flux(
     {
         // SvdL, 08.07.22: if no buoyancy all scalars diffuse with Km, in any case sgstke12 has to diffuse with Km
         std::string varname = fld_in.name;
-        if (!sw_buoy || varname == "sgstke12" || varname == "w")
+        if (!sw_buoy || varname == "sgstke" || varname == "w")
             calc_diff_flux_c<TF, Surface_model::Enabled>(
                     out.fld.data(), fld_in.fld.data(),
                     fields.sd.at("evisc")->fld.data(),
