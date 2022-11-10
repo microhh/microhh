@@ -1020,7 +1020,7 @@ Diff_deardorff<TF>::Diff_deardorff(
     // Set the switch for use of Mason's wall correction
     swmason = inputin.get_item<bool>("diff", "swmason", "", true);
 
-    // As in Deardorff (1980) work with square root of sgs-tke:
+    // Initialize field of SGS TKE
     fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
 
     // SvdL, 09-11-2022: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ... I'll have to check
