@@ -44,7 +44,7 @@ class Diff_smag2 : public Diff<TF>
         void create(Stats<TF>&);
         void init();
         void exec(Stats<TF>&);
-        void exec_viscosity(Thermo<TF>&);
+        void exec_viscosity(Stats<TF>&, Thermo<TF>&);
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
         void exec_stats(Stats<TF>&, Thermo<TF>&);
 

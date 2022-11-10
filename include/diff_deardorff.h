@@ -44,7 +44,7 @@ class Diff_deardorff : public Diff<TF>
         void create(Stats<TF>&);
         void init();
         void exec(Stats<TF>&);
-        void exec_viscosity(Thermo<TF>&);
+        void exec_viscosity(Stats<TF>&, Thermo<TF>&); 
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
         void exec_stats(Stats<TF>&, Thermo<TF>&); // Pass Thermo<TF>& also in other diffusion classes
 
@@ -87,5 +87,15 @@ class Diff_deardorff : public Diff<TF>
 
         const std::string tend_name = "diff";
         const std::string tend_longname = "Diffusion";
+
+        // Specific tendency names for sgs tke-scheme
+        const std::string tend_name_shear = "shear";
+        const std::string tend_longname_shear = "SGS TKE Shear Term";
+
+        const std::string tend_name_buoy = "buoy";
+        const std::string tend_longname_buoy = "SGS TKE Buoyancy Term";
+
+        const std::string tend_name_diss = "diss";
+        const std::string tend_longname_diss = "SGS TKE Dissipation";
 };
 #endif

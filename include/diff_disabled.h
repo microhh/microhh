@@ -38,7 +38,7 @@ class Diff_disabled : public Diff<TF>
 
         // Empty functions which simply pass for disabled diffusion
         void create(Stats<TF>&) {}
-        void exec_viscosity(Thermo<TF>&) {}
+        void exec_viscosity(Stats<TF>&, Thermo<TF>&) {}
         void init() {}
         void exec(Stats<TF>&) {}
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);

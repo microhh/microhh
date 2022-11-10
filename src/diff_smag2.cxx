@@ -933,7 +933,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 

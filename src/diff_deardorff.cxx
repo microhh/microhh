@@ -1021,7 +1021,7 @@ Diff_deardorff<TF>::Diff_deardorff(
     swmason = inputin.get_item<bool>("diff", "swmason", "", true);
 
     // As in Deardorff (1980) work with square root of sgs-tke:
-    fields.init_prognostic_field("sgstke", "Square root of SGS TKE", "m2 s-2", group_name, gd.sloc);
+    fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
 
     // SvdL, 09-11-2022: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ... I'll have to check
     // maybe it was just because of a call to a non-existing variable?
@@ -1276,7 +1276,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto str2_tmp = fields.get_tmp();
@@ -1336,6 +1336,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above
+
+                stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
     }
     else
     {
@@ -1388,6 +1390,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
+        stats.calc_tend(*fields.st.at("sgstke"), tend_name_buoy);
+
         sgstke_diss_tend<TF>(
                 fields.st.at("sgstke")->fld.data(),
                 fields.sp.at("sgstke")->fld.data(),
@@ -1404,6 +1408,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above);
 
+        stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
+
         fields.release_tmp(buoy_tmp);
     }
 
@@ -1416,6 +1422,8 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
+    stats.calc_tend(*fields.st.at("sgstke"), tend_name_shear);
 
     // Release temporary fields
     fields.release_tmp(str2_tmp);
@@ -1437,14 +1445,22 @@ void Diff_deardorff<TF>::create_stats(Stats<TF>& stats)
         // Add strain rate
         stats.add_prof("strain_rate", "Strain rate squared", "s-2", "z", group_name_default);
 
-        // Always add profiles of shear production and dissipation of sgstke12
-        stats.add_prof("sgstke_shear", "Shear production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
-        stats.add_prof("sgstke_diss", "Dissipation term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+        // SvdL, 10-11-2022: Still mistakes here. sgstke_buoy, sgstke_shear and sgstke_diss represent tendencies!
+        // They should therefore be added to the tendency_order (list) of sgstke,
+        // such that they appear correctly in output netcdf-file AND the total tendeceny is correct
 
+        // Always add tendencies of shear production and dissipation of sgstke
+        stats.add_prof("sgstke_shear", "Shear production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+        // stats.add_prof("sgstke_diss", "Dissipation term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+        stats.add_tendency(*fields.st.at("sgstke"), "z", tend_name_shear, tend_longname_shear);
+        stats.add_tendency(*fields.st.at("sgstke"), "z", tend_name_diss, tend_longname_diss);
+
+        // Add additional profile of Kh + tendency of buoyancy of sgstke
         if (sw_buoy)
         {
             stats.add_profs(*fields.sd.at("eviscs"), "z", {"mean", "2"}, group_name_default);
-            stats.add_prof("sgstke_buoy", "Buoyancy production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+            // stats.add_prof("sgstke_buoy", "Buoyancy production term in SGS TKE budget", "m2 s-3", "z" , group_name_tke);
+            stats.add_tendency(*fields.st.at("sgstke"), "z", tend_name_buoy, tend_longname_buoy);
         }
 
         stats.add_tendency(*fields.mt.at("u"), "z",  tend_name, tend_longname);
@@ -1467,124 +1483,126 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
     stats.calc_stats("evisc", *fields.sd.at("evisc"), no_offset, no_threshold);
     if (sw_buoy)
         stats.calc_stats("eviscs", *fields.sd.at("eviscs"), no_offset, no_threshold);
-
-    // Calculate budget terms
-    auto tmp = fields.get_tmp();
-    auto strain2 = fields.get_tmp();
-
-    // Calculate strain rate using MO for velocity gradients lowest level.
-    const std::vector<TF>& dudz = boundary.get_dudz();
-    const std::vector<TF>& dvdz = boundary.get_dvdz();
-    const std::vector<TF>& z0m = boundary.get_z0m();
-
-    dk::calc_strain2<TF, Surface_model::Enabled>(
-            strain2->fld.data(),
-            fields.mp.at("u")->fld.data(),
-            fields.mp.at("v")->fld.data(),
-            fields.mp.at("w")->fld.data(),
-            dudz.data(),
-            dvdz.data(),
-            gd.z.data(),
-            gd.dzi.data(),
-            gd.dzhi.data(),
-            1./gd.dx, 1./gd.dy,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("strain_rate", *strain2, no_offset, no_threshold);
-
-    //
-    // Shear production
-    //
-    std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
-
-    sgstke_shear_tend<TF>(
-            tmp->fld.data(),
-            fields.sp.at("sgstke")->fld.data(),
-            fields.sd.at("evisc")->fld.data(),
-            strain2->fld.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-
-    stats.calc_stats("sgstke_shear", *tmp, no_offset, no_threshold);
-
-    fields.release_tmp(strain2);
-
-    if (sw_buoy)
-    {
-        //
-        // Dissipation : non-neutral
-        //
-        std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
-
-        auto N2 = fields.get_tmp();
-        thermo.get_thermo_field(*N2, "N2", false, false);
-
-        sgstke_diss_tend<TF>(
-                tmp->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                N2->fld.data(),
-                gd.z.data(),
-                gd.dz.data(),
-                z0m.data(),
-                gd.dx,
-                gd.dy,
-                this->cn,
-                this->ce1,
-                this->ce2,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above
-
-        stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
-
-        //
-        // Buoyancy production/destruction
-        //
-        std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
-
-        sgstke_buoy_tend<TF>(
-                tmp->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                fields.sd.at("eviscs")->fld.data(),
-                N2->fld.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        stats.calc_stats("sgstke_buoy", *tmp, no_offset, no_threshold);
-
-        fields.release_tmp(N2);
-    }
-    else
-    {
-        std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
-
-        sgstke_diss_tend_neutral<TF>(
-                tmp->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                gd.z.data(),
-                gd.dz.data(),
-                z0m.data(),
-                gd.dx, gd.dy,
-                this->ce1,
-                this->ce2,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above)
-
-        stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
-    }
-
-    fields.release_tmp(tmp);
 }
+// // SvdL, 10-11-2022: these are the old parts of the exec_stats function....
+//
+//     // Calculate budget terms
+//     auto tmp = fields.get_tmp();
+//     auto strain2 = fields.get_tmp();
+//
+//     // Calculate strain rate using MO for velocity gradients lowest level.
+//     const std::vector<TF>& dudz = boundary.get_dudz();
+//     const std::vector<TF>& dvdz = boundary.get_dvdz();
+//     const std::vector<TF>& z0m = boundary.get_z0m();
+//
+//     dk::calc_strain2<TF, Surface_model::Enabled>(
+//             strain2->fld.data(),
+//             fields.mp.at("u")->fld.data(),
+//             fields.mp.at("v")->fld.data(),
+//             fields.mp.at("w")->fld.data(),
+//             dudz.data(),
+//             dvdz.data(),
+//             gd.z.data(),
+//             gd.dzi.data(),
+//             gd.dzhi.data(),
+//             1./gd.dx, 1./gd.dy,
+//             gd.istart, gd.iend,
+//             gd.jstart, gd.jend,
+//             gd.kstart, gd.kend,
+//             gd.icells, gd.ijcells);
+//
+//     stats.calc_stats("strain_rate", *strain2, no_offset, no_threshold);
+//
+//     //
+//     // Shear production
+//     //
+//     std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
+//
+//     sgstke_shear_tend<TF>(
+//             tmp->fld.data(),
+//             fields.sp.at("sgstke")->fld.data(),
+//             fields.sd.at("evisc")->fld.data(),
+//             strain2->fld.data(),
+//             gd.istart, gd.iend,
+//             gd.jstart, gd.jend,
+//             gd.kstart, gd.kend,
+//             gd.icells, gd.ijcells);
+//
+//     stats.calc_stats("sgstke_shear", *tmp, no_offset, no_threshold);
+//
+//     fields.release_tmp(strain2);
+//
+//     if (sw_buoy)
+//     {
+//         //
+//         // Dissipation : non-neutral
+//         //
+//         std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
+//
+//         auto N2 = fields.get_tmp();
+//         thermo.get_thermo_field(*N2, "N2", false, false);
+//
+//         sgstke_diss_tend<TF>(
+//                 tmp->fld.data(),
+//                 fields.sp.at("sgstke")->fld.data(),
+//                 N2->fld.data(),
+//                 gd.z.data(),
+//                 gd.dz.data(),
+//                 z0m.data(),
+//                 gd.dx,
+//                 gd.dy,
+//                 this->cn,
+//                 this->ce1,
+//                 this->ce2,
+//                 gd.istart, gd.iend,
+//                 gd.jstart, gd.jend,
+//                 gd.kstart, gd.kend,
+//                 gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above
+//
+//         stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
+//
+//         //
+//         // Buoyancy production/destruction
+//         //
+//         std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
+//
+//         sgstke_buoy_tend<TF>(
+//                 tmp->fld.data(),
+//                 fields.sp.at("sgstke")->fld.data(),
+//                 fields.sd.at("eviscs")->fld.data(),
+//                 N2->fld.data(),
+//                 gd.istart, gd.iend,
+//                 gd.jstart, gd.jend,
+//                 gd.kstart, gd.kend,
+//                 gd.icells, gd.ijcells);
+//
+//         stats.calc_stats("sgstke_buoy", *tmp, no_offset, no_threshold);
+//
+//         fields.release_tmp(N2);
+//     }
+//     else
+//     {
+//         std::fill(tmp->fld.begin(), tmp->fld.end(), TF(0));
+//
+//         sgstke_diss_tend_neutral<TF>(
+//                 tmp->fld.data(),
+//                 fields.sp.at("sgstke")->fld.data(),
+//                 gd.z.data(),
+//                 gd.dz.data(),
+//                 z0m.data(),
+//                 gd.dx, gd.dy,
+//                 this->ce1,
+//                 this->ce2,
+//                 gd.istart, gd.iend,
+//                 gd.jstart, gd.jend,
+//                 gd.kstart, gd.kend,
+//                 gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above)
+//
+//         stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
+//     }
+//
+//     fields.release_tmp(tmp);
+// }
 
 template<typename TF>
 void Diff_deardorff<TF>::diff_flux(
