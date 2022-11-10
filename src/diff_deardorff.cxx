@@ -92,6 +92,7 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool swmason, ///< SvdL, 10-11-2022: definitely not the nicest option, but otherwhise swmason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -162,11 +163,11 @@ namespace
                         const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
-                        fac = mlen0; // UGLY addition, SvdLinden 09-11-2022.. needed for case Mason correction is switched off..
-
-                        // Apply Mason's wall correction here, as in DALES
-                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if (swmason) // Apply Mason's wall correction here, as in DALES
+                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        else
+                            fac = mlen0;
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
                         kvisc = cm * fac * std::sqrt(a[ijk]);
@@ -196,6 +197,7 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool swmason, ///< SvdL, 10-11-2022: definitely not the nicest option, but otherwhise swmason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -263,9 +265,9 @@ namespace
 
                         fac  = std::min(mlen0, mlen);
 
-                        // Apply Mason's wall correction here, as in DALES
-                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if (swmason) // Apply Mason's wall correction here, as in DALES
+                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
                         kvisc = cm * fac * std::sqrt(a[ijk]);
@@ -292,6 +294,7 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool swmason, ///< SvdL, 10-11-2022: definitely not the nicest option, but otherwhise swmason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -359,9 +362,9 @@ namespace
 
                         fac  = std::min(mlen0, mlen);
 
-                        // Apply Mason's wall correction here, as in DALES
-                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if (swmason) // Apply Mason's wall correction here, as in DALES
+                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
                         kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
@@ -437,7 +440,8 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int jj, const int kk)
+            const int jj, const int kk,
+            const bool swmason) ///< SvdL, 10-11-2022: definitely not the nicest option, but otherwhise swmason is not defined in scope of this namespace
     {
       const TF n_mason = 2.;
       TF mlen ;
@@ -462,9 +466,9 @@ namespace
 
                     fac  = std::min(mlen0, mlen);
 
-                    // Apply Mason's wall correction here, as in DALES
-                    fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    if (swmason) // Apply Mason's wall correction here, as in DALES
+                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                     // SvdL, 09-11-2022: quite strange (so check later), because why would (fac) be altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
@@ -485,7 +489,8 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int jj, const int kk)
+            const int jj, const int kk,
+            const bool swmason) ///< SvdL, 10-11-2022: definitely not the nicest option, but otherwhise swmason is not defined in scope of this namespace
     {
         const TF n_mason = 2.;
         TF fac;
@@ -502,12 +507,11 @@ namespace
                     const int ij = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
 
-                    // SvdL, 09-11-2022: if neutral, first set fac to mlen0
-                    fac = mlen0;
-
-                    // Apply Mason's wall correction here, as in DALES
-                    const TF fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
-                                (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    if (swmason) // Apply Mason's wall correction here, as in DALES
+                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    else
+                        fac = mlen0;
 
                     // SvdL, 09-11-2022: quite strange (so check later), because why would (fac) be altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
@@ -1013,6 +1017,9 @@ Diff_deardorff<TF>::Diff_deardorff(
     const std::string sw_thermo = inputin.get_item<std::string>("thermo", "swthermo", "");
     sw_buoy = (sw_thermo == "0") ? false : true;
 
+    // Set the switch for use of Mason's wall correction
+    swmason = inputin.get_item<bool>("diff", "swmason", "", true);
+
     // As in Deardorff (1980) work with square root of sgs-tke:
     fields.init_prognostic_field("sgstke", "Square root of SGS TKE", "m2 s-2", group_name, gd.sloc);
 
@@ -1312,7 +1319,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells, swmason, ///< SvdL, 10-11-2022: not the nicest, see above
                 boundary_cyclic);
 
         sgstke_diss_tend_neutral<TF>(
@@ -1328,7 +1335,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above
     }
     else
     {
@@ -1350,7 +1357,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells, swmason, ///< SvdL, 10-11-2022: not the nicest, see above
                 boundary_cyclic);
 
         // Calculate the eddy diffusivity for heat and scalars
@@ -1365,7 +1372,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells,
+                gd.icells, gd.jcells, gd.ijcells, swmason, ///< SvdL, 10-11-2022: not the nicest, see above
                 boundary_cyclic);
 
         // BvS: I left the tendency calculations of sgstke here; feels a bit strange
@@ -1395,7 +1402,7 @@ void Diff_deardorff<TF>::exec_viscosity(Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above);
 
         fields.release_tmp(buoy_tmp);
     }
@@ -1532,7 +1539,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above
 
         stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
 
@@ -1571,7 +1578,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                gd.icells, gd.ijcells, swmason); ///< SvdL, 10-11-2022: not the nicest, see above)
 
         stats.calc_stats("sgstke_diss", *tmp, no_offset, no_threshold);
     }

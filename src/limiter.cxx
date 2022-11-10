@@ -30,33 +30,6 @@
 #include "constants.h" // tentativechange, SvdL, 07.06.22
 #include "diff.h" // tentativechange, SvdL, 07.06.22
 
-template<typename TF>
-Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), diff(diffin)
-{
-    limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
-
-    // Set the switch for use of deardorff scheme (always enforce sgs tke > 0 regardless of user setting)
-    const std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
-    const std::string sw_diff        = inputin.get_item<std::string>("diff",     "swdiff",     "", swspatialorder);
-    sw_min = (sw_diff == "deardorff") ? true : false;
-}
-
-template <typename TF>
-Limiter<TF>::~Limiter()
-{
-}
-
-template <typename TF>
-void Limiter<TF>::create(Stats<TF>& stats)
-{
-    for (const std::string& s : limit_list)
-        stats.add_tendency(*fields.at.at(s), "z", tend_name, tend_longname);
-
-    if ( sw_min )
-        stats.add_tendency(*fields.at.at("sgstke"), "z", tend_name, tend_longname);
-}
-
 namespace
 {
     // This function produces a tendency that represents a source that avoids sub zero values.
@@ -103,6 +76,33 @@ namespace
     //             }
     // }
 
+}
+
+template<typename TF>
+Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Diff<TF>& diffin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), diff(diffin)
+{
+    limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
+
+    // Set the switch for use of deardorff scheme (always enforce sgs tke >= 0 regardless of user setting)
+    const std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
+    const std::string sw_diff        = inputin.get_item<std::string>("diff",     "swdiff",     "", swspatialorder);
+    sw_min = (sw_diff == "deardorff") ? true : false;
+}
+
+template <typename TF>
+Limiter<TF>::~Limiter()
+{
+}
+
+template <typename TF>
+void Limiter<TF>::create(Stats<TF>& stats)
+{
+    for (const std::string& s : limit_list)
+        stats.add_tendency(*fields.at.at(s), "z", tend_name, tend_longname);
+
+    if ( sw_min )
+        stats.add_tendency(*fields.at.at("sgstke"), "z", tend_name, tend_longname);
 }
 
 #ifndef USECUDA
