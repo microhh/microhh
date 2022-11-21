@@ -321,9 +321,12 @@ void Boundary_surface<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
 
     // Lookuk table:
-    cuda_safe_call(cudaMalloc(&nobuk_g, imemsize2d));
-    cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
-    cuda_safe_call(cudaMalloc(&f_sl_g,  nzL*sizeof(float)));
+    if (sw_constant_z0)
+    {
+        cuda_safe_call(cudaMalloc(&nobuk_g, imemsize2d));
+        cuda_safe_call(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
+        cuda_safe_call(cudaMalloc(&f_sl_g,  nzL*sizeof(float)));
+    }
 
     // Copy data to GPU:
     forward_device();
@@ -347,10 +350,13 @@ void Boundary_surface<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(dvdz_mo_g, dvdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(dbdz_mo_g, dbdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
 
-    // Lookup table:
-    cuda_safe_call(cudaMemcpy(nobuk_g, nobuk.data(), imemsize2d,  cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), flutmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  flutmemsize, cudaMemcpyHostToDevice));
+    if (sw_constant_z0)
+    {
+        // Lookup table:
+        cuda_safe_call(cudaMemcpy(nobuk_g, nobuk.data(), imemsize2d,  cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(zL_sl_g, zL_sl.data(), flutmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(f_sl_g,  f_sl.data(),  flutmemsize, cudaMemcpyHostToDevice));
+    }
 }
 
 template<typename TF>
@@ -380,9 +386,12 @@ void Boundary_surface<TF>::clear_device()
     cuda_safe_call(cudaFree(dvdz_mo_g));
     cuda_safe_call(cudaFree(dbdz_mo_g));
 
-    cuda_safe_call(cudaFree(nobuk_g));
-    cuda_safe_call(cudaFree(zL_sl_g));
-    cuda_safe_call(cudaFree(f_sl_g ));
+    if (sw_constant_z0)
+    {
+        cuda_safe_call(cudaFree(nobuk_g));
+        cuda_safe_call(cudaFree(zL_sl_g));
+        cuda_safe_call(cudaFree(f_sl_g ));
+    }
 }
 
 #ifdef USECUDA

@@ -560,6 +560,34 @@ namespace
     }
 
 
+    template<typename TF> __global__
+    void calc_path_g(
+        TF* const restrict path,
+        const TF* const restrict fld,
+        const TF* const restrict rhoref,
+        const TF* const restrict dz,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+            path[ij] = TF(0);
+
+            // Bit of a cheap solution, but this function is only called for statistics..
+            for (int k=kstart; k<kend; ++k)
+            {
+                const int ijk = ij + k*ijcells;
+                path[ij] += rhoref[k] * fld[ijk] * dz[k];
+            }
+        }
+    }
+
     /*
     // BvS: no longer used, base state is calculated at the host
     // CvH: This unused code does not take into account ice
@@ -1036,17 +1064,51 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(
 template<typename TF>
 void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {
-    const TF no_offset = 0.;
+    auto& gd = grid.get_grid_data();
     auto output = fields.get_tmp_g();
+    const TF no_offset = 0.;
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 gridGPU (gridi, gridj);
+    dim3 blockGPU(blocki, blockj);
 
     get_thermo_field_g(*output, "thv", false);
     column.calc_column("thv", output->fld_g, no_offset);
 
+    // Liquid water
     get_thermo_field_g(*output, "ql", false);
-    column.calc_column("ql", output->fld_g, no_offset);
 
+    calc_path_g<<<gridGPU, blockGPU>>>(
+        output->fld_bot_g,
+        output->fld_g,
+        bs.rhoref_g,
+        gd.dz_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
+
+    column.calc_column("ql", output->fld_g, no_offset);
+    column.calc_time_series("ql_path", output->fld_bot_g, no_offset);
+
+    // Ice ice baby
     get_thermo_field_g(*output, "qi", false);
+
+    calc_path_g<<<gridGPU, blockGPU>>>(
+        output->fld_bot_g,
+        output->fld_g,
+        bs.rhoref_g,
+        gd.dz_g,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
+
     column.calc_column("qi", output->fld_g, no_offset);
+    column.calc_time_series("qi_path", output->fld_bot_g, no_offset);
 
     // Time series
     column.calc_time_series("thl_bot", fields.ap.at("thl")->fld_bot_g, no_offset);

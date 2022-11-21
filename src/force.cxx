@@ -391,10 +391,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swwls = Large_scale_subsidence_type::Local_field;
         fields.set_calc_mean_profs(true);
-
-        #ifdef USECUDA
-        throw std::runtime_error("Local field subsidence not yet included for GPU");
-        #endif
     }
     else
     {

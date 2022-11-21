@@ -190,6 +190,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_homogenize_hr_sw;
         bool sw_homogenize_hr_lw;
 
+        // Make sure that the sw radiation is tuned at the first `exec()`. This
+        // ensures that sw is tuned for the full 3D field, and not for the column stats.
+        bool sw_is_tuned = false;
+
         double dt_rad;
         unsigned long idt_rad;
 

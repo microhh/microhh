@@ -1026,7 +1026,6 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         };
 
         // Set the tendency to zero.
-        // std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), Float(0.));
         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
 
         auto t_lay = fields.get_tmp_g();
@@ -1170,7 +1169,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     // Update the solar zenith angle and sun-earth distance.
                     set_sun_location(timeloop);
 
-                    if (is_day(this->mu0))
+                    if (is_day(this->mu0) || !sw_is_tuned)
                     {
                         const int n_bnd = kdist_sw->get_nband();
                         const int n_gpt = kdist_sw->get_ngpt();
@@ -1189,7 +1188,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     }
                 }
 
-                if (is_day(this->mu0))
+                if (is_day(this->mu0) || !sw_is_tuned)
                 {
                     const int n_col = gd.imax*gd.jmax;
                     exec_shortwave(
@@ -1259,12 +1258,22 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         homogenize(sw_flux_dn_sfc_g);
                     }
                 }
-                else
+
+                // Note: keep this as a separate `if()` instead of an `else`,
+                // we still want to zero everything if radiation was just calculated to tune the model. 
+                if(!is_day(this->mu0))
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
                     cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
                     cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
+
+		    // Set tendency to zero if sw was calculated just for tuning..
+		    if (!sw_is_tuned)
+                        cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
                 }
+
+		if (!sw_is_tuned)
+		    sw_is_tuned = true;
 
                 if (do_radiation_stats)
                 {

@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 sys.path.append('../python/')
 import microhh_tools as mht
@@ -17,7 +17,17 @@ precs = ['dp', 'sp']
 
 for prec in precs:
     for mode in modes:
-        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+        # Likely MicroHH binary locations:
+        ex1 = 'microhh_{}_{}'.format(prec, mode)
+        ex2 = '../build_{}_{}/microhh'.format(prec, mode)
+
+        if os.path.exists(ex1):
+            microhh_exec = ex1
+        elif os.path.exists(ex2):
+            microhh_exec = ex2
+        else:
+            raise Exception('Can not find an executable for \"{}\" + \"{}\"'.format(prec, mode))
+
         experiment = '{}_{}'.format(prec, mode)
 
         #

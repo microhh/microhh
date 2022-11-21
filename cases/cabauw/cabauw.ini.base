@@ -7,11 +7,11 @@ npy=1
 wallclocklimit=1e9
 
 [grid]
-itot=512
-jtot=512
+itot=None
+jtot=None
 ktot=None
-xsize=25600
-ysize=25600
+xsize=None
+ysize=None
 zsize=None
 utrans=0.0
 vtrans=0.0
@@ -98,7 +98,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=1
+swwls=mean
 swtimedep_wls=1
 
 [fields]
@@ -119,7 +119,7 @@ beta=2.0
 
 [time]
 starttime=0
-endtime=43200
+endtime=None
 dt=6.0
 dtmax=60.0
 savetime=3600
