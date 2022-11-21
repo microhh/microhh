@@ -819,6 +819,44 @@ namespace
                 lut_extice, lut_ssaice, lut_asyice);
     }
 
+    Aerosol_optics_rt load_and_init_aerosol_optics_rt(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_hum      = coef_nc.get_dimension_size("relative_humidity");
+        int n_philic = coef_nc.get_dimension_size("hydrophilic");
+        int n_phobic = coef_nc.get_dimension_size("hydrophobic");
+
+        Array<Float,2> band_lims_wvn({2, n_band});
+
+        Array<Float,2> mext_phobic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> ssa_phobic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> g_phobic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+
+        Array<Float,3> mext_philic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> ssa_philic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> g_philic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+
+        Array<Float,1> rh_upper(
+                coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
+
+        return Aerosol_optics_rt(
+                band_lims_wvn, rh_upper,
+                mext_phobic, ssa_phobic, g_phobic,
+                mext_philic, ssa_philic, g_philic);
+    }
+
     void configure_memory_pool(int nlays, int ncols, int nchunks, int ngpts, int nbnds)
     {
         #ifdef RTE_RRTMGP_GPU_MEMPOOL_OWN
@@ -906,6 +944,10 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
 
         this->cloud_sw_rt = std::make_unique<Cloud_optics_rt>(
                 load_and_init_cloud_optics_rt(master, "cloud_coefficients_sw.nc"));
+
+        if (sw_aerosols)
+            this->aerosol_sw_rt = std::make_unique<Aerosol_optics_rt>(
+                    load_and_init_aerosol_optics_rt(master, "aerosol_coefficients_sw.nc"));
 
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
@@ -1368,6 +1410,10 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
     const Bool top_at_1 = 0;
 
+    const Vector<int> grid_cells = {gd.imax, gd.jmax, gd.ktot};
+    const Vector<Float> grid_d = {gd.dx, gd.dy, gd.dz[gd.kstart]};
+    const Vector<int> kn_grid = {kngrid_i, kngrid_j, kngrid_k};
+
     // initiate flux & heating rate arrays to 0
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_dn.ptr());
     rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_up.ptr());
@@ -1388,6 +1434,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
             std::make_unique<Optical_props_2str_rt>(n_col, n_lay, *kdist_sw_rt);
     std::unique_ptr<Optical_props_2str_rt> cloud_optical_props =
             std::make_unique<Optical_props_2str_rt>(n_col, n_lay, *cloud_sw_rt);
+    std::unique_ptr<Optical_props_2str_rt> aerosol_optical_props =
+            std::make_unique<Optical_props_2str_rt>(n_col, n_lay, *aerosol_sw_rt);
 
     // Make views to the base state pointer.
     auto p_lay_tmp = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
@@ -1548,6 +1596,33 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     dynamic_cast<Optical_props_2str_rt&>(*optical_props),
                     dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props));
         }
+        else
+        {
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_tau().ptr());
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_ssa().ptr());
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_g().ptr());
+        }
+
+        if (sw_aerosols)
+        {
+            aerosol_sw_rt->aerosol_optics(
+                    band-1,
+                    aermr01, aermr02, aermr03, aermr04, aermr05,
+                    aermr06, aermr07, aermr08, aermr09, aermr10, aermr11,
+                    rh, p_lev,
+                    *aerosol_optical_props);
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str_rt&>(*optical_props),
+                    dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props));
+        }
+        else
+        {
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_tau().ptr());
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_ssa().ptr());
+            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_g().ptr());
+        }
 
         std::unique_ptr<Fluxes_broadband_rt> fluxes =
                 std::make_unique<Fluxes_broadband_rt>(gd.imax, gd.jmax, n_lev);
@@ -1567,21 +1642,27 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 fluxes->get_flux_dn(),
                 fluxes->get_flux_dn_dir());
 
+        // if we are here during night, it is just for tuning, no need to run ray tracer then
+        if (!is_day(this->mu0))
+            return;
+
         // CvH: this computation assumes that mu0 and azimuth are constant over the entire subset. Works for small LES only.
         Float zenith_angle = std::acos(mu0({1}));
         Float azimuth_angle = this->azimuth;
 
         const Int qrng_offset = Int(igpt - 1) + this->time_idx * Int(n_gpt);
         raytracer.trace_rays(
-                this->rays_per_pixel,
                 qrng_offset,
-                gd.imax, gd.jmax, n_lay,
-                gd.dx, gd.dy, gd.dz[gd.kstart],
-                kngrid_i, kngrid_j, kngrid_k,
+                this->rays_per_pixel,
+                grid_cells, grid_d, kn_grid,
                 dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
                 dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
-                dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_g(),
                 dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_tau(),
+                dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_ssa(),
+                dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_g(),
+                dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_tau(),
+                dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_ssa(),
+                dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_g(),
                 sfc_alb_dir, zenith_angle,
                 azimuth_angle,
                 sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
@@ -1592,7 +1673,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                 fluxes->get_flux_sfc_up(),
                 fluxes->get_flux_abs_dir(),
                 fluxes->get_flux_abs_dif());
-        
+
         fluxes->net_flux();
 
         gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
@@ -1644,7 +1725,6 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
         };
 
         // Set the tendency to zero.
-        // std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), Float(0.));
         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
 
         auto t_lay = fields.get_tmp_g();
@@ -1807,7 +1887,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                     const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
                     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
 
-                    if (is_day(this->mu0))
+                    if (is_day(this->mu0) || !sw_is_tuned)
                     {
                         const int n_bnd = kdist_sw->get_nband();
                         const int n_gpt = kdist_sw->get_ngpt();
@@ -1847,7 +1927,7 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                     }
                 }
 
-                if (is_day(this->mu0))
+                if (is_day(this->mu0) || !sw_is_tuned)
                 {
                     exec_shortwave_rt(
                             thermo, timeloop, stats,
@@ -1920,12 +2000,21 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                         homogenize(sw_flux_dn_sfc_g);
                     }
                 }
-                else
+                // Note: keep this as a separate `if()` instead of an `else`,
+                // we still want to zero everything if radiation was just calculated to tune the model.
+                if(!is_day(this->mu0))
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
                     cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
                     cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
+
+                    // Set tendency to zero if sw was calculated just for tuning..
+                    if(!sw_is_tuned)
+                        cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
                 }
+
+                if (!sw_is_tuned)
+                    sw_is_tuned = true;
 
                 if (do_radiation_stats)
                 {

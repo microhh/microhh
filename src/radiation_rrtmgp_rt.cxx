@@ -413,6 +413,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
+    sw_aerosols  = inputin.get_item<bool>("radiation", "swaerosols", "", true);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
@@ -844,6 +845,11 @@ void Radiation_rrtmgp_rt<TF>::read_background_profiles(
         col_dry = rad_nc.get_variable<Float>("col_dry", {n_lay_col, n_col});
     else
         Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+    
+    if (sw_aerosols)
+    {
+        return;
+    }
 }
 
 

@@ -36,6 +36,7 @@
 #include "Gas_optics_rrtmgp_rt.h"
 #include "Source_functions_rt.h"
 #include "Cloud_optics_rt.h"
+#include "Aerosol_optics_rt.h"
 #include "Rte_lw_rt.h"
 #include "Rte_sw_rt.h"
 #include "Raytracer.h"
@@ -120,7 +121,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void create_solver_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
                 const Gas_concs&);
-    
+
         void solve_shortwave_column(
                 std::unique_ptr<Optical_props_arry>&,
                 Array<Float,2>&, Array<Float,2>&,
@@ -170,14 +171,14 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
-        
+
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
-        
+
         void exec_shortwave_rt(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
@@ -191,7 +192,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
         void set_background_column_shortwave(Thermo<TF>&);
-        
+
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
@@ -200,11 +201,16 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
+        bool sw_aerosols;
 
         bool sw_homogenize_sfc_sw;
         bool sw_homogenize_sfc_lw;
         bool sw_homogenize_hr_sw;
         bool sw_homogenize_hr_lw;
+
+        // Make sure that the sw radiation is tuned at the first `exec()`. This
+        // ensures that sw is tuned for the full 3D field, and not for the column stats.
+        bool sw_is_tuned = false;
 
         double dt_rad;
         unsigned long idt_rad;
@@ -282,18 +288,18 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         Float* sw_flux_dn_sfc_g;
         Float* sw_flux_up_sfc_g;
-        
+
         Float* sw_flux_dn_dir_inc_g;
         Float* sw_flux_dn_dif_inc_g;
         Float* lw_flux_dn_inc_g;
-        
+
         // raytracing fluxes for stats & cross sections
         std::vector<Float> sw_flux_sfc_dir_rt;
         std::vector<Float> sw_flux_sfc_dif_rt;
         std::vector<Float> sw_flux_sfc_up_rt;
         std::vector<Float> sw_flux_tod_up_rt;
         std::vector<Float> sw_flux_tod_dn_rt;
-        
+
         Float* sw_flux_sfc_dir_rt_g;
         Float* sw_flux_sfc_dif_rt_g;
         Float* sw_flux_sfc_up_rt_g;
@@ -311,12 +317,13 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Rte_sw_gpu rte_sw_gpu;
 
         Raytracer raytracer;
- 
+
         //std::unique_ptr<Gas_concs_rt> gas_concs_rt;
         //std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
         //std::unique_ptr<Cloud_optics_rt> cloud_lw_rt;
         std::unique_ptr<Gas_optics_rt> kdist_sw_rt;
         std::unique_ptr<Cloud_optics_rt> cloud_sw_rt;
+        std::unique_ptr<Aerosol_optics_rt> aerosol_sw_rt;
 
         Rte_lw_rt rte_lw_rt;
         Rte_sw_rt rte_sw_rt;
