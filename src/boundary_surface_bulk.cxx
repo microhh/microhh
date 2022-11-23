@@ -118,9 +118,6 @@ Boundary_surface_bulk<TF>::Boundary_surface_bulk(
 template<typename TF>
 Boundary_surface_bulk<TF>::~Boundary_surface_bulk()
 {
-    #ifdef USECUDA
-    clear_device();
-    #endif
 }
 
 template<typename TF>

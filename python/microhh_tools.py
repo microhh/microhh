@@ -528,6 +528,7 @@ def compare_bitwise(f1, f2):
 
     return cmp_python, cmp_os
 
+
 def restart_post(origin, timestr):
     file_names = glob.glob('*.' + timestr)
     not_identical = False
@@ -594,6 +595,8 @@ def execute(command):
         raise Exception(
             '\'{}\' returned \'{}\'.'.format(
                 command, sp.returncode))
+
+    return sp.returncode
 
 
 def run_cases(cases, executable, mode, outputfile=''):
@@ -919,19 +922,41 @@ class Case:
 def run_case(
         case_name, options_in, options_mpi_in,
         executable='microhh', mode='cpu',
-        case_dir='.', experiment='local'):
+        case_dir='.', experiment='local',
+        additional_pre_py={}):
 
     options = deepcopy(options_in)
 
     if mode == 'cpumpi':
         merge_options(options, options_mpi_in)
 
-    cases = [
-        Case(
-            case_name,
-            casedir=case_dir,
-            rundir=experiment,
-            options=options)]
+    if additional_pre_py:
+        # Aarghh
+        pre = {'{}_input.py'.format(case_name): None}
+
+        files = [
+            '{}_input.py'.format(case_name),
+            '{}.ini'.format(case_name)]
+
+        for key, value in additional_pre_py.items():
+            pre[key] = value
+            files.append(key)
+
+        cases = [
+            Case(
+                case_name,
+                casedir=case_dir,
+                rundir=experiment,
+                options=options,
+                pre=pre,
+                files=files)]
+    else:
+        cases = [
+            Case(
+                case_name,
+                casedir=case_dir,
+                rundir=experiment,
+                options=options)]
 
     run_cases(
         cases,

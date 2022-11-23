@@ -1035,7 +1035,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
-    bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
+    bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", true);
 
     // Time variable surface pressure
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));

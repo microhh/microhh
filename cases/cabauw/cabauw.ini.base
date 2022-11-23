@@ -7,11 +7,11 @@ npy=1
 wallclocklimit=1e9
 
 [grid]
-itot=64
-jtot=64
+itot=None
+jtot=None
 ktot=None
-xsize=6400
-ysize=6400
+xsize=None
+ysize=None
 zsize=None
 utrans=0.0
 vtrans=0.0
@@ -97,7 +97,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=1
+swwls=mean
 swtimedep_wls=1
 
 [fields]
@@ -117,13 +117,13 @@ sigma=0.00223
 beta=2.0
 
 [time]
-endtime=43200
+starttime=0
+endtime=None
 dt=6.0
 dtmax=60.0
 savetime=3600
 outputiter=20
 adaptivestep=true
-starttime=0
 rkorder=4
 datetime_utc=2016-08-15 06:00:00
 
@@ -136,10 +136,10 @@ sampletime=60
 swcross=1
 sampletime=60
 xy=0
-crosslist=qlqipath,sw_flux_dn,sw_flux_dn_dir,thlbot,qtbot,thlfluxbot,qtfluxbot,ustar
+crosslist=qlqipath,qlqibase,qlqitop,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thlfluxbot,qtfluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt
 
 [column]
-swcolumn=1
+swcolumn=0
 sampletime=60
 coordinates[x]=1600
 coordinates[y]=1600
