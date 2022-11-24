@@ -36,17 +36,23 @@
 #include "constants.h"
 
 #include "microphys.h"
-#include "microphys_sb06.h"
 
-
+#include "microphys_sb06.h"         // Class definition
+#include "microphys_sb_common.h"    // Warm/cold common kernels
+#include "microphys_sb_cold.h"      // Kernels from ICON
 
 namespace
 {
     using namespace Constants;
     namespace fm = Fast_math;
     namespace tmf = Thermo_moist_functions;
+}
 
-    // For simplicity, define constants here for now. These should probably move to the header.
+namespace warm
+{
+    /* These are the "old" kernels used in the old `2mom_warm` scheme,
+       ported (mainly) from UCLA-LES and DALES. */
+
     template<typename TF> constexpr TF pi       = 3.14159265359;
     template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
     template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
@@ -58,332 +64,9 @@ namespace
     template<typename TF> constexpr TF mr_min   = mc_max<TF>;          // Min mean mass of precipitation drop
     template<typename TF> constexpr TF mr_max   = 3e-6;                // Max mean mass of precipitation drop // as in UCLA-LES
     template<typename TF> constexpr TF ql_min   = 1.e-6;               // Min cloud liquid water for which calculations are performed
-    //template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
-    template<typename TF> constexpr TF qr_min   = 1.e-9;              // Min rain liquid water for which calculations are performed
+    template<typename TF> constexpr TF qr_min   = 1.e-15;              // Min rain liquid water for which calculations are performed
     template<typename TF> constexpr TF cfl_min  = 1.e-5;               // Small non-zero limit at the CFL number
-    template<typename TF> constexpr TF rho_vel  = 0.4;                 // Exponent for density correction (value from ICON)
-    template<typename TF> constexpr TF q_crit   = 1.e-9;               // Min rain liquid water for which calculations are performed (value from ICON)
 
-    template<typename TF>
-    void convert_unit(
-            TF* const restrict a,
-            const TF* const restrict rho,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jstride, const int kstride,
-            bool to_kgm3)
-    {
-        for (int k=kstart; k<kend; k++)
-        {
-            const TF fac = (to_kgm3) ? rho[k] : TF(1.)/rho[k];
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jstride + k*kstride;
-                    a[ijk] *= fac;
-                }
-        }
-    }
-
-    template<typename TF>
-    inline TF particle_meanmass(
-            Particle<TF>& particle,
-            const TF q, const TF n)
-    {
-        // Mean mass of particle, with limiters (SB06, Eq 94)
-        return std::min( std::max( q/(n+TF(Constants::dsmall)), particle.x_min ), particle.x_max );
-    }
-
-    template<typename TF>
-    inline TF particle_diameter(
-            Particle<TF>& particle,
-            const TF mean_mass)
-    {
-        // Mass-diameter relation (SB06, Eq 32)
-        return particle.a_geo * std::exp(particle.b_geo * std::log(mean_mass));
-    }
-
-    template<typename TF>
-    inline TF rain_mue_dm_relation(
-            Particle_rain_coeffs<TF>& coeffs,
-            const TF d_m)
-    {
-        // mue-Dm relation of raindrops.
-        TF mue;
-        const TF delta = coeffs.cmu2 * (d_m - coeffs.cmu3);
-
-        if (d_m <= coeffs.cmu3)
-           mue = coeffs.cmu0 * std::tanh(fm::pow2(TF(4) * delta)) + coeffs.cmu4;
-        else
-           mue = coeffs.cmu1 * std::tanh(fm::pow2(delta)) + coeffs.cmu4;
-
-        return mue;
-    }
-
-    template<typename TF>
-    void sedi_vel_rain(
-            TF* const restrict vq,
-            TF* const restrict vn,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            const TF* const restrict ql,
-            const TF* const restrict rho,
-            Particle<TF>& rain,
-            Particle_rain_coeffs<TF>& coeffs,
-            const TF rho_corr,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k,
-            bool qc_present)
-    {
-        TF mue;
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
-
-                //if (qr[ij] > q_crit<TF>)
-                if (qr[ij] > qr_min<TF> * rho[k]) // TODO: remove *rho..
-                {
-                    const TF x = particle_meanmass(rain, qr[ij], nr[ij]);
-                    const TF d_m = particle_diameter(rain, x);
-
-                    if (qc_present)
-                    {
-                        if (ql[ijk] >= q_crit<TF>)
-                            mue = (rain.nu + TF(1.0)) / rain.b_geo - TF(1.0);
-                        else
-                            mue = rain_mue_dm_relation(coeffs, d_m);
-                    }
-                    else
-                        mue = rain_mue_dm_relation(coeffs, d_m);
-
-                    const TF d_p =
-                            d_m * std::exp(TF(-1. / 3.) * std::log((mue + TF(3)) * (mue + TF(2)) * (mue + TF(1))));
-                    vn[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(1)) * std::log(TF(1) + coeffs.gama * d_p));
-                    vq[ij] = coeffs.alfa - coeffs.beta * std::exp(-(mue + TF(4)) * std::log(TF(1) + coeffs.gama * d_p));
-
-                    vn[ij] *= rho_corr;
-                    vq[ij] *= rho_corr;
-                }
-                else
-                {
-                    vn[ij] = TF(0);
-                    vq[ij] = TF(0);
-                }
-            }
-    }
-
-
-    template<typename TF>
-    void copy_slice(
-            TF* const restrict fld_2d,
-            const TF* const restrict fld_3d,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
-
-                fld_2d[ij] = fld_3d[ijk];
-            }
-    }
-
-
-    template<typename TF>
-    void copy_slice_and_integrate(
-            TF* const restrict fld_2d,
-            const TF* const restrict fld_3d,
-            const TF* const restrict fld_3d_tend,
-            const TF* const restrict rho,
-            const TF dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
-
-                // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
-                fld_2d[ij] = fld_3d[ijk] + 0*dt*rho[k]*fld_3d_tend[ijk];
-            }
-    }
-
-
-    template<typename TF>
-    void implicit_core(
-            TF* const restrict q_val,
-            TF* const restrict q_sum,
-            TF* const restrict q_impl,
-            TF* const restrict vsed_new,
-            TF* const restrict vsed_now,
-            TF* const restrict flux_new,
-            TF* const restrict flux_now,
-            const TF rdzdt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride)
-    {
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-
-                // `new` on r.h.s. is `now` value from level above
-                vsed_new[ij] = TF(0.5) * (vsed_now[ij] + vsed_new[ij]);
-
-                // `flux_new` are the updated flux values from the level above
-                // `flux_now` are here the old (current time step) flux values from the level above
-                const TF flux_sum = flux_new[ij] + flux_now[ij];
-
-                // `flux_now` are here overwritten with the current level
-                flux_now[ij] = std::min(vsed_now[ij] * q_val[ij], flux_sum);   // loop dependency
-                flux_now[ij] = std::max(flux_now[ij], TF(0));                  // Maybe not necessary
-
-                // Time integrated value without implicit weight
-                q_sum[ij] = q_val[ij] + rdzdt * (flux_sum - flux_now[ij]);
-
-                // Implicit weight
-                q_impl[ij] = TF(1) / (TF(1) + vsed_new[ij] * rdzdt);
-
-                // prepare for source term calculation
-                const TF q_star = q_impl[ij] * q_sum[ij];
-                q_val[ij]  = q_star;       // source/sinks work on star-values
-                q_sum[ij]  = q_sum[ij] - q_star;
-            }
-    }
-
-
-    template<typename TF>
-    void integrate_process(
-            TF* const restrict val,
-            const TF* const restrict tend,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride)
-    {
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-
-                // Time integration
-                val[ij] += tend[ij] * TF(dt);
-            }
-    }
-
-
-    template<typename TF>
-    void implicit_time(
-            TF* const restrict q_val,
-            TF* const restrict q_sum,
-            TF* const restrict q_impl,
-            TF* const restrict vsed_new,
-            TF* const restrict vsed_now,
-            TF* const restrict flux_new,
-            const TF rdzdt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride)
-    {
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij = i + j * jstride;
-
-                // Time integration
-                q_val[ij] = std::max(TF(0), q_impl[ij] * (q_sum[ij] + q_val[ij]));
-
-                // Prepare for next level
-                flux_new[ij] = q_val[ij] * vsed_new[ij];
-                vsed_new[ij] = vsed_now[ij];
-            }
-    }
-
-
-    template<typename TF>
-    void calc_thermo_tendencies(
-            TF* const restrict thlt,
-            TF* const restrict qtt,
-            const TF* const restrict qr_tend_conversion,
-            const TF* const restrict rho,
-            const TF* const restrict exner,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        const TF rho_i = TF(1) / rho[k];
-
-        for (int j = jstart; j < jend; j++)
-            #pragma ivdep
-            for (int i = istart; i < iend; i++)
-            {
-                const int ij  = i + j * jstride;
-                const int ijk = i + j * jstride + k*kstride;
-
-                // Tendencies `qt` and `thl` only include tendencies from microphysics conversions.
-                qtt[ijk]  -= rho_i * qr_tend_conversion[ij];
-                thlt[ijk] += rho_i * Lv<TF> / (cp<TF> * exner[k]) * qr_tend_conversion[ij];
-            }
-    }
-
-
-    template<typename TF>
-    void diagnose_tendency(
-            TF* const restrict tend,
-            const TF* const restrict fld_old,
-            const TF* const restrict fld_new,
-            const TF* const restrict rho,
-            const double dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        const TF dt_i = TF(1) / dt;
-        const TF rho_i = TF(1) / rho[k];
-
-        for (int j = jstart; j < jend; j++)
-                #pragma ivdep
-                for (int i = istart; i < iend; i++)
-                {
-                    const int ij = i + j * jstride;
-                    const int ijk= i + j * jstride + k*kstride;
-
-                    // Evaluate tendencies. This includes the tendencies from both conversions and implicit sedimentation.
-                    // `Old` versions are integrated first with only the dynamics tendencies to avoid double counting.
-                    tend[ijk] += rho_i * (fld_new[ij] - (fld_old[ijk] + 0*dt*rho[k]*tend[ijk])) * dt_i;
-                }
-    }
-}
-
-namespace warm
-{
-    /* These are the "old" kernels used in the old `2mom_warm` scheme,
-       ported (mainly) from UCLA-LES and DALES. */
 
     template<typename TF>
     inline TF tanh2(const TF x)
@@ -680,187 +363,7 @@ namespace warm
     }
 }
 
-namespace cold
-{
-    // Kernels ported from ICON. All kernels use the same name as the ICON subroutines
-    template<typename TF> constexpr TF kc_autocon  = 9.44e+9;  //..Long-Kernel
 
-    template<typename TF>
-    void setup_cloud_autoconversion(
-            Particle<TF>& cloud,
-            Particle_cloud_coeffs<TF>& cloud_coeffs)
-    {
-        const TF nu = cloud.nu;
-        const TF mu = cloud.mu;
-
-        if (mu == 1.0)  // NOTE BvS: is this safe?
-        {
-            //.. see SB2001
-            cloud_coeffs.k_au =
-                    kc_autocon<TF> / cloud.x_max * (TF(1) / TF(20)) * (nu + TF(2)) * (nu + TF(4)) / fm::pow2(nu + TF(1));
-            cloud_coeffs.k_sc = kc_autocon<TF> * (nu + TF(2)) / (nu + TF(1));
-        }
-        else
-        {
-            throw std::runtime_error("Non SB01 autoconversion/selfcollection constants not (yet) setup...");
-            //!.. see Eq. (3.44) of Seifert (2002)
-            //cloud_coeffs%k_au = kc_autocon / cloud%x_max * (1.0_wp / 20.0_wp)  &
-            //     & * ( 2.0_wp * gfct((nu+4.0)/mu)**1                           &
-            //     &            * gfct((nu+2.0)/mu)**1 * gfct((nu+1.0)/mu)**2    &
-            //     &   - 1.0_wp * gfct((nu+3.0)/mu)**2 * gfct((nu+1.0)/mu)**2 )  &
-            //     &   / gfct((nu+2.0)/mu)**4
-            //cloud_coeffs%k_sc = kc_autocon * cloud_coeffs%c_z
-        }
-    }
-
-
-
-    template<typename TF>
-    void autoconversionSB(
-            TF* const restrict qrt,
-            TF* const restrict nrt,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            const TF* const restrict qc,
-            Particle_cloud_coeffs<TF>& cloud_coeffs,
-            Particle<TF>& cloud,
-            Particle<TF>& rain,
-            const TF cloud_rho_v,  // cloud%rho_v(i,k) in ICON, constant per layer in uHH.
-            const TF Nc0,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        // Autoconversion of Seifert and Beheng (2001, Atmos. Res.)
-        // Formation of rain by coagulating cloud droplets
-
-        const TF k_1  = 6.00e+2;   //..Parameter for Phi
-        const TF k_2  = 0.68e+0;   //..Parameter fof Phi
-        const TF eps  = 1.00e-25;  // NOTE BvS: dangerous for float version MicroHH.
-        const TF x_s_i = TF(1) / cloud.x_max;
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
-
-                if (qc[ijk] > q_crit<TF>)
-                {
-                    const TF n_c = Nc0; // cloud%n(i,k) in ICON
-                    const TF x_c = particle_meanmass(cloud, qc[ijk], n_c);
-
-                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ijk]) * fm::pow2(x_c) * cloud_rho_v;    // NOTE `*dt` in ICON..
-                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(0.9));
-                    const TF phi = k_1 * std::pow(tau, k_2) * fm::pow3(TF(1) - std::pow(tau, k_2));
-                    au = au * (TF(1) + phi / fm::pow2(TF(1) - tau));
-
-                    nrt[ij] += au * x_s_i;
-                    qrt[ij] += au;
-
-                    //au  = MAX(MIN(q_c,au),0.0_wp)
-                    //sc  = cloud_coeffs%k_sc * q_c**2 * dt * cloud%rho_v(i,k)
-                    //rain%n(i,k)  = rain%n(i,k)  + au * x_s_i
-                    //rain%q(i,k)  = rain%q(i,k)  + au
-                    //cloud%n(i,k) = cloud%n(i,k) - MIN(n_c,sc)
-                    //cloud%q(i,k) = cloud%q(i,k) - au
-                }
-            }
-    }
-
-
-    template<typename TF>
-    void accretionSB(
-            TF* const restrict qrt,
-            const TF* const restrict qr,
-            const TF* const restrict qc,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        // Accretion: growth of raindrops collecting cloud droplets
-        // Accretion of Seifert and Beheng (2001, Atmos. Res.)
-
-        const TF k_r = 5.78;       // kernel
-        const TF k_1 = 5.00e-04;   // Phi function
-        const TF eps = 1.00e-25;
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
-
-                if (qc[ijk] > TF(0) && qr[ij] > TF(0))
-                {
-
-                    // ..accretion rate of SB2001
-                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(1));
-                    const TF phi = fm::pow4(tau/(tau+k_1));
-                    const TF ac  = k_r *  qc[ijk] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
-
-                    qrt[ij] += ac;
-
-                    //ac = MIN(q_c,ac)
-                    //x_c = particle_meanmass(cloud, q_c,n_c)
-                    //rain%q(i,k)  = rain%q(i,k)  + ac
-                    //cloud%q(i,k) = cloud%q(i,k) - ac
-                    //cloud%n(i,k) = cloud%n(i,k) - MIN(n_c,ac/x_c)
-                }
-            }
-    }
-
-
-
-    template<typename TF>
-    void rain_selfcollectionSB(
-            TF* const restrict nrt,
-            const TF* const restrict qr,
-            const TF* const restrict nr,
-            Particle<TF>& rain,
-            const TF rain_rho_v,  // rain%rho_v(i,k) in ICON, constant per layer in uHH.
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
-    {
-        // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
-        // Selfcollection of Seifert and Beheng (2001, Atmos. Res.)                     *
-
-        // Parameters based on Seifert (2008, JAS)
-        const TF D_br = 1.10e-3;
-        const TF k_rr = 4.33e+0;
-        const TF k_br = 1.00e+3;
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j * jstride;
-
-                if (qr[ij] > TF(0))
-                {
-                    const TF xr = particle_meanmass(rain, qr[ij], nr[ij]);
-                    const TF Dr = particle_diameter(rain, xr);
-
-                    // Selfcollection as in SB2001
-                    const TF sc = k_rr * nr[ij] * qr[ij] * rain_rho_v;  // `*dt` in ICON
-
-                    // Breakup as in Seifert (2008, JAS), Eq. (A13)
-                    TF br = TF(0);
-                    if (Dr > TF(0.30e-3))
-                        br = (k_br * (Dr - D_br) + TF(1)) * sc;
-
-                    nrt[ij] += sc - br;
-                }
-            }
-    }
-
-}
 
 template<typename TF>
 Microphys_sb06<TF>::Microphys_sb06(
@@ -977,7 +480,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     setup_particle_coeffs(rain, rain_coeffs);
 
     // Setup autoconversion and selfcollection constants.
-    cold::setup_cloud_autoconversion(cloud, cloud_coeffs);
+    Sb_cold::setup_cloud_autoconversion(cloud, cloud_coeffs);
 
     // CvH: ICON overrides using the following code, but they are as far as I see the same values.
     // rain_coeffs%cmu0 = cfg_params%rain_cmu0
@@ -1107,7 +610,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
     {
-        convert_unit(
+        Sb_common::convert_unit(
                 data_ptr,
                 rho.data(),
                 gd.istart, gd.iend,
@@ -1131,7 +634,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         {
             // Copy 3D fields to 2D slices, and do partial
             // integration of dynamics tendencies.
-            copy_slice_and_integrate(
+            Sb_common::copy_slice_and_integrate(
                     it.second.slice,
                     fields.sp.at(it.first)->fld.data(),
                     fields.st.at(it.first)->fld.data(),
@@ -1148,11 +651,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Density correction fall speeds
         // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
-        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
-        const TF rho_corr = std::exp(-rho_vel<TF>*hlp);
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
+        const TF rho_corr = std::exp(-Sb_cold::rho_vel<TF>*hlp);
 
         // Sedimentation velocity rain species.
-        sedi_vel_rain<TF>(
+        Sb_cold::sedi_vel_rain<TF>(
                 hydro_types.at("qr").v_sed_now,
                 hydro_types.at("nr").v_sed_now,
                 hydro_types.at("qr").slice,
@@ -1169,7 +672,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
         for (auto& it : hydro_types)
-            implicit_core(
+            Sb_common::implicit_core(
                     it.second.slice,
                     it.second.sum,
                     it.second.impl,
@@ -1269,7 +772,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             // These are the new kernels ported from ICON.
 
             // Autoconversion; formation of rain drop by coagulating cloud droplets.
-            cold::autoconversionSB(
+            Sb_cold::autoconversionSB(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
                     hydro_types.at("qr").slice,
@@ -1284,7 +787,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells, gd.ijcells,
                     k);
 
-            cold::accretionSB(
+            Sb_cold::accretionSB(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("qr").slice,
                     ql->fld.data(),
@@ -1293,7 +796,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells, gd.ijcells,
                     k);
 
-            cold::rain_selfcollectionSB(
+            Sb_cold::rain_selfcollectionSB(
                     hydro_types.at("nr").conversion_tend,
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
@@ -1308,7 +811,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         for (auto& it : hydro_types)
         {
             // Integrate conversion tendencies into qr/Nr slices before implicit step.
-            integrate_process(
+            Sb_common::integrate_process(
                     it.second.slice,
                     it.second.conversion_tend,
                     dt,
@@ -1317,7 +820,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             // Implicit sedimentation step
-            implicit_time(
+            Sb_common::implicit_time(
                     it.second.slice,
                     it.second.sum,
                     it.second.impl,
@@ -1330,7 +833,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             // Evaluate total tendencies back from implicit solver.
-            diagnose_tendency(
+            Sb_common::diagnose_tendency(
                     fields.st.at(it.first)->fld.data(),
                     fields.sp.at(it.first)->fld.data(),
                     it.second.slice,
@@ -1344,7 +847,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Calculate thermodynamic tendencies `thl` and `qt`,
         // from microphysics tendencies excluding sedimentation.
-        calc_thermo_tendencies(
+        Sb_common::calc_thermo_tendencies(
                 fields.st.at("thl")->fld.data(),
                 fields.st.at("qt")->fld.data(),
                 hydro_types.at("qr").conversion_tend,
@@ -1414,10 +917,10 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     {
         // Sedimentation
         // Density correction fall speeds
-        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / rho_0<TF>);
-        const TF rho_corr = std::exp(-rho_vel<TF> * hlp);
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
+        const TF rho_corr = std::exp(-Sb_cold::rho_vel<TF> * hlp);
 
-        sedi_vel_rain<TF>(
+        Sb_cold::sedi_vel_rain<TF>(
                 &vq->fld.data()[k * gd.ijcells],
                 &vn->fld.data()[k * gd.ijcells],
                 &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
