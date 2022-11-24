@@ -121,6 +121,27 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 
 
 template<typename TF>
+struct T_cfg_2mom
+{
+    int i2mom_solver;        // 0) explicit (1) semi-implicit solver
+    int ccn_type;            // if not set by namelist, the ccn_type_gscp4 or ccn_type_gscp5 will win
+    TF alpha_spacefilling;   // factor involved in the conversion of ice/snow to graupel by riming
+    TF D_conv_ii;            // D-threshold for conversion to snow ice_selfcollection [m]
+    TF D_rainfrz_ig;         // rain --> ice oder graupel [m]
+    TF D_rainfrz_gh;         // rain --> graupel oder hail [m]
+    TF rain_cmu0;            // asymptotic mue-value for small D_m in the mu-Dm-Relation of Seifert (2008)
+    TF rain_cmu1;            // asymptotic mue-value for large D_m in the mu-Dm-Relation of Seifert (2008)
+    TF rain_cmu3;            // D_br: equilibrium diameter for breakup and selfcollection, but only used in mue-D-relation [m]
+    TF eva_q_fak_low;        // \  Parameters of the
+    TF eva_q_fak_high;       // |  ramp-function eva_q_fak(D_m) for reduction
+    TF eva_q_fak_Dbr_minfak; // |  of evaporation of drizzle-like rain
+    TF eva_q_fak_Dbr_maxfak; // /
+    TF melt_h_tune_fak;      // Factor to increase/decrease hail melting rate
+    TF Tmax_gr_rime;         // Allow formation of graupel by riming ice/snow only at T < this threshold [K]
+};
+
+
+template<typename TF>
 struct Hydro_type
 {
     std::string name;       // Species name (e.g. `rain`)
@@ -178,9 +199,16 @@ class Microphys_sb06 : public Microphys<TF>
         using Microphys<TF>::fields;
         using Microphys<TF>::field3d_operators;
 
+        void init_2mom_scheme();
+        void init_2mom_scheme_once();
+
         bool sw_warm;            // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
         bool sw_microbudget;     // Output full microphysics budget terms
         double cfl_max;          // Max CFL number in microphysics sedimentation
+
+        const int cloud_type = 2673;
+        const int mu_Dm_rain_typ = 1;
+        TF rain_gfak;
 
         // Map with hydrometeor types.
         std::map<std::string, Hydro_type<TF>> hydro_types;
@@ -259,6 +287,24 @@ class Microphys_sb06 : public Microphys<TF>
                 nullptr,          // n pointer
                 nullptr,          // q pointer
                 nullptr           // rho_v pointer
+        };
+
+        const T_cfg_2mom<TF> t_cfg_2mom{
+                1,        // i2mom_solver: 0) explicit (1) semi-implicit solver
+                -1,       // ccn_type: 6,7,8,9; if not set by namelist, the ccn_type_gscp4 or ccn_type_gscp5 will win
+                0.01,     // alpha_spacefilling
+                75.0e-6,  // D-threshold for conversion to snow ice_selfcollection [m]
+                0.50e-3,  // D_rainfrz_ig [m]
+                1.25e-3,  // D_rainfrz_gh [m]
+                6.0,      // rain_cmu0
+                30.0,     // rain_cmu1
+                1.1e-3,   // rain_cmu3 = D_br (only in mue-D-relation, not in selfcollection-breakup-code!) [m]
+                0.3,      // eva_q_fak_low
+                1.0,      // eva_q_fak_high
+                0.75,     // eva_q_fak_Dbr_minfak
+                0.9,      // eva_q_fak_Dbr_maxfak
+                1.0,      // melt_h_tune_fak
+                270.16    // Tmax_gr_rime [K]
         };
 };
 #endif
