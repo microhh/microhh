@@ -193,7 +193,7 @@ namespace Sb_common
 
 
     template<typename TF>
-    void calc_thermo_tendencies(
+    void calc_thermo_tendencies_cloud(
             TF* const restrict thlt,
             TF* const restrict qtt,
             const TF* const restrict qr_tend_conversion,
@@ -219,6 +219,35 @@ namespace Sb_common
             }
     }
 
+
+    template<typename TF>
+    void calc_thermo_tendencies_cloud_ice(
+            TF* const restrict thlt,
+            TF* const restrict qtt,
+            const TF* const restrict qtt_liq,
+            const TF* const restrict qtt_ice,
+            const TF* const restrict rho,
+            const TF* const restrict exner,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        const TF rho_i = TF(1) / rho[k];
+
+        for (int j = jstart; j < jend; j++)
+                #pragma ivdep
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ij  = i + j * jstride;
+                    const int ijk = i + j * jstride + k*kstride;
+
+                    qtt[ijk] += rho_i * (qtt_liq[ij] + qtt_ice[ij]);
+                    thlt[ijk] -=
+                            ((rho_i * Lv<TF> / (cp<TF> * exner[k]) * qtt_liq[ij]) +
+                             (rho_i * Ls<TF> / (cp<TF> * exner[k]) * qtt_ice[ij]));
+                }
+    }
 
     template<typename TF>
     void diagnose_tendency(

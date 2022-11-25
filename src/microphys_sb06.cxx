@@ -1106,6 +1106,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         it.second.conversion_tend = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
     }
 
+    // Diagnostic change in qt by warm (cloud) and cold (ice) processes.
+    // Used for bookkeeping difference between e.g. evaporation and sublimation.
+    auto qtt_liq = fields.get_tmp_xy();
+    auto qtt_ice = fields.get_tmp_xy();
+
     // Help functions to zero XY fields.
     auto zero_tmp_xy = [&](std::shared_ptr<std::vector<TF>>& fld_xy)
     {
@@ -1153,6 +1158,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             for (int n=0; n<gd.ijcells; ++n)
                 it.second.conversion_tend[n] = TF(0);
         }
+
+        // Zero diagnostic qt tendencies.
+        zero_tmp_xy(qtt_liq);
+        zero_tmp_xy(qtt_ice);
 
         // Density correction fall speeds
         // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
@@ -1284,6 +1293,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             Sb_cold::autoconversionSB(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
+                    (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
                     ql->fld.data(),
@@ -1298,6 +1308,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             Sb_cold::accretionSB(
                     hydro_types.at("qr").conversion_tend,
+                    (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     ql->fld.data(),
                     gd.istart, gd.iend,
@@ -1319,6 +1330,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             Sb_cold::rain_evaporation(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
+                    (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
                     fields.sp.at("qt")->fld.data(),
@@ -1336,7 +1348,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-
         }
 
         for (auto& it : hydro_types)
@@ -1378,16 +1389,29 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         // Calculate thermodynamic tendencies `thl` and `qt`,
         // from microphysics tendencies excluding sedimentation.
-        Sb_common::calc_thermo_tendencies(
-                fields.st.at("thl")->fld.data(),
-                fields.st.at("qt")->fld.data(),
-                hydro_types.at("qr").conversion_tend,
-                rho.data(),
-                exner.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k);
+        if (sw_warm)
+            Sb_common::calc_thermo_tendencies_cloud(
+                    fields.st.at("thl")->fld.data(),
+                    fields.st.at("qt")->fld.data(),
+                    hydro_types.at("qr").conversion_tend,
+                    rho.data(),
+                    exner.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        else
+            Sb_common::calc_thermo_tendencies_cloud_ice(
+                    fields.st.at("thl")->fld.data(),
+                    fields.st.at("qt")->fld.data(),
+                    (*qtt_liq).data(),
+                    (*qtt_ice).data(),
+                    rho.data(),
+                    exner.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
     }
 
     for (auto& it : hydro_types)
@@ -1420,6 +1444,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(rain_diameter);
     fields.release_tmp_xy(mu_r);
     fields.release_tmp_xy(lambda_r);
+
+    fields.release_tmp_xy(qtt_liq);
+    fields.release_tmp_xy(qtt_ice);
 }
 #endif
 
