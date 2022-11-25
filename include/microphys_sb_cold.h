@@ -213,15 +213,14 @@ namespace Sb_cold
             for (int i=istart; i<iend; i++)
             {
                 const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
 
-                if (qc[ijk] > q_crit<TF>)
+                if (qc[ij] > q_crit<TF>)
                 {
                     const TF n_c = Nc0; // cloud%n(i,k) in ICON
-                    const TF x_c = particle_meanmass(cloud, qc[ijk], n_c);
+                    const TF x_c = particle_meanmass(cloud, qc[ij], n_c);
 
-                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ijk]) * fm::pow2(x_c) * cloud_rho_v;    // NOTE `*dt` in ICON..
-                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(0.9));
+                    TF au = cloud_coeffs.k_au * fm::pow2(qc[ij]) * fm::pow2(x_c) * cloud_rho_v;    // NOTE `*dt` in ICON..
+                    const TF tau = std::min(std::max(TF(1) - qc[ij] / (qc[ij] + qr[ij] + eps), eps), TF(0.9));
                     const TF phi = k_1 * std::pow(tau, k_2) * fm::pow3(TF(1) - std::pow(tau, k_2));
                     au = au * (TF(1) + phi / fm::pow2(TF(1) - tau));
 
@@ -264,15 +263,14 @@ namespace Sb_cold
             for (int i=istart; i<iend; i++)
             {
                 const int ij = i + j * jstride;
-                const int ijk = i + j * jstride + k * kstride;
 
-                if (qc[ijk] > TF(0) && qr[ij] > TF(0))
+                if (qc[ij] > TF(0) && qr[ij] > TF(0))
                 {
 
                     // ..accretion rate of SB2001
-                    const TF tau = std::min(std::max(TF(1) - qc[ijk] / (qc[ijk] + qr[ij] + eps), eps), TF(1));
+                    const TF tau = std::min(std::max(TF(1) - qc[ij] / (qc[ij] + qr[ij] + eps), eps), TF(1));
                     const TF phi = fm::pow4(tau/(tau+k_1));
-                    const TF ac  = k_r *  qc[ijk] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
+                    const TF ac  = k_r *  qc[ij] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
 
                     qrt[ij] += ac;
                     qtt_liq[ij] -= ac;
@@ -372,21 +370,20 @@ namespace Sb_cold
             for (int i=istart; i<iend; i++)
             {
                 const int ij = i + j * jstride;
-                const int ijk = ij + k * kstride;
 
-                const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
-                const TF e_d = qv * Constants::Rd<TF> * T[ijk];
-                const TF e_sw = tmf::esat_liq(T[ijk]); // in ICON, this calls `sat_pres_water`
+                const TF qv = qt[ij] - ql[ij] - qi[ij];
+                const TF e_d = qv * Constants::Rd<TF> * T[ij];
+                const TF e_sw = tmf::esat_liq(T[ij]); // in ICON, this calls `sat_pres_water`
                 const TF s_sw = e_d / e_sw - TF(1);
 
-                if (s_sw < TF(0) && qr[ij] > TF(0) && ql[ijk] < q_crit<TF>)
+                if (s_sw < TF(0) && qr[ij] > TF(0) && ql[ij] < q_crit<TF>)
                 {
-                    const TF D_vtp = diffusivity(T[ijk], p[k]);
+                    const TF D_vtp = diffusivity(T[ij], p[k]);
 
                     // Note that 2*pi is correct, because c_r = 1/2 is assumed
                     const TF g_d =
-                        TF(2) * pi<TF> / ( Lv2 / (K_T<TF> * Constants::Rd<TF> * fm::pow2(T[ijk]))
-                            + Constants::Rd<TF> * T[ijk] / (D_vtp * e_sw) );
+                        TF(2) * pi<TF> / ( Lv2 / (K_T<TF> * Constants::Rd<TF> * fm::pow2(T[ij]))
+                            + Constants::Rd<TF> * T[ij] / (D_vtp * e_sw) );
 
                     const TF x_r = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF D_m = particle_diameter(rain, x_r);

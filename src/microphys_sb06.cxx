@@ -1320,7 +1320,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
-                    ql->fld.data(),
+                    &ql->fld.data()[k*gd.ijcells],
                     cloud_coeffs,
                     cloud, rain,
                     rho_corr,
@@ -1334,7 +1334,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     hydro_types.at("qr").conversion_tend,
                     (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
-                    ql->fld.data(),
+                    &ql->fld.data()[k*gd.ijcells],
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
@@ -1357,10 +1357,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
-                    fields.sp.at("qt")->fld.data(),
-                    ql->fld.data(),
-                    qi->fld.data(),
-                    T->fld.data(),
+                    &fields.sp.at("qt")->fld.data()[k*gd.ijcells],
+                    &ql->fld.data()[k*gd.ijcells],
+                    &qi->fld.data()[k*gd.ijcells],
+                    &T->fld.data()[k*gd.ijcells],
                     p.data(),
                     rain_coeffs,
                     cloud,
@@ -1612,7 +1612,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
                     &qtt->fld.data()[k*gd.ijcells],
                     (*qr_xy).data(),
                     (*nr_xy).data(),
-                    ql->fld.data(),
+                    &ql->fld.data()[k*gd.ijcells],
                     cloud_coeffs,
                     cloud, rain,
                     rho_corr[k],
@@ -1640,7 +1640,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
                     &qrt->fld.data()[k*gd.ijcells],
                     &qtt->fld.data()[k*gd.ijcells],
                     (*qr_xy).data(),
-                    ql->fld.data(),
+                    &ql->fld.data()[k*gd.ijcells],
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
@@ -1675,40 +1675,40 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
         // Evaporation
         zero_fields();
 
-        //for (int k=gd.kstart; k<gd.kend; ++k)
-        //{
-        //    set_moisture_slices(k);
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            set_moisture_slices(k);
 
-        //    Sb_cold::rain_evaporation(
-        //            &qrt->fld.data()[k*gd.ijcells],
-        //            &nrt->fld.data()[k*gd.ijcells],
-        //            &qtt->fld.data()[k*gd.ijcells],
-        //
-        //
-        //            hydro_types.at("qr").slice,
-        //            hydro_types.at("nr").slice,
-        //            fields.sp.at("qt")->fld.data(),
-        //            ql->fld.data(),
-        //            qi->fld.data(),
-        //            T->fld.data(),
-        //            p.data(),
-        //            rain_coeffs,
-        //            cloud,
-        //            rain,
-        //            t_cfg_2mom,
-        //            rain_gfak,
-        //            rho_corr,
-        //            gd.istart, gd.iend,
-        //            gd.jstart, gd.jend,
-        //            gd.icells, gd.ijcells,
-        //            k);
-        //}
+            Sb_cold::rain_evaporation(
+                    &qrt->fld.data()[k*gd.ijcells],
+                    &nrt->fld.data()[k*gd.ijcells],
+                    &qtt->fld.data()[k*gd.ijcells],
+                    (*qr_xy).data(),
+                    (*nr_xy).data(),
+                    (*qt_xy).data(),
+                    &ql->fld.data()[k*gd.ijcells],
+                    &qi->fld.data()[k*gd.ijcells],
+                    &T->fld.data()[k*gd.ijcells],
+                    p.data(),
+                    rain_coeffs,
+                    cloud,
+                    rain,
+                    t_cfg_2mom,
+                    rain_gfak,
+                    rho_corr[k],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        }
 
         to_kgkg(qrt);
         to_kgkg(nrt);
 
         stats.calc_stats("evap_qr", *qrt, no_offset, no_threshold);
         stats.calc_stats("evap_nr", *nrt, no_offset, no_threshold);
+
+
 
 
         fields.release_tmp(qrt);
