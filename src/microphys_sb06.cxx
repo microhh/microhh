@@ -377,7 +377,8 @@ Microphys_sb06<TF>::Microphys_sb06(
 
     // Read microphysics switches and settings
     cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
-    sw_warm = inputin.get_item<bool>("micro", "swwarm", "", true);
+    sw_warm = inputin.get_item<bool>("micro", "swwarm", "", false);
+    sw_microbudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     auto add_type = [&](
@@ -1029,6 +1030,29 @@ void Microphys_sb06<TF>::create(
 
             // Tendencies
             stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
+
+            // Microphysics budget
+            if (sw_microbudget)
+            {
+                const std::string group_name_budget = "micro_budget";
+
+                /*
+                 * Warm processes
+                */
+                stats.add_prof("auto_qr" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
+                stats.add_prof("auto_nr" , "Autoconversion tendency nr",  "kg-1 s-1", "z", group_name_budget);
+
+                stats.add_prof("accr_qr" , "Accretion tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
+
+                stats.add_prof("scbr_nr" , "Selfcollection/breakup tendency nr",  "kg-1 s-1", "z", group_name_budget);
+
+                stats.add_prof("evap_qr" , "Evaporation tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
+                stats.add_prof("evap_nr" , "Evaporation tendency nr",  "kg-1 s-1", "z", group_name_budget);
+
+                /*
+                 * Ice cold processes.
+                */
+            }
         }
 
         // Thermo tendencies
@@ -1498,6 +1522,207 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     fields.release_tmp(vq);
     fields.release_tmp(vn);
+
+    if (sw_microbudget)
+    {
+        auto qrt = fields.get_tmp();
+        auto nrt = fields.get_tmp();
+        auto qtt = fields.get_tmp();
+
+        auto qt_xy = fields.get_tmp_xy();
+        auto qr_xy = fields.get_tmp_xy();
+        auto nr_xy = fields.get_tmp_xy();
+
+        auto ql = fields.get_tmp();
+        auto qi = fields.get_tmp();
+        auto T = fields.get_tmp();
+
+        thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+        thermo.get_thermo_field(*qi, "qi", cyclic, is_stat);
+        thermo.get_thermo_field(*T, "T", cyclic, is_stat);
+
+        // Transform ql en qi from `kg kg-1` to `kg m-3`.
+        for (int k=gd.kstart; k<gd.kend; ++k)
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*gd.icells + k*gd.ijcells;
+                    ql->fld[ijk] *= rho[k];
+                    qi->fld[ijk] *= rho[k];
+                }
+
+        const std::vector<TF>& p = thermo.get_basestate_vector("p");
+        const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
+
+        // TMP/HACK BvS
+        //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+        const std::vector<TF>& rho = fields.rhoref;
+
+        auto zero_fields = [&]()
+        {
+            std::fill(qrt->fld.begin(), qrt->fld.end(), TF(0));
+            std::fill(nrt->fld.begin(), nrt->fld.end(), TF(0));
+            std::fill(qtt->fld.begin(), qtt->fld.end(), TF(0));
+        };
+
+        auto set_moisture_slices = [&](const int k)
+        {
+             // Copy xy slices moisture, and transform from
+             // `kg kg-1` to `kg m-3` and from `kg-1` to `m-3`.
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ij  = i + j * gd.icells;
+                    const int ijk = ij + k * gd.ijcells;
+
+                    (*qt_xy)[ij] = fields.sp.at("qt")->fld[ijk] * rho[k];
+                    (*qr_xy)[ij] = fields.sp.at("qr")->fld[ijk] * rho[k];
+                    (*nr_xy)[ij] = fields.sp.at("nr")->fld[ijk] * rho[k];
+                }
+        };
+
+        auto to_kgkg = [&](std::shared_ptr<Field3d<TF>>& fld)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    for (int i=gd.istart; i<gd.iend; ++i)
+                    {
+                        const int ijk = i + j * gd.icells + k * gd.ijcells;
+                        fld->fld[ijk] /= rho[k];
+                    }
+        };
+
+        std::vector<TF> rho_corr(gd.kcells);
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
+            rho_corr[k] = std::exp(-Sb_cold::rho_vel<TF>*hlp);
+        }
+
+        // Autoconversion.
+        zero_fields();
+
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            set_moisture_slices(k);
+
+            Sb_cold::autoconversionSB(
+                    &qrt->fld.data()[k*gd.ijcells],
+                    &nrt->fld.data()[k*gd.ijcells],
+                    &qtt->fld.data()[k*gd.ijcells],
+                    (*qr_xy).data(),
+                    (*nr_xy).data(),
+                    ql->fld.data(),
+                    cloud_coeffs,
+                    cloud, rain,
+                    rho_corr[k],
+                    Nc0,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        }
+
+        to_kgkg(qrt);
+        to_kgkg(nrt);
+
+        stats.calc_stats("auto_qr", *qrt, no_offset, no_threshold);
+        stats.calc_stats("auto_nr", *nrt, no_offset, no_threshold);
+
+        // Accretion
+        zero_fields();
+
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            set_moisture_slices(k);
+
+            Sb_cold::accretionSB(
+                    &qrt->fld.data()[k*gd.ijcells],
+                    &qtt->fld.data()[k*gd.ijcells],
+                    (*qr_xy).data(),
+                    ql->fld.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        }
+
+        to_kgkg(qrt);
+        stats.calc_stats("accr_qr", *qrt, no_offset, no_threshold);
+
+        // Selfcollection and breakup
+        zero_fields();
+
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            set_moisture_slices(k);
+
+            Sb_cold::rain_selfcollectionSB(
+                    &nrt->fld.data()[k*gd.ijcells],
+                    (*qr_xy).data(),
+                    (*nr_xy).data(),
+                    rain,
+                    rho_corr[k],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        }
+
+        to_kgkg(nrt);
+        stats.calc_stats("scbr_nr", *nrt, no_offset, no_threshold);
+
+        // Evaporation
+        zero_fields();
+
+        //for (int k=gd.kstart; k<gd.kend; ++k)
+        //{
+        //    set_moisture_slices(k);
+
+        //    Sb_cold::rain_evaporation(
+        //            &qrt->fld.data()[k*gd.ijcells],
+        //            &nrt->fld.data()[k*gd.ijcells],
+        //            &qtt->fld.data()[k*gd.ijcells],
+        //
+        //
+        //            hydro_types.at("qr").slice,
+        //            hydro_types.at("nr").slice,
+        //            fields.sp.at("qt")->fld.data(),
+        //            ql->fld.data(),
+        //            qi->fld.data(),
+        //            T->fld.data(),
+        //            p.data(),
+        //            rain_coeffs,
+        //            cloud,
+        //            rain,
+        //            t_cfg_2mom,
+        //            rain_gfak,
+        //            rho_corr,
+        //            gd.istart, gd.iend,
+        //            gd.jstart, gd.jend,
+        //            gd.icells, gd.ijcells,
+        //            k);
+        //}
+
+        to_kgkg(qrt);
+        to_kgkg(nrt);
+
+        stats.calc_stats("evap_qr", *qrt, no_offset, no_threshold);
+        stats.calc_stats("evap_nr", *nrt, no_offset, no_threshold);
+
+
+        fields.release_tmp(qrt);
+        fields.release_tmp(nrt);
+        fields.release_tmp(qtt);
+
+        fields.release_tmp_xy(qt_xy);
+        fields.release_tmp_xy(qr_xy);
+        fields.release_tmp_xy(nr_xy);
+
+        fields.release_tmp(ql);
+        fields.release_tmp(qi);
+        fields.release_tmp(T);
+    }
 }
 
 #ifndef USECUDA
