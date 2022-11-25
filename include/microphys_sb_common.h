@@ -92,7 +92,7 @@ namespace Sb_common
                 const int ijk = i + j * jstride + k * kstride;
 
                 // fld_3d_tend is still per kg, while fld_2d and fld_3d per m-3.
-                fld_2d[ij] = fld_3d[ijk] + 0*dt*rho[k]*fld_3d_tend[ijk];
+                fld_2d[ij] = fld_3d[ijk] + dt*rho[k]*fld_3d_tend[ijk];
             }
     }
 
@@ -244,7 +244,7 @@ namespace Sb_common
 
                     // Evaluate tendencies. This includes the tendencies from both conversions and implicit sedimentation.
                     // `Old` versions are integrated first with only the dynamics tendencies to avoid double counting.
-                    tend[ijk] += rho_i * (fld_new[ij] - (fld_old[ijk] + 0*dt*rho[k]*tend[ijk])) * dt_i;
+                    tend[ijk] += rho_i * (fld_new[ij] - (fld_old[ijk] + dt*rho[k]*tend[ijk])) * dt_i;
                 }
     }
 }
