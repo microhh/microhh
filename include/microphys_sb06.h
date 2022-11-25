@@ -73,7 +73,6 @@ struct Particle
     TF* rho_v;        // density correction of terminal fall velocity
 };
 
-
 // Because of OpenMP we have to separate the data pointers from the run-time-invariant coefficients.
 // Therefore, we carry 2 data structures for each particle species, e.g. graupel and graupel_coeff.
 // The following derived types are for the run-time coefficients
@@ -86,7 +85,6 @@ struct Particle_coeffs
     TF c_z; // coefficient for 2nd mass moment
 };
 
-
 // .. non-spherical particles have an Atlas-type terminal fall velocity relation
 template<typename TF>
 struct Particle_nonsphere : public Particle_coeffs<TF>
@@ -96,6 +94,15 @@ struct Particle_nonsphere : public Particle_coeffs<TF>
     TF gama; // 3rd parameter in Atlas-type fall speed
 };
 
+// .. for spherical particles we need to store the coefficients for the
+//    power law bulk sedimentation velocity
+template<typename TF>
+struct Particle_sphere : public Particle_coeffs<TF>
+{
+    TF coeff_alfa_n;
+    TF coeff_alfa_q;
+    TF coeff_lambda;
+};
 
 // raindrops have an Atlas-type terminal fall velocity relation
 // and a mu-D-relation which is used in sedimentation and evaporation
@@ -111,7 +118,6 @@ struct Particle_rain_coeffs : public Particle_nonsphere<TF>
     TF cmu5; // exponent
 };
 
-
 template<typename TF>
 struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 {
@@ -119,6 +125,30 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
     TF k_sc; //     and selfcollection
 };
 
+template<typename TF>
+struct Particle_frozen : public Particle<TF>
+{
+    TF ecoll_c;  //..maximum collision efficiency with cloud droplets
+    TF D_crit_c; //..D-threshold for cloud riming
+    TF q_crit_c; //..q-threshold for cloud riming
+    TF s_vel;    //..dispersion of fall velocity for collection kernel (see SB2006, Eqs 60-63)
+};
+
+template<typename TF>
+struct Particle_snow_coeffs : public Particle_sphere<TF>
+{
+    TF sc_delta_n; //..Parameters for self-collection
+    TF sc_theta_n; //   of snow
+};
+
+template<typename TF>
+struct Particle_ice_coeffs : public Particle_sphere<TF>
+{
+    TF sc_delta_n; //..Parameters for self-collection
+    TF sc_delta_q; //   of cloud ice
+    TF sc_theta_n;
+    TF sc_theta_q;
+};
 
 template<typename TF>
 struct T_cfg_2mom
@@ -235,6 +265,9 @@ class Microphys_sb06 : public Microphys<TF>
         Particle_cloud_coeffs<TF> cloud_coeffs;
         Particle<TF> rain;
         Particle_rain_coeffs<TF> rain_coeffs;
+        Particle_frozen<TF> ice;
+
+        Particle_frozen<TF> snow;
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name
@@ -287,6 +320,54 @@ class Microphys_sb06 : public Microphys<TF>
                 nullptr,          // n pointer
                 nullptr,          // q pointer
                 nullptr           // rho_v pointer
+        };
+
+        const Particle_frozen<TF> ice_cosmo5 {
+                "ice_cosmo5", //.name...Bezeichnung der Partikelklasse
+                0.000000,     //..nu...e..Breiteparameter der Verteil.
+                0.333333,     //..mu.....Exp.-parameter der Verteil.
+                1.00e-05,     //..x_max..maximale Teilchenmasse D=???e-2m
+                1.00e-12,     //..x_min..minimale Teilchenmasse D=200e-6m
+                0.835000,     //..a_geo..Koeff. Geometrie
+                0.390000,     //..b_geo..Koeff. Geometrie
+                2.77e+01,     //..a_vel..Koeff. Fallgesetz
+                0.215790,     //..b_vel..Koeff. Fallgesetz = 0.41/1.9
+                0.780000,     //..a_ven..Koeff. Ventilation (PK, S.541)
+                0.308000,     //..b_ven..Koeff. Ventilation (PK, S.541)
+                3.0,          //..cap....Koeff. Kapazitaet
+                3.0,          //..vsedi_max
+                0.0,          //..vsedi_min
+                nullptr,      //..n pointer
+                nullptr,      //..q pointer
+                nullptr,      //..rho_v pointer
+                0.80,         //..ecoll_c
+                150.0e-6,     //..D_crit_c
+                1.000e-5,     //..q_crit_c
+                0.25          //..sigma_vel
+        };
+
+        const Particle_frozen<TF> snowSBB{
+                "snowSBB", //..name...Bezeichnung der Partikelklasse
+                0.000000,  //..nu.....Breiteparameter der Verteil.
+                0.500000,  //..mu.....Exp.-parameter der Verteil.
+                2.00e-05,  //..x_max..maximale Teilchenmasse
+                1.00e-10,  //..x_min..minimale Teilchenmasse
+                5.130000,  //..a_geo..Koeff. Geometrie, x = 0.038*D**2
+                0.500000,  //..b_geo..Koeff. Geometrie = 1/2
+                8.294000,  //..a_vel..Koeff. Fallgesetz
+                0.125000,  //..b_vel..Koeff. Fallgesetz
+                0.780000,  //..a_ven..Koeff. Ventilation (PK, S.541)
+                0.308000,  //..b_ven..Koeff. Ventilation (PK, S.541)
+                3.00,      //..cap....Koeff. Kapazitaet
+                3.0,       //..vsedi_max
+                0.1,       //..vsedi_min
+                nullptr,   //..n pointer
+                nullptr,   //..q pointer
+                nullptr,   //..rho_v pointer
+                0.80,      //..ecoll_c
+                150.0e-6,  //..D_crit_c
+                1.000e-5,  //..q_crit_c
+                0.25       //..sigma_vel
         };
 
         const T_cfg_2mom<TF> t_cfg_2mom{

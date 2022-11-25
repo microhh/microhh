@@ -439,9 +439,8 @@ void Microphys_sb06<TF>::init_2mom_scheme()
 {
     cloud = cloud_nue1mue1;
     rain = rainSBB;
-
-    //call particle_frozen_assign(ice,ice_cosmo5)
-    //call particle_frozen_assign(snow,snowSBB)
+    ice = ice_cosmo5;
+    snow = snowSBB;
 
     //SELECT TYPE (graupel)
     //TYPE IS (particle_frozen)
@@ -530,13 +529,13 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     master.print_message("cloud_type = %d", this->cloud_type);
     master.print_message("cloud      = %s", cloud.name.c_str());
     master.print_message("rain       = %s", rain.name.c_str());
-    //master.print_message("ice        = %s", ice.name.c_str());
-    //master.print_message("snow       = %s", snow.name.c_str());
+    master.print_message("ice        = %s", ice.name.c_str());
+    master.print_message("snow       = %s", snow.name.c_str());
     //master.print_message("graupel    = %s", graupel.name.c_str());
     //master.print_message("hail       = %s", hail.name.c_str());
 
-    //! initialize bulk sedimentation velocities
-    //! calculates coeff_alfa_n, coeff_alfa_q, and coeff_lambda
+    // initialize bulk sedimentation velocities
+    // calculates coeff_alfa_n, coeff_alfa_q, and coeff_lambda
     //call init_2mom_sedi_vel(ice,ice_coeffs)
     //call init_2mom_sedi_vel(snow,snow_coeffs)
     //call init_2mom_sedi_vel(graupel,graupel_coeffs)
