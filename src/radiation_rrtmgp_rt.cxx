@@ -135,6 +135,40 @@ namespace
             }
         };
     }
+    
+    void load_aerosol_concs(
+            Gas_concs& aerosol_concs, Netcdf_handle& input_nc, const std::string& dim_name)
+    {
+        const int n_lay = input_nc.get_dimension_size(dim_name);
+
+        const std::vector<std::string> aerosol_types = {
+                "aermr01", "aermr02", "aermr03", "aermr04", "aermr05", "aermr06", 
+                "aermr07", "aermr08", "aermr09", "aermr10", "aermr11"};
+
+        for (const std::string& name : aerosol_types)
+        {
+            if (input_nc.variable_exists(name))
+            {
+                std::map<std::string, int> dims = input_nc.get_variable_dimensions(name);
+                const int n_dims = dims.size();
+
+                if (n_dims == 1 && dims.at(dim_name) == n_lay)
+                {
+                    aerosol_concs.set_vmr(name, 
+                            Array<Float,1>(input_nc.get_variable<Float>(name, {n_lay}), {n_lay}));
+                }
+                else
+                {
+                    throw std::runtime_error("Illegal dimensions of \"" + name + "\" in input");
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Cannot find \"" +name + "\" in input");
+            }
+        }
+    }
+
 
 
     Gas_optics_rrtmgp load_and_init_gas_optics(
@@ -399,6 +433,44 @@ namespace
                 radice_lwr, radice_upr, radice_fac,
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
+    }
+    
+    Aerosol_optics load_and_init_aerosol_optics(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_hum      = coef_nc.get_dimension_size("relative_humidity");
+        int n_philic = coef_nc.get_dimension_size("hydrophilic");
+        int n_phobic = coef_nc.get_dimension_size("hydrophobic");
+
+        Array<Float,2> band_lims_wvn({2, n_band});
+
+        Array<Float,2> mext_phobic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> ssa_phobic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> g_phobic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+
+        Array<Float,3> mext_philic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> ssa_philic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> g_philic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+
+        Array<Float,1> rh_upper(
+                coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
+
+        return Aerosol_optics(
+                band_lims_wvn, rh_upper,
+                mext_phobic, ssa_phobic, g_phobic,
+                mext_philic, ssa_philic, g_philic);
     }
 
 }
@@ -686,6 +758,7 @@ void Radiation_rrtmgp_rt<TF>::solve_longwave_column(
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         std::unique_ptr<Optical_props_arry>& optical_props,
+        std::unique_ptr<Optical_props_2str>& aerosol_props,
         Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
         Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
         Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
@@ -694,6 +767,7 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         const Array<Float,2>& col_dry,
         const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
         const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
+        const Gas_concs& aerosol_concs, const Array<Float,2>& rh,
         const Array<Float,1>& mu0,
         const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
         const Float tsi_scaling,
@@ -717,6 +791,21 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
             optical_props,
             toa_src,
             col_dry);
+
+    if (sw_aerosols)
+    {
+        aerosol_sw->aerosol_optics(
+                aerosol_concs,
+                rh,
+                p_lev,
+                *aerosol_props);
+
+        aerosol_props->delta_scale();
+
+        add_to(
+                dynamic_cast<Optical_props_2str&>(*optical_props),
+                dynamic_cast<Optical_props_2str&>(*aerosol_props));
+    }
 
     if (tsi_scaling >= 0)
         for (int igpt=1; igpt<=n_gpt; ++igpt)
@@ -785,12 +874,21 @@ template<typename TF>
 void Radiation_rrtmgp_rt<TF>::create_column(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo, Stats<TF>& stats)
 {
-    // 1. Load the available gas concentrations from the group of the netcdf file.
+    // 1. Load the available gas (and aerosol) concentrations from the group of the netcdf file.
     Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
     load_gas_concs(gas_concs_col, rad_nc, "lay");
+    
+    if (sw_aerosols)    
+    {
+        load_aerosol_concs(aerosol_concs_col, rad_nc, "lay");
+        
+        const int n_lay = rad_nc.get_dimension_size("lay");
+        rh_col.set_dims({1, n_lay});
+        rh_col = std::move(rad_nc.get_variable<Float>("rh", {n_lay}));
+    }
 
-    // 2. Set the coordinate for the reference profiles in the stats, before calling the other creates.
+    // 3. Set the coordinate for the reference profiles in the stats, before calling the other creates.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))
     {
         const int n_col = 1;
@@ -809,10 +907,10 @@ void Radiation_rrtmgp_rt<TF>::create_column(
                 p_lev.v());
     }
 
-    // 3. Read background profiles on pressure levels
+    // 4. Read background profiles on pressure levels
     read_background_profiles(rad_nc, gas_concs_col);
 
-    // 4. Call the column solvers for longwave and shortwave.
+    // 5. Call the column solvers for longwave and shortwave.
     if (sw_longwave)
         create_column_longwave (input, rad_nc, thermo, stats, gas_concs_col);
     if (sw_shortwave)
@@ -846,10 +944,6 @@ void Radiation_rrtmgp_rt<TF>::read_background_profiles(
     else
         Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
     
-    if (sw_aerosols)
-    {
-        return;
-    }
 }
 
 
@@ -925,6 +1019,8 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
     const int n_bnd = kdist_sw->get_nband();
 
     optical_props_sw = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *kdist_sw);
+    if (sw_aerosols) 
+        aerosol_props_sw = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *aerosol_sw);
 
     sw_flux_up_col    .set_dims({n_col, n_lev_col});
     sw_flux_dn_col    .set_dims({n_col, n_lev_col});
@@ -952,6 +1048,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
 
         solve_shortwave_column(
                 optical_props_sw,
+                aerosol_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
                 sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
                 gas_concs_col,
@@ -959,6 +1056,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
                 col_dry,
                 p_lay_col, p_lev_col,
                 t_lay_col, t_lev_col,
+                aerosol_concs_col, rh_col,
                 mu0,
                 sfc_alb_dir, sfc_alb_dif,
                 tsi_scaling,
@@ -997,6 +1095,9 @@ void Radiation_rrtmgp_rt<TF>::create_solver(
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle& rad_input_nc = input_nc.get_group("init");
     load_gas_concs(gas_concs, rad_input_nc, "z");
+    
+    if (sw_aerosols)
+        load_aerosol_concs(aerosol_concs, rad_input_nc, "z");
 
     // 2. Pass the gas concentrations to the solver initializers.
     if (sw_longwave)
@@ -1063,6 +1164,10 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
 
     cloud_sw = std::make_unique<Cloud_optics>(
             load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
+    
+    if (sw_aerosols)
+        aerosol_sw = std::make_unique<Aerosol_optics>(
+                load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
 
     // Set up the statistics.
     if (stats.get_switch())
@@ -1134,6 +1239,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 
     solve_shortwave_column(
             optical_props_sw,
+            aerosol_props_sw,
             sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
             sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
             gas_concs_col,
@@ -1141,6 +1247,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
             col_dry,
             p_lay_col, p_lev_col,
             t_lay_col, t_lev_col,
+            aerosol_concs_col, rh_col,
             mu0,
             sfc_alb_dir, sfc_alb_dif,
             tsi_scaling,

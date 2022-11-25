@@ -28,6 +28,7 @@
 #include "Gas_optics_rrtmgp.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Aerosol_optics.h"
 #include "Rte_lw.h"
 #include "Rte_sw.h"
 #include "Types.h"
@@ -124,6 +125,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         void solve_shortwave_column(
                 std::unique_ptr<Optical_props_arry>&,
+                std::unique_ptr<Optical_props_2str>&,
                 Array<Float,2>&, Array<Float,2>&,
                 Array<Float,2>&, Array<Float,2>&,
                 Array<Float,2>&, Array<Float,2>&, const Float,
@@ -132,6 +134,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
+                const Gas_concs&, const Array<Float,2>&,
                 const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Float,
@@ -160,7 +163,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
@@ -175,7 +178,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
@@ -185,7 +188,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Array_gpu<Float,2>& rt_flux_tod_dn, Array_gpu<Float,2>& rt_flux_tod_up, Array_gpu<Float,2>& rt_flux_sfc_dir, Array_gpu<Float,2>& rt_flux_sfc_dif,
                 Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const bool);
         #endif
 
@@ -263,18 +267,25 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         Gas_concs gas_concs_col;
 
+        Gas_concs aerosol_concs_col;
+        Array<Float,2> rh_col;
+
         std::unique_ptr<Source_func_lw> sources_lw;
         std::unique_ptr<Optical_props_arry> optical_props_lw;
         std::unique_ptr<Optical_props_arry> optical_props_sw;
 
+        std::unique_ptr<Optical_props_2str> aerosol_props_sw;
+
         // The full solver.
         Gas_concs gas_concs;
+        Gas_concs aerosol_concs;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
         std::unique_ptr<Cloud_optics> cloud_lw;
         std::unique_ptr<Cloud_optics> cloud_sw;
 
+        std::unique_ptr<Aerosol_optics> aerosol_sw;
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
         std::vector<Float> lw_flux_up_sfc;
@@ -308,10 +319,12 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
+        std::unique_ptr<Gas_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
+        std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

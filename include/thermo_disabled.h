@@ -84,6 +84,8 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_disabled"); };
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
+        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const
             { throw std::runtime_error("Function get_radiation_columns_g not implemented"); }
         void set_sun_location(Timeloop<TF>&);
@@ -96,6 +98,8 @@ class Thermo_disabled : public Thermo<TF>
         void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool)
             { throw std::runtime_error("Function get_thermo_field not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }

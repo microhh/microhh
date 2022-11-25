@@ -82,6 +82,8 @@ class Thermo
 
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
         virtual void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
@@ -109,6 +111,8 @@ class Thermo
 
         virtual void get_radiation_fields_g(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         virtual void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const = 0;
         #endif
 
