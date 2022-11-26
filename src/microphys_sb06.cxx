@@ -379,6 +379,7 @@ Microphys_sb06<TF>::Microphys_sb06(
     cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
     sw_warm = inputin.get_item<bool>("micro", "swwarm", "", false);
     sw_microbudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
+    sw_debug = inputin.get_item<bool>("micro", "swdebug", "", false);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     auto add_type = [&](
@@ -460,6 +461,12 @@ void Microphys_sb06<TF>::init_2mom_scheme()
 template<typename TF>
 void Microphys_sb06<TF>::init_2mom_scheme_once()
 {
+    if (sw_debug)
+    {
+        master.print_message("Init SB06 2 moment scheme\n");
+        master.print_message("---------------------------------------\n");
+    }
+
     // bulk ventilation coefficient, Eq. (88) of SB2006
     auto vent_coeff_a = [](
             const Particle<TF> &parti, const int n)
@@ -513,7 +520,7 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     };
 
     // initialize coefficients for bulk sedimentation velocity.
-    auto init_2mom_sedi_vel = [](
+    auto init_2mom_sedi_vel = [&](
             const Particle_frozen<TF>& particle,
             Particle_sphere<TF>& coeffs)
     {
@@ -523,6 +530,14 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
                 std::tgamma((particle.nu + TF(2)) / particle.mu);
         coeffs.coeff_lambda = std::tgamma((particle.nu + TF(1)) / particle.mu) /
                 std::tgamma((particle.nu + TF(2)) / particle.mu);
+
+        if (sw_debug)
+        {
+            master.print_message(" | name = %s\n", particle.name.c_str());
+            master.print_message(" | c_lam = %f\n", coeffs.coeff_lambda);
+            master.print_message(" | alf_n = %f\n", coeffs.coeff_alfa_n);
+            master.print_message(" | alf_q = %f\n", coeffs.coeff_alfa_q);
+        }
     };
 
     auto coll_delta = [](
@@ -649,16 +664,22 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     // rain_coeffs%cmu1 = cfg_params%rain_cmu1
     // rain_coeffs%cmu3 = cfg_params%rain_cmu3kkk
 
-    master.print_message("cloud_type = %d", this->cloud_type);
-    master.print_message("cloud      = %s", cloud.name.c_str());
-    master.print_message("rain       = %s", rain.name.c_str());
-    master.print_message("ice        = %s", ice.name.c_str());
-    master.print_message("snow       = %s", snow.name.c_str());
-    //master.print_message("graupel    = %s", graupel.name.c_str());
-    //master.print_message("hail       = %s", hail.name.c_str());
+    if (sw_debug)
+    {
+        master.print_message("Precipitation types:\n", this->cloud_type);
+        master.print_message(" | cloud_type = %d\n", this->cloud_type);
+        master.print_message(" | cloud = %s\n", cloud.name.c_str());
+        master.print_message(" | rain = %s\n", rain.name.c_str());
+        master.print_message(" | ice = %s\n", ice.name.c_str());
+        master.print_message(" | snow = %s\n", snow.name.c_str());
+        //master.print_message("graupel = %s\n", graupel.name.c_str());
+        //master.print_message("hail = %s\n", hail.name.c_str());
+    }
 
     // initialize bulk sedimentation velocities
     // calculates coeff_alfa_n, coeff_alfa_q, and coeff_lambda
+    if (sw_debug)
+        master.print_message("Sedimentation velocity coeffs:\n");
     init_2mom_sedi_vel(ice, ice_coeffs);
     init_2mom_sedi_vel(snow, snow_coeffs);
     //call init_2mom_sedi_vel(graupel,graupel_coeffs)
@@ -723,62 +744,62 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         rain_gfak = TF(-1);              // In this case gamma = 1 in rain_evaporation
     }
 
-    //IF (isprint) THEN
-    //  CALL message(TRIM(routine), "init_2mom_scheme: rain coeffs and sedi vel")
-    //  q_r = 1.0e-3_wp
-    //  WRITE (txt,'(2A)') "    name  = ",rain%name ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     alfa  = ",rain_coeffs%alfa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     beta  = ",rain_coeffs%beta ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     gama  = ",rain_coeffs%gama ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     cmu0  = ",rain_coeffs%cmu0 ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     cmu1  = ",rain_coeffs%cmu1 ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     cmu2  = ",rain_coeffs%cmu2 ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     cmu3  = ",rain_coeffs%cmu3 ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     cmu4  = ",rain_coeffs%cmu4 ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,I10)')   "     cmu5  = ",rain_coeffs%cmu5 ; CALL message(routine,TRIM(txt))
-    //  x_r = rain%x_min ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_min,vq_rain_min,1,1)
-    //  x_r = rain%x_max ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_max,vq_rain_max,1,1)
-    //  WRITE(txt,'(A)')       "    out-of-cloud: " ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
-    //  q_c = 1e-3_wp
-    //  x_r = rain%x_min ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_min,vq_rain_min,1,1,q_c)
-    //  x_r = rain%x_max ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_max,vq_rain_max,1,1,q_c)
-    //  WRITE(txt,'(A)')       "    in-cloud: " ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
-    //END IF
+    if (sw_debug)
+    {
+        master.print_message("Rain coeffs and sedimentation velocities:\n");
+        master.print_message(" | name = %s\n", rain.name.c_str());
+        master.print_message(" | alfa = %f\n", rain_coeffs.alfa);
+        master.print_message(" | beta = %f\n", rain_coeffs.beta);
+        master.print_message(" | gama = %f\n", rain_coeffs.gama);
+        master.print_message(" | cmu0 = %f\n", rain_coeffs.cmu0);
+        master.print_message(" | cmu1 = %f\n", rain_coeffs.cmu1);
+        master.print_message(" | cmu2 = %f\n", rain_coeffs.cmu2);
+        master.print_message(" | cmu3 = %f\n", rain_coeffs.cmu3);
+        master.print_message(" | cmu4 = %f\n", rain_coeffs.cmu4);
+        master.print_message(" | cmu5 = %f\n", rain_coeffs.cmu5);
+
+        //WRITE(txt,"    out-of-cloud: " ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,"     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,"     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,"     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,"     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
+        //q_c = 1e-3_wp
+        //x_r = rain%x_min ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_min,vq_rain_min,1,1,q_c)
+        //x_r = rain%x_max ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_max,vq_rain_max,1,1,q_c)
+        //WRITE(txt,'(A)')       "    in-cloud: " ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,'(A,D10.3)') "     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,'(A,D10.3)') "     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,'(A,D10.3)') "     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
+        //WRITE(txt,'(A,D10.3)') "     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
+    }
 
     // initialization for snow_cloud_riming
     setup_particle_collection_type1(snow, cloud, scr_coeffs);
 
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "   a_snow      = ",snow%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   b_snow      = ",snow%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   alf_snow    = ",snow%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   bet_snow    = ",snow%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   a_cloud    = ",cloud%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   b_cloud    = ",cloud%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   alf_cloud  = ",cloud%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   bet_cloud  = ",cloud%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_ss = ",scr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_sc = ",scr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_cc = ",scr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_ss = ",scr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_sc = ",scr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_cc = ",scr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_ss = ",scr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_sc = ",scr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_cc = ",scr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_ss = ",scr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_sc = ",scr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_cc = ",scr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    if (sw_debug)
+    {
+        master.print_message("Snow-cloud riming:\n");
+        master.print_message(" | a_snow = %f\n", snow.a_geo);
+        master.print_message(" | b_snow = %f\n", snow.b_geo);
+        master.print_message(" | alf_snow = %f\n", snow.a_vel);
+        master.print_message(" | bet_snow = %f\n", snow.b_vel);
+        master.print_message(" | a_cloud = %f\n", cloud.a_geo);
+        master.print_message(" | b_cloud = %f\n", cloud.b_geo);
+        master.print_message(" | alf_cloud  = %f\n", cloud.a_vel);
+        master.print_message(" | bet_cloud  = %f\n", cloud.b_vel);
+        master.print_message(" | delta_n_ss = %f\n", scr_coeffs.delta_n_aa);
+        master.print_message(" | delta_n_sc = %f\n", scr_coeffs.delta_n_ab);
+        master.print_message(" | delta_n_cc = %f\n", scr_coeffs.delta_n_bb);
+        master.print_message(" | theta_n_ss = %f\n", scr_coeffs.theta_n_aa);
+        master.print_message(" | theta_n_sc = %f\n", scr_coeffs.theta_n_ab);
+        master.print_message(" | theta_n_cc = %f\n", scr_coeffs.theta_n_bb);
+        master.print_message(" | delta_q_ss = %f\n", scr_coeffs.delta_q_aa);
+        master.print_message(" | delta_q_sc = %f\n", scr_coeffs.delta_q_ab);
+        master.print_message(" | delta_q_cc = %f\n", scr_coeffs.delta_q_bb);
+        master.print_message(" | theta_q_ss = %f\n", scr_coeffs.theta_q_aa);
+        master.print_message(" | theta_q_sc = %f\n", scr_coeffs.theta_q_ab);
+        master.print_message(" | theta_q_cc = %f\n", scr_coeffs.theta_q_bb);
+    }
 
     //! coefficients for snow_rain_riming
     //CALL setup_particle_collection_type2(snow,rain,srr_coeffs)
@@ -1120,6 +1141,9 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     //    CALL message(routine,"Equidistant lookup table for Segal-Khain created")
     //  ENDIF
     //END IF
+
+    if (sw_debug)
+        master.print_message("---------------------------------------\n");
 }
 
 template<typename TF>

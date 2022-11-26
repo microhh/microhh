@@ -252,6 +252,7 @@ class Microphys_sb06 : public Microphys<TF>
 
         bool sw_warm;            // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
         bool sw_microbudget;     // Output full microphysics budget terms
+        bool sw_debug;           // Print debug info
         double cfl_max;          // Max CFL number in microphysics sedimentation
 
         const int cloud_type = 2673;
