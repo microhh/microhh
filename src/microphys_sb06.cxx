@@ -461,7 +461,8 @@ template<typename TF>
 void Microphys_sb06<TF>::init_2mom_scheme_once()
 {
     // bulk ventilation coefficient, Eq. (88) of SB2006
-    auto vent_coeff_a = [](const Particle<TF> &parti, const int n)
+    auto vent_coeff_a = [](
+            const Particle<TF> &parti, const int n)
     {
         const TF vent_coeff_a = parti.a_ven
                                 * std::tgamma((parti.nu + n + parti.b_geo) / parti.mu)
@@ -473,7 +474,8 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     };
 
     // bulk ventilation coefficient, Eq. (89) of SB2006
-    auto vent_coeff_b = [](const Particle<TF> &parti, const int n)
+    auto vent_coeff_b = [](
+            const Particle<TF> &parti, const int n)
     {
         constexpr TF m_f = 0.500; // see PK, S.541. Do not change.
 
@@ -487,17 +489,18 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         return vent_coeff_b;
     };
 
-    auto moment_gamma = [](const Particle<TF> &p, const int n)
+    auto moment_gamma = [](
+            const Particle<TF> &p, const int n)
     {
         const TF moment_gamma = std::tgamma((n + p.nu + 1.0) / p.mu) / std::tgamma((p.nu + 1.0) / p.mu)
                                 * std::pow(std::tgamma((p.nu + 1.0) / p.mu) / std::tgamma((p.nu + 2.0) / p.mu), n);
-
         return moment_gamma;
     };
 
     // Setup the subset of the coefficients that does not follow from the copy.
-    auto setup_particle_coeffs = [&vent_coeff_a, &vent_coeff_b, &moment_gamma](const Particle<TF> &ptype,
-                                                                               Particle_coeffs<TF> &pcoeffs)
+    auto setup_particle_coeffs = [&vent_coeff_a, &vent_coeff_b, &moment_gamma](
+            const Particle<TF> &ptype,
+            Particle_coeffs<TF> &pcoeffs)
     {
         constexpr TF N_sc = 0.710;  // Schmidt-Zahl (PK, S.541)
         constexpr TF n_f = 0.333;   // Exponent von N_sc im Vent-koeff. (PK, S.541)
@@ -507,6 +510,126 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         pcoeffs.a_f = vent_coeff_a(ptype, 1);
         pcoeffs.b_f = vent_coeff_b(ptype, 1) * std::pow(N_sc, n_f) / std::sqrt(nu_l);
         pcoeffs.c_z = moment_gamma(ptype, 2);
+    };
+
+    // initialize coefficients for bulk sedimentation velocity.
+    auto init_2mom_sedi_vel = [](
+            const Particle_frozen<TF>& particle,
+            Particle_sphere<TF>& coeffs)
+    {
+        coeffs.coeff_alfa_n = particle.a_vel * std::tgamma((particle.nu + particle.b_vel + TF(1)) / particle.mu) /
+                std::tgamma((particle.nu + TF(1)) / particle.mu);
+        coeffs.coeff_alfa_q = particle.a_vel * std::tgamma((particle.nu + particle.b_vel + TF(2)) / particle.mu) /
+                std::tgamma((particle.nu + TF(2)) / particle.mu);
+        coeffs.coeff_lambda = std::tgamma((particle.nu + TF(1)) / particle.mu) /
+                std::tgamma((particle.nu + TF(2)) / particle.mu);
+    };
+
+    auto coll_delta = [](
+            const Particle<TF>& p1, const int n)
+    {
+        return std::tgamma((TF(2) * p1.b_geo + p1.nu + TF(1) + n) / p1.mu)
+             / std::tgamma((p1.nu + TF(1)) / p1.mu)
+             * pow(std::tgamma((p1.nu + TF(1)) / p1.mu), (TF(2) * p1.b_geo + n))
+             / pow(std::tgamma((p1.nu + TF(2)) / p1.mu), (TF(2) * p1.b_geo + n));
+    };
+
+    // wrapper for coll_delta (unnecessary and unused argument p2, but do not remove this)
+    auto coll_delta_11 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return coll_delta(p1, n);
+    };
+
+    // wrapper for coll_delta (unnecessary and unused argument p1, but do not remove this)
+    auto coll_delta_22 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return coll_delta(p2, n);
+    };
+
+    // coefficient for general collision integral, Eq. (91) of SB2006
+    auto coll_delta_12 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return TF(2) * std::tgamma((p1.b_geo + p1.nu + TF(1)) / p1.mu)
+                     / std::tgamma((p1.nu + TF(1)) / p1.mu)
+                     * pow(std::tgamma((p1.nu + TF(1)) / p1.mu), (p1.b_geo))
+                     / pow(std::tgamma((p1.nu + TF(2)) / p1.mu), (p1.b_geo))
+                     * std::tgamma((p2.b_geo+p2.nu+TF(1) + n)/p2.mu)
+                     / std::tgamma((p2.nu + TF(1)) / p2.mu)
+                     * pow(std::tgamma((p2.nu + TF(1)) / p2.mu), (p2.b_geo + n))
+                     / pow(std::tgamma((p2.nu + TF(2)) / p2.mu), (p2.b_geo + n));
+    };
+
+    // coefficient for general collision integral, Eq. (92) of SB2006
+    auto coll_theta = [](
+            const Particle<TF>& p1, const int n)
+    {
+        return std::tgamma((TF(2) * p1.b_vel + TF(2) * p1.b_geo + p1.nu + TF(1) + n) / p1.mu)
+             / std::tgamma((TF(2) * p1.b_geo + p1.nu + TF(1) + n) / p1.mu)
+             * pow(std::tgamma((p1.nu + TF(1)) / p1.mu), (TF(2) * p1.b_vel))
+             / pow(std::tgamma((p1.nu + TF(2)) / p1.mu), (TF(2) * p1.b_vel));
+    };
+
+    // wrapper for coll_theta (unnecessary and unused argument p2, but do not remove this)
+    auto coll_theta_11 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return coll_theta(p1, n);
+    };
+
+    // wrapper for coll_theta (unnecessary and unused argument p1, but do not remove this)
+    auto coll_theta_22 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return coll_theta(p2, n);
+    };
+
+    // coefficient for general collision integral, Eq. (93) of SB2006
+    auto coll_theta_12 = [&](
+            const Particle<TF>& p1,
+            const Particle<TF>& p2,
+            const int n)
+    {
+        return TF(2) * std::tgamma((p1.b_vel + TF(2) * p1.b_geo + p1.nu + TF(1)) / p1.mu)
+                     / std::tgamma((TF(2) * p1.b_geo + p1.nu + TF(1)) / p1.mu)
+                     * pow(std::tgamma((p1.nu + TF(1)) / p1.mu), p1.b_vel)
+                     / pow(std::tgamma((p1.nu + TF(2)) / p1.mu), p1.b_vel)
+                     * std::tgamma((p2.b_vel + TF(2) * p2.b_geo + p2.nu + TF(1) + n) / p2.mu)
+                     / std::tgamma((TF(2) * p2.b_geo + p2.nu + TF(1) + n) / p2.mu)
+                     * pow(std::tgamma((p2.nu + TF(1)) / p2.mu), p2.b_vel)
+                     / pow(std::tgamma((p2.nu + TF(2)) / p2.mu), p2.b_vel);
+    };
+
+    auto setup_particle_collection_type1 = [&](
+            const Particle<TF>& ptype,
+            const Particle<TF>& qtype,
+            Collection_coeffs<TF>& coll_coeffs)
+    {
+        coll_coeffs.delta_n_aa = coll_delta_11(ptype, qtype, 0);
+        coll_coeffs.delta_n_ab = coll_delta_12(ptype, qtype, 0);
+        coll_coeffs.delta_n_bb = coll_delta_22(ptype, qtype, 0);
+        coll_coeffs.delta_q_aa = coll_delta_11(ptype, qtype, 0);
+        coll_coeffs.delta_q_ab = coll_delta_12(ptype, qtype, 1);
+        coll_coeffs.delta_q_bb = coll_delta_22(ptype, qtype, 1);
+
+        coll_coeffs.theta_n_aa = coll_theta_11(ptype, qtype, 0);
+        coll_coeffs.theta_n_ab = coll_theta_12(ptype, qtype, 0);
+        coll_coeffs.theta_n_bb = coll_theta_22(ptype, qtype, 0);
+        coll_coeffs.theta_q_aa = coll_theta_11(ptype, qtype, 0);
+        coll_coeffs.theta_q_ab = coll_theta_12(ptype, qtype, 1);
+        coll_coeffs.theta_q_bb = coll_theta_22(ptype, qtype, 1);
     };
 
     init_2mom_scheme();
@@ -536,8 +659,8 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
 
     // initialize bulk sedimentation velocities
     // calculates coeff_alfa_n, coeff_alfa_q, and coeff_lambda
-    //call init_2mom_sedi_vel(ice,ice_coeffs)
-    //call init_2mom_sedi_vel(snow,snow_coeffs)
+    init_2mom_sedi_vel(ice, ice_coeffs);
+    init_2mom_sedi_vel(snow, snow_coeffs);
     //call init_2mom_sedi_vel(graupel,graupel_coeffs)
     //call init_2mom_sedi_vel(hail,hail_coeffs)
 
@@ -629,10 +752,11 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     //  WRITE(txt,'(A,D10.3)') "     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
     //  WRITE(txt,'(A,D10.3)') "     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
     //END IF
-    //
-    //! initialization for snow_cloud_riming
-    //CALL setup_particle_collection_type1(snow,cloud,scr_coeffs)
-    //
+
+    // initialization for snow_cloud_riming
+    setup_particle_collection_type1(snow, cloud, scr_coeffs);
+
+
     //IF (isprint) THEN
     //  WRITE(txt,'(A,D10.3)') "   a_snow      = ",snow%a_geo ; CALL message(routine,TRIM(txt))
     //  WRITE(txt,'(A,D10.3)') "   b_snow      = ",snow%b_geo ; CALL message(routine,TRIM(txt))

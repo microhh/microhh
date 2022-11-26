@@ -126,15 +126,6 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 };
 
 template<typename TF>
-struct Particle_frozen : public Particle<TF>
-{
-    TF ecoll_c;  //..maximum collision efficiency with cloud droplets
-    TF D_crit_c; //..D-threshold for cloud riming
-    TF q_crit_c; //..q-threshold for cloud riming
-    TF s_vel;    //..dispersion of fall velocity for collection kernel (see SB2006, Eqs 60-63)
-};
-
-template<typename TF>
 struct Particle_snow_coeffs : public Particle_sphere<TF>
 {
     TF sc_delta_n; //..Parameters for self-collection
@@ -149,6 +140,16 @@ struct Particle_ice_coeffs : public Particle_sphere<TF>
     TF sc_theta_n;
     TF sc_theta_q;
 };
+
+template<typename TF>
+struct Particle_frozen : public Particle<TF>
+{
+    TF ecoll_c;  //..maximum collision efficiency with cloud droplets
+    TF D_crit_c; //..D-threshold for cloud riming
+    TF q_crit_c; //..q-threshold for cloud riming
+    TF s_vel;    //..dispersion of fall velocity for collection kernel (see SB2006, Eqs 60-63)
+};
+
 
 template<typename TF>
 struct T_cfg_2mom
@@ -170,6 +171,22 @@ struct T_cfg_2mom
     TF Tmax_gr_rime;         // Allow formation of graupel by riming ice/snow only at T < this threshold [K]
 };
 
+template<typename TF>
+struct Collection_coeffs
+{
+    TF delta_n_aa;
+    TF delta_n_ab;
+    TF delta_n_bb;
+    TF delta_q_aa;
+    TF delta_q_ab;
+    TF delta_q_bb;
+    TF theta_n_aa;
+    TF theta_n_ab;
+    TF theta_n_bb;
+    TF theta_q_aa;
+    TF theta_q_ab;
+    TF theta_q_bb;
+};
 
 template<typename TF>
 struct Hydro_type
@@ -191,6 +208,7 @@ struct Hydro_type
     TF* slice;
     TF* conversion_tend;
 };
+
 
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
@@ -263,11 +281,29 @@ class Microphys_sb06 : public Microphys<TF>
 
         Particle<TF> cloud;
         Particle_cloud_coeffs<TF> cloud_coeffs;
+
         Particle<TF> rain;
         Particle_rain_coeffs<TF> rain_coeffs;
+
         Particle_frozen<TF> ice;
+        Particle_ice_coeffs<TF> ice_coeffs;
 
         Particle_frozen<TF> snow;
+        Particle_snow_coeffs<TF> snow_coeffs;
+
+        Collection_coeffs<TF> scr_coeffs;  // snow cloud riming
+        //TYPE(rain_riming_coeffs),SAVE :: srr_coeffs  ! snow rain riming
+        //TYPE(rain_riming_coeffs),SAVE :: irr_coeffs  ! ice rain riming
+        //Collection_coeffs<TF> icr_coeffs;  // ice cloud riming
+        //Collection_coeffs<TF> hrr_coeffs;  // hail rain riming
+        //Collection_coeffs<TF> grr_coeffs;  // graupel rain riming
+        //Collection_coeffs<TF> hcr_coeffs;  // hail cloud riming
+        //Collection_coeffs<TF> gcr_coeffs;  // graupel cloud  riming
+        //Collection_coeffs<TF> sic_coeffs;  // snow ice collection
+        //Collection_coeffs<TF> hic_coeffs;  // hail ice collection
+        //Collection_coeffs<TF> gic_coeffs;  // graupel ice collection
+        //Collection_coeffs<TF> hsc_coeffs;  // hail snow collection
+        //Collection_coeffs<TF> gsc_coeffs;  // graupel snow collection
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name
