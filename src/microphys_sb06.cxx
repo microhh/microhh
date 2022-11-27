@@ -758,19 +758,50 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         master.print_message(" | cmu4 = %f\n", rain_coeffs.cmu4);
         master.print_message(" | cmu5 = %f\n", rain_coeffs.cmu5);
 
-        //WRITE(txt,"    out-of-cloud: " ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,"     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,"     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,"     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,"     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
-        //q_c = 1e-3_wp
-        //x_r = rain%x_min ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_min,vq_rain_min,1,1,q_c)
-        //x_r = rain%x_max ; CALL sedi_vel_rain(rain,rain_coeffs,q_r,x_r,rhocorr,vn_rain_max,vq_rain_max,1,1,q_c)
-        //WRITE(txt,'(A)')       "    in-cloud: " ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,'(A,D10.3)') "     vn_rain_min  = ",vn_rain_min ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,'(A,D10.3)') "     vn_rain_max  = ",vn_rain_max ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,'(A,D10.3)') "     vq_rain_min  = ",vq_rain_min ; CALL message(routine,TRIM(txt))
-        //WRITE(txt,'(A,D10.3)') "     vq_rain_max  = ",vq_rain_max ; CALL message(routine,TRIM(txt))
+        auto get_sedi_vel = [&](const TF x_r, const bool use_ql)
+        {
+            const TF nr_val = 1e-3 / x_r;
+            std::vector<TF> qr = {1e-3};
+            std::vector<TF> qc = {1e-3};
+            std::vector<TF> nr = {nr_val};
+            std::vector<TF> vq(1);
+            std::vector<TF> vn(1);
+            std::vector<TF> rho = {1};
+            const TF rho_corr = 1;
+
+            Sb_cold::sedi_vel_rain<TF>(
+                    vq.data(),
+                    vn.data(),
+                    qr.data(),
+                    nr.data(),
+                    qc.data(),
+                    rho.data(),
+                    rain, rain_coeffs,
+                    rho_corr,
+                    0, 1,
+                    0, 1,
+                    0, 0, 0, use_ql);
+
+            return std::pair<TF, TF>{vq[0], vn[0]};
+        };
+
+        std::pair<TF,TF> out_cloud_min = get_sedi_vel(rain.x_min, false);
+        std::pair<TF,TF> out_cloud_max = get_sedi_vel(rain.x_max, false);
+
+        master.print_message("Sedimentation out-of-cloud:\n");
+        master.print_message(" | vn_rain_min = %f\n", out_cloud_min.second);
+        master.print_message(" | vn_rain_max = %f\n", out_cloud_max.second);
+        master.print_message(" | vq_rain_min = %f\n", out_cloud_min.first);
+        master.print_message(" | vq_rain_max = %f\n", out_cloud_max.first);
+
+        std::pair<TF,TF> in_cloud_min = get_sedi_vel(rain.x_min, true);
+        std::pair<TF,TF> in_cloud_max = get_sedi_vel(rain.x_max, true);
+
+        master.print_message("Sedimentation in-cloud:\n");
+        master.print_message(" | vn_rain_min = %f\n", in_cloud_min.second);
+        master.print_message(" | vn_rain_max = %f\n", in_cloud_max.second);
+        master.print_message(" | vq_rain_min = %f\n", in_cloud_min.first);
+        master.print_message(" | vq_rain_max = %f\n", in_cloud_max.first);
     }
 
     // initialization for snow_cloud_riming
