@@ -326,17 +326,18 @@ class Microphys_sb06 : public Microphys<TF>
 
         Collection_coeffs<TF> scr_coeffs;  // snow cloud riming
         Rain_riming_coeffs<TF> srr_coeffs; // snow rain riming
-        //TYPE(rain_riming_coeffs),SAVE :: irr_coeffs  ! ice rain riming
-        //Collection_coeffs<TF> icr_coeffs;  // ice cloud riming
-        //Collection_coeffs<TF> hrr_coeffs;  // hail rain riming
-        //Collection_coeffs<TF> grr_coeffs;  // graupel rain riming
-        //Collection_coeffs<TF> hcr_coeffs;  // hail cloud riming
-        //Collection_coeffs<TF> gcr_coeffs;  // graupel cloud  riming
-        //Collection_coeffs<TF> sic_coeffs;  // snow ice collection
-        //Collection_coeffs<TF> hic_coeffs;  // hail ice collection
-        //Collection_coeffs<TF> gic_coeffs;  // graupel ice collection
-        //Collection_coeffs<TF> hsc_coeffs;  // hail snow collection
-        //Collection_coeffs<TF> gsc_coeffs;  // graupel snow collection
+        Rain_riming_coeffs<TF> irr_coeffs; // ice rain riming
+        Collection_coeffs<TF> icr_coeffs;  // ice cloud riming
+
+        Collection_coeffs<TF> hrr_coeffs;  // hail rain riming
+        Collection_coeffs<TF> grr_coeffs;  // graupel rain riming
+        Collection_coeffs<TF> hcr_coeffs;  // hail cloud riming
+        Collection_coeffs<TF> gcr_coeffs;  // graupel cloud  riming
+        Collection_coeffs<TF> sic_coeffs;  // snow ice collection
+        Collection_coeffs<TF> hic_coeffs;  // hail ice collection
+        Collection_coeffs<TF> gic_coeffs;  // graupel ice collection
+        Collection_coeffs<TF> hsc_coeffs;  // hail snow collection
+        Collection_coeffs<TF> gsc_coeffs;  // graupel snow collection
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name

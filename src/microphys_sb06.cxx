@@ -634,7 +634,9 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     auto setup_particle_collection_type1 = [&](
             const Particle<TF>& ptype,
             const Particle<TF>& qtype,
-            Collection_coeffs<TF>& coll_coeffs)
+            Collection_coeffs<TF>& coll_coeffs,
+            const std::string pname,
+            const std::string qname)
     {
         coll_coeffs.delta_n_aa = coll_delta_11(ptype, qtype, 0);
         coll_coeffs.delta_n_ab = coll_delta_12(ptype, qtype, 0);
@@ -649,12 +651,42 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         coll_coeffs.theta_q_aa = coll_theta_11(ptype, qtype, 0);
         coll_coeffs.theta_q_ab = coll_theta_12(ptype, qtype, 1);
         coll_coeffs.theta_q_bb = coll_theta_22(ptype, qtype, 1);
+
+        if (sw_debug)
+        {
+            char l1 = pname[0];
+            char l2 = qname[0];
+
+            master.print_message("%s-%s riming:\n", pname.c_str(), qname.c_str());
+            master.print_message(" | a_%s = %f\n", pname.c_str(), ptype.a_geo);
+            master.print_message(" | b_%s = %f\n", pname.c_str(), ptype.b_geo);
+            master.print_message(" | alf_%s = %f\n", pname.c_str(), ptype.a_vel);
+            master.print_message(" | bet_%s = %f\n", pname.c_str(), ptype.b_vel);
+            master.print_message(" | a_%s = %f\n", qname.c_str(), qtype.a_geo);
+            master.print_message(" | b_%s = %f\n", qname.c_str(), qtype.b_geo);
+            master.print_message(" | alf_%s  = %f\n", qname.c_str(), qtype.a_vel);
+            master.print_message(" | bet_%s  = %f\n", qname.c_str(), qtype.b_vel);
+            master.print_message(" | delta_n_%c%c = %f\n", l1, l1, coll_coeffs.delta_n_aa);
+            master.print_message(" | delta_n_%c%c = %f\n", l1, l2, coll_coeffs.delta_n_ab);
+            master.print_message(" | delta_n_%c%c = %f\n", l2, l2, coll_coeffs.delta_n_bb);
+            master.print_message(" | theta_n_%c%c = %f\n", l1, l1, coll_coeffs.theta_n_aa);
+            master.print_message(" | theta_n_%c%c = %f\n", l1, l2, coll_coeffs.theta_n_ab);
+            master.print_message(" | theta_n_%c%c = %f\n", l2, l2, coll_coeffs.theta_n_bb);
+            master.print_message(" | delta_q_%c%c = %f\n", l1, l1, coll_coeffs.delta_q_aa);
+            master.print_message(" | delta_q_%c%c = %f\n", l1, l2, coll_coeffs.delta_q_ab);
+            master.print_message(" | delta_q_%c%c = %f\n", l2, l2, coll_coeffs.delta_q_bb);
+            master.print_message(" | theta_q_%c%c = %f\n", l1, l1, coll_coeffs.theta_q_aa);
+            master.print_message(" | theta_q_%c%c = %f\n", l1, l2, coll_coeffs.theta_q_ab);
+            master.print_message(" | theta_q_%c%c = %f\n", l2, l2, coll_coeffs.theta_q_bb);
+        }
     };
 
     auto setup_particle_collection_type2 = [&](
             const Particle<TF>& ptype,
             const Particle<TF>& qtype,
-            Rain_riming_coeffs<TF>& coll_coeffs)
+            Rain_riming_coeffs<TF>& coll_coeffs,
+            const std::string pname,
+            const std::string qname)
     {
         coll_coeffs.delta_n_aa = coll_delta_11(ptype, qtype, 0);
         coll_coeffs.delta_n_ab = coll_delta_12(ptype, qtype, 0);
@@ -671,6 +703,36 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         coll_coeffs.theta_q_ab = coll_theta_12(ptype, qtype, 1);
         coll_coeffs.theta_q_ba = coll_theta_12(qtype, ptype, 1);
         coll_coeffs.theta_q_bb = coll_theta_22(ptype, qtype, 1);
+
+        if (sw_debug)
+        {
+            char l1 = pname[0];
+            char l2 = qname[0];
+
+            master.print_message("%s-%s riming (TEST-abc!):\n", pname.c_str(), qname.c_str());
+            master.print_message(" | a_%s = %f\n", pname.c_str(), ptype.a_geo);
+            master.print_message(" | b_%s = %f\n", pname.c_str(), ptype.b_geo);
+            master.print_message(" | alf_%s = %f\n", pname.c_str(), ptype.a_vel);
+            master.print_message(" | bet_%s = %f\n", pname.c_str(), ptype.b_vel);
+            master.print_message(" | a_%s = %f\n", qname.c_str(), qtype.a_geo);
+            master.print_message(" | b_%s = %f\n", qname.c_str(), qtype.b_geo);
+            master.print_message(" | alf_%s = %f\n", qname.c_str(), qtype.a_vel);
+            master.print_message(" | bet_%s = %f\n", qname.c_str(), qtype.b_vel);
+            master.print_message(" | delta_n_%c%c = %f\n", l1, l1, coll_coeffs.delta_n_aa);
+            master.print_message(" | delta_n_%c%c = %f\n", l1, l2, coll_coeffs.delta_n_ab);
+            master.print_message(" | delta_n_%c%c = %f\n", l2, l2, coll_coeffs.delta_n_bb);
+            master.print_message(" | theta_n_%c%c = %f\n", l1, l1, coll_coeffs.theta_n_aa);
+            master.print_message(" | theta_n_%c%c = %f\n", l1, l2, coll_coeffs.theta_n_ab);
+            master.print_message(" | theta_n_%c%c = %f\n", l2, l2, coll_coeffs.theta_n_bb);
+            master.print_message(" | delta_q_%c%c = %f\n", l1, l1, coll_coeffs.delta_q_aa);
+            master.print_message(" | delta_q_%c%c = %f\n", l1, l2, coll_coeffs.delta_q_ab);
+            master.print_message(" | delta_q_%c%c = %f\n", l2, l1, coll_coeffs.delta_q_ba);
+            master.print_message(" | delta_q_%c%c = %f\n", l2, l2, coll_coeffs.delta_q_bb);
+            master.print_message(" | theta_q_%c%c = %f\n", l1, l1, coll_coeffs.theta_q_aa);
+            master.print_message(" | theta_q_%c%c = %f\n", l1, l2, coll_coeffs.theta_q_ab);
+            master.print_message(" | theta_q_%c%c = %f\n", l2, l1, coll_coeffs.theta_q_ba);
+            master.print_message(" | theta_q_%c%c = %f\n", l2, l2, coll_coeffs.theta_q_bb);
+        }
     };
 
     init_2mom_scheme();
@@ -831,116 +893,16 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     }
 
     // initialization for snow_cloud_riming
-    setup_particle_collection_type1(snow, cloud, scr_coeffs);
-
-    if (sw_debug)
-    {
-        master.print_message("Snow-cloud riming:\n");
-        master.print_message(" | a_snow = %f\n", snow.a_geo);
-        master.print_message(" | b_snow = %f\n", snow.b_geo);
-        master.print_message(" | alf_snow = %f\n", snow.a_vel);
-        master.print_message(" | bet_snow = %f\n", snow.b_vel);
-        master.print_message(" | a_cloud = %f\n", cloud.a_geo);
-        master.print_message(" | b_cloud = %f\n", cloud.b_geo);
-        master.print_message(" | alf_cloud  = %f\n", cloud.a_vel);
-        master.print_message(" | bet_cloud  = %f\n", cloud.b_vel);
-        master.print_message(" | delta_n_ss = %f\n", scr_coeffs.delta_n_aa);
-        master.print_message(" | delta_n_sc = %f\n", scr_coeffs.delta_n_ab);
-        master.print_message(" | delta_n_cc = %f\n", scr_coeffs.delta_n_bb);
-        master.print_message(" | theta_n_ss = %f\n", scr_coeffs.theta_n_aa);
-        master.print_message(" | theta_n_sc = %f\n", scr_coeffs.theta_n_ab);
-        master.print_message(" | theta_n_cc = %f\n", scr_coeffs.theta_n_bb);
-        master.print_message(" | delta_q_ss = %f\n", scr_coeffs.delta_q_aa);
-        master.print_message(" | delta_q_sc = %f\n", scr_coeffs.delta_q_ab);
-        master.print_message(" | delta_q_cc = %f\n", scr_coeffs.delta_q_bb);
-        master.print_message(" | theta_q_ss = %f\n", scr_coeffs.theta_q_aa);
-        master.print_message(" | theta_q_sc = %f\n", scr_coeffs.theta_q_ab);
-        master.print_message(" | theta_q_cc = %f\n", scr_coeffs.theta_q_bb);
-    }
+    setup_particle_collection_type1(snow, cloud, scr_coeffs, "snow", "cloud");
 
     // Coefficients for snow_rain_riming
-    setup_particle_collection_type2(snow, rain, srr_coeffs);
+    setup_particle_collection_type2(snow, rain, srr_coeffs, "snow", "rain");
 
-    if (sw_debug)
-    {
-        master.print_message("Snow-rain riming:\n");
-        master.print_message(" | a_snow = %f\n", snow.a_geo);
-        master.print_message(" | b_snow = %f\n", snow.b_geo);
-        master.print_message(" | alf_snow = %f\n", snow.a_vel);
-        master.print_message(" | bet_snow = %f\n", snow.b_vel);
-        master.print_message(" | a_rain = %f\n", rain.a_geo);
-        master.print_message(" | b_rain = %f\n", rain.b_geo);
-        master.print_message(" | alf_rain = %f\n", rain.a_vel);
-        master.print_message(" | bet_rain = %f\n", rain.b_vel);
-        master.print_message(" | delta_n_ss = %f\n", srr_coeffs.delta_n_aa);
-        master.print_message(" | delta_n_sr = %f\n", srr_coeffs.delta_n_ab);
-        master.print_message(" | delta_n_rr = %f\n", srr_coeffs.delta_n_bb);
-        master.print_message(" | theta_n_ss = %f\n", srr_coeffs.theta_n_aa);
-        master.print_message(" | theta_n_sr = %f\n", srr_coeffs.theta_n_ab);
-        master.print_message(" | theta_n_rr = %f\n", srr_coeffs.theta_n_bb);
-        master.print_message(" | delta_q_ss = %f\n", srr_coeffs.delta_q_aa);
-        master.print_message(" | delta_q_sr = %f\n", srr_coeffs.delta_q_ab);
-        master.print_message(" | delta_q_rs = %f\n", srr_coeffs.delta_q_ba);
-        master.print_message(" | delta_q_rr = %f\n", srr_coeffs.delta_q_bb);
-        master.print_message(" | theta_q_ss = %f\n", srr_coeffs.theta_q_aa);
-        master.print_message(" | theta_q_sr = %f\n", srr_coeffs.theta_q_ab);
-        master.print_message(" | theta_q_rs = %f\n", srr_coeffs.theta_q_ba);
-        master.print_message(" | theta_q_rr = %f\n", srr_coeffs.theta_q_bb);
-    }
+    // Ice rain riming parameters
+    setup_particle_collection_type2(ice, rain, irr_coeffs, "ice", "rain");
 
-    //! ice rain riming parameters
-    //CALL setup_particle_collection_type2(ice,rain,irr_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "     a_ice      = ",ice%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     b_ice      = ",ice%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     alf_ice    = ",ice%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     bet_ice    = ",ice%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     a_rain    = ",rain%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     b_rain    = ",rain%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     alf_rain  = ",rain%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     bet_rain  = ",rain%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_ii = ", irr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_ir = ", irr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_rr = ", irr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_ii = ", irr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_ir = ", irr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_rr = ", irr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_ii = ", irr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_ir = ", irr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_ri = ", irr_coeffs%delta_q_ba ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_rr = ", irr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_ii = ", irr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_ir = ", irr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_ri = ", irr_coeffs%theta_q_ba ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_rr = ", irr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! ice cloud riming parameter setup
-    //CALL setup_particle_collection_type1(ice,cloud,icr_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "    a_ice      = ",ice%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_ice      = ",ice%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    alf_ice    = ",ice%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    bet_ice    = ",ice%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_cloud    = ",cloud%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_cloud    = ",cloud%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    alf_cloud  = ",cloud%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    bet_cloud  = ",cloud%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_ii = ", icr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_ic = ", icr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_cc = ", icr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_ii = ", icr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_ic = ", icr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_cc = ", icr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_ii = ", icr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_ic = ", icr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_cc = ", icr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_ii = ", icr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_ic = ", icr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_cc = ", icr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Ice cloud riming parameter setup
+    setup_particle_collection_type1(ice, cloud, icr_coeffs, "ice", "cloud");
 
     //! hail rain riming
     //CALL setup_particle_collection_type1(hail,rain,hrr_coeffs)
