@@ -764,7 +764,7 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         const TF theta_n_12 = coll_theta_12(graupel, graupel, 0);
 
         const TF delta_n = (TF(2)*delta_n_11 + delta_n_12);
-        const TF theta_n = std::pow((TF(2)*theta_n_11 - theta_n_12), 0.5);
+        const TF theta_n = std::pow((TF(2)*theta_n_11 - theta_n_12), TF(0.5));
 
         graupel_coeffs.sc_coll_n = Sb_cold::pi8<TF> * delta_n * theta_n;
 
@@ -791,8 +791,8 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         const TF theta_n_11 = coll_theta_11(snow, snow, 0);
         const TF theta_n_12 = coll_theta_12(snow, snow, 0);
 
-        snow_coeffs.sc_delta_n = (2.0*delta_n_11 + delta_n_12);
-        snow_coeffs.sc_theta_n = (2.0*theta_n_11 - theta_n_12);
+        snow_coeffs.sc_delta_n = (TF(2)*delta_n_11 + delta_n_12);
+        snow_coeffs.sc_theta_n = (TF(2)*theta_n_11 - theta_n_12);
 
         if (sw_debug)
         {
