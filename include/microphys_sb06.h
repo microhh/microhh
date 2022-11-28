@@ -126,6 +126,15 @@ struct Particle_cloud_coeffs : public Particle_nonsphere<TF>
 };
 
 template<typename TF>
+struct Particle_ice_coeffs : public Particle_sphere<TF>
+{
+    TF sc_delta_n; //..Parameters for self-collection
+    TF sc_delta_q; //   of cloud ice
+    TF sc_theta_n;
+    TF sc_theta_q;
+};
+
+template<typename TF>
 struct Particle_snow_coeffs : public Particle_sphere<TF>
 {
     TF sc_delta_n; //..Parameters for self-collection
@@ -133,12 +142,9 @@ struct Particle_snow_coeffs : public Particle_sphere<TF>
 };
 
 template<typename TF>
-struct Particle_ice_coeffs : public Particle_sphere<TF>
+struct Particle_graupel_coeffs : public Particle_sphere<TF>
 {
-    TF sc_delta_n; //..Parameters for self-collection
-    TF sc_delta_q; //   of cloud ice
-    TF sc_theta_n;
-    TF sc_theta_q;
+    TF sc_coll_n; //..Parameters for self-collection
 };
 
 template<typename TF>
@@ -185,6 +191,26 @@ struct Collection_coeffs
     TF theta_n_bb;
     TF theta_q_aa;
     TF theta_q_ab;
+    TF theta_q_bb;
+};
+
+//..these are coefficients for collection processes of the type a+b->c
+template<typename TF>
+struct Rain_riming_coeffs
+{
+    TF delta_n_aa;
+    TF delta_n_ab;
+    TF delta_n_bb;
+    TF delta_q_aa;
+    TF delta_q_ab;
+    TF delta_q_ba;
+    TF delta_q_bb;
+    TF theta_n_aa;
+    TF theta_n_ab;
+    TF theta_n_bb;
+    TF theta_q_aa;
+    TF theta_q_ab;
+    TF theta_q_ba;
     TF theta_q_bb;
 };
 
@@ -292,8 +318,14 @@ class Microphys_sb06 : public Microphys<TF>
         Particle_frozen<TF> snow;
         Particle_snow_coeffs<TF> snow_coeffs;
 
+        Particle_frozen<TF> graupel;
+        Particle_graupel_coeffs<TF> graupel_coeffs;
+
+        Particle_frozen<TF> hail;
+        Particle_sphere<TF> hail_coeffs;
+
         Collection_coeffs<TF> scr_coeffs;  // snow cloud riming
-        //TYPE(rain_riming_coeffs),SAVE :: srr_coeffs  ! snow rain riming
+        Rain_riming_coeffs<TF> srr_coeffs; // snow rain riming
         //TYPE(rain_riming_coeffs),SAVE :: irr_coeffs  ! ice rain riming
         //Collection_coeffs<TF> icr_coeffs;  // ice cloud riming
         //Collection_coeffs<TF> hrr_coeffs;  // hail rain riming
@@ -405,6 +437,54 @@ class Microphys_sb06 : public Microphys<TF>
                 150.0e-6,  //..D_crit_c
                 1.000e-5,  //..q_crit_c
                 0.25       //..sigma_vel
+        };
+
+        const Particle_frozen<TF> graupelhail_cosmo5{
+                "graupelhail_cosmo5", //.name
+                1.000000,              //..nu.........1st shape parameter of the distribution
+                0.333333,              //..mu.........2nd shape parameter of the distribution
+                5.30e-04,              //..x_max......maximum particle mean mass
+                4.19e-09,              //..x_min......minimum particle mean mass
+                1.42e-01,              //..a_geo......particle geometry prefactor
+                0.314000,              //..b_geo......particle geometry exponent = 1/3.10
+                100.0,  //86.89371,    //..a_vel......terminal fall velocity prefactor
+                0.34,   //0.268325,    //..b_vel......terminal fall velocity exponent
+                0.780000,              //..a_ven......1st ventilation coefficient (PK, S.541)
+                0.308000,              //..b_ven......2nd ventilation coefficient (PK, S.541)
+                2.00,                  //..cap........capacity coefficient
+                80.0,   //30.0,        //..vsedi_max..maximum bulk sedimentation velocity
+                0.10,                  //..vsedi_min..minimum bulk sedimentation velocity
+                nullptr,               //..n pointer..pointer to number density array
+                nullptr,               //..q pointer..pointer to mass density array
+                nullptr,               //..rho_v......pointer to density correction array
+                1.0,                   //..ecoll_c....maximum collision efficiency with cloud droplets
+                100.0e-6,              //..D_crit_c...D-threshold for cloud riming
+                1.000e-6,              //..q_crit_c...q-threshold for cloud riming
+                0.0                    //..sigma_vel..dispersion of fall velocity for collection kernel
+        };
+
+        const Particle_frozen<TF> hail_cosmo5{
+                "hail_cosmo5", // !..name...Bezeichnung
+                1.000000,      // !..nu.....Breiteparameter der Verteil.
+                0.333333,      // !..mu.....Exp.-parameter der Verteil.
+                5.00e-03,      // !..x_max..maximale Teilchenmasse
+                2.60e-9,       // !..x_min..minimale Teilchenmasse
+                0.1366,        // !..a_geo..Koeff. Geometrie
+                0.333333,      // !..b_geo..Koeff. Geometrie = 1/3
+                39.3,          // !..a_vel..Koeff. Fallgesetz
+                0.166667,      // !..b_vel..Koeff. Fallgesetz
+                0.780000,      // !..a_ven..Koeff. Ventilation (PK, S.541)
+                0.308000,      // !..b_ven..Koeff. Ventilation (PK, S.541)
+                2.00,          // !..cap....Koeff. Kapazitaet
+                30.0,          // !..vsedi_max
+                0.1,           // !..vsedi_min
+                nullptr,       // !..n pointer
+                nullptr,       // !..q pointer
+                nullptr,       // !..rho_v pointer
+                1.0,           // !..ecoll_c
+                100.0e-6,      // !..D_crit_c
+                1.000e-6,      // !..q_crit_c
+                0.0            // !..sigma_vel
         };
 
         const T_cfg_2mom<TF> t_cfg_2mom{
