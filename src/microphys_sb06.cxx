@@ -509,7 +509,7 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     };
 
     // Setup the subset of the coefficients that does not follow from the copy.
-    auto setup_particle_coeffs = [&vent_coeff_a, &vent_coeff_b, &moment_gamma](
+    auto setup_particle_coeffs = [&](
             const Particle<TF> &ptype,
             Particle_coeffs<TF> &pcoeffs)
     {
@@ -521,6 +521,19 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         pcoeffs.a_f = vent_coeff_a(ptype, 1);
         pcoeffs.b_f = vent_coeff_b(ptype, 1) * std::pow(N_sc, n_f) / std::sqrt(nu_l);
         pcoeffs.c_z = moment_gamma(ptype, 2);
+
+        if (sw_debug)
+        {
+            char l1 = ptype.name[0];
+            master.print_message("Setup_particle_coeffs: %s\n",ptype.name.c_str());
+            master.print_message(" | a_geo = %f\n", ptype.a_geo);
+            master.print_message(" | b_geo = %f\n", ptype.b_geo);
+            master.print_message(" | a_vel = %f\n", ptype.a_vel);
+            master.print_message(" | b_vel = %f\n", ptype.b_vel);
+            master.print_message(" | c_%c = %f\n", l1, pcoeffs.c_i);
+            master.print_message(" | a_f = %f\n", pcoeffs.a_f);
+            master.print_message(" | b_f = %f\n", pcoeffs.b_f);
+        }
     };
 
     // initialize coefficients for bulk sedimentation velocity.
@@ -898,96 +911,26 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         master.print_message(" | vq_rain_max = %f\n", in_cloud_max.first);
     }
 
-    // initialization for snow_cloud_riming
+    // Setup riming coefficients.
     setup_particle_collection_type1(snow, cloud, scr_coeffs, "snow", "cloud");
-
-    // Coefficients for snow_rain_riming
     setup_particle_collection_type2(snow, rain, srr_coeffs, "snow", "rain");
-
-    // Ice rain riming parameters
     setup_particle_collection_type2(ice, rain, irr_coeffs, "ice", "rain");
-
-    // Ice cloud riming parameter setup
     setup_particle_collection_type1(ice, cloud, icr_coeffs, "ice", "cloud");
-
-    // Hail rain riming
     setup_particle_collection_type1(hail, rain, hrr_coeffs, "hail", "rain");
-
-    // Graupel rain riming parameter setup
     setup_particle_collection_type1(graupel, rain, grr_coeffs, "graupel", "rain", false);
-
-    // Hail cloud riming parameter setup
     setup_particle_collection_type1(hail, cloud, hcr_coeffs, "hail", "cloud", false);
-
-    // Graupel cloud riming parameters
     setup_particle_collection_type1(graupel, cloud, gcr_coeffs, "graupel", "cloud", false);
-
-    // Snow ice collection parameters setup
     setup_particle_collection_type1(snow, ice, sic_coeffs, "snow", "ice", false);
-
-    // Hail ice collection parameter setup
     setup_particle_collection_type1(hail, ice, hic_coeffs, "hail", "ice", false);
-
-    // Graupel ice collection parameter setup
     setup_particle_collection_type1(graupel, ice, gic_coeffs, "graupel", "ice");
-
-    // Hail snow collection parameter setup
     setup_particle_collection_type1(hail, snow, hsc_coeffs, "hail", "snow", false);
-
-    // Graupel snow collection parameter setup
     setup_particle_collection_type1(graupel, snow, gsc_coeffs, "graupel", "snow", false);
 
-    //! ice coeffs
-    //CALL setup_particle_coeffs(ice,ice_coeffs)
-    //IF (isprint) THEN
-    //  WRITE(txt,*) "  ice: " ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    a_geo   = ",ice%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    b_geo   = ",ice%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    a_vel   = ",ice%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    b_vel   = ",ice%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    c_i     = ",ice_coeffs%c_i ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    a_f     = ",ice_coeffs%a_f ; CALL message(routine,TRIM(txt))
-    //  WRITE (txt,'(A,D10.3)') "    b_f     = ",ice_coeffs%b_f ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! graupel parameter setup
-    //CALL setup_particle_coeffs(graupel,graupel_coeffs)
-    //IF (isprint) THEN
-    //  WRITE(txt,*) "  graupel: " ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_geo = ",graupel%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_geo = ",graupel%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_vel = ",graupel%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_vel = ",graupel%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    c_g   = ",graupel_coeffs%c_i ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_f   = ",graupel_coeffs%a_f ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_f   = ",graupel_coeffs%b_f ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! hail parameter setup
-    //CALL setup_particle_coeffs(hail,hail_coeffs)
-    //IF (isprint) THEN
-    //  WRITE(txt,*) "  hail: " ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_geo = ",hail%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_geo = ",hail%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_vel = ",hail%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_vel = ",hail%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    c_h   = ",hail_coeffs%c_i ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_f   = ",hail_coeffs%a_f ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_f   = ",hail_coeffs%b_f ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! snow parameter setup
-    //CALL setup_particle_coeffs(snow,snow_coeffs)
-    //IF (isprint) THEN
-    //  WRITE(txt,*) "  snow: " ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_geo = ",snow%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_geo = ",snow%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_vel = ",snow%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_vel = ",snow%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    c_s   = ",snow_coeffs%c_i ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    a_f   = ",snow_coeffs%a_f ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    b_f   = ",snow_coeffs%b_f ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Setup particle coefficients
+    setup_particle_coeffs(ice, ice_coeffs);
+    setup_particle_coeffs(graupel, graupel_coeffs);
+    setup_particle_coeffs(hail, hail_coeffs);
+    setup_particle_coeffs(snow, snow_coeffs);
 
     //! setup selfcollection of ice particles, coeffs are stored in their derived types
     //CALL setup_graupel_selfcollection(graupel,graupel_coeffs)
@@ -998,16 +941,13 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     setup_particle_coeffs(cloud, cloud_coeffs);
     Sb_cold::setup_cloud_autoconversion(cloud, cloud_coeffs);
 
-    //IF (isprint) THEN
-    //  CALL message(routine, "rain_coeffs:")
-    //  WRITE(txt,'(A,D10.3)') "    c_z= ",rain_coeffs%c_z
-    //  CALL message(routine,TRIM(txt))
-    //ENDIF
-    //IF (isprint) THEN
-    //  CALL message(routine, "cloud_coeffs:")
-    //  WRITE(txt,'(A,D10.3)') "    c_z= ",cloud_coeffs%c_z
-    //  CALL message(routine,TRIM(txt))
-    //ENDIF
+    if (sw_debug)
+    {
+        master.print_message("rain_coeffs:\n");
+        master.print_message(" | c_z = %f\n", rain_coeffs.c_z);
+        master.print_message("cloud_coeffs:\n");
+        master.print_message(" | c_z = %f\n", cloud_coeffs.c_z);
+    }
 
     //! Init SK Activation table
     //IF (nuc_c_typ > 5) THEN
