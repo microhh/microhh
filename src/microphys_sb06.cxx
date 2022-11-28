@@ -754,6 +754,114 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         }
     };
 
+    auto setup_graupel_selfcollection = [&](
+            const Particle<TF>& graupel,
+            Particle_graupel_coeffs<TF>& graupel_coeffs)
+    {
+        const TF delta_n_11 = coll_delta_11(graupel, graupel, 0);
+        const TF delta_n_12 = coll_delta_12(graupel, graupel, 0);
+        const TF theta_n_11 = coll_theta_11(graupel, graupel, 0);
+        const TF theta_n_12 = coll_theta_12(graupel, graupel, 0);
+
+        const TF delta_n = (TF(2)*delta_n_11 + delta_n_12);
+        const TF theta_n = std::pow((TF(2)*theta_n_11 - theta_n_12), 0.5);
+
+        graupel_coeffs.sc_coll_n = Sb_cold::pi8<TF> * delta_n * theta_n;
+
+        if (sw_debug)
+        {
+            master.print_message("setup_graupel_selfcollection:\n");
+            master.print_message(" | delta_n_11 = %f\n", delta_n_11);
+            master.print_message(" | delta_n_12 = %f\n", delta_n_12);
+            master.print_message(" | delta_n = %f\n", delta_n);
+            master.print_message(" | theta_n_11 = %f\n", theta_n_11);
+            master.print_message(" | theta_n_12 = %f\n", theta_n_12);
+            master.print_message(" | theta_n = %f\n", theta_n);
+            master.print_message(" | coll_n = %f\n", graupel_coeffs.sc_coll_n);
+        }
+    };
+
+    auto setup_snow_selfcollection = [&](
+            const Particle<TF>& snow,
+            Particle_snow_coeffs<TF>& snow_coeffs)
+    {
+
+        const TF delta_n_11 = coll_delta_11(snow, snow, 0);
+        const TF delta_n_12 = coll_delta_12(snow, snow, 0);
+        const TF theta_n_11 = coll_theta_11(snow, snow, 0);
+        const TF theta_n_12 = coll_theta_12(snow, snow, 0);
+
+        snow_coeffs.sc_delta_n = (2.0*delta_n_11 + delta_n_12);
+        snow_coeffs.sc_theta_n = (2.0*theta_n_11 - theta_n_12);
+
+        if (sw_debug)
+        {
+            master.print_message("setup_snow_selfcollection:\n");
+            // Only printed in ICON in full debug mode:
+            //master.print_message(" | a_snow = %f\n", snow.a_geo);
+            //master.print_message(" | b_snow = %f\n", snow.b_geo);
+            //master.print_message(" | alf_snow = %f\n", snow.a_vel);
+            //master.print_message(" | bet_snow = %f\n", snow.b_vel);
+            //master.print_message(" | delta_n_11 = %f\n", delta_n_11);
+            //master.print_message(" | delta_n_12 = %f\n", delta_n_12);
+            //master.print_message(" | theta_n_11 = %f\n", theta_n_11);
+            //master.print_message(" | theta_n_12 = %f\n", theta_n_12);
+            master.print_message(" | delta_n = %f\n", snow_coeffs.sc_delta_n);
+            master.print_message(" | theta_n = %f\n", snow_coeffs.sc_theta_n);
+        }
+    };
+
+    auto setup_ice_selfcollection = [&](
+            const Particle<TF>& ice,
+            Particle_ice_coeffs<TF>& ice_coeffs)
+    {
+        const TF delta_n_11 = coll_delta_11(ice,ice,0);
+        const TF delta_n_12 = coll_delta_12(ice,ice,0);
+        const TF delta_n_22 = coll_delta_22(ice,ice,0);
+        const TF delta_q_11 = coll_delta_11(ice,ice,0);
+        const TF delta_q_12 = coll_delta_12(ice,ice,1);
+        const TF delta_q_22 = coll_delta_22(ice,ice,1);
+
+        const TF theta_n_11 = coll_theta_11(ice,ice,0);
+        const TF theta_n_12 = coll_theta_12(ice,ice,0);
+        const TF theta_n_22 = coll_theta_22(ice,ice,0);
+        const TF theta_q_11 = coll_theta_11(ice,ice,0);
+        const TF theta_q_12 = coll_theta_12(ice,ice,1);
+        const TF theta_q_22 = coll_theta_22(ice,ice,1);
+
+        ice_coeffs.sc_delta_n = delta_n_11 + delta_n_12 + delta_n_22;
+        ice_coeffs.sc_delta_q = delta_q_11 + delta_q_12 + delta_q_22;
+        ice_coeffs.sc_theta_n = theta_n_11 - theta_n_12 + theta_n_22;
+        ice_coeffs.sc_theta_q = theta_q_11 - theta_q_12 + theta_q_22;
+
+        if(sw_debug)
+        {
+            master.print_message("setup_ice_selfcollection:\n");
+            // Only printed in ICON in full debug mode:
+            //master.print_message(" | a_ice      = %f\n",ice.a_geo);
+            //master.print_message(" | b_ice      = %f\n",ice.b_geo);
+            //master.print_message(" | alf_ice    = %f\n",ice.a_vel);
+            //master.print_message(" | bet_ice    = %f\n",ice.b_vel);
+            //master.print_message(" | delta_n_11 = %f\n",delta_n_11);
+            //master.print_message(" | delta_n_12 = %f\n",delta_n_12);
+            //master.print_message(" | delta_n_22 = %f\n",delta_n_22);
+            //master.print_message(" | theta_n_11 = %f\n",theta_n_11);
+            //master.print_message(" | theta_n_12 = %f\n",theta_n_12);
+            //master.print_message(" | theta_n_22 = %f\n",theta_n_22);
+            //master.print_message(" | delta_q_11 = %f\n",delta_q_11);
+            //master.print_message(" | delta_q_12 = %f\n",delta_q_12);
+            //master.print_message(" | delta_q_22 = %f\n",delta_q_22);
+            //master.print_message(" | theta_q_11 = %f\n",theta_q_11);
+            //master.print_message(" | theta_q_12 = %f\n",theta_q_12);
+            //master.print_message(" | theta_q_22 = %f\n",theta_q_22);
+            master.print_message(" | delta_n = %f\n",ice_coeffs.sc_delta_n);
+            master.print_message(" | theta_n = %f\n",ice_coeffs.sc_theta_n);
+            master.print_message(" | delta_q = %f\n",ice_coeffs.sc_delta_q);
+            master.print_message(" | theta_q = %f\n",ice_coeffs.sc_theta_q);
+        }
+    };
+
+
     init_2mom_scheme();
 
     //ice_typ   = cloud_type/1000           ! (0) no ice, (1) no hail (2) with hail
@@ -932,10 +1040,10 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     setup_particle_coeffs(hail, hail_coeffs);
     setup_particle_coeffs(snow, snow_coeffs);
 
-    //! setup selfcollection of ice particles, coeffs are stored in their derived types
-    //CALL setup_graupel_selfcollection(graupel,graupel_coeffs)
-    //CALL setup_snow_selfcollection(snow,snow_coeffs)
-    //CALL setup_ice_selfcollection(ice,ice_coeffs)
+    // Setup selfcollection of ice particles, coeffs are stored in their derived types
+    setup_graupel_selfcollection(graupel, graupel_coeffs);
+    setup_snow_selfcollection(snow, snow_coeffs);
+    setup_ice_selfcollection(ice, ice_coeffs);
 
     // Setup run-time coeffs for cloud, e.g., used in cloud_freeze and autoconversionSB
     setup_particle_coeffs(cloud, cloud_coeffs);
