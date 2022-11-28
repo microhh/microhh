@@ -636,7 +636,8 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
             const Particle<TF>& qtype,
             Collection_coeffs<TF>& coll_coeffs,
             const std::string pname,
-            const std::string qname)
+            const std::string qname,
+            const bool print_types = true)
     {
         coll_coeffs.delta_n_aa = coll_delta_11(ptype, qtype, 0);
         coll_coeffs.delta_n_ab = coll_delta_12(ptype, qtype, 0);
@@ -658,14 +659,19 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
             char l2 = qname[0];
 
             master.print_message("%s-%s riming:\n", pname.c_str(), qname.c_str());
-            master.print_message(" | a_%s = %f\n", pname.c_str(), ptype.a_geo);
-            master.print_message(" | b_%s = %f\n", pname.c_str(), ptype.b_geo);
-            master.print_message(" | alf_%s = %f\n", pname.c_str(), ptype.a_vel);
-            master.print_message(" | bet_%s = %f\n", pname.c_str(), ptype.b_vel);
-            master.print_message(" | a_%s = %f\n", qname.c_str(), qtype.a_geo);
-            master.print_message(" | b_%s = %f\n", qname.c_str(), qtype.b_geo);
-            master.print_message(" | alf_%s  = %f\n", qname.c_str(), qtype.a_vel);
-            master.print_message(" | bet_%s  = %f\n", qname.c_str(), qtype.b_vel);
+
+            if (print_types)
+            {
+                master.print_message(" | a_%s = %f\n", pname.c_str(),ptype.a_geo);
+                master.print_message(" | b_%s = %f\n", pname.c_str(),ptype.b_geo);
+                master.print_message(" | alf_%s = %f\n", pname.c_str(),ptype.a_vel);
+                master.print_message(" | bet_%s = %f\n", pname.c_str(),ptype.b_vel);
+                master.print_message(" | a_%s = %f\n", qname.c_str(),qtype.a_geo);
+                master.print_message(" | b_%s = %f\n", qname.c_str(),qtype.b_geo);
+                master.print_message(" | alf_%s  = %f\n", qname.c_str(),qtype.a_vel);
+                master.print_message(" | bet_%s  = %f\n", qname.c_str(),qtype.b_vel);
+            }
+
             master.print_message(" | delta_n_%c%c = %f\n", l1, l1, coll_coeffs.delta_n_aa);
             master.print_message(" | delta_n_%c%c = %f\n", l1, l2, coll_coeffs.delta_n_ab);
             master.print_message(" | delta_n_%c%c = %f\n", l2, l2, coll_coeffs.delta_n_bb);
@@ -904,184 +910,32 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     // Ice cloud riming parameter setup
     setup_particle_collection_type1(ice, cloud, icr_coeffs, "ice", "cloud");
 
-    //! hail rain riming
-    //CALL setup_particle_collection_type1(hail,rain,hrr_coeffs)
+    // Hail rain riming
+    setup_particle_collection_type1(hail, rain, hrr_coeffs, "hail", "rain");
 
-    //IF (isprint) THEN
-    //  WRITE(txt,*) " hail_rain_riming:" ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     a_hail     = ",hail%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     b_hail     = ",hail%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     alf_hail   = ",hail%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     bet_hail   = ",hail%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     a_rain     = ",rain%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     b_rain     = ",rain%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     alf_rain   = ",rain%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     bet_rain   = ",rain%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_hh = ",hrr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_hr = ",hrr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_rr = ",hrr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_hh = ",hrr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_hr = ",hrr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_rr = ",hrr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_hh = ",hrr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_hr = ",hrr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_rr = ",hrr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_hh = ",hrr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_hr = ",hrr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_rr = ",hrr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Graupel rain riming parameter setup
+    setup_particle_collection_type1(graupel, rain, grr_coeffs, "graupel", "rain", false);
 
-    //! graupel rain riming parameter setup
-    //CALL setup_particle_collection_type1(graupel,rain,grr_coeffs)
+    // Hail cloud riming parameter setup
+    setup_particle_collection_type1(hail, cloud, hcr_coeffs, "hail", "cloud", false);
 
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_gg = ",grr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_gr = ",grr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_rr = ",grr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_gg = ",grr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_gr = ",grr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_rr = ",grr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_gg = ",grr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_gr = ",grr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_rr = ",grr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_gg = ",grr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_gr = ",grr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_rr = ",grr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Graupel cloud riming parameters
+    setup_particle_collection_type1(graupel, cloud, gcr_coeffs, "graupel", "cloud", false);
 
-    //! hail cloud riming parameter setup
-    //CALL setup_particle_collection_type1(hail,cloud,hcr_coeffs)
+    // Snow ice collection parameters setup
+    setup_particle_collection_type1(snow, ice, sic_coeffs, "snow", "ice", false);
 
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_hh  = ", hcr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_hc  = ", hcr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_n_cc  = ", hcr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_hh  = ", hcr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_hc  = ", hcr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_n_cc  = ", hcr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_hh  = ", hcr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_hc  = ", hcr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     delta_q_cc  = ", hcr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_hh  = ", hcr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_hc  = ", hcr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "     theta_q_cc  = ", hcr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Hail ice collection parameter setup
+    setup_particle_collection_type1(hail, ice, hic_coeffs, "hail", "ice", false);
 
-    //! graupel cloud riming parameters
-    //CALL setup_particle_collection_type1(graupel,cloud,gcr_coeffs)
+    // Graupel ice collection parameter setup
+    setup_particle_collection_type1(graupel, ice, gic_coeffs, "graupel", "ice");
 
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_gg  = ", gcr_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_gc  = ", gcr_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_cc  = ", gcr_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_gg  = ", gcr_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_gc  = ", gcr_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_cc  = ", gcr_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_gg  = ", gcr_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_gc  = ", gcr_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_cc  = ", gcr_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_gg  = ", gcr_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_gc  = ", gcr_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_cc  = ", gcr_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Hail snow collection parameter setup
+    setup_particle_collection_type1(hail, snow, hsc_coeffs, "hail", "snow", false);
 
-    //! snow ice collection parameters setup
-    //CALL setup_particle_collection_type1(snow,ice,sic_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_ss = ", sic_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_si = ", sic_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_ii = ", sic_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_ss = ", sic_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_si = ", sic_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_ii = ", sic_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_ss = ", sic_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_si = ", sic_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_ii = ", sic_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_ss = ", sic_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_si = ", sic_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_ii = ", sic_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! hail ice collection parameter setup
-    //CALL setup_particle_collection_type1(hail,ice,hic_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_hh = ", hic_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_hi = ", hic_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_ii = ", hic_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_hh = ", hic_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_hi = ", hic_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_ii = ", hic_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_hh = ", hic_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_hi = ", hic_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_ii = ", hic_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_hh = ", hic_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_hi = ", hic_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_ii = ", hic_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! graupel ice collection parameter setup
-    //CALL setup_particle_collection_type1(graupel,ice,gic_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "   a_graupel   = ",graupel%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   b_graupel   = ",graupel%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   alf_graupel = ",graupel%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   bet_graupel = ",graupel%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   a_ice       = ",ice%a_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   b_ice       = ",ice%b_geo ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   alf_ice     = ",ice%a_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   bet_ice     = ",ice%b_vel ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_gg  = ", gic_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_gi  = ", gic_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_n_ii  = ", gic_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_gg  = ", gic_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_gi  = ", gic_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_n_ii  = ", gic_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_gg  = ", gic_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_gi  = ", gic_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   delta_q_ii  = ", gic_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_gg  = ", gic_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_gi  = ", gic_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "   theta_q_ii  = ", gic_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! hail snow collection parameter setup
-    //CALL setup_particle_collection_type1(hail,snow,hsc_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_hh = ", hsc_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_hs = ", hsc_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_ss = ", hsc_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_hh = ", hsc_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_hs = ", hsc_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_ss = ", hsc_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_hh = ", hsc_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_hs = ", hsc_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_ss = ", hsc_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_hh = ", hsc_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_hs = ", hsc_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_ss = ", hsc_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
-
-    //! graupel snow collection parameter setup
-    //CALL setup_particle_collection_type1(graupel,snow,gsc_coeffs)
-
-    //IF (isprint) THEN
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_gg = ", gsc_coeffs%delta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_gs = ", gsc_coeffs%delta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_n_ss = ", gsc_coeffs%delta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_gg = ", gsc_coeffs%theta_n_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_gs = ", gsc_coeffs%theta_n_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_n_ss = ", gsc_coeffs%theta_n_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_gg = ", gsc_coeffs%delta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_gs = ", gsc_coeffs%delta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    delta_q_ss = ", gsc_coeffs%delta_q_bb ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_gg = ", gsc_coeffs%theta_q_aa ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_gs = ", gsc_coeffs%theta_q_ab ; CALL message(routine,TRIM(txt))
-    //  WRITE(txt,'(A,D10.3)') "    theta_q_ss = ", gsc_coeffs%theta_q_bb ; CALL message(routine,TRIM(txt))
-    //END IF
+    // Graupel snow collection parameter setup
+    setup_particle_collection_type1(graupel, snow, gsc_coeffs, "graupel", "snow", false);
 
     //! ice coeffs
     //CALL setup_particle_coeffs(ice,ice_coeffs)
