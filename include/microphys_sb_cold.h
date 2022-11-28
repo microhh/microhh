@@ -78,6 +78,15 @@ namespace Sb_cold
     }
 
     template<typename TF>
+    inline TF particle_velocity(
+            Particle<TF>& particle,
+            const TF mean_mass)
+    {
+        // Mass-diameter relation (SB06, Eq 32)
+        return particle.a_vel * exp(particle.b_vel * log(mean_mass)); // v = a_vel * x**b_vel
+    }
+
+    template<typename TF>
     inline TF rain_mue_dm_relation(
             Particle_rain_coeffs<TF>& coeffs,
             const TF d_m)
@@ -464,5 +473,78 @@ namespace Sb_cold
             }
     }
 
+    template<typename TF>
+    void particle_particle_collection(
+            TF* const restrict qit,
+            TF* const restrict qpt,
+            const TF* const restrict qi,
+            const TF* const restrict qp,
+            const TF* const restrict ni,
+            const TF* const restrict np,
+            const TF* const restrict Ta,
+            Particle_frozen<TF>& ctype,
+            Particle_frozen<TF>& ptype,
+            Collection_coeffs<TF>& coeffs,
+            const TF rho_v,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        /*  Most simple particle-particle collection for ice particles, e.g.,
+            - graupel+ice  -> graupel
+            - graupel+snow -> graupel
+            - hail+ice  -> hail
+            - hail+snow -> hail
+            - snow+ice  -> snow
+        */
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (qi[ij]  > Sb_cold::q_crit<TF> && qp[ij] > Sb_cold::q_crit<TF>)
+                {
+                    //.. sticking efficiency of Lin (1983)
+                    const TF e_coll = std::min(exp(TF(0.09)*(Ta[ij] - Constants::T0<TF>)), TF(1));
+
+                    const TF xp = particle_meanmass(ptype, qp[ij], np[ij]);
+                    const TF dp = particle_diameter(ptype, xp);
+                    const TF vp = particle_velocity(ptype, xp) * rho_v;
+
+                    const TF xi = particle_meanmass(ctype, qi[ij], ni[ij]);
+                    const TF di = particle_diameter(ctype, xi);
+                    const TF vi = particle_velocity(ctype, xi) * rho_v;
+
+                    // These terms have a `*dt` in ICON.
+                    const TF coll_n = pi4 * np[ij] * ni[ij] * e_coll
+                          *     ( coeffs.delta_n_aa * fm::pow2(dp)
+                                + coeffs.delta_n_ab * dp*di
+                                + coeffs.delta_n_bb * fm::pow2(di))
+                          * sqrt( coeffs.theta_n_aa * fm::pow2(vp)
+                                - coeffs.theta_n_ab * vp*vi
+                                + coeffs.theta_n_bb * fm::pow2(vi)
+                                + fm::pow2(ctype.s_vel));
+
+                    const TF coll_q = pi4 * np[ij] * qi[ij] * e_coll
+                          *     ( coeffs.delta_q_aa * fm::pow2(dp)
+                                + coeffs.delta_q_ab * dp*di
+                                + coeffs.delta_q_bb * fm::pow2(di))
+                          * sqrt( coeffs.theta_q_aa * fm::pow2(vp)
+                                - coeffs.theta_q_ab * vp*vi
+                                + coeffs.theta_q_bb * fm::pow2(vi)
+                                + fm::pow2(ctype.s_vel));
+
+                    //coll_n = MIN(n_i, coll_n)
+                    //coll_q = MIN(q_i, coll_q)
+
+                    //ptype%q(i,k) = ptype%q(i,k) + coll_q
+                    //ctype%q(i,k)  = ctype%q(i,k)  - coll_q
+                    //ctype%n(i,k)  = ctype%n(i,k)  - coll_n
+
+                }
+            }
 
 }

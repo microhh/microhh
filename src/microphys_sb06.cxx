@@ -409,8 +409,8 @@ Microphys_sb06<TF>::Microphys_sb06(
         add_type("qr", "rain", "rain specific humidity", "kg kg-1", is_mass);
         add_type("nr", "rain", "number density rain", "kg-1", !is_mass);
 
-        //add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
-        //add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
+        add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
+        add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
 
         //add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
         //add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
