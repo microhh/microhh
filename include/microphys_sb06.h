@@ -299,6 +299,7 @@ class Microphys_sb06 : public Microphys<TF>
 
         // Variables for microphysics.
         TF Nc0;  // Number concentration of cloud water (cm-3)
+        TF Ni0;  // Number concentration of cloud ice (cm-3)
 
         //#ifdef USECUDA
         //TF* rr_bot_g;

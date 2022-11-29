@@ -36,6 +36,7 @@ namespace Sb_cold
     namespace tmf = Thermo_moist_functions;
 
     template<typename TF> constexpr TF pi = 3.14159265359;
+    template<typename TF> constexpr TF pi4 = pi<TF>/TF(4);
     template<typename TF> constexpr TF pi6 = pi<TF>/TF(6);
     template<typename TF> constexpr TF pi8 = pi<TF>/TF(8);
     template<typename TF> constexpr TF rho_w = 1.e3;                   // Density water
@@ -475,76 +476,90 @@ namespace Sb_cold
 
     template<typename TF>
     void particle_particle_collection(
-            TF* const restrict qit,
             TF* const restrict qpt,
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qtt_ice,
             const TF* const restrict qi,
             const TF* const restrict qp,
             const TF* const restrict ni,
             const TF* const restrict np,
             const TF* const restrict Ta,
-            Particle_frozen<TF>& ctype,
+            Particle_frozen<TF>& itype,
             Particle_frozen<TF>& ptype,
             Collection_coeffs<TF>& coeffs,
             const TF rho_v,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int jstride, const int kstride,
-            const int k)
+            const int jstride)
     {
         /*  Most simple particle-particle collection for ice particles, e.g.,
-            - graupel+ice  -> graupel
+            - graupel+ice -> graupel
             - graupel+snow -> graupel
-            - hail+ice  -> hail
+            - hail+ice -> hail
             - hail+snow -> hail
-            - snow+ice  -> snow
+            - snow+ice -> snow
+
+            mass from `i/itype` is collected by `p/ptype`, such that
+            both the mass and concentration of `i/itype` decreases,
+            and only the mass of `p/ptype` increases.
         */
 
-        for (int j=jstart; j<jend; j++)
+        for (int j = jstart; j < jend; j++)
             #pragma ivdep
-            for (int i=istart; i<iend; i++)
+            for (int i = istart; i < iend; i++)
             {
-                const int ij = i + j*jstride;
+                const int ij = i + j * jstride;
 
-                if (qi[ij]  > Sb_cold::q_crit<TF> && qp[ij] > Sb_cold::q_crit<TF>)
+                if (qi[ij] > Sb_cold::q_crit<TF> && qp[ij] > Sb_cold::q_crit<TF>)
                 {
-                    //.. sticking efficiency of Lin (1983)
-                    const TF e_coll = std::min(exp(TF(0.09)*(Ta[ij] - Constants::T0<TF>)), TF(1));
+                    //.. Sticking efficiency of Lin (1983)
+                    const TF e_coll = std::min(std::exp(TF(0.09) * (Ta[ij] - Constants::T0<TF>)), TF(1));
 
                     const TF xp = particle_meanmass(ptype, qp[ij], np[ij]);
                     const TF dp = particle_diameter(ptype, xp);
                     const TF vp = particle_velocity(ptype, xp) * rho_v;
 
-                    const TF xi = particle_meanmass(ctype, qi[ij], ni[ij]);
-                    const TF di = particle_diameter(ctype, xi);
-                    const TF vi = particle_velocity(ctype, xi) * rho_v;
+                    const TF xi = particle_meanmass(itype, qi[ij], ni[ij]);
+                    const TF di = particle_diameter(itype, xi);
+                    const TF vi = particle_velocity(itype, xi) * rho_v;
 
-                    // These terms have a `*dt` in ICON.
-                    const TF coll_n = pi4 * np[ij] * ni[ij] * e_coll
-                          *     ( coeffs.delta_n_aa * fm::pow2(dp)
-                                + coeffs.delta_n_ab * dp*di
-                                + coeffs.delta_n_bb * fm::pow2(di))
-                          * sqrt( coeffs.theta_n_aa * fm::pow2(vp)
-                                - coeffs.theta_n_ab * vp*vi
-                                + coeffs.theta_n_bb * fm::pow2(vi)
-                                + fm::pow2(ctype.s_vel));
+                    // Both these terms have a `* dt` in ICON; left out since we need the tendency.
+                    const TF coll_n = pi4<TF> * np[ij] * ni[ij] * e_coll
+                                      * (coeffs.delta_n_aa * fm::pow2(dp)
+                                       + coeffs.delta_n_ab * dp * di
+                                       + coeffs.delta_n_bb * fm::pow2(di))
+                                  * sqrt(coeffs.theta_n_aa * fm::pow2(vp)
+                                       - coeffs.theta_n_ab * vp * vi
+                                       + coeffs.theta_n_bb * fm::pow2(vi)
+                                       + fm::pow2(itype.s_vel));
 
-                    const TF coll_q = pi4 * np[ij] * qi[ij] * e_coll
-                          *     ( coeffs.delta_q_aa * fm::pow2(dp)
-                                + coeffs.delta_q_ab * dp*di
-                                + coeffs.delta_q_bb * fm::pow2(di))
-                          * sqrt( coeffs.theta_q_aa * fm::pow2(vp)
-                                - coeffs.theta_q_ab * vp*vi
-                                + coeffs.theta_q_bb * fm::pow2(vi)
-                                + fm::pow2(ctype.s_vel));
+                    const TF coll_q = pi4<TF> * np[ij] * qi[ij] * e_coll
+                                      * (coeffs.delta_q_aa * fm::pow2(dp)
+                                       + coeffs.delta_q_ab * dp * di
+                                       + coeffs.delta_q_bb * fm::pow2(di))
+                                  * sqrt(coeffs.theta_q_aa * fm::pow2(vp)
+                                       - coeffs.theta_q_ab * vp * vi
+                                       + coeffs.theta_q_bb * fm::pow2(vi)
+                                       + fm::pow2(itype.s_vel));
+
+                    // Gain by the destination.
+                    qpt[ij] += coll_q;
+
+                    // Loss by the source.
+                    qit[ij] -= coll_q;
+                    nit[ij] -= coll_n;
+
+                    if (qtt_ice)
+                        qtt_ice[ij] -= coll_q;
 
                     //coll_n = MIN(n_i, coll_n)
                     //coll_q = MIN(q_i, coll_q)
 
                     //ptype%q(i,k) = ptype%q(i,k) + coll_q
-                    //ctype%q(i,k)  = ctype%q(i,k)  - coll_q
-                    //ctype%n(i,k)  = ctype%n(i,k)  - coll_n
-
+                    //itype%q(i,k)  = itype%q(i,k)  - coll_q
+                    //itype%n(i,k)  = itype%n(i,k)  - coll_n
                 }
             }
-
+    }
 }
