@@ -3,6 +3,7 @@ import netCDF4 as nc4
 import xarray as xr
 import numpy as np
 import os, shutil
+from datetime import datetime
 
 pl.close('all')
 
@@ -57,18 +58,28 @@ def copy(f1, f2):
         raise Exception('Source file {} does not exist!'.format(f1))
 
 
+
+
 if __name__ == '__main__':
     """
     Case switches.
     """
+    # NOTE: (LS)2D data is available from 11-08-2016 00 UTC to 12-08-2016 00 UTC.
+    start = datetime(year=2016, month=8, day=11, hour=0)
+    end   = datetime(year=2016, month=8, day=12, hour=0)
+
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
-    use_htessel = False           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = False            # False = prescribed radiation from ERA5.
+    use_htessel = False          # False = prescribed surface H+LE fluxes from ERA5.
+    use_rrtmgp = False           # False = prescribed radiation from ERA5.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
+    single_column = True
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
+
+    # List of scalars (for limiter)
+    scalars = ['qr','nr','qs','ns','qi','ni']
 
     # Option to link or copy the LSM + RRTMGP lookup tables.
     copy_or_link = copy
@@ -92,22 +103,16 @@ if __name__ == '__main__':
     """
     Create vertical grid for LES
     """
-    vgrid = Grid_linear_stretched(160, 25, 0.013)
+    vgrid = Grid_linear_stretched(160, 25, 0.014)
 
     """
     Read / interpolate (LS)2D initial conditions and forcings
     """
     ls2d = xr.open_dataset('ls2d_20160811.nc')
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
+    ls2d = ls2d.sel(time=slice(start, end))
+    ls2d['time_sec'] -= ls2d['time_sec'][0]
     ls2d_z = ls2d.interp(z=vgrid.z)
-
-    if not use_rrtmgp and use_htessel:
-        # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
-        # TODO: add to LS2D download...
-        ds_rad = xr.open_dataset('era_rad_20160811.nc')
-        ds_rad = ds_rad/3600.
-        ds_rad['time'] = ds_rad['time'] - np.timedelta64(30, 'm')
-        ds_rad = ds_rad.interp(time=ls2d_z.time)
 
     # Reverse the soil fields. Important NOTE: in MicroHH, the vertical
     # soil index 0 is the lowest level in the soil. In (LS)2D, this
@@ -124,9 +129,6 @@ if __name__ == '__main__':
     Update .ini file
     """
     ini = mht.Read_namelist('cabauw.ini.base')
-
-    itot = ini['grid']['itot']
-    jtot = ini['grid']['jtot']
 
     ini['grid']['ktot'] = vgrid.kmax
     ini['grid']['zsize'] = vgrid.zsize
@@ -146,11 +148,34 @@ if __name__ == '__main__':
 
     if use_rrtmgp:
         ini['radiation']['swradiation'] = 'rrtmgp'
+
     elif use_htessel:
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
     else:
         ini['radiation']['swradiation'] = '0'
+
+    ini['time']['endtime'] = (end-start).total_seconds()
+    datetime_utc = '{0:04d}-{1:02d}-{2:02d} {3:02d}:{4:02d}:{5:02d}'.format(
+            start.year, start.month, start.day, start.hour, start.minute, start.second)
+    ini['time']['datetime_utc'] = datetime_utc
+
+    ini['limiter']['limitlist'] = scalars
+
+    if single_column:
+        ini['grid']['itot'] = 1
+        ini['grid']['jtot'] = 1
+
+        ini['grid']['xsize'] = 100
+        ini['grid']['ysize'] = 100
+
+        ini['advec']['swadvec'] = 0
+        ini['diff']['swdiff'] = 0
+        #ini['pres']['swpres'] = 0
+
+        ini['time']['adaptivetimestep'] = 0
+        ini['time']['dtmax'] = 20
+
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -169,7 +194,11 @@ if __name__ == '__main__':
     add_nc_var('qt', ('z'), nc_init, ls2d_z.qt[0,:])
     add_nc_var('u', ('z'), nc_init, ls2d_z.u[0,:])
     add_nc_var('v', ('z'), nc_init, ls2d_z.v[0,:])
-    add_nc_var('nudgefac', ('z'), nc_init, np.ones(vgrid.kmax)/10800)
+
+    if single_column:
+        add_nc_var('nudgefac', ('z'), nc_init, np.ones(vgrid.kmax)/3600)
+    else:
+        add_nc_var('nudgefac', ('z'), nc_init, np.ones(vgrid.kmax)/10800)
 
     """
     Time varying forcings
@@ -188,12 +217,6 @@ if __name__ == '__main__':
     if not use_htessel:
         add_nc_var('thl_sbot', ('time_surface'), nc_tdep, ls2d_z.wth)
         add_nc_var('qt_sbot', ('time_surface'), nc_tdep, ls2d_z.wq)
-
-    if not use_rrtmgp and use_htessel:
-        add_nc_var('sw_flux_dn', ('time_surface'), nc_tdep, ds_rad.ssrd)
-        add_nc_var('sw_flux_up', ('time_surface'), nc_tdep, ds_rad.ssrd-ds_rad.ssr)
-        add_nc_var('lw_flux_dn', ('time_surface'), nc_tdep, ds_rad.strd)
-        add_nc_var('lw_flux_up', ('time_surface'), nc_tdep, ds_rad.strd-ds_rad.str)
 
     add_nc_var('u_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtu_advec)
     add_nc_var('v_ls', ('time_ls', 'z'), nc_tdep, ls2d_z.dtv_advec)
@@ -252,87 +275,3 @@ if __name__ == '__main__':
         add_nc_var('root_frac', ('z'), nc_soil, root_frac)
 
     nc.close()
-
-    """
-    Create 2D binary input files (if needed)
-    """
-    def get_patches(blocksize_i, blocksize_j):
-        """
-        Get mask for the surface patches
-        """
-        mask = np.zeros((jtot, itot), dtype=bool)
-        mask[:] = False
-
-        for j in range(jtot):
-            for i in range(itot):
-                patch_i = i // blocksize_i % 2 == 0
-                patch_j = j // blocksize_j % 2 == 0
-
-                if (patch_i and patch_j) or (not patch_i and not patch_j):
-                    mask[j,i] = True
-
-        return mask
-
-    if not use_homogeneous_z0:
-        """
-        Create checkerboard pattern for z0m and z0h
-        """
-
-        z0m = ini['boundary']['z0m']
-        z0h = ini['boundary']['z0h']
-
-        z0m_2d = np.zeros((jtot, itot), dtype=TF)
-        z0h_2d = np.zeros((jtot, itot), dtype=TF)
-
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
-
-        z0m_2d[ mask] = z0m
-        z0m_2d[~mask] = z0m/2.
-
-        z0h_2d[ mask] = z0h
-        z0h_2d[~mask] = z0h/2.
-
-        z0m_2d.tofile('z0m.0000000')
-        z0h_2d.tofile('z0h.0000000')
-
-    if not use_homogeneous_ls:
-        """
-        Create checkerboard pattern for land-surface fields.
-        """
-
-        # Help-class to define and write the correct input for the land-surface scheme:
-        # `lsm_input.py` is available in the `microhh_root/python` directory.
-        from lsm_input import LSM_input
-
-        exclude = ['z0h', 'z0m', 'water_mask', 't_bot_water']
-        lsm_data = LSM_input(itot, jtot, ktot=4, TF=TF, debug=True, exclude_fields=exclude)
-
-        # Set surface fields:
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
-
-        # Patched fields:
-        lsm_data.c_veg[ mask] = ini['land_surface']['c_veg']
-        lsm_data.c_veg[~mask] = ini['land_surface']['c_veg']/3.
-
-        lsm_data.lai[ mask] = ini['land_surface']['lai']
-        lsm_data.lai[~mask] = ini['land_surface']['lai']/2.
-
-        # Non-patched / homogeneous fields:
-        lsm_data.gD[:,:] = ini['land_surface']['gD']
-        lsm_data.rs_veg_min[:,:] = ini['land_surface']['rs_veg_min']
-        lsm_data.rs_soil_min[:,:] = ini['land_surface']['rs_soil_min']
-        lsm_data.lambda_stable[:,:] = ini['land_surface']['lambda_stable']
-        lsm_data.lambda_unstable[:,:] = ini['land_surface']['lambda_unstable']
-        lsm_data.cs_veg[:,:] = ini['land_surface']['cs_veg']
-
-        lsm_data.t_soil[:,:,:] = t_soil[:, np.newaxis, np.newaxis]
-        lsm_data.theta_soil[:,:,:] = theta_soil[:, np.newaxis, np.newaxis]
-        lsm_data.index_soil[:,:,:] = index_soil[:, np.newaxis, np.newaxis]
-        lsm_data.root_frac[:,:,:] = root_frac[:, np.newaxis, np.newaxis]
-
-        # Check if all the variables have been set:
-        lsm_data.check()
-
-        # Save binary input MicroHH, and NetCDF file for visual validation/plotting/etc.
-        lsm_data.save_binaries(allow_overwrite=True)
-        lsm_data.save_netcdf('lsm_input.nc', allow_overwrite=True)

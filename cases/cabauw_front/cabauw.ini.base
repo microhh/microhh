@@ -17,6 +17,9 @@ utrans=0.0
 vtrans=0.0
 swspatialorder=2
 
+[pres]
+swpres=2
+
 [advec]
 swadvec=2
 cflmax=1.4
@@ -38,6 +41,7 @@ swtimedep_pbot=1
 swmicro=sb06
 cflmax=1.2
 Nc0=200000000
+Ni0=200000000
 
 [radiation]
 swradiation=None
@@ -146,4 +150,4 @@ coordinates[x]=1600
 coordinates[y]=1600
 
 [limiter]
-limitlist=qt,qi,qr,qs,qg,qh,ni,nr,ns,ng,nh
+limitlist=None
