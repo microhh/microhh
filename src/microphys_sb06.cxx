@@ -1094,7 +1094,8 @@ void Microphys_sb06<TF>::create(
         {
             // Time series
             if (it.second.is_mass)
-                stats.add_time_series("r" + it.first.substr(1,1), "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
+                stats.add_time_series(it.second.name + "_rate", "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
+                //stats.add_time_series("r" + it.first.substr(1,1), "Mean surface " + it.second.name + "rate", "kg m-2 s-1", group_name);
 
             // Profiles
             stats.add_prof("v" + it.first, "Fall velocity " + it.second.name + "mass density", "m s-1", "z" , group_name);
@@ -1724,12 +1725,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             //IF (ischeck) CALL check(ik_slice, 'clouds_twomoment end',cloud,rain,ice,snow,graupel,hail)
             //IF (isdebug) CALL message(TRIM(routine),"clouds_twomoment end")
-
-
-
-
-
-
         }
 
         for (auto& it : hydro_types)
@@ -1828,6 +1823,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     fields.release_tmp_xy(qtt_liq);
     fields.release_tmp_xy(qtt_ice);
+    fields.release_tmp_xy(qv);
+
+    fields.release_tmp_xy(tmpxy1);
+    fields.release_tmp_xy(tmpxy2);
+
+    fields.release_tmp_xy(dep_rate_ice);
+    fields.release_tmp_xy(dep_rate_snow);
 }
 #endif
 
@@ -1844,7 +1846,8 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     // Time series
     for (auto& it : hydro_types)
         if (it.second.is_mass)
-            stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
+            stats.calc_stats_2d(it.first + "_rate", it.second.precip_rate, no_offset);
+            //stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
 
     // Profiles
     auto vq = fields.get_tmp();
