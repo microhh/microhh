@@ -155,6 +155,129 @@ namespace Sb_cold
     }
 
     template<typename TF>
+    inline TF set_qnc(const TF qc)
+    {
+        const TF Dmean = TF(10e-6); // Diameter of mean particle mass
+
+        //!set_qnc = qc * 6.0_wp / (pi * rhoh2o * Dmean**3.0_wp)
+        return qc * TF(6) / (Constants::pi<TF> * Constants::rho_w<TF> * std::exp(std::log(Dmean) * TF(3)));
+    }
+
+    template<typename TF>
+    inline TF set_qni(const TF qi)
+    {
+        const TF Dmean = TF(100e-6);
+
+        //!set_qni  = qi / 1e-10   !  qiin / ( ( Dmean / ageo) ** (1.0_wp / bgeo) )
+        //!set_qni =  5.0E+0_wp * EXP(0.304_wp *  (T_3 - T))   ! FR: Cooper (1986) used by Greg Thompson(2008)
+        return qi / TF(1e-10);  //  qiin / ( exp(log(( Dmean / ageo)) * (1.0_wp / bgeo)) )
+    }
+
+    template<typename TF>
+    inline TF set_qnr(const TF qr)
+    {
+        const TF N0r = TF(8000e3); // intercept of MP distribution
+
+        //!set_qnr = N0r * ( qr * 6.0_wp / (pi * rhoh2o * N0r * gfct(4.0_wp)))**(0.25_wp)
+
+        if (qr >= TF(1e-20))
+            return N0r * std::exp( std::log( qr * TF(6) / (Constants::pi<TF> * Constants::rho_w<TF> * N0r * std::tgamma(TF(4)))) * TF(0.25) );
+        else
+            return TF(0);
+    }
+
+    template<typename TF>
+    inline TF set_qns(const TF qs)
+    {
+        const TF N0s = TF(800.0e3);
+        const TF ams = TF(0.038);  // needs to be connected to snow-type
+        const TF bms = TF(2.0);
+
+        //!set_qns = N0s * ( qs / ( ams * N0s * gfct(bms+1.0_wp)))**( 1.0_wp/(1.0_wp+bms) )
+
+        if (qs >= TF(1e-20))
+            return N0s * std::exp( std::log( qs / ( ams * N0s * std::tgamma(bms+TF(1)))) * ( TF(1)/(TF(1)+bms) ) );
+        else
+            return TF(0);
+    }
+
+    template<typename TF>
+    inline TF set_qng(const TF qg)
+    {
+        const TF N0g = TF(4000.0e3);
+        const TF amg = TF(169.6);     // needs to be connected to graupel-type
+        const TF bmg = TF(3.1);
+
+        //!set_qng = N0g * ( qg / ( amg * N0g * gfct(bmg+1.0_wp)))**( 1.0_wp/(1.0_wp+bmg) )
+
+        if (qg >= TF(1e-20))
+            return N0g * std::exp( std::log ( qg / ( amg * N0g * std::tgamma(bmg + TF(1)))) * ( TF(1)/(TF(1)+bmg) ) );
+        else
+            return TF(0);
+    }
+
+    template<typename TF>
+    inline TF set_qnh(const TF qh)
+    {
+        const TF Dmean = TF(5e-3);    // Diameter of mean particle mass
+        const TF rhob_hail = TF(750); // assumed bulk density of hail
+
+        //!set_qnh = qh * 6.0_wp / (pi * rhob_hail * Dmean**3.0_wp)
+        return qh * TF(6) / (Constants::pi<TF> * rhob_hail * std::exp(std::log(Dmean)*TF(3)) );
+    }
+
+    template<typename TF>
+    void set_default_n(
+            TF* const restrict qi,
+            TF* const restrict ni,
+            TF* const restrict qr,
+            TF* const restrict nr,
+            TF* const restrict qs,
+            TF* const restrict ns,
+            TF* const restrict qg,
+            TF* const restrict ng,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        // Set to a default number concentration in places with qnx = 0 and qx !=0
+
+        const TF eps = TF(1e-3);
+
+        // TODO for prognostic qc/nc:
+        //if (qc && nc)
+        //{
+        //    for (int j=jstart; j<jend; ++j)
+        //        for (int i=istart; i<iend; ++i)
+        //        {
+        //            const int ij = i + j*jstride;
+        //            if (qc[ij] > TF(0) && nc[ij] < eps)
+        //                nc[ij] = set_qnc(qc[ij]);
+        //        }
+        //}
+
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jstride;
+
+                if (qi[ij] > TF(0) && ni[ij] < eps)
+                    ni[ij] = set_qni(qi[ij]);
+
+                if (qr[ij] > TF(0) && nr[ij] < eps)
+                    nr[ij] = set_qnr(qr[ij]);
+
+                if (qs[ij] > TF(0) && ns[ij] < eps)
+                    ns[ij] = set_qns(qs[ij]);
+
+                if (qg[ij] > TF(0) && ng[ij] < eps)
+                    ng[ij] = set_qng(qg[ij]);
+
+                // BvS: What about qh/nh? There is a `set_qng()` functions..
+            }
+    }
+
+    template<typename TF>
     void sedi_vel_rain(
             TF* const restrict vq,
             TF* const restrict vn,

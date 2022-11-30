@@ -1456,8 +1456,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                These are the new kernels ported from ICON.
             */
 
-            //dep_rate_ice(:,:)  = 0.0_wp
-            //dep_rate_snow(:,:) = 0.0_wp
+            zero_tmp_xy(dep_rate_ice);
+            zero_tmp_xy(dep_rate_snow);
 
             //IF (isdebug) CALL message(TRIM(routine),'cloud_nucleation')
 
@@ -1484,8 +1484,19 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
 
-            //! Set to default values where qnx =0 and qx>0
-            //CALL set_default_n(ik_slice, cloud, ice, rain, snow, graupel)
+            // Set to default values where qnx=0 and qx>0
+            Sb_cold::set_default_n(
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("ni").slice,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ng").slice,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
             //IF (nuc_c_typ.ne.0) THEN
             //  DO k=kstart,kend
