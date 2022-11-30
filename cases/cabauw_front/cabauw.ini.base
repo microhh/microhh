@@ -40,6 +40,7 @@ swtimedep_pbot=1
 [micro]
 swmicro=sb06
 cflmax=1.2
+swintegrate=0
 Nc0=200000000
 Ni0=200000000
 

@@ -83,7 +83,9 @@ names = [
 cmap = mcolors.ListedColormap(colors.values())
 
 date = datetime.datetime(2016, 8, 11)
-cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
+
+#cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
+cb_path = '/Users/bart/meteo/observations/cabauw/'
 
 # Read the cloud net classification
 cn = xr.open_dataset('{path}/cloudnet/{year:04d}{month:02d}{day:02d}_cabauw_classification.nc'.format(
@@ -166,7 +168,7 @@ pl.xlim(date, date+datetime.timedelta(days=1))
 pl.ylim(0,3)
 
 ax2=ax1.twinx()
-pl.plot(uhh.time, uhh.rr*3600, color='tab:blue')
+pl.plot(uhh.time, uhh.rain_rate*3600, color='tab:blue')
 pl.ylabel(r'rr (mm h$^{-1}$)')
 pl.xlim(date, date+datetime.timedelta(days=1))
 pl.ylim(0,5)
@@ -178,12 +180,44 @@ color_y_ax('right', 'tab:blue', ax2)
 ax2.spines['left'].set_color('tab:red')
 
 
-pl.figure()
-pl.subplot(221)
-pl.pcolormesh(uhh.time, uhh.z, uhh.ql.T>1e-9)
 
-pl.subplot(222)
-pl.pcolormesh(uhh.time, uhh.z, uhh.qi.T>1e-9)
+pl.figure(figsize=(10,5))
 
-pl.subplot(223)
-pl.pcolormesh(uhh.time, uhh.z, uhh.qr.T>1e-9)
+ylim = (0, 10000)
+
+ax=pl.subplot(161)
+pl.title('ql', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.ql.T>1e-9, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+
+ax=pl.subplot(162)
+pl.title('qi', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.qi.T>1e-12, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+ax.set_yticklabels([])
+
+ax=pl.subplot(163)
+pl.title('qr', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.qr.T>1e-12, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+ax.set_yticklabels([])
+
+ax=pl.subplot(164)
+pl.title('qs', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.qs.T>1e-12, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+ax.set_yticklabels([])
+
+ax=pl.subplot(165)
+pl.title('qg', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.qg.T>1e-12, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+ax.set_yticklabels([])
+
+ax=pl.subplot(166)
+pl.title('qh', loc='left')
+pl.contour(uhh.time, uhh.z, uhh.qh.T>1e-12, [0.9, 1.1], colors='b')
+pl.ylim(ylim)
+ax.set_yticklabels([])
+
+pl.tight_layout()
