@@ -413,11 +413,11 @@ Microphys_sb06<TF>::Microphys_sb06(
         add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
         add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
 
-        //add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
-        //add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
+        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
+        add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
 
-        //add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
-        //add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
+        add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
+        add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
     }
 
     const std::string group_name = "thermo";
@@ -1161,7 +1161,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     bool is_stat = false;
 
     auto ql = fields.get_tmp();
-    auto qi = fields.get_tmp();
     auto T = fields.get_tmp();
 
     thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
@@ -1175,6 +1174,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     std::fill(
         fields.ap.at("ni")->fld.begin(),
         fields.ap.at("ni")->fld.end(), Ni0);
+
+    // Hack 3; calculate q_vapor as qt-ql-qi for now...
+    auto qv = fields.get_tmp_xy();
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
@@ -1190,7 +1192,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto lambda_r = fields.get_tmp_xy();
 
     // Setup 2D slices for implicit solver
-    const int n_slices = hydro_types.size() * 8;
+    const int n_slices = hydro_types.size() * 9;
     if (n_slices > gd.kcells)
         throw std::runtime_error("TODO.... :-)");
 
@@ -1207,12 +1209,21 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         it.second.impl = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
         it.second.slice = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
         it.second.conversion_tend = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
+        it.second.tmp1 = &tmp_slices->fld.data()[n*gd.ijcells]; n+=1;
     }
 
     // Diagnostic change in qt by warm (cloud) and cold (ice) processes.
     // Used for bookkeeping difference between e.g. evaporation and sublimation.
     auto qtt_liq = fields.get_tmp_xy();
     auto qtt_ice = fields.get_tmp_xy();
+
+    // More tmp slices :-)
+    auto tmpxy1 = fields.get_tmp_xy();
+    auto tmpxy2 = fields.get_tmp_xy();
+
+    // Deposition rate ice/snow; shared between kernels.
+    auto dep_rate_ice  = fields.get_tmp_xy();
+    auto dep_rate_snow = fields.get_tmp_xy();
 
     // Help functions to zero XY fields.
     auto zero_tmp_xy = [&](std::shared_ptr<std::vector<TF>>& fld_xy)
@@ -1235,7 +1246,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
-    convert_units_short(qi->fld.data(), to_kgm3);
+    convert_units_short(fields.ap.at("qi")->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
 
     for (auto& it : hydro_types)
@@ -1243,6 +1254,17 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
+        // Diagnose qv into 2D slice.
+        Sb_cold::diagnose_qv(
+            (*qv).data(),
+            fields.ap.at("qt")->fld.data(),
+            ql->fld.data(),
+            fields.ap.at("qi")->fld.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells, gd.ijcells,
+            k);
+
         for (auto& it : hydro_types)
         {
             // Copy 3D fields to 2D slices, and do partial
@@ -1309,81 +1331,83 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                These are the "old" `2mom_warm` kernels ported from UCLA-LES/DALES.
             */
 
-            // Autoconversion; formation of rain drop by coagulating cloud droplets.
-            warm::autoconversion(
-                    hydro_types.at("qr").conversion_tend,
-                    hydro_types.at("nr").conversion_tend,
-                    hydro_types.at("qr").slice,
-                    hydro_types.at("nr").slice,
-                    ql->fld.data(),
-                    rho.data(),
-                    exner.data(),
-                    Nc0, dt,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells, k);
+            throw std::runtime_error("\"sw_warm\" is no longer (or at least for now...) supported in SB06\n");
 
-            // Accretion; growth of rain droplets by collecting cloud droplets
-            warm::accretion(
-                    hydro_types.at("qr").conversion_tend,
-                    hydro_types.at("qr").slice,
-                    ql->fld.data(),
-                    rho.data(),
-                    exner.data(),
-                    dt,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells, k);
+            //// Autoconversion; formation of rain drop by coagulating cloud droplets.
+            //warm::autoconversion(
+            //        hydro_types.at("qr").conversion_tend,
+            //        hydro_types.at("nr").conversion_tend,
+            //        hydro_types.at("qr").slice,
+            //        hydro_types.at("nr").slice,
+            //        ql->fld.data(),
+            //        rho.data(),
+            //        exner.data(),
+            //        Nc0, dt,
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells, gd.ijcells, k);
 
-            // Calculate quantities used by multiple kernels.
-            warm::prepare_microphysics_slice(
-                    (*rain_mass).data(),
-                    (*rain_diameter).data(),
-                    (*mu_r).data(),
-                    (*lambda_r).data(),
-                    hydro_types.at("qr").slice,
-                    hydro_types.at("nr").slice,
-                    rho.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells, k);
+            //// Accretion; growth of rain droplets by collecting cloud droplets
+            //warm::accretion(
+            //        hydro_types.at("qr").conversion_tend,
+            //        hydro_types.at("qr").slice,
+            //        ql->fld.data(),
+            //        rho.data(),
+            //        exner.data(),
+            //        dt,
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells, gd.ijcells, k);
 
-            // Evaporation of rain droplets.
-            warm::evaporation(
-                    hydro_types.at("qr").conversion_tend,
-                    hydro_types.at("nr").conversion_tend,
-                    hydro_types.at("qr").slice,
-                    hydro_types.at("nr").slice,
-                    ql->fld.data(),
-                    // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
-                    // fields.sp.at("qi")->fld.data(),
-                    qi->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    T->fld.data(),
-                    rho.data(),
-                    exner.data(),
-                    p.data(),
-                    (*rain_mass).data(),
-                    (*rain_diameter).data(),
-                    dt,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells, k);
+            //// Calculate quantities used by multiple kernels.
+            //warm::prepare_microphysics_slice(
+            //        (*rain_mass).data(),
+            //        (*rain_diameter).data(),
+            //        (*mu_r).data(),
+            //        (*lambda_r).data(),
+            //        hydro_types.at("qr").slice,
+            //        hydro_types.at("nr").slice,
+            //        rho.data(),
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells, gd.ijcells, k);
 
-            // Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
-            // coagulation, and breakup by collisions.
-            warm::selfcollection_breakup(
-                    hydro_types.at("nr").conversion_tend,
-                    hydro_types.at("nr").slice,
-                    hydro_types.at("qr").slice,
-                    rho.data(),
-                    (*rain_mass).data(),
-                    (*rain_diameter).data(),
-                    (*lambda_r).data(),
-                    dt,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells, k);
+            //// Evaporation of rain droplets.
+            //warm::evaporation(
+            //        hydro_types.at("qr").conversion_tend,
+            //        hydro_types.at("nr").conversion_tend,
+            //        hydro_types.at("qr").slice,
+            //        hydro_types.at("nr").slice,
+            //        ql->fld.data(),
+            //        // CvH, this is temporarily switched back to the sat-adjust qi until ice is enabled.
+            //        // fields.sp.at("qi")->fld.data(),
+            //        qi->fld.data(),
+            //        fields.sp.at("qt")->fld.data(),
+            //        T->fld.data(),
+            //        rho.data(),
+            //        exner.data(),
+            //        p.data(),
+            //        (*rain_mass).data(),
+            //        (*rain_diameter).data(),
+            //        dt,
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells, gd.ijcells, k);
+
+            //// Selfcollection & breakup: growth of raindrops by mutual (rain-rain)
+            //// coagulation, and breakup by collisions.
+            //warm::selfcollection_breakup(
+            //        hydro_types.at("nr").conversion_tend,
+            //        hydro_types.at("nr").slice,
+            //        hydro_types.at("qr").slice,
+            //        rho.data(),
+            //        (*rain_mass).data(),
+            //        (*rain_diameter).data(),
+            //        (*lambda_r).data(),
+            //        dt,
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells, gd.ijcells, k);
         }
         else
         {
@@ -1447,14 +1471,56 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //END DO
             //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
-            //! depositional growth of all ice particles
-            //! ( store deposition rate of ice and snow for conversion calculation in
-            //!   ice_riming and snow_riming )
-            //CALL vapor_dep_relaxation(ik_slice,dt,ice_coeffs,snow_coeffs,graupel_coeffs,hail_coeffs,&
-            //     &                    atmo,ice,snow,graupel,hail,dep_rate_ice,dep_rate_snow)
+            // Depositional growth of all ice particles.
+            // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
+            Sb_cold::vapor_dep_relaxation(
+                    // 2D Output tendencies:
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    (*qtt_liq).data(),
+                    (*dep_rate_ice).data(),
+                    (*dep_rate_snow).data(),
+                    // 2D tmp fields:
+                    (*tmpxy1).data(),
+                    (*tmpxy2).data(),
+                    hydro_types.at("qi").tmp1,
+                    hydro_types.at("qs").tmp1,
+                    hydro_types.at("qg").tmp1,
+                    hydro_types.at("qh").tmp1,
+                    // 2D input:
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("ni").slice,
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ng").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    (*qv).data(),
+                    p[k], TF(dt),
+                    ice,
+                    snow,
+                    graupel,
+                    hail,
+                    ice_coeffs,
+                    snow_coeffs,
+                    graupel_coeffs,
+                    hail_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
             //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
 
-            //! ice-ice collisions
+            // Ice-ice collisions
             //CALL ice_selfcollection(ik_slice,dt,atmo,ice,snow,ice_coeffs)
             //CALL snow_selfcollection(ik_slice,dt,atmo,snow,snow_coeffs)
 
@@ -1607,9 +1673,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     (*qtt_liq).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
-                    &fields.sp.at("qt")->fld.data()[k*gd.ijcells],
+                    (*qv).data(),
                     &ql->fld.data()[k*gd.ijcells],
-                    &qi->fld.data()[k*gd.ijcells],
                     &T->fld.data()[k*gd.ijcells],
                     p.data(),
                     rain_coeffs,
@@ -1753,7 +1818,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Release temporary fields.
     fields.release_tmp(ql);
-    fields.release_tmp(qi);
     fields.release_tmp(T);
     fields.release_tmp(tmp_slices);
 
@@ -1816,206 +1880,206 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     fields.release_tmp(vq);
     fields.release_tmp(vn);
 
-    if (sw_microbudget)
-    {
-        auto qrt = fields.get_tmp();
-        auto nrt = fields.get_tmp();
-        auto qtt = fields.get_tmp();
+    //if (sw_microbudget)
+    //{
+    //    auto qrt = fields.get_tmp();
+    //    auto nrt = fields.get_tmp();
+    //    auto qtt = fields.get_tmp();
 
-        auto qt_xy = fields.get_tmp_xy();
-        auto qr_xy = fields.get_tmp_xy();
-        auto nr_xy = fields.get_tmp_xy();
+    //    auto qt_xy = fields.get_tmp_xy();
+    //    auto qr_xy = fields.get_tmp_xy();
+    //    auto nr_xy = fields.get_tmp_xy();
 
-        auto ql = fields.get_tmp();
-        auto qi = fields.get_tmp();
-        auto T = fields.get_tmp();
+    //    auto ql = fields.get_tmp();
+    //    auto qi = fields.get_tmp();
+    //    auto T = fields.get_tmp();
 
-        thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
-        thermo.get_thermo_field(*qi, "qi", cyclic, is_stat);
-        thermo.get_thermo_field(*T, "T", cyclic, is_stat);
+    //    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+    //    thermo.get_thermo_field(*qi, "qi", cyclic, is_stat);
+    //    thermo.get_thermo_field(*T, "T", cyclic, is_stat);
 
-        // Transform ql en qi from `kg kg-1` to `kg m-3`.
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*gd.icells + k*gd.ijcells;
-                    ql->fld[ijk] *= rho[k];
-                    qi->fld[ijk] *= rho[k];
-                }
+    //    // Transform ql en qi from `kg kg-1` to `kg m-3`.
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //        for (int j=gd.jstart; j<gd.jend; ++j)
+    //            for (int i=gd.istart; i<gd.iend; ++i)
+    //            {
+    //                const int ijk = i + j*gd.icells + k*gd.ijcells;
+    //                ql->fld[ijk] *= rho[k];
+    //                qi->fld[ijk] *= rho[k];
+    //            }
 
-        const std::vector<TF>& p = thermo.get_basestate_vector("p");
-        const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
+    //    const std::vector<TF>& p = thermo.get_basestate_vector("p");
+    //    const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
 
-        // TMP/HACK BvS
-        //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
-        const std::vector<TF>& rho = fields.rhoref;
+    //    // TMP/HACK BvS
+    //    //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+    //    const std::vector<TF>& rho = fields.rhoref;
 
-        auto zero_fields = [&]()
-        {
-            std::fill(qrt->fld.begin(), qrt->fld.end(), TF(0));
-            std::fill(nrt->fld.begin(), nrt->fld.end(), TF(0));
-            std::fill(qtt->fld.begin(), qtt->fld.end(), TF(0));
-        };
+    //    auto zero_fields = [&]()
+    //    {
+    //        std::fill(qrt->fld.begin(), qrt->fld.end(), TF(0));
+    //        std::fill(nrt->fld.begin(), nrt->fld.end(), TF(0));
+    //        std::fill(qtt->fld.begin(), qtt->fld.end(), TF(0));
+    //    };
 
-        auto set_moisture_slices = [&](const int k)
-        {
-             // Copy xy slices moisture, and transform from
-             // `kg kg-1` to `kg m-3` and from `kg-1` to `m-3`.
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ij  = i + j * gd.icells;
-                    const int ijk = ij + k * gd.ijcells;
+    //    auto set_moisture_slices = [&](const int k)
+    //    {
+    //         // Copy xy slices moisture, and transform from
+    //         // `kg kg-1` to `kg m-3` and from `kg-1` to `m-3`.
+    //        for (int j=gd.jstart; j<gd.jend; ++j)
+    //            for (int i=gd.istart; i<gd.iend; ++i)
+    //            {
+    //                const int ij  = i + j * gd.icells;
+    //                const int ijk = ij + k * gd.ijcells;
 
-                    (*qt_xy)[ij] = fields.sp.at("qt")->fld[ijk] * rho[k];
-                    (*qr_xy)[ij] = fields.sp.at("qr")->fld[ijk] * rho[k];
-                    (*nr_xy)[ij] = fields.sp.at("nr")->fld[ijk] * rho[k];
-                }
-        };
+    //                (*qt_xy)[ij] = fields.sp.at("qt")->fld[ijk] * rho[k];
+    //                (*qr_xy)[ij] = fields.sp.at("qr")->fld[ijk] * rho[k];
+    //                (*nr_xy)[ij] = fields.sp.at("nr")->fld[ijk] * rho[k];
+    //            }
+    //    };
 
-        auto to_kgkg = [&](std::shared_ptr<Field3d<TF>>& fld)
-        {
-            for (int k=gd.kstart; k<gd.kend; ++k)
-                for (int j=gd.jstart; j<gd.jend; ++j)
-                    for (int i=gd.istart; i<gd.iend; ++i)
-                    {
-                        const int ijk = i + j * gd.icells + k * gd.ijcells;
-                        fld->fld[ijk] /= rho[k];
-                    }
-        };
+    //    auto to_kgkg = [&](std::shared_ptr<Field3d<TF>>& fld)
+    //    {
+    //        for (int k=gd.kstart; k<gd.kend; ++k)
+    //            for (int j=gd.jstart; j<gd.jend; ++j)
+    //                for (int i=gd.istart; i<gd.iend; ++i)
+    //                {
+    //                    const int ijk = i + j * gd.icells + k * gd.ijcells;
+    //                    fld->fld[ijk] /= rho[k];
+    //                }
+    //    };
 
-        std::vector<TF> rho_corr(gd.kcells);
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
-            rho_corr[k] = std::exp(-Sb_cold::rho_vel<TF>*hlp);
-        }
+    //    std::vector<TF> rho_corr(gd.kcells);
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
+    //        rho_corr[k] = std::exp(-Sb_cold::rho_vel<TF>*hlp);
+    //    }
 
-        // Autoconversion.
-        zero_fields();
+    //    // Autoconversion.
+    //    zero_fields();
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            set_moisture_slices(k);
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        set_moisture_slices(k);
 
-            Sb_cold::autoconversionSB(
-                    &qrt->fld.data()[k*gd.ijcells],
-                    &nrt->fld.data()[k*gd.ijcells],
-                    &qtt->fld.data()[k*gd.ijcells],
-                    (*qr_xy).data(),
-                    (*nr_xy).data(),
-                    &ql->fld.data()[k*gd.ijcells],
-                    cloud_coeffs,
-                    cloud, rain,
-                    rho_corr[k],
-                    Nc0,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells,
-                    k);
-        }
+    //        Sb_cold::autoconversionSB(
+    //                &qrt->fld.data()[k*gd.ijcells],
+    //                &nrt->fld.data()[k*gd.ijcells],
+    //                &qtt->fld.data()[k*gd.ijcells],
+    //                (*qr_xy).data(),
+    //                (*nr_xy).data(),
+    //                &ql->fld.data()[k*gd.ijcells],
+    //                cloud_coeffs,
+    //                cloud, rain,
+    //                rho_corr[k],
+    //                Nc0,
+    //                gd.istart, gd.iend,
+    //                gd.jstart, gd.jend,
+    //                gd.icells, gd.ijcells,
+    //                k);
+    //    }
 
-        to_kgkg(qrt);
-        to_kgkg(nrt);
+    //    to_kgkg(qrt);
+    //    to_kgkg(nrt);
 
-        stats.calc_stats("auto_qr", *qrt, no_offset, no_threshold);
-        stats.calc_stats("auto_nr", *nrt, no_offset, no_threshold);
+    //    stats.calc_stats("auto_qr", *qrt, no_offset, no_threshold);
+    //    stats.calc_stats("auto_nr", *nrt, no_offset, no_threshold);
 
-        // Accretion
-        zero_fields();
+    //    // Accretion
+    //    zero_fields();
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            set_moisture_slices(k);
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        set_moisture_slices(k);
 
-            Sb_cold::accretionSB(
-                    &qrt->fld.data()[k*gd.ijcells],
-                    &qtt->fld.data()[k*gd.ijcells],
-                    (*qr_xy).data(),
-                    &ql->fld.data()[k*gd.ijcells],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells,
-                    k);
-        }
+    //        Sb_cold::accretionSB(
+    //                &qrt->fld.data()[k*gd.ijcells],
+    //                &qtt->fld.data()[k*gd.ijcells],
+    //                (*qr_xy).data(),
+    //                &ql->fld.data()[k*gd.ijcells],
+    //                gd.istart, gd.iend,
+    //                gd.jstart, gd.jend,
+    //                gd.icells, gd.ijcells,
+    //                k);
+    //    }
 
-        to_kgkg(qrt);
-        stats.calc_stats("accr_qr", *qrt, no_offset, no_threshold);
+    //    to_kgkg(qrt);
+    //    stats.calc_stats("accr_qr", *qrt, no_offset, no_threshold);
 
-        // Selfcollection and breakup
-        zero_fields();
+    //    // Selfcollection and breakup
+    //    zero_fields();
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            set_moisture_slices(k);
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        set_moisture_slices(k);
 
-            Sb_cold::rain_selfcollectionSB(
-                    &nrt->fld.data()[k*gd.ijcells],
-                    (*qr_xy).data(),
-                    (*nr_xy).data(),
-                    rain,
-                    rho_corr[k],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells,
-                    k);
-        }
+    //        Sb_cold::rain_selfcollectionSB(
+    //                &nrt->fld.data()[k*gd.ijcells],
+    //                (*qr_xy).data(),
+    //                (*nr_xy).data(),
+    //                rain,
+    //                rho_corr[k],
+    //                gd.istart, gd.iend,
+    //                gd.jstart, gd.jend,
+    //                gd.icells, gd.ijcells,
+    //                k);
+    //    }
 
-        to_kgkg(nrt);
-        stats.calc_stats("scbr_nr", *nrt, no_offset, no_threshold);
+    //    to_kgkg(nrt);
+    //    stats.calc_stats("scbr_nr", *nrt, no_offset, no_threshold);
 
-        // Evaporation
-        zero_fields();
+    //    // Evaporation
+    //    zero_fields();
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            set_moisture_slices(k);
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        set_moisture_slices(k);
 
-            Sb_cold::rain_evaporation(
-                    &qrt->fld.data()[k*gd.ijcells],
-                    &nrt->fld.data()[k*gd.ijcells],
-                    &qtt->fld.data()[k*gd.ijcells],
-                    (*qr_xy).data(),
-                    (*nr_xy).data(),
-                    (*qt_xy).data(),
-                    &ql->fld.data()[k*gd.ijcells],
-                    &qi->fld.data()[k*gd.ijcells],
-                    &T->fld.data()[k*gd.ijcells],
-                    p.data(),
-                    rain_coeffs,
-                    cloud,
-                    rain,
-                    t_cfg_2mom,
-                    rain_gfak,
-                    rho_corr[k],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells,
-                    k);
-        }
+    //        Sb_cold::rain_evaporation(
+    //                &qrt->fld.data()[k*gd.ijcells],
+    //                &nrt->fld.data()[k*gd.ijcells],
+    //                &qtt->fld.data()[k*gd.ijcells],
+    //                (*qr_xy).data(),
+    //                (*nr_xy).data(),
+    //                (*qt_xy).data(),
+    //                &ql->fld.data()[k*gd.ijcells],
+    //                &qi->fld.data()[k*gd.ijcells],
+    //                &T->fld.data()[k*gd.ijcells],
+    //                p.data(),
+    //                rain_coeffs,
+    //                cloud,
+    //                rain,
+    //                t_cfg_2mom,
+    //                rain_gfak,
+    //                rho_corr[k],
+    //                gd.istart, gd.iend,
+    //                gd.jstart, gd.jend,
+    //                gd.icells, gd.ijcells,
+    //                k);
+    //    }
 
-        to_kgkg(qrt);
-        to_kgkg(nrt);
+    //    to_kgkg(qrt);
+    //    to_kgkg(nrt);
 
-        stats.calc_stats("evap_qr", *qrt, no_offset, no_threshold);
-        stats.calc_stats("evap_nr", *nrt, no_offset, no_threshold);
-
-
+    //    stats.calc_stats("evap_qr", *qrt, no_offset, no_threshold);
+    //    stats.calc_stats("evap_nr", *nrt, no_offset, no_threshold);
 
 
-        fields.release_tmp(qrt);
-        fields.release_tmp(nrt);
-        fields.release_tmp(qtt);
 
-        fields.release_tmp_xy(qt_xy);
-        fields.release_tmp_xy(qr_xy);
-        fields.release_tmp_xy(nr_xy);
 
-        fields.release_tmp(ql);
-        fields.release_tmp(qi);
-        fields.release_tmp(T);
-    }
+    //    fields.release_tmp(qrt);
+    //    fields.release_tmp(nrt);
+    //    fields.release_tmp(qtt);
+
+    //    fields.release_tmp_xy(qt_xy);
+    //    fields.release_tmp_xy(qr_xy);
+    //    fields.release_tmp_xy(nr_xy);
+
+    //    fields.release_tmp(ql);
+    //    fields.release_tmp(qi);
+    //    fields.release_tmp(T);
+    //}
 }
 
 #ifndef USECUDA

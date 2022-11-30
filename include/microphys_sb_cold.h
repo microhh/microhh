@@ -44,7 +44,7 @@ namespace Sb_cold
     template<typename TF> constexpr TF pirhow = pi<TF>*rho_w<TF>/6.;
     template<typename TF> constexpr TF rho_vel = 0.4;                  // Exponent for density correction
     template<typename TF> constexpr TF kc_autocon = 9.44e+9;           // Long-Kernel
-    template<typename TF> constexpr TF K_T = 2.40e-2;                  // Thermal conductivity of dry air (J/m/s/K)
+    template<typename TF> constexpr TF K_T = 2.40e-2;                  // Thermal/heat conductivity of dry air (J/m/s/K)
     template<typename TF> constexpr TF N_sc = 0.710;                   // Schmidt-Zahl (PK, S.541)
     template<typename TF> constexpr TF n_f  = 0.333;                   // Exponent von N_sc im Vent-koeff. (PK, S.541)
     template<typename TF> constexpr TF nu_l = 1.50E-5;                 // kinematic viscosity of dry air (m^2/s)
@@ -132,6 +132,27 @@ namespace Sb_cold
         }
     }
 
+    template<typename TF>
+    void diagnose_qv(
+            TF* const restrict qv,
+            const TF* const restrict qt,
+            const TF* const restrict ql,
+            const TF* const restrict qi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride, const int kstride,
+            const int k)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+                const int ijk = i + j*jstride + k*kstride;
+
+                qv[ij] = qt[ijk] - ql[ij] - qi[ij];
+            }
+    }
 
     template<typename TF>
     void sedi_vel_rain(
@@ -347,9 +368,8 @@ namespace Sb_cold
             TF* const restrict qtt_liq,
             const TF* const restrict qr,
             const TF* const restrict nr,
-            const TF* const restrict qt,
+            const TF* const restrict qv,
             const TF* const restrict ql,
-            const TF* const restrict qi,
             const TF* const restrict T,
             const TF* const restrict p,
             Particle_rain_coeffs<TF>& rain_coeffs,
@@ -381,8 +401,7 @@ namespace Sb_cold
             {
                 const int ij = i + j * jstride;
 
-                const TF qv = qt[ij] - ql[ij] - qi[ij];
-                const TF e_d = qv * Constants::Rd<TF> * T[ij];
+                const TF e_d = qv[ij] * Constants::Rd<TF> * T[ij];
                 const TF e_sw = tmf::esat_liq(T[ij]); // in ICON, this calls `sat_pres_water`
                 const TF s_sw = e_d / e_sw - TF(1);
 
@@ -562,4 +581,260 @@ namespace Sb_cold
                 }
             }
     }
+
+    template<typename TF>
+    void vapor_deposition_generic(
+            TF* const restrict dep_q,
+            const TF* const restrict prtcl_q,
+            const TF* const restrict prtcl_n,
+            const TF* const restrict g_i,
+            const TF* const restrict s_si,
+            Particle<TF>& prtcl,
+            Particle_coeffs<TF>& coeffs,
+            const TF rho_v,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+
+        for (int j = jstart; j < jend; j++)
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (prtcl_q[ij] == TF(0))
+                    dep_q[ij] = TF(0);
+                else
+                {
+                    const TF x = particle_meanmass(prtcl, prtcl_q[ij], prtcl_n[ij]);
+                    const TF d = particle_diameter(prtcl, x);
+                    const TF v = particle_velocity(prtcl, x) * rho_v;
+
+                    TF f_v  = coeffs.a_f + coeffs.b_f * sqrt(d*v);
+                    f_v = std::max(f_v, coeffs.a_f/prtcl.a_ven);
+
+                    dep_q[ij] = g_i[ij] * prtcl_n[ij] * coeffs.c_i * d * f_v * s_si[ij] * dt;
+                }
+            }
+    }
+
+    template<typename TF>
+    void vapor_dep_relaxation(
+            // 2D Output tendencies:
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qst,
+            TF* const restrict nst,
+            TF* const restrict qgt,
+            TF* const restrict ngt,
+            TF* const restrict qht,
+            TF* const restrict nht,
+            TF* const restrict qtt_liq,
+            // Integrated deposition (so *dt):
+            TF* const restrict dep_rate_ice,
+            TF* const restrict dep_rate_snow,
+            // 2D tmp fields:
+            TF* const restrict s_si,
+            TF* const restrict g_i,
+            TF* const restrict dep_ice,
+            TF* const restrict dep_snow,
+            TF* const restrict dep_graupel,
+            TF* const restrict dep_hail,
+            // 2D input:
+            const TF* const restrict qi,
+            const TF* const restrict ni,
+            const TF* const restrict qs,
+            const TF* const restrict ns,
+            const TF* const restrict qg,
+            const TF* const restrict ng,
+            const TF* const restrict qh,
+            const TF* const restrict nh,
+            const TF* const restrict T,
+            const TF* const restrict qv,
+            const TF p,
+            const TF dt,
+            Particle<TF>& ice,
+            Particle<TF>& snow,
+            Particle<TF>& graupel,
+            Particle<TF>& hail,
+            Particle_sphere<TF>& ice_coeffs,
+            Particle_sphere<TF>& snow_coeffs,
+            Particle_sphere<TF>& graupel_coeffs,
+            Particle_sphere<TF>& hail_coeffs,
+            const TF rho_v,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF eps  = Constants::dtiny;   // 1e-20 in ICON
+
+        // UB: if this new parameterization of n-reduction during sublimation
+        //     really makes sense, move to a global constant or into the particle types.
+        const bool reduce_sublimation = true;
+        const TF dep_n_fac = TF(0.5);
+
+        for (int j = jstart; j < jend; j++)
+            #pragma ivdep
+            for (int i = istart; i < iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (T[ij] > Constants::T0<TF>)
+                {
+                    const TF e_d  = qv[ij] * Constants::Rd<TF> * T[ij];
+                    const TF e_si = tmf::esat_ice(T[ij]);    // e_es(T_a) in ICON = sat_pres_ice
+                    s_si[ij] = e_d / e_si - TF(1);           // Supersaturation over ice
+                    const TF D_vtp = diffusivity(T[ij], p);  // D_v = 8.7602e-5 * T_a**(1.81) / p_a
+                    g_i[ij] = TF(4) * Constants::pi<TF> / ( fm::pow2(Constants::Ls<TF>) /
+                            (K_T<TF> * Constants::Rd<TF> * fm::pow2(T[ij])) +
+                            Constants::Rd<TF> * T[ij] / (D_vtp * e_si) );
+                }
+                else
+                {
+                    g_i[ij]  = TF(0);
+                    s_si[ij] = TF(0);
+                }
+
+                // Zero tmp slices
+                dep_ice[ij] = TF(0);
+                dep_snow[ij] = TF(0);
+                dep_graupel[ij] = TF(0);
+                dep_hail[ij] = TF(0);
+            }
+
+        Sb_cold::vapor_deposition_generic(
+                dep_ice, qi, ni,
+                g_i, s_si,
+                ice, ice_coeffs,
+                rho_v, dt,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        Sb_cold::vapor_deposition_generic(
+                dep_snow, qs, ns,
+                g_i, s_si,
+                snow, snow_coeffs,
+                rho_v, dt,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        Sb_cold::vapor_deposition_generic(
+                dep_graupel, qg, ng,
+                g_i, s_si,
+                graupel, graupel_coeffs,
+                rho_v, dt,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        Sb_cold::vapor_deposition_generic(
+                dep_hail, qh, nh,
+                g_i, s_si,
+                hail, hail_coeffs,
+                rho_v, dt,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        const TF zdt = TF(1) / dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                // Deposition only below T_3, evaporation of melting
+                // particles at warmer T is treated elsewhere
+                if(T[ij] > Constants::T0<TF>)
+                {
+                    // Depositional growth with relaxation time-scale approach based on:
+                    // "A New Double-Moment Microphysics Parameterization for Application in Cloud and
+                    // Climate Models. Part 1: Description" by H. Morrison, J.A.Curry, V.I. Khvorostyanov
+
+                    const TF qvsidiff = qv[ij] - tmf::esat_ice(T[ij]) / (Constants::Rd<TF> * T[ij]);
+
+                    if (std::abs(qvsidiff) > eps)
+                    {
+                        // Deposition rates are already multiplied with dt_local, therefore divide them here
+                        const TF tau_i_i  = zdt / qvsidiff * dep_ice[ij];
+                        const TF tau_s_i  = zdt / qvsidiff * dep_snow[ij];
+                        const TF tau_g_i  = zdt / qvsidiff * dep_graupel[ij];
+                        const TF tau_h_i  = zdt / qvsidiff * dep_hail[ij];
+
+                        const TF Xi_i = ( tau_i_i + tau_s_i + tau_g_i + tau_h_i );
+
+                        TF Xfac;
+                        if (Xi_i < eps)
+                            Xfac = TF(0);
+                        else
+                            Xfac = qvsidiff / Xi_i * (TF(1) - std::exp(-dt * Xi_i));
+
+                        dep_ice[ij] = Xfac * tau_i_i;
+                        dep_snow[ij] = Xfac * tau_s_i;
+                        dep_graupel[ij] = Xfac * tau_g_i;
+                        dep_hail[ij] = Xfac * tau_h_i;
+
+                        // This limiter should not be necessary
+                        if (qvsidiff < TF(0))
+                        {
+                            dep_ice[ij] = std::max(dep_ice[ij], -qi[ij]);
+                            dep_snow[ij] = std::max(dep_snow[ij], -qs[ij]);
+                            dep_graupel[ij] = std::max(dep_graupel[ij], -qg[ij]);
+                            dep_hail[ij] = std::max(dep_hail[ij], -qh[ij]);
+                        }
+
+                        const TF dep_sum = dep_ice[ij] + dep_graupel[ij] + dep_snow[ij] + dep_hail[ij];
+
+                        // NOTE BvS: this was commented out in ICON.
+                        //! this limiter should not be necessary
+                        //!IF (qvsidiff > 0.0_wp .and. dep_sum > qvsidiff) then
+                        //!   weight = qvsidiff / dep_sum
+                        //!   dep_sum          = weight * dep_sum
+                        //!   dep_ice(i,k)     = weight * dep_ice(i,k)
+                        //!   dep_snow(i,k)    = weight * dep_snow(i,k)
+                        //!   dep_graupel(i,k) = weight * dep_graupel(i,k)
+                        //!   dep_hail(i,k)    = weight * dep_hail(i,k)
+                        //!END IF
+
+                        qit[ij] += dep_ice[ij] * zdt;
+                        qst[ij] += dep_snow[ij] * zdt;
+                        qgt[ij] += dep_graupel[ij] * zdt;
+                        qht[ij] += dep_hail[ij] * zdt;
+                        qtt_liq[ij] -= dep_sum * zdt;
+
+                        // If deposition rate is negative, parameterize the complete evaporation of some of the
+                        // particles in a way that mean size is conserved times a tuning factor < 1:
+                        if (reduce_sublimation)
+                        {
+                            const TF x_i = particle_meanmass(ice, qi[ij], ni[ij]);
+                            const TF x_s = particle_meanmass(snow, qs[ij], ns[ij]);
+                            const TF x_g = particle_meanmass(graupel, qg[ij], ng[ij]);
+                            const TF x_h = particle_meanmass(hail, qh[ij], nh[ij]);
+
+                            const TF dep_ice_n = std::min(dep_ice[ij], TF(0)) / x_i;
+                            const TF dep_snow_n = std::min(dep_snow[ij], TF(0)) / x_s;
+                            const TF dep_graupel_n = std::min(dep_graupel[ij], TF(0)) / x_g;
+                            const TF dep_hail_n = std::min(dep_hail[ij], TF(0)) / x_h;
+
+                            nit[ij] += dep_n_fac * dep_ice_n * zdt;
+                            nst[ij] += dep_n_fac * dep_snow_n * zdt;
+                            ngt[ij] += dep_n_fac * dep_graupel_n * zdt;
+                            nht[ij] += dep_n_fac * dep_hail_n * zdt;
+                        }
+
+                        dep_rate_ice[ij] += dep_ice[ij];
+                        dep_rate_snow[ij] += dep_snow[ij];
+                    }
+                }
+            }
+    }
+
+
+
+
 }

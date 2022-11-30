@@ -233,8 +233,8 @@ struct Hydro_type
     TF* impl;
     TF* slice;
     TF* conversion_tend;
+    TF* tmp1;
 };
-
 
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>

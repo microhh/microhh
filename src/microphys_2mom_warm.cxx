@@ -314,7 +314,7 @@ namespace mp2d
 
                         const TF F = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
 
-                        const TF ev_tend = TF(2.) * pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
+                        const TF ev_tend = TF(2.) * Constants::pi<TF> * dr * Glv * S * F * nr[ijk] / rho[k];
 
                         qrt[ijk] += ev_tend;
                         nrt[ijk] += lambda_evap * ev_tend * rho[k] / mr;
