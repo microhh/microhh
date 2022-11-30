@@ -276,10 +276,11 @@ class Microphys_sb06 : public Microphys<TF>
         void init_2mom_scheme();
         void init_2mom_scheme_once();
 
-        bool sw_warm;            // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
-        bool sw_microbudget;     // Output full microphysics budget terms
-        bool sw_debug;           // Print debug info
-        double cfl_max;          // Max CFL number in microphysics sedimentation
+        bool sw_warm;         // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
+        bool sw_microbudget;  // Output full microphysics budget terms
+        bool sw_debug;        // Print debug info.
+        bool sw_integrate;    // Pre-integrate water species in implicit solver.
+        double cfl_max;       // Max CFL number in microphysics sedimentation.
 
         const int cloud_type = 2673;
         const int mu_Dm_rain_typ = 1;

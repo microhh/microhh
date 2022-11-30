@@ -376,10 +376,12 @@ Microphys_sb06<TF>::Microphys_sb06(
     swmicrophys = Microphys_type::SB06;
 
     // Read microphysics switches and settings
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
     sw_warm = inputin.get_item<bool>("micro", "swwarm", "", false);
     sw_microbudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     sw_debug = inputin.get_item<bool>("micro", "swdebug", "", false);
+    sw_integrate = inputin.get_item<bool>("micro", "swintegrate", "", false);
+
+    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
     Ni0 = inputin.get_item<TF>("micro", "Ni0", "");
 
@@ -1276,6 +1278,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     fields.st.at(it.first)->fld.data(),
                     rho.data(),
                     TF(dt),
+                    sw_integrate,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells, k);
@@ -1758,6 +1761,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     it.second.slice,
                     rho.data(),
                     dt,
+                    sw_integrate,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
@@ -1802,7 +1806,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         convert_units_short(fields.ap.at(it.first)->fld.data(), !to_kgm3);
     }
 
-    // Convert specific humidity from `kg m-3` to `kg kg-`
+    // Convert specific humidity from `kg m-3` to `kg kg-1`
     convert_units_short(fields.ap.at("qt")->fld.data(), !to_kgm3);
 
     // Calculate tendencies.
