@@ -1246,6 +1246,42 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 is_to_kgm3);
     };
 
+    auto check = [&](const std::string& name)
+    {
+        //if (sw_debug)
+        //{
+        //    auto get_min_max = [&](const TF* fld)
+        //    {
+        //        TF min_val = Constants::dhuge;
+        //        TF max_val = -Constants::dhuge;
+
+        //        for (int j=0; j<gd.jcells; ++j)
+        //            for (int i=0; i<gd.icells; ++i)
+        //            {
+        //                const int ij = i + j*gd.icells;
+        //                min_val = std::min(min_val, fld[ij]);
+        //                max_val = std::max(max_val, fld[ij]);
+        //            }
+
+        //        return std::pair<TF, TF>(min_val, max_val);
+        //    };
+
+        //    std::cout << name << std::endl;
+
+        //    for (auto& it : hydro_types)
+        //    {
+        //        std::pair<TF, TF> minmax_tend = get_min_max(it.second.conversion_tend);
+        //        std::pair<TF, TF> minmax_fld  = get_min_max(it.second.conversion_tend);
+
+        //        if (minmax_fld.second > TF(0))
+        //        {
+        //            std::cout << " | min " << it.first << "/dt = " << minmax_tend.first << ", max" << it.first << "/dt= " << minmax_tend.second << std::endl;
+        //            std::cout << " | min " << it.first << "    = " << minmax_fld.first  << ", max" << it.first << "   = " << minmax_fld.second  << std::endl;
+        //        }
+        //    }
+        //}
+    };
+
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
@@ -1522,6 +1558,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("vapor_dep_relaxation");
+
             //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
 
             // Ice-ice collisions
@@ -1546,6 +1584,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("particle_particle_collection ice->snow");
             //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
 
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)

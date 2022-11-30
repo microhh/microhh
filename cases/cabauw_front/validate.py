@@ -180,7 +180,6 @@ color_y_ax('right', 'tab:blue', ax2)
 ax2.spines['left'].set_color('tab:red')
 
 
-
 pl.figure(figsize=(10,5))
 
 ylim = (0, 10000)

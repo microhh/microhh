@@ -150,7 +150,7 @@ namespace Sb_cold
                 const int ij = i + j*jstride;
                 const int ijk = i + j*jstride + k*kstride;
 
-                qv[ij] = qt[ijk] - ql[ij] - qi[ij];
+                qv[ij] = qt[ijk] - ql[ijk] - qi[ijk];
             }
     }
 

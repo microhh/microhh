@@ -79,7 +79,7 @@ if __name__ == '__main__':
     gpt_set = '128_112' # or '256_224'
 
     # List of scalars (for limiter)
-    scalars = []
+    scalars = ['qt']
     for scalar in ['i', 'r', 's', 'g', 'h']: 
         scalars.append('q{}'.format(scalar))
         scalars.append('n{}'.format(scalar))

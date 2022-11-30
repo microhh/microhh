@@ -41,6 +41,7 @@ swtimedep_pbot=1
 swmicro=sb06
 cflmax=1.2
 swintegrate=0
+swdebug=1
 Nc0=200000000
 Ni0=200000000
 
