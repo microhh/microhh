@@ -79,7 +79,10 @@ if __name__ == '__main__':
     gpt_set = '128_112' # or '256_224'
 
     # List of scalars (for limiter)
-    scalars = ['qr','nr','qs','ns','qi','ni']
+    scalars = []
+    for scalar in ['i', 'r', 's', 'g', 'h']: 
+        scalars.append('q{}'.format(scalar))
+        scalars.append('n{}'.format(scalar))
 
     # Option to link or copy the LSM + RRTMGP lookup tables.
     copy_or_link = copy
