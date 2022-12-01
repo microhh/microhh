@@ -24,7 +24,7 @@ def xr_read_all(f, groups=None):
         decode_times = False
     else:
         decode_times = True
-        
+
     nc.close()
 
     # Read all groups into a single Dataset.
@@ -34,12 +34,12 @@ def xr_read_all(f, groups=None):
 
     return xr.merge(dss)
 
-def format_ax(ax=None):
+def format_ax(ax=None, dt=3):
     if ax is None:
         ax = pl.gca()
 
     minor_loc = mdates.HourLocator(byhour=np.arange(0,25))
-    major_loc = mdates.HourLocator(byhour=np.arange(0,25,3))
+    major_loc = mdates.HourLocator(byhour=np.arange(0,25,dt))
 
     ax.xaxis.set_minor_locator(minor_loc)
     ax.xaxis.set_major_locator(major_loc)
@@ -84,8 +84,8 @@ cmap = mcolors.ListedColormap(colors.values())
 
 date = datetime.datetime(2016, 8, 11)
 
-#cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
-cb_path = '/Users/bart/meteo/observations/cabauw/'
+cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
+#cb_path = '/Users/bart/meteo/observations/cabauw/'
 
 # Read the cloud net classification
 cn = xr.open_dataset('{path}/cloudnet/{year:04d}{month:02d}{day:02d}_cabauw_classification.nc'.format(
@@ -102,121 +102,149 @@ sfc = xr.open_dataset('{path}/surface_meteo_lc1/cesar_surface_meteo_lc1_t10_v1.0
 #
 uhh = xr_read_all('cabauw.default.0000000.nc')
 
-#
-# Cloudnet data/figure
-#
-fig=pl.figure(figsize=(8,5))
 
-ax = fig.add_axes([0.08, 0.4, 0.7, 0.55])
-pl.title('{}: observations'.format(date.isoformat()), loc='left', fontsize=8)
-pl.pcolormesh(cn.time, cn.height/1000., cn.target_classification.T, cmap=cmap, vmin=-0.5, vmax=10.5)
-pl.ylabel(r'$z$ (km)')
-pl.ylim(0,11)
-pl.xlim(date, date+datetime.timedelta(days=1))
-format_ax()
-ax.set_xticklabels([])
+if False:
+    """
+    Cloudnet/MicroHH data/figure
+    """
 
-cax = fig.add_axes([0.8, 0.45, 0.015, 0.45])
-cb=pl.colorbar(cax=cax, ticks=np.arange(0,11))
-cb.ax.set_yticklabels(names, fontsize=8)
-cb.ax.tick_params(which='both', size=0)
+    fig=pl.figure(figsize=(8,5))
 
-ax1 = fig.add_axes([0.08, 0.08, 0.7, 0.24])
+    ax = fig.add_axes([0.08, 0.4, 0.7, 0.55])
+    pl.title('{}: observations'.format(date.isoformat()), loc='left', fontsize=8)
+    pl.pcolormesh(cn.time, cn.height/1000., cn.target_classification.T, cmap=cmap, vmin=-0.5, vmax=10.5)
+    pl.ylabel(r'$z$ (km)')
+    pl.ylim(0,11)
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    format_ax()
+    ax.set_xticklabels([])
 
-pl.plot(clw.time, clw.lwp, color='tab:red')
-pl.ylabel(r'LWP (kg m$^{-2}$)')
-pl.xlim(date, date+datetime.timedelta(days=1))
-pl.ylim(0,3)
+    cax = fig.add_axes([0.8, 0.45, 0.015, 0.45])
+    cb=pl.colorbar(cax=cax, ticks=np.arange(0,11))
+    cb.ax.set_yticklabels(names, fontsize=8)
+    cb.ax.tick_params(which='both', size=0)
 
-ax2=ax1.twinx()
-pl.plot(sfc.time, sfc.RAIN/600*3600, color='tab:blue')
-pl.ylabel(r'rr (mm h$^{-1}$)')
-pl.xlim(date, date+datetime.timedelta(days=1))
-pl.ylim(0,5)
-ax2.spines['right'].set_visible(True)
+    ax1 = fig.add_axes([0.08, 0.08, 0.7, 0.24])
 
-format_ax(ax1)
-color_y_ax('left', 'tab:red',  ax1)
-color_y_ax('right', 'tab:blue', ax2)
-ax2.spines['left'].set_color('tab:red')
+    pl.plot(clw.time, clw.lwp, color='tab:red')
+    pl.ylabel(r'LWP (kg m$^{-2}$)')
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    pl.ylim(0,3)
 
-#
-# MicroHH
-#
-fig=pl.figure(figsize=(8,5))
+    ax2=ax1.twinx()
+    pl.plot(sfc.time, sfc.RAIN/600*3600, color='tab:blue')
+    pl.ylabel(r'rr (mm h$^{-1}$)')
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    pl.ylim(0,5)
+    ax2.spines['right'].set_visible(True)
 
-ax = fig.add_axes([0.08, 0.4, 0.7, 0.55])
-pl.title('{}: MicroHH + SB06'.format(date.isoformat()), loc='left', fontsize=8)
-pl.pcolormesh(uhh.time, uhh.z/1000., classify_uhh(
-    uhh.ql, uhh.qi, uhh.qr).T, cmap=cmap, vmin=-0.5, vmax=10.5)
-pl.ylabel(r'$z$ (km)')
-pl.ylim(0,11)
-pl.xlim(date, date+datetime.timedelta(days=1))
-format_ax()
-ax.set_xticklabels([])
+    format_ax(ax1)
+    color_y_ax('left', 'tab:red',  ax1)
+    color_y_ax('right', 'tab:blue', ax2)
+    ax2.spines['left'].set_color('tab:red')
 
-cax = fig.add_axes([0.8, 0.45, 0.015, 0.45])
-cb=pl.colorbar(cax=cax, ticks=np.arange(0,11))
-cb.ax.set_yticklabels(names, fontsize=8)
-cb.ax.tick_params(which='both', size=0)
+    # MicroHH
+    fig=pl.figure(figsize=(8,5))
 
-ax1 = fig.add_axes([0.08, 0.08, 0.7, 0.24])
+    ax = fig.add_axes([0.08, 0.4, 0.7, 0.55])
+    pl.title('{}: MicroHH + SB06'.format(date.isoformat()), loc='left', fontsize=8)
+    pl.pcolormesh(uhh.time, uhh.z/1000., classify_uhh(
+        uhh.ql, uhh.qi, uhh.qr).T, cmap=cmap, vmin=-0.5, vmax=10.5)
+    pl.ylabel(r'$z$ (km)')
+    pl.ylim(0,11)
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    format_ax()
+    ax.set_xticklabels([])
 
-pl.plot(uhh.time, uhh.ql_path, color='tab:red')
-pl.ylabel(r'LWP (kg m$^{-2}$)')
-pl.xlim(date, date+datetime.timedelta(days=1))
-pl.ylim(0,3)
+    cax = fig.add_axes([0.8, 0.45, 0.015, 0.45])
+    cb=pl.colorbar(cax=cax, ticks=np.arange(0,11))
+    cb.ax.set_yticklabels(names, fontsize=8)
+    cb.ax.tick_params(which='both', size=0)
 
-ax2=ax1.twinx()
-pl.plot(uhh.time, uhh.rain_rate*3600, color='tab:blue')
-pl.ylabel(r'rr (mm h$^{-1}$)')
-pl.xlim(date, date+datetime.timedelta(days=1))
-pl.ylim(0,5)
-ax2.spines['right'].set_visible(True)
+    ax1 = fig.add_axes([0.08, 0.08, 0.7, 0.24])
 
-format_ax(ax1)
-color_y_ax('left', 'tab:red',  ax1)
-color_y_ax('right', 'tab:blue', ax2)
-ax2.spines['left'].set_color('tab:red')
+    pl.plot(uhh.time, uhh.ql_path, color='tab:red')
+    pl.ylabel(r'LWP (kg m$^{-2}$)')
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    pl.ylim(0,3)
+
+    ax2=ax1.twinx()
+    pl.plot(uhh.time, uhh.rain_rate*3600, color='tab:blue')
+    pl.ylabel(r'rr (mm h$^{-1}$)')
+    pl.xlim(date, date+datetime.timedelta(days=1))
+    pl.ylim(0,5)
+    ax2.spines['right'].set_visible(True)
+
+    format_ax(ax1)
+    color_y_ax('left', 'tab:red',  ax1)
+    color_y_ax('right', 'tab:blue', ax2)
+    ax2.spines['left'].set_color('tab:red')
 
 
-pl.figure(figsize=(10,5))
+if False:
+    """
+    Outline of ql/qi/qr/etc.
+    """
 
-ylim = (0, 10000)
+    pl.figure(figsize=(10,5))
 
-ax=pl.subplot(161)
-pl.title('ql', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.ql.T>1e-9, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
+    ylim = (0, 10000)
+    fields = ['l', 'i', 'r', 's', 'g', 'h']
 
-ax=pl.subplot(162)
-pl.title('qi', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.qi.T>1e-12, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
-ax.set_yticklabels([])
+    ii = 1
+    for t in ['q', 'n']:
+        for f in fields:
+            fld = '{}{}'.format(t,f)
 
-ax=pl.subplot(163)
-pl.title('qr', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.qr.T>1e-12, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
-ax.set_yticklabels([])
+            if t == 'q':
+                thres = 1e-9
+            else:
+                thres = 1
 
-ax=pl.subplot(164)
-pl.title('qs', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.qs.T>1e-12, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
-ax.set_yticklabels([])
+            if fld not in ['nl', 'ni']:
+                ax = pl.subplot(2, len(fields), ii); ii+=1
+                pl.title(fld, loc='left')
+                pl.contour(uhh.time, uhh.z, uhh[fld].T>thres, [0.9, 1.1], colors='b')
+                pl.ylim(ylim)
+                format_ax(ax, dt=6)
+            else:
+                ii+=1
 
-ax=pl.subplot(165)
-pl.title('qg', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.qg.T>1e-12, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
-ax.set_yticklabels([])
+    pl.tight_layout()
 
-ax=pl.subplot(166)
-pl.title('qh', loc='left')
-pl.contour(uhh.time, uhh.z, uhh.qh.T>1e-12, [0.9, 1.1], colors='b')
-pl.ylim(ylim)
-ax.set_yticklabels([])
 
-pl.tight_layout()
+if True:
+    """
+    Pcolormesh of ql/qi/qr/etc.
+    """
+
+    pl.figure(figsize=(12,7))
+
+    ylim = (0, 10000)
+    fields = ['l', 'i', 'r', 's', 'g', 'h']
+
+    ii = 1
+    for t in ['q', 'n']:
+        for f in fields:
+            fld = '{}{}'.format(t,f)
+
+            if t == 'q':
+                thres = 1e-9
+            else:
+                thres = 1
+
+            if fld not in ['nl', 'ni']:
+                ax = pl.subplot(2, len(fields), ii); ii+=1
+                pl.title(fld, loc='left')
+                pl.pcolormesh(
+                        uhh.time, uhh.z, uhh[fld].T,
+                        norm=mcolors.PowerNorm(gamma=0.2),
+                        cmap=pl.cm.gist_earth_r)
+                pl.ylim(ylim)
+                pl.colorbar(location='top', shrink=0.7)
+                pl.grid()
+                format_ax(ax, dt=6)
+            else:
+                ii+=1
+
+    pl.tight_layout()

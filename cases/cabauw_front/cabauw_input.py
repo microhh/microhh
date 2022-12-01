@@ -177,7 +177,7 @@ if __name__ == '__main__':
         #ini['pres']['swpres'] = 0
 
         ini['time']['adaptivetimestep'] = 0
-        ini['time']['dtmax'] = 10
+        ini['time']['dtmax'] = 5
 
 
     ini.save('cabauw.ini', allow_overwrite=True)
