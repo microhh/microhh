@@ -1344,6 +1344,28 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells,
                 k, use_ql_sedi_rain);
 
+        //Sb_cold::sedi_vel_sphere(
+        //        hydro_types.at("qi").v_sed_now,
+        //        hydro_types.at("ni").v_sed_now,
+        //        hydro_types.at("qi").slice,
+        //        hydro_types.at("ni").slice,
+        //        ice, ice_coeffs,
+        //        rho_corr,
+        //        gd.istart, gd.iend,
+        //        gd.jstart, gd.jend,
+        //        gd.icells);
+
+        Sb_cold::sedi_vel_sphere(
+                hydro_types.at("qs").v_sed_now,
+                hydro_types.at("ns").v_sed_now,
+                hydro_types.at("qs").slice,
+                hydro_types.at("ns").slice,
+                snow, snow_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
         for (auto& it : hydro_types)
@@ -1954,7 +1976,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
-        // Sedimentation
+        // Sedimentation rain
         // Density correction fall speeds
         const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
         const TF rho_corr = std::exp(-Sb_cold::rho_vel<TF> * hlp);
@@ -1976,6 +1998,29 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     stats.calc_stats("vqr", *vq, no_offset, no_threshold);
     stats.calc_stats("vnr", *vn, no_offset, no_threshold);
+
+    for (int k=gd.kend-1; k>=gd.kstart; --k)
+    {
+        // Sedimentation ice types
+        // Density correction fall speeds
+        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
+        const TF rho_corr = std::exp(-Sb_cold::rho_vel<TF> * hlp);
+
+        Sb_cold::sedi_vel_sphere(
+                &vq->fld.data()[k * gd.ijcells],
+                &vn->fld.data()[k * gd.ijcells],
+                &fields.sp.at("qr")->fld.data()[k*gd.ijcells],
+                &fields.sp.at("nr")->fld.data()[k*gd.ijcells],
+                snow, snow_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+    }
+
+    stats.calc_stats("vqs", *vq, no_offset, no_threshold);
+    stats.calc_stats("vns", *vn, no_offset, no_threshold);
+
 
     fields.release_tmp(vq);
     fields.release_tmp(vn);

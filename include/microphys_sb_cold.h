@@ -359,6 +359,51 @@ namespace Sb_cold
 
 
     template<typename TF>
+    void sedi_vel_sphere(
+            TF* const restrict vqx,
+            TF* const restrict vnx,
+            const TF* const restrict qx,
+            const TF* const restrict nx,
+            Particle<TF>& particle,
+            Particle_sphere<TF>& particle_coeffs,
+            const TF rho_corr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+
+        for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jstride;
+
+                    if (qx[ij] > q_crit<TF>)
+                    {
+                        const TF x = particle_meanmass(particle, qx[ij], nx[ij]);
+                        const TF lam = std::exp(particle.b_vel * std::log(particle_coeffs.coeff_lambda * x));
+
+                        TF v_n = particle_coeffs.coeff_alfa_n * lam;
+                        TF v_q = particle_coeffs.coeff_alfa_q * lam;
+
+                        v_n = std::max(v_n, particle.vsedi_min);
+                        v_q = std::max(v_q, particle.vsedi_min);
+                        v_n = std::min(v_n, particle.vsedi_max);
+                        v_q = std::min(v_q, particle.vsedi_max);
+
+                        vnx[ij] = v_n * rho_corr;
+                        vqx[ij] = v_q * rho_corr;
+                    }
+                    else
+                    {
+                        vqx[ij] = TF(0);
+                        vnx[ij] = TF(0);
+                    }
+                }
+    }
+
+
+    template<typename TF>
     void autoconversionSB(
             TF* const restrict qrt,
             TF* const restrict nrt,
