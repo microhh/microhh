@@ -1287,6 +1287,52 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
 
+    // Set to default values where qnx=0 and qx>0
+    Sb_cold::set_default_n(
+            fields.ap.at("qi")->fld.data(),
+            fields.ap.at("ni")->fld.data(),
+            fields.ap.at("qr")->fld.data(),
+            fields.ap.at("nr")->fld.data(),
+            fields.ap.at("qs")->fld.data(),
+            fields.ap.at("ns")->fld.data(),
+            fields.ap.at("qg")->fld.data(),
+            fields.ap.at("ng")->fld.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
+    // We have to do it at the start, since we don't integrate the fields in this exec() function.
+    auto limit_sizes_wrapper = [&](
+            TF* const restrict nx, const TF* const restrict qx, Particle<TF>& particle)
+    {
+        Sb_cold::limit_sizes(
+                nx, qx, particle,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+    // size limits for all hydrometeors
+    //IF (nuc_c_typ > 0) THEN
+    //   DO k=kstart,kend
+    //    DO i=istart,iend
+    //      cloud%n(i,k) = MIN(cloud%n(i,k), cloud%q(i,k)/cloud%x_min)
+    //      cloud%n(i,k) = MAX(cloud%n(i,k), cloud%q(i,k)/cloud%x_max)
+    //      ! Hard upper limit for cloud number conc.
+    //      cloud%n(i,k) = MIN(cloud%n(i,k), 5000d6)
+    //    END DO
+    //   END DO
+    //END IF
+
+    limit_sizes_wrapper(fields.ap.at("ni")->fld.data(), fields.ap.at("qi")->fld.data(), ice);
+    limit_sizes_wrapper(fields.ap.at("nr")->fld.data(), fields.ap.at("qr")->fld.data(), rain);
+    limit_sizes_wrapper(fields.ap.at("ns")->fld.data(), fields.ap.at("qs")->fld.data(), snow);
+    limit_sizes_wrapper(fields.ap.at("ng")->fld.data(), fields.ap.at("qg")->fld.data(), graupel);
+    limit_sizes_wrapper(fields.ap.at("nh")->fld.data(), fields.ap.at("qh")->fld.data(), hail);
+
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Diagnose qv into 2D slice.
@@ -1501,52 +1547,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //END IF
 
             //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
-
-            // Set to default values where qnx=0 and qx>0
-            Sb_cold::set_default_n(
-                    hydro_types.at("qi").slice,
-                    hydro_types.at("ni").slice,
-                    hydro_types.at("qr").slice,
-                    hydro_types.at("nr").slice,
-                    hydro_types.at("qs").slice,
-                    hydro_types.at("ns").slice,
-                    hydro_types.at("qg").slice,
-                    hydro_types.at("ng").slice,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells);
-
-            check("set_default_n", k);
-
-            // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
-            // We have to do it at the start, since we don't integrate the fields in this exec() function.
-            auto limit_sizes_wrapper = [&](
-                    TF* const restrict nx, const TF* const restrict qx, Particle<TF>& particle)
-            {
-                Sb_cold::limit_sizes(
-                    nx, qx, particle,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells);
-            };
-
-            // size limits for all hydrometeors
-            //IF (nuc_c_typ > 0) THEN
-            //   DO k=kstart,kend
-            //    DO i=istart,iend
-            //      cloud%n(i,k) = MIN(cloud%n(i,k), cloud%q(i,k)/cloud%x_min)
-            //      cloud%n(i,k) = MAX(cloud%n(i,k), cloud%q(i,k)/cloud%x_max)
-            //      ! Hard upper limit for cloud number conc.
-            //      cloud%n(i,k) = MIN(cloud%n(i,k), 5000d6)
-            //    END DO
-            //   END DO
-            //END IF
-
-            limit_sizes_wrapper(hydro_types.at("ni").slice, hydro_types.at("qi").slice, ice);
-            limit_sizes_wrapper(hydro_types.at("nr").slice, hydro_types.at("qr").slice, ice);
-            limit_sizes_wrapper(hydro_types.at("ns").slice, hydro_types.at("qs").slice, ice);
-            limit_sizes_wrapper(hydro_types.at("ng").slice, hydro_types.at("qg").slice, ice);
-            limit_sizes_wrapper(hydro_types.at("nh").slice, hydro_types.at("qh").slice, ice);
 
             //! homogeneous and heterogeneous ice nucleation
             //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)

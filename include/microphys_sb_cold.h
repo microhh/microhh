@@ -242,7 +242,8 @@ namespace Sb_cold
             TF* const restrict ng,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int jstride)
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
     {
         // Set to a default number concentration in places with qnx = 0 and qx !=0
 
@@ -260,25 +261,26 @@ namespace Sb_cold
         //        }
         //}
 
-        for (int j=jstart; j<jend; ++j)
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jstride;
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
 
-                if (qi[ij] > TF(0) && ni[ij] < eps)
-                    ni[ij] = set_qni(qi[ij]);
+                    if (qi[ijk] > TF(0) && ni[ijk] < eps)
+                        ni[ijk] = set_qni(qi[ijk]);
 
-                if (qr[ij] > TF(0) && nr[ij] < eps)
-                    nr[ij] = set_qnr(qr[ij]);
+                    if (qr[ijk] > TF(0) && nr[ijk] < eps)
+                        nr[ijk] = set_qnr(qr[ijk]);
 
-                if (qs[ij] > TF(0) && ns[ij] < eps)
-                    ns[ij] = set_qns(qs[ij]);
+                    if (qs[ijk] > TF(0) && ns[ijk] < eps)
+                        ns[ijk] = set_qns(qs[ijk]);
 
-                if (qg[ij] > TF(0) && ng[ij] < eps)
-                    ng[ij] = set_qng(qg[ij]);
+                    if (qg[ijk] > TF(0) && ng[ijk] < eps)
+                        ng[ijk] = set_qng(qg[ijk]);
 
-                // BvS: What about qh/nh? There is a `set_qng()` functions..
-            }
+                    // BvS: What about qh/nh? There is a `set_qng()` functions..
+                }
     }
 
     template<typename TF>
@@ -288,16 +290,18 @@ namespace Sb_cold
             Particle<TF> particle,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int jstride)
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
     {
-        for (int j=jstart; j<jend; ++j)
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jstride;
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
 
-                nx[ij] = std::min(nx[ij], qx[ij] / particle.x_min);
-                nx[ij] = std::max(nx[ij], qx[ij] / particle.x_max);
-            }
+                    nx[ijk] = std::min(nx[ijk], qx[ijk] / particle.x_min);
+                    nx[ijk] = std::max(nx[ijk], qx[ijk] / particle.x_max);
+                }
     }
 
     template<typename TF>
