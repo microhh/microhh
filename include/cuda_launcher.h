@@ -34,18 +34,16 @@
 #include "kernel_launcher.h"
 #include "kernel_launcher/registry.h"
 
-struct GridKernel: kernel_launcher::KernelDescriptor {
+struct GridKernel: kernel_launcher::IKernelDescriptor {
     GridKernel(
         GridFunctor meta,
         kernel_launcher::TypeInfo functor_type,
         std::vector<kernel_launcher::TypeInfo> param_types,
         Grid_layout grid);
-    std::string tuning_key() const override;
     kernel_launcher::KernelBuilder build() const override;
-    bool equals(const KernelDescriptor& that) const override;
+    bool equals(const IKernelDescriptor& that) const override;
     size_t hash() const override;
 
-private:
     GridFunctor meta;
     kernel_launcher::TypeInfo functor_type;
     std::vector<kernel_launcher::TypeInfo> param_types;
@@ -54,8 +52,8 @@ private:
 
 namespace kernel_launcher {
     template <typename T>
-    struct IntoKernelArg<cuda_span<T>> {
-        static KernelArg convert(cuda_span<T> s) {
+    struct IntoKernelArg<::cuda_span<T>> {
+        static KernelArg convert(::cuda_span<T> s) {
             return KernelArg::for_array(s.data(), s.size());
         }
     };
@@ -63,7 +61,6 @@ namespace kernel_launcher {
 
 bool launch_kernel(
         cudaStream_t stream,
-        dim3 problem_size,
         GridKernel kernel,
         const std::vector<kernel_launcher::KernelArg>& args);
 #endif
@@ -108,10 +105,6 @@ void launch_grid_kernel(
 )
 {
     GridFunctor meta = F::meta;
-    dim3 problem_size = {
-            uint(gd.iend - gd.istart),
-            uint(gd.jend - gd.jstart),
-            uint(gd.kend - gd.kstart)};
 
 #ifdef ENABLE_KERNEL_LAUNCHER
     std::vector<kernel_launcher::TypeInfo> param_types = {
@@ -131,7 +124,6 @@ void launch_grid_kernel(
 
     bool success = launch_kernel(
             nullptr,
-            problem_size,
             std::move(kernel),
             kernel_args);
 
@@ -142,6 +134,11 @@ void launch_grid_kernel(
 #endif
 
     // Fallback function. This kernel is called either if kernel_launcher is disabled or if `launch_kernel` failed.
+    dim3 problem_size = {
+            uint(gd.iend - gd.istart),
+            uint(gd.jend - gd.jstart),
+            uint(gd.kend - gd.kstart)};
+
     dim3 block_size = meta.block_size;
     dim3 grid_size = {
             (problem_size.x / block_size.x) + bool(problem_size.x % block_size.x != 0),

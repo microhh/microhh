@@ -29,7 +29,7 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "field3d_operators.h"
-#include "cuda_compiler.h"
+#include "cuda_launcher.h"
 
 
 #ifdef USECUDA

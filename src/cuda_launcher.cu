@@ -4,7 +4,7 @@
 
 #ifdef ENABLE_KERNEL_LAUNCHER
 #include "kernel_launcher.h"
-#include "cuda_compiler.h"
+#include "cuda_launcher.h"
 
 namespace kl = kernel_launcher;
 
@@ -20,25 +20,7 @@ GridKernel::GridKernel(
     param_types(std::move(param_types)),
     grid(grid) {}
 
-std::string GridKernel::tuning_key() const {
-    std::string name = meta.name;
-
-    for (auto p: param_types) {
-        auto base = p.remove_pointer().remove_const();
-
-        if (base == kl::type_of<float>()) {
-            return name + "@float";
-        }
-
-        if (base == kl::type_of<double>()) {
-            return name + "@double";
-        }
-    }
-
-    return name;
-}
-
-bool GridKernel::equals(const KernelDescriptor& that) const {
+bool GridKernel::equals(const IKernelDescriptor& that) const {
     if (const GridKernel* g = dynamic_cast<const GridKernel*>(&that)) {
         return g->meta.name == meta.name &&
                 g->functor_type == functor_type &&
@@ -72,8 +54,8 @@ kl::KernelBuilder GridKernel::build() const {
         args << "a" << i;
     }
 
-    std::string source = "#include \"" + std::string(meta.file) + "\"\n";
-    source += R"(
+    std::string source = R"(
+        #include ")" + std::string(meta.file) + R"(";
         #include "cuda_tiling.h"
 
         template <typename F>
@@ -139,15 +121,39 @@ kl::KernelBuilder GridKernel::build() const {
     builder.tune_define("AXES_PERMUTATION", {0, 1, 2, 3, 4, 5});
 
     // Tiling is contiguous or block strided
-    auto tile_cont = builder.tune_define("TILE_CONTIGUOUS_XY", {0, 1});
+    auto tile_cont = builder.tune_define("TILE_CONTIGUOUS_YZ", {0, 1});
 
     // Number of thread blocks
+    dim3 problem_size = {
+            uint32_t(grid.iend - grid.istart),
+            uint32_t(grid.jend - grid.jstart),
+            uint32_t(grid.kend - grid.kstart)
+    };
+
     auto nx = kl::div_ceil(grid.iend - grid.istart, bx * tx);
     auto ny = kl::div_ceil(grid.jend - grid.jstart, by * ty);
     auto nz = kl::div_ceil(grid.kend - grid.kstart, bz * tz);
 
+    std::string tuning_key = meta.name;
+
+    for (auto p: param_types) {
+        auto base = p.remove_pointer().remove_const();
+
+        if (base == kl::type_of<float>()) {
+            tuning_key += "@float";
+            break;
+        }
+
+        if (base == kl::type_of<double>()) {
+            tuning_key += "@double";
+            break;
+        }
+    }
+
     builder
+        .tuning_key(tuning_key)
         .template_arg(functor_type)
+        .problem_size(problem_size)
         .block_size(bx, by, bz)
         .grid_size(nx * ny * nz);
 
@@ -188,7 +194,6 @@ kl::KernelBuilder GridKernel::build() const {
     builder.restriction(threads_per_block >= 64 && threads_per_block <= 1024);
     builder.restriction(threads_per_block * blocks_per_sm <= 2048);
     builder.restriction(tx * ty * tz <= 32);
-
 
     return builder;
 }
@@ -245,7 +250,6 @@ const std::string& home_directory() {
 
 bool launch_kernel(
         cudaStream_t stream,
-        dim3 problem_size,
         GridKernel grid_kernel,
         const std::vector<kl::KernelArg>& args
 ) {
@@ -257,22 +261,22 @@ bool launch_kernel(
         return false;
     }
 
-    kl::AnyKernelDescriptor kernel = std::move(grid_kernel);
+    kl::KernelDescriptor kernel = std::move(grid_kernel);
 
     try {
         if (!initialized) {
             initialized = true;
             kernel_launcher::append_global_wisdom_directory(home_directory() + "wisdom");
-            kernel_launcher::set_global_tuning_directory(home_directory() + "captures");
+            kernel_launcher::set_global_capture_directory(home_directory() + "captures");
         }
 
         kernel_launcher::default_registry()
                 .lookup(kernel)
-                .launch(stream, problem_size, args);
+                .launch(stream, args);
         return true;
     } catch (const std::exception &e) {
         kl::log_warning() << "error occurred while compiling the following kernel: " <<
-                kernel.descriptor().tuning_key() << ":" << "\n"  << e.what() << std::endl;
+                grid_kernel.meta.name << ":" << "\n"  << e.what() << std::endl;
         kl::log_warning() << "CUDA dynamic kernel compilation is now disabled and the application is in FALLBACK mode. "
                              "No more kernels will be executed using Kernel Launcher." << std::endl;
 

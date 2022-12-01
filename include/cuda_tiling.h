@@ -27,7 +27,7 @@
 
 struct DynBlockSize {
     CUDA_DEVICE
-    static constexpr int get(int axis) {
+    static int get(int axis) {
         if (axis == 0) return blockDim.x;
         if (axis == 1) return blockDim.y;
         if (axis == 2) return blockDim.z;
@@ -186,11 +186,8 @@ struct Grid_layout
 
 #if !CUDA_RUNTIME_COMPILATION
     /**
-     * Initialize `Grid_layout` from a `Grid_data`. This is only available
-     *
-     * @tparam TF
-     * @param gd
-     * @return
+     * Initialize `Grid_layout` from a `Grid_data`. This is only available when
+     * are not doing runtime compilation.
      */
     template <typename TF>
     static Grid_layout from_grid_data(const Grid_data<TF>& gd)
@@ -414,21 +411,21 @@ dim3 unravel_dim3(unsigned int flat_index, dim3 shape, int permutation_index) {
     };
 
     unsigned int sizes[3] = {shape.x, shape.y, shape.z};
-    unsigned int indices[3];
+    unsigned int ndindex[3];
     unsigned int axis;
 
     axis = permutations[permutation_index][0];
-    indices[axis] = flat_index % sizes[axis];
+    ndindex[axis] = flat_index % sizes[axis];
     flat_index /= sizes[axis];
 
     axis = permutations[permutation_index][1];
-    indices[axis] = flat_index % sizes[axis];
+    ndindex[axis] = flat_index % sizes[axis];
     flat_index /= sizes[axis];
 
     axis = permutations[permutation_index][2];
-    indices[axis] = flat_index;  // Should be < sizes[axis]
+    ndindex[axis] = flat_index;  // Should be < sizes[axis]
 
-    return {indices[0], indices[1], indices[2]};
+    return {ndindex[0], ndindex[1], ndindex[2]};
 }
 
 #if !CUDA_RUNTIME_COMPILATION

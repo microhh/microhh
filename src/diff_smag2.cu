@@ -37,7 +37,7 @@
 #include "stats.h"
 #include "monin_obukhov.h"
 #include "fast_math.h"
-#include "cuda_compiler.h"
+#include "cuda_launcher.h"
 #include "diff_smag2_kernels.cuh"
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
