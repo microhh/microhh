@@ -1965,8 +1965,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     // Time series
     for (auto& it : hydro_types)
         if (it.second.is_mass)
-            stats.calc_stats_2d(it.first + "_rate", it.second.precip_rate, no_offset);
-            //stats.calc_stats_2d("r" + it.first.substr(1,1), it.second.precip_rate, no_offset);
+            stats.calc_stats_2d(it.second.name + "_rate", it.second.precip_rate, no_offset);
 
     // Profiles
     auto vq = fields.get_tmp();
