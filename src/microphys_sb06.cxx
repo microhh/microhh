@@ -1498,7 +1498,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
             // We have to do it at the start, since we don't integrate the fields in this exec() function.
-            auto limiter = [&](
+            auto limit_sizes_wrapper = [&](
                     TF* const restrict nx, const TF* const restrict qx, Particle<TF>& particle)
             {
                 Sb_cold::limit_sizes(
@@ -1520,11 +1520,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //   END DO
             //END IF
 
-            limiter(hydro_types.at("ni").slice, hydro_types.at("qi").slice, ice);
-            limiter(hydro_types.at("nr").slice, hydro_types.at("qr").slice, ice);
-            limiter(hydro_types.at("ns").slice, hydro_types.at("qs").slice, ice);
-            limiter(hydro_types.at("ng").slice, hydro_types.at("qg").slice, ice);
-            limiter(hydro_types.at("nh").slice, hydro_types.at("qh").slice, ice);
+            limit_sizes_wrapper(hydro_types.at("ni").slice, hydro_types.at("qi").slice, ice);
+            limit_sizes_wrapper(hydro_types.at("nr").slice, hydro_types.at("qr").slice, ice);
+            limit_sizes_wrapper(hydro_types.at("ns").slice, hydro_types.at("qs").slice, ice);
+            limit_sizes_wrapper(hydro_types.at("ng").slice, hydro_types.at("qg").slice, ice);
+            limit_sizes_wrapper(hydro_types.at("nh").slice, hydro_types.at("qh").slice, ice);
 
             //! homogeneous and heterogeneous ice nucleation
             //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
@@ -1631,8 +1631,42 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
 
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)
-            //CALL particle_particle_collection(ik_slice, dt, atmo, ice, graupel, gic_coeffs)
-            //CALL particle_particle_collection(ik_slice, dt, atmo, snow, graupel, gsc_coeffs)
+
+            // Collection of ice by graupel.
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ni").slice,
+                    hydro_types.at("ng").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, graupel,
+                    gic_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            // Collection of snow by graupel.
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ns").slice,
+                    hydro_types.at("ng").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow, graupel,
+                    gsc_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
             //IF (ischeck) CALL check(ik_slice, 'graupel collection',cloud,rain,ice,snow,graupel,hail)
 
