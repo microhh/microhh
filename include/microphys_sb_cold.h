@@ -282,6 +282,25 @@ namespace Sb_cold
     }
 
     template<typename TF>
+    void limit_sizes(
+            TF* const restrict nx,
+            const TF* const restrict qx,
+            Particle<TF> particle,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j=jstart; j<jend; ++j)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jstride;
+
+                nx[ij] = std::min(nx[ij], qx[ij] / particle.x_min);
+                nx[ij] = std::max(nx[ij], qx[ij] / particle.x_max);
+            }
+    }
+
+    template<typename TF>
     void sedi_vel_rain(
             TF* const restrict vq,
             TF* const restrict vn,

@@ -1246,38 +1246,34 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 is_to_kgm3);
     };
 
-    auto check = [&](const std::string& name)
+    auto check = [&](const std::string& name, const int k)
     {
-        //if (sw_debug)
+        if (!sw_debug)
+            return;
+
+        //const TF meps = TF(-1e-12);
+
+        //// Check if fields after integration are negative.
+        //for (auto& it : hydro_types)
         //{
-        //    auto get_min_max = [&](const TF* fld)
-        //    {
-        //        TF min_val = Constants::dhuge;
-        //        TF max_val = -Constants::dhuge;
+        //    int n_neg = 0;
 
-        //        for (int j=0; j<gd.jcells; ++j)
-        //            for (int i=0; i<gd.icells; ++i)
-        //            {
-        //                const int ij = i + j*gd.icells;
-        //                min_val = std::min(min_val, fld[ij]);
-        //                max_val = std::max(max_val, fld[ij]);
-        //            }
-
-        //        return std::pair<TF, TF>(min_val, max_val);
-        //    };
-
-        //    std::cout << name << std::endl;
-
-        //    for (auto& it : hydro_types)
-        //    {
-        //        std::pair<TF, TF> minmax_tend = get_min_max(it.second.conversion_tend);
-        //        std::pair<TF, TF> minmax_fld  = get_min_max(it.second.conversion_tend);
-
-        //        if (minmax_fld.second > TF(0))
+        //    for (int j=gd.jstart; j<gd.jend; ++j)
+        //        for (int i=gd.istart; i<gd.iend; ++i)
         //        {
-        //            std::cout << " | min " << it.first << "/dt = " << minmax_tend.first << ", max" << it.first << "/dt= " << minmax_tend.second << std::endl;
-        //            std::cout << " | min " << it.first << "    = " << minmax_fld.first  << ", max" << it.first << "   = " << minmax_fld.second  << std::endl;
+        //            const int ij = i + j*gd.icells;
+
+        //            const TF new_val = it.second.slice[ij] + it.second.conversion_tend[ij] * dt;
+        //            if (new_val < meps)
+        //                n_neg += 1;
         //        }
+
+        //    if (n_neg > 0)
+        //    {
+        //        std::string message =
+        //            "After: " + name + ", field=" + it.first + ", k=" + std::to_string(k)
+        //            + " has: " + std::to_string(n_neg) + " negative values!";
+        //        master.print_warning(message);
         //    }
         //}
     };
@@ -1498,29 +1494,45 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
-            //IF (nuc_c_typ.ne.0) THEN
-            //  DO k=kstart,kend
+            check("set_default_n", k);
+
+            // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
+            // We have to do it at the start, since we don't integrate the fields in this exec() function.
+            auto limiter = [&](
+                    TF* const restrict nx, const TF* const restrict qx, Particle<TF>& particle)
+            {
+                Sb_cold::limit_sizes(
+                    nx, qx, particle,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+            };
+
+            // size limits for all hydrometeors
+            //IF (nuc_c_typ > 0) THEN
+            //   DO k=kstart,kend
             //    DO i=istart,iend
-            //      cloud%n(i,k) = MAX(cloud%n(i,k), cloud%q(i,k) / cloud%x_max)
-            //      cloud%n(i,k) = MIN(cloud%n(i,k), cloud%q(i,k) / cloud%x_min)
+            //      cloud%n(i,k) = MIN(cloud%n(i,k), cloud%q(i,k)/cloud%x_min)
+            //      cloud%n(i,k) = MAX(cloud%n(i,k), cloud%q(i,k)/cloud%x_max)
+            //      ! Hard upper limit for cloud number conc.
+            //      cloud%n(i,k) = MIN(cloud%n(i,k), 5000d6)
             //    END DO
-            //  END DO
+            //   END DO
             //END IF
+
+            limiter(hydro_types.at("ni").slice, hydro_types.at("qi").slice, ice);
+            limiter(hydro_types.at("nr").slice, hydro_types.at("qr").slice, ice);
+            limiter(hydro_types.at("ns").slice, hydro_types.at("qs").slice, ice);
+            limiter(hydro_types.at("ng").slice, hydro_types.at("qg").slice, ice);
+            limiter(hydro_types.at("nh").slice, hydro_types.at("qh").slice, ice);
 
             //! homogeneous and heterogeneous ice nucleation
             //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
+            //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
             //! homogeneous freezing of cloud droplets
             //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
             //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
-
-            //DO k=kstart,kend
-            //  DO i=istart,iend
-            //    ice%n(i,k) = MIN(ice%n(i,k), ice%q(i,k)/ice%x_min)
-            //    ice%n(i,k) = MAX(ice%n(i,k), ice%q(i,k)/ice%x_max)
-            //  END DO
-            //END DO
-            //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
             // Depositional growth of all ice particles.
             // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
@@ -1569,7 +1581,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
-            check("vapor_dep_relaxation");
+            check("vapor_dep_relaxation", k);
 
             //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
 
@@ -1592,6 +1604,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("ice_selfcollection", k);
+
             //CALL snow_selfcollection(ik_slice,dt,atmo,snow,snow_coeffs)
 
             // Collection of ice by snow.
@@ -1612,11 +1626,14 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("particle_particle_collection snow-ice", k);
+
             //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
 
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)
             //CALL particle_particle_collection(ik_slice, dt, atmo, ice, graupel, gic_coeffs)
             //CALL particle_particle_collection(ik_slice, dt, atmo, snow, graupel, gsc_coeffs)
+
             //IF (ischeck) CALL check(ik_slice, 'graupel collection',cloud,rain,ice,snow,graupel,hail)
 
             //! conversion of graupel to hail in wet growth regime
@@ -1713,6 +1730,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells, gd.ijcells,
                     k);
 
+            check("autoconversionSB", k);
+
             Sb_cold::accretionSB(
                     hydro_types.at("qr").conversion_tend,
                     (*qtt_liq).data(),
@@ -1722,6 +1741,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
+
+            check("accretionSB", k);
 
             Sb_cold::rain_selfcollectionSB(
                     hydro_types.at("nr").conversion_tend,
@@ -1733,6 +1754,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
+
+            check("rain_selfcollectionSB", k);
+
             //ENDIF
             //IF (ischeck) CALL check(ik_slice,'warm rain',cloud,rain,ice,snow,graupel,hail)
 
@@ -1758,39 +1782,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells, gd.ijcells,
                     k);
 
-            //! size limits for all hydrometeors
-            //IF (nuc_c_typ > 0) THEN
-            //   DO k=kstart,kend
-            //    DO i=istart,iend
-            //      cloud%n(i,k) = MIN(cloud%n(i,k), cloud%q(i,k)/cloud%x_min)
-            //      cloud%n(i,k) = MAX(cloud%n(i,k), cloud%q(i,k)/cloud%x_max)
-            //      ! Hard upper limit for cloud number conc.
-            //      cloud%n(i,k) = MIN(cloud%n(i,k), 5000d6)
-            //    END DO
-            //   END DO
-            //END IF
-            //DO k=kstart,kend
-            //   DO i=istart,iend
-            //      rain%n(i,k) = MIN(rain%n(i,k), rain%q(i,k)/rain%x_min)
-            //      rain%n(i,k) = MAX(rain%n(i,k), rain%q(i,k)/rain%x_max)
-            //   END DO
-            //END DO
-            //DO k=kstart,kend
-            //  DO i=istart,iend
-            //    ice%n(i,k) = MIN(ice%n(i,k), ice%q(i,k)/ice%x_min)
-            //    ice%n(i,k) = MAX(ice%n(i,k), ice%q(i,k)/ice%x_max)
-            //    snow%n(i,k) = MIN(snow%n(i,k), snow%q(i,k)/snow%x_min)
-            //    snow%n(i,k) = MAX(snow%n(i,k), snow%q(i,k)/snow%x_max)
-            //    graupel%n(i,k) = MIN(graupel%n(i,k), graupel%q(i,k)/graupel%x_min)
-            //    graupel%n(i,k) = MAX(graupel%n(i,k), graupel%q(i,k)/graupel%x_max)
-            //  END DO
-            //END DO
-            //DO k=kstart,kend
-            //  DO i=istart,iend
-            //    hail%n(i,k) = MIN(hail%n(i,k), hail%q(i,k)/hail%x_min)
-            //    hail%n(i,k) = MAX(hail%n(i,k), hail%q(i,k)/hail%x_max)
-            //  END DO
-            //END DO
+            check("rain_evaporation", k);
+
 
             //IF (ischeck) CALL check(ik_slice, 'clouds_twomoment end',cloud,rain,ice,snow,graupel,hail)
             //IF (isdebug) CALL message(TRIM(routine),"clouds_twomoment end")
