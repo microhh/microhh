@@ -52,6 +52,10 @@ namespace Sb_cold
     // Limiters on ql/qr/etc.
     template<typename TF> constexpr TF q_crit = 1.e-9;                 // Min cloud/rain liquid water
 
+    template<typename TF> constexpr TF q_crit_ii = 1.000e-6;           // q-threshold for ice_selfcollection
+    template<typename TF> constexpr TF D_crit_ii = 5.0e-6;             // D-threshold for ice_selfcollection
+
+
 
     template<typename TF>
     inline TF particle_meanmass(
@@ -956,6 +960,75 @@ namespace Sb_cold
                 }
             }
     }
+
+    template<typename TF>
+    void ice_selfcollection(
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qst,
+            TF* const restrict nst,
+            TF* const restrict qtt_ice,
+            const TF* const restrict qi,
+            const TF* const restrict ni,
+            const TF* const restrict T,
+            Particle_frozen<TF> ice,
+            Particle_frozen<TF> snow,
+            Particle_ice_coeffs<TF> ice_coeffs,
+            T_cfg_2mom<TF> cfg_params,
+            const TF rho_v,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        // selfcollection of ice crystals, see SB2006 or Seifert (2002)                 *
+
+        const TF x_conv_ii = pow(cfg_params.D_conv_ii/snow.a_geo, TF(1)/snow.b_geo);
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                const TF x_i = particle_meanmass(ice, qi[ij], ni[ij]);
+                const TF D_i = particle_diameter(ice, x_i);
+
+                if ( ni[ij] > TF(0) && qi[ij] > q_crit_ii<TF> && D_i > D_crit_ii<TF> )
+                {
+                    // Temperaturabhaengige Efficiency nach Cotton et al. (1986)
+                    // (siehe auch Straka, 1989; S. 53)
+                    const TF e_coll = std::min(
+                            std::pow(TF(10), (TF(0.035) * (T[ij] - Constants::T0<TF>) - TF(0.7))), TF(0.2));
+
+                    const TF v_i = ice.a_vel * pow(x_i, ice.b_vel) * rho_v;
+
+                    const TF self_n = pi4<TF> * e_coll * ice_coeffs.sc_delta_n * ni[ij] * ni[ij] * D_i * D_i *
+                         sqrt( ice_coeffs.sc_theta_n * v_i * v_i + TF(2) * pow(ice.s_vel, TF(2)) ); // * dt in ICON
+
+                    const TF self_q = pi4<TF> * e_coll * ice_coeffs.sc_delta_q * ni[ij] * qi[ij] * D_i * D_i *
+                         sqrt( ice_coeffs.sc_theta_q * v_i * v_i + TF(2) * pow(ice.s_vel, TF(2)) ); // * dt in ICON
+
+                    qit[ij] -= self_q;
+                    qst[ij] += self_q;
+
+                    nit[ij] -= self_n;
+                    nst[ij] += self_n / TF(2);      // BvS; why /2?
+
+                    qtt_ice[ij] -= self_q;
+
+                    //self_q = MIN(self_q,q_i)
+                    //self_n = MIN(MIN(self_n,self_q/x_conv_ii),n_i)
+
+                    //ice%q(i,k)  = ice%q(i,k)  - self_q
+                    //snow%q(i,k) = snow%q(i,k) + self_q
+
+                    //ice%n(i,k)  = ice%n(i,k)  - self_n
+                    //snow%n(i,k) = snow%n(i,k) + self_n / 2.0
+                }
+            }
+
+    }
+
 
 
 
