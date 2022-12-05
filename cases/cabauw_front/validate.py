@@ -248,3 +248,20 @@ if True:
                 ii+=1
 
     pl.tight_layout()
+
+if True:
+    """
+    rain/snow rate and cumulative values.
+    """
+
+    pl.figure()
+    pl.subplot(121)
+    pl.plot(uhh.time, uhh.snow_rate*3600*10)
+    pl.ylabel('snow rate (mm h-1)')
+
+    pl.subplot(122)
+    pl.plot(uhh.time, np.cumsum(uhh.snow_rate)*300*10)
+    pl.ylabel('accumulated snow (mm)')
+
+    pl.tight_layout()
+
