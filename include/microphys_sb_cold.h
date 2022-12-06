@@ -48,6 +48,7 @@ namespace Sb_cold
     template<typename TF> constexpr TF N_sc = 0.710;                   // Schmidt-Zahl (PK, S.541)
     template<typename TF> constexpr TF n_f  = 0.333;                   // Exponent von N_sc im Vent-koeff. (PK, S.541)
     template<typename TF> constexpr TF nu_l = 1.50E-5;                 // kinematic viscosity of dry air (m^2/s)
+    template<typename TF> constexpr TF D_v = 2.22e-5;                  // diff coeff of H2O vapor in dry air at tmelt (m^2/s)
 
     // Limiters on ql/qr/etc.
     template<typename TF> constexpr TF q_crit = 1.e-9;                 // Min cloud/rain liquid water
@@ -687,6 +688,66 @@ namespace Sb_cold
                 }
             }
     }
+
+
+    template<typename TF>
+    void evaporation(
+            TF* const restrict qxt,
+            TF* const restrict nxt,
+            TF* const restrict qtt_liq,
+            const TF* const restrict qx,
+            const TF* const restrict nx,
+            const TF* const restrict qv,
+            const TF* const restrict T,
+            Particle<TF>& particle,
+            Particle_coeffs<TF>& coeffs,
+            const TF rho_v,  // rain%rho_v(i,k) in ICON, constant per layer in uHH.
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        /*
+            Evaporation of melting snow/graupel/hail, see SB2006                                      *
+        */
+
+        bool reduce_melting = true;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j * jstride;
+
+                if (qx[ij] > TF(0) && T[ij] > Constants::T0<TF>)
+                {
+                    const TF e_d = qv[ij] * Constants::Rd<TF> * T[ij];
+                    const TF e_sw = tmf::esat_liq(T[ij]); // in ICON, this calls `sat_pres_water`
+                    const TF s_sw = e_d / e_sw - TF(1);
+
+                    //.. Eq. (37) of SB2006, note that 4*pi is correct because c is used below
+                    const TF g_d = TF(4)*Constants::pi<TF> / ( fm::pow2(Constants::Lv<TF>) /
+                            (K_T<TF> * Constants::Rd<TF> * fm::pow2(Constants::T0<TF>)) +
+                            Constants::Rd<TF> * Constants::T0<TF> / (D_v<TF> * e_sw) );
+
+                    const TF x = particle_meanmass(particle, qx[ij], nx[ij]);
+                    const TF D = particle_diameter(particle, x);
+                    const TF v = particle_velocity(particle, x) * rho_v;
+
+                    const TF f_v  = coeffs.a_f + coeffs.b_f * sqrt(v*D);
+                    TF eva_q = g_d * nx[ij] * coeffs.c_i * D * f_v * s_sw; // * dt in ICON
+                    eva_q = std::max(-eva_q, TF(0));
+
+                    //.. Complete evaporation of some of the melting frozen particles: parameterized in a way
+                    //   to conserve the mean mass, similar to the case "gamma_eva = 1.0" in rain_evaporation() above:
+                    if (reduce_melting)
+                        nxt[ij] -= eva_q / x;
+
+                    qxt[ij] -= eva_q;
+                    qtt_liq[ij] += eva_q;
+                }
+            }
+    }
+
 
     template<typename TF>
     void particle_particle_collection(
