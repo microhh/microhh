@@ -1159,7 +1159,45 @@ namespace Sb_cold
     }
 
 
+    template<typename TF>
+    void snow_selfcollection(
+            TF* const restrict nst,
+            const TF* const restrict qs,
+            const TF* const restrict ns,
+            const TF* const restrict T,
+            Particle_frozen<TF> snow,
+            Particle_snow_coeffs<TF> snow_coeffs,
+            const TF rho_v,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
 
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
 
+                if (qs[ij] > q_crit<TF>)
+                {
+                    //.. Temperaturabhaengige sticking efficiency nach Lin (1983)
+                    const TF e_coll = std::max(TF(0.1),
+                        std::min(std::exp(TF(0.09)*(T[ij]-Constants::T0<TF>)), TF(1.0)));
+
+                    const TF x_s = particle_meanmass(snow, qs[ij], ns[ij]);
+                    const TF D_s = particle_diameter(snow, x_s);
+                    const TF v_s = particle_velocity(snow, x_s) * rho_v;
+
+                    const TF self_n =
+                            pi8<TF> * e_coll * ns[ij] * ns[ij] *
+                            snow_coeffs.sc_delta_n * D_s * D_s *
+                            sqrt(snow_coeffs.sc_theta_n * v_s * v_s + TF(2) *
+                            fm::pow2(snow.s_vel) ); // * dt in ICON
+
+                    nst[ij] -= self_n;
+                }
+            }
+    }
 
 }

@@ -1628,6 +1628,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("ice_selfcollection", k);
 
+            Sb_cold::snow_selfcollection(
+                    hydro_types.at("ns").conversion_tend,
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow,
+                    snow_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
             //CALL snow_selfcollection(ik_slice,dt,atmo,snow,snow_coeffs)
 
             // Collection of ice by snow.
