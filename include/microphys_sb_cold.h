@@ -1100,8 +1100,8 @@ namespace Sb_cold
                             nht[ij] += dep_n_fac * dep_hail_n * zdt;
                         }
 
-                        dep_rate_ice[ij] += dep_ice[ij] * zdt;
-                        dep_rate_snow[ij] += dep_snow[ij] * zdt;
+                        dep_rate_ice[ij] += dep_ice[ij];
+                        dep_rate_snow[ij] += dep_snow[ij];
                     }
                 }
             }

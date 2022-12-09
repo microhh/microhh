@@ -1619,6 +1619,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("vapor_dep_relaxation", k);
 
+            //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
+
             // Ice-ice collisions -> forms snow.
             Sb_cold::ice_selfcollection(
                     hydro_types.at("qi").conversion_tend,
@@ -1673,6 +1675,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             check("particle_particle_collection snow-ice", k);
+
+            //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
 
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)
 
