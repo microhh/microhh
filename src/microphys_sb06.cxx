@@ -1228,6 +1228,20 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto dep_rate_ice  = fields.get_tmp_xy();
     auto dep_rate_snow = fields.get_tmp_xy();
 
+    // Dummy fields for qcloud tendencies...
+    auto qct_dummy = fields.get_tmp_xy();
+    auto nct_dummy = fields.get_tmp_xy();
+    auto nc_dummy = fields.get_tmp_xy();
+
+    std::fill((*nc_dummy).begin(), (*nc_dummy).end(), this->Nc0);
+
+    // Tmp slices for rime rates
+    auto rime_rate_qc = fields.get_tmp_xy();
+    auto rime_rate_nc = fields.get_tmp_xy();
+    auto rime_rate_qi = fields.get_tmp_xy();
+    auto rime_rate_qr = fields.get_tmp_xy();
+    auto rime_rate_nr = fields.get_tmp_xy();
+
     // Help functions to zero XY fields.
     auto zero_tmp_xy = [&](std::shared_ptr<std::vector<TF>>& fld_xy)
     {
@@ -1523,38 +1537,38 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             zero_tmp_xy(dep_rate_ice);
             zero_tmp_xy(dep_rate_snow);
 
-            //IF (isdebug) CALL message(TRIM(routine),'cloud_nucleation')
+                    //IF (isdebug) CALL message(TRIM(routine),'cloud_nucleation')
 
-            //IF (nuc_c_typ .EQ. 0) THEN
-            //   IF (isdebug) CALL message(TRIM(routine),'  ... force constant cloud droplet number')
-            //   cloud%n(:,:) = qnc_const
-            //ELSEIF (nuc_c_typ < 6) THEN
-            //   IF (isdebug) CALL message(TRIM(routine),'  ... Hande et al CCN activation')
-            //   IF (PRESENT(n_cn)) THEN
-            //      CALL finish(TRIM(routine),&
-            //           & 'Error in two_moment_mcrph: Hande et al activation not supported for progn. aerosol')
-            //   ELSE
-            //      CALL ccn_activation_hdcp2(ik_slice,atmo,cloud)
-            //   END IF
-            //ELSE
-            //   IF (isdebug) CALL message(TRIM(routine), &
-            //        & '  ... CCN activation using look-up tables according to Segal& Khain')
-            //   IF (PRESENT(n_cn)) THEN
-            //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud,n_cn)
-            //   ELSE
-            //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud)
-            //   END IF
-            //END IF
+                    //IF (nuc_c_typ .EQ. 0) THEN
+                    //   IF (isdebug) CALL message(TRIM(routine),'  ... force constant cloud droplet number')
+                    //   cloud%n(:,:) = qnc_const
+                    //ELSEIF (nuc_c_typ < 6) THEN
+                    //   IF (isdebug) CALL message(TRIM(routine),'  ... Hande et al CCN activation')
+                    //   IF (PRESENT(n_cn)) THEN
+                    //      CALL finish(TRIM(routine),&
+                    //           & 'Error in two_moment_mcrph: Hande et al activation not supported for progn. aerosol')
+                    //   ELSE
+                    //      CALL ccn_activation_hdcp2(ik_slice,atmo,cloud)
+                    //   END IF
+                    //ELSE
+                    //   IF (isdebug) CALL message(TRIM(routine), &
+                    //        & '  ... CCN activation using look-up tables according to Segal& Khain')
+                    //   IF (PRESENT(n_cn)) THEN
+                    //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud,n_cn)
+                    //   ELSE
+                    //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud)
+                    //   END IF
+                    //END IF
 
-            //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
+                    //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
 
-            //! homogeneous and heterogeneous ice nucleation
-            //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
-            //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
+                    //! homogeneous and heterogeneous ice nucleation
+                    //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
+                    //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
-            //! homogeneous freezing of cloud droplets
-            //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
-            //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
+                    //! homogeneous freezing of cloud droplets
+                    //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
+                    //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
 
             // Depositional growth of all ice particles.
             // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
@@ -1605,8 +1619,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("vapor_dep_relaxation", k);
 
-            //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
-
             // Ice-ice collisions -> forms snow.
             Sb_cold::ice_selfcollection(
                     hydro_types.at("qi").conversion_tend,
@@ -1628,7 +1640,19 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("ice_selfcollection", k);
 
-            //CALL snow_selfcollection(ik_slice,dt,atmo,snow,snow_coeffs)
+            Sb_cold::snow_selfcollection(
+                    hydro_types.at("ns").conversion_tend,
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow,
+                    snow_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("snow_selfcollection", k);
 
             // Collection of ice by snow.
             Sb_cold::particle_particle_collection(
@@ -1649,8 +1673,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             check("particle_particle_collection snow-ice", k);
-
-            //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
 
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)
 
@@ -1690,22 +1712,53 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
-            //IF (ischeck) CALL check(ik_slice, 'graupel collection',cloud,rain,ice,snow,graupel,hail)
+            check("particle_particle_collection grapuel-snow", k);
 
-            //! conversion of graupel to hail in wet growth regime
-            //IF (timers_level > 10) CALL timer_start(timer_phys_2mom_wetgrowth)
-            //CALL graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
-            //     &                             graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
-            //     &                             atmo, graupel, cloud, rain, ice, snow, hail)
-            //IF (timers_level > 10) CALL  timer_stop(timer_phys_2mom_wetgrowth)
-            //IF (ischeck) CALL check(ik_slice, 'graupel_hail_conv_wet_gamlook',cloud,rain,ice,snow,graupel,hail)
+                    //! conversion of graupel to hail in wet growth regime
+                    //IF (timers_level > 10) CALL timer_start(timer_phys_2mom_wetgrowth)
+                    //CALL graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
+                    //     &                             graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
+                    //     &                             atmo, graupel, cloud, rain, ice, snow, hail)
+                    //IF (timers_level > 10) CALL  timer_stop(timer_phys_2mom_wetgrowth)
+                    //IF (ischeck) CALL check(ik_slice, 'graupel_hail_conv_wet_gamlook',cloud,rain,ice,snow,graupel,hail)
 
-            //! hail collisions
-            //CALL particle_particle_collection(ik_slice, dt, atmo, ice, hail, hic_coeffs)    ! Important?
-            //CALL particle_particle_collection(ik_slice, dt, atmo, snow, hail, hsc_coeffs)
-            //IF (ischeck) CALL check(ik_slice, 'hail collection',cloud,rain,ice,snow,graupel,hail)
+                    //! hail collisions
+                    //CALL particle_particle_collection(ik_slice, dt, atmo, ice, hail, hic_coeffs)    ! Important?
+                    //CALL particle_particle_collection(ik_slice, dt, atmo, snow, hail, hsc_coeffs)
+                    //IF (ischeck) CALL check(ik_slice, 'hail collection',cloud,rain,ice,snow,graupel,hail)
 
             //! riming of ice with cloud droplets and rain drops, and conversion to graupel
+            //Sb_cold::ice_riming(
+            //        (*qct_dummy).data(),
+            //        (*nct_dummy).data(),
+            //        hydro_types.at("qi").conversion_tend,
+            //        hydro_types.at("ni").conversion_tend,
+            //        hydro_types.at("qr").conversion_tend,
+            //        hydro_types.at("nr").conversion_tend,
+            //        hydro_types.at("qg").conversion_tend,
+            //        hydro_types.at("ng").conversion_tend,
+            //        (*dep_rate_ice).data(),
+            //        (*rime_rate_qc).data(),
+            //        (*rime_rate_nc).data(),
+            //        (*rime_rate_qi).data(),
+            //        (*rime_rate_qr).data(),
+            //        (*rime_rate_nr).data(),
+            //        hydro_types.at("qi").slice,
+            //        hydro_types.at("ni").slice,
+            //        &ql->fld.data()[k*gd.ijcells],
+            //        (*nc_dummy).data(),
+            //        hydro_types.at("qr").slice,
+            //        hydro_types.at("nr").slice,
+            //        &T->fld.data()[k*gd.ijcells],
+            //        ice, cloud, rain, graupel,
+            //        icr_coeffs, irr_coeffs,
+            //        t_cfg_2mom,
+            //        rho_corr,
+            //        this->ice_multiplication,
+            //        gd.istart, gd.iend,
+            //        gd.jstart, gd.jend,
+            //        gd.icells);
+
             //CALL ice_riming(ik_slice, dt, icr_coeffs, irr_coeffs, atmo, ice, cloud, rain, graupel, dep_rate_ice)
             //IF (ischeck) CALL check(ik_slice, 'ice_riming',cloud,rain,ice,snow,graupel,hail)
 
@@ -1991,6 +2044,16 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     fields.release_tmp_xy(dep_rate_ice);
     fields.release_tmp_xy(dep_rate_snow);
+
+    fields.release_tmp_xy(qct_dummy);
+    fields.release_tmp_xy(nct_dummy);
+    fields.release_tmp_xy(nc_dummy);
+
+    fields.release_tmp_xy(rime_rate_qc);
+    fields.release_tmp_xy(rime_rate_nc);
+    fields.release_tmp_xy(rime_rate_qi);
+    fields.release_tmp_xy(rime_rate_qr);
+    fields.release_tmp_xy(rime_rate_nr);
 }
 #endif
 
