@@ -240,6 +240,9 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
@@ -249,8 +252,8 @@ void Model<TF>::load()
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
 
-    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
-    thermo->load(timeloop->get_iotime());
+    //thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    //thermo->load(timeloop->get_iotime());
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
