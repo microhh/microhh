@@ -1731,42 +1731,40 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     //IF (ischeck) CALL check(ik_slice, 'hail collection',cloud,rain,ice,snow,graupel,hail)
 
             // Riming of ice with cloud droplets and rain drops, and conversion to graupel
-            //Sb_cold::ice_riming(
-            //        (*qct_dummy).data(),
-            //        (*nct_dummy).data(),
-            //        hydro_types.at("qi").conversion_tend,
-            //        hydro_types.at("ni").conversion_tend,
-            //        hydro_types.at("qr").conversion_tend,
-            //        hydro_types.at("nr").conversion_tend,
-            //        hydro_types.at("qg").conversion_tend,
-            //        hydro_types.at("ng").conversion_tend,
-            //        (*dep_rate_ice).data(),
-            //        (*rime_rate_qc).data(),
-            //        (*rime_rate_nc).data(),
-            //        (*rime_rate_qi).data(),
-            //        (*rime_rate_qr).data(),
-            //        (*rime_rate_nr).data(),
-            //        (*qtt_liq).data(),
-            //        (*qtt_ice).data(),
-            //        hydro_types.at("qi").slice,
-            //        hydro_types.at("ni").slice,
-            //        &ql->fld.data()[k*gd.ijcells],
-            //        (*nc_dummy).data(),
-            //        hydro_types.at("qr").slice,
-            //        hydro_types.at("nr").slice,
-            //        &T->fld.data()[k*gd.ijcells],
-            //        ice, cloud, rain, graupel,
-            //        icr_coeffs, irr_coeffs,
-            //        t_cfg_2mom,
-            //        rho_corr,
-            //        TF(dt),
-            //        this->ice_multiplication,
-            //        gd.istart, gd.iend,
-            //        gd.jstart, gd.jend,
-            //        gd.icells);
+            Sb_cold::ice_riming(
+                    (*qct_dummy).data(),
+                    (*nct_dummy).data(),
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    (*dep_rate_ice).data(),
+                    (*rime_rate_qc).data(),
+                    (*rime_rate_nc).data(),
+                    (*rime_rate_qi).data(),
+                    (*rime_rate_qr).data(),
+                    (*rime_rate_nr).data(),
+                    (*qtt_liq).data(),
+                    (*qtt_ice).data(),
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("ni").slice,
+                    &ql->fld.data()[k*gd.ijcells],
+                    (*nc_dummy).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, cloud, rain, graupel,
+                    icr_coeffs, irr_coeffs,
+                    t_cfg_2mom,
+                    rho_corr,
+                    this->ice_multiplication,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
-            //CALL ice_riming(ik_slice, dt, icr_coeffs, irr_coeffs, atmo, ice, cloud, rain, graupel, dep_rate_ice)
-            //IF (ischeck) CALL check(ik_slice, 'ice_riming',cloud,rain,ice,snow,graupel,hail)
+            check("ice_riming", k);
 
             //! riming of snow with cloud droplets and rain drops, and conversion to graupel
             //CALL snow_riming(ik_slice, dt, scr_coeffs, srr_coeffs, atmo, snow, cloud, rain, ice, graupel, dep_rate_snow)
