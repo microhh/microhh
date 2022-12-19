@@ -65,13 +65,13 @@ if __name__ == '__main__':
     Case switches.
     """
     # NOTE: (LS)2D data is available from 11-08-2016 00 UTC to 12-08-2016 00 UTC.
-    start = datetime(year=2016, month=8, day=11, hour=0)
-    end   = datetime(year=2016, month=8, day=12, hour=0)
-    ls2d_file = 'ls2d_20160811.nc'
+    #start = datetime(year=2016, month=8, day=11, hour=0)
+    #end   = datetime(year=2016, month=8, day=12, hour=0)
+    #ls2d_file = 'ls2d_20160811.nc'
 
-    #start = datetime(year=2017, month=12, day=11, hour=0)
-    #end   = datetime(year=2017, month=12, day=12, hour=0)
-    #ls2d_file = 'ls2d_20171210.nc'
+    start = datetime(year=2017, month=12, day=11, hour=0)
+    end   = datetime(year=2017, month=12, day=12, hour=0)
+    ls2d_file = 'ls2d_20171210.nc'
 
 
     TF = np.float64              # Switch between double (float64) and single (float32) precision.

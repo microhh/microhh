@@ -1605,4 +1605,260 @@ namespace Sb_cold
                 } // outer if
             } // i
     } // function
+
+
+    template<typename TF>
+    void snow_riming(
+            TF* const restrict qct,
+            TF* const restrict nct,
+            TF* const restrict qst,
+            TF* const restrict nst,
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qgt,
+            TF* const restrict ngt,
+            TF* const restrict dep_rate_snow,
+            TF* const restrict rime_rate_qc,
+            TF* const restrict rime_rate_nc,
+            TF* const restrict rime_rate_qs,
+            TF* const restrict rime_rate_qr,
+            TF* const restrict rime_rate_nr,
+            TF* const restrict qtt_liq,
+            TF* const restrict qtt_ice,
+            const TF* const restrict qs,
+            const TF* const restrict ns,
+            //const TF* const restrict qi,
+            //const TF* const restrict ni,
+            const TF* const restrict qc,
+            const TF* const restrict nc,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict Ta,
+            Particle_frozen<TF>& snow,
+            Particle_frozen<TF>& ice,
+            Particle<TF>& cloud,
+            Particle<TF>& rain,
+            Particle_frozen<TF>& graupel,
+            Collection_coeffs<TF>& scr_coeffs,
+            Rain_riming_coeffs<TF>& srr_coeffs,
+            T_cfg_2mom<TF> cfg_params,
+            const TF rho_v,
+            const bool ice_multiplication,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        /*
+            Riming of snow with cloud droplet and rain drops. First the process rates
+            are calculated in
+                snow_cloud_riming ()
+                snow_rain_riming ()
+            using those rates and the previously calculated and stored deposition
+            rate the conversion of snow to graupel and rain is done.
+        */
+        const TF const3 = TF(1)/(T_mult_opt<TF> - T_mult_min<TF>);
+        const TF const4 = TF(1)/(T_mult_opt<TF> - T_mult_max<TF>);
+
+        Sb_cold::riming_cloud_core(
+                rime_rate_qc,
+                rime_rate_nc,
+                qs, ns,
+                qc, nc,
+                rho_v,
+                snow, cloud,
+                scr_coeffs,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        Sb_cold::riming_rain_core(
+                rime_rate_qs,   // qa
+                rime_rate_qr,   // qb
+                rime_rate_nr,   // nb
+                qs, ns,
+                qr, nr,
+                rho_v,
+                snow, rain,
+                srr_coeffs,
+                istart, iend,
+                jstart, jend,
+                jstride);
+
+        // This changes the results: !!!    const5 = rho_w/rho_ice * cfg_params%alpha_spacefilling
+        const TF const5 = cfg_params.alpha_spacefilling * rho_w<TF>/rho_i<TF>;
+
+        for (int j = jstart; j < jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (dep_rate_snow[ij] > TF(0) && dep_rate_snow[ij] >= rime_rate_qc[ij] + rime_rate_qr[ij])
+                {
+                    // 1) Depositional growth is stronger than riming growth, therefore snow stays snow:;
+
+                    // Snow_cloud_riming;
+                    if (rime_rate_qc[ij] > TF(0))
+                    {
+                        qst[ij] += rime_rate_qc[ij];
+                        qct[ij] -= rime_rate_qc[ij];
+                        nct[ij] -= rime_rate_nc[ij];
+                        qtt_liq[ij] += rime_rate_qc[ij];
+
+                        // Ice multiplication;
+                        if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                        {
+                            TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const3;
+                            TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const4;
+
+                            mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                            mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                            const TF mult_n = C_mult<TF> * mult_1 * mult_2 * rime_rate_qc[ij];
+                            const TF mult_q = mult_n * ice.x_min;
+
+                            nit[ij] += mult_n;
+                            qit[ij] += mult_q;
+                            qst[ij] -= mult_q;
+                            qtt_ice[ij] -= mult_q;
+                        }
+                    }
+
+                    //.. Snow_rain_riming;
+                    if (rime_rate_qr[ij] > TF(0))
+                    {
+                        qst[ij] += rime_rate_qr[ij];
+                        qrt[ij] -= rime_rate_qr[ij];
+                        nrt[ij] -= rime_rate_nr[ij];
+
+                        // Ice multiplication;
+                        if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                        {
+                            TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const3;
+                            TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const4;
+
+                            mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                            mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                            const TF mult_n = C_mult<TF> * mult_1 * mult_2 * rime_rate_qr[ij];
+                            const TF mult_q = mult_n * ice.x_min;
+
+                            nit[ij] += mult_n;
+                            qit[ij] += mult_q;
+                            qst[ij] -= mult_q;
+                            qtt_ice[ij] -= mult_q;
+                        }
+                    }
+                }
+                else
+                {
+                    // 2) Depositional growth is negative or smaller than riming growth, therefore snow is;
+                    //    allowed to convert to graupel and / or hail:;
+
+                    // snow_cloud_riming;
+                    if (rime_rate_qc[ij] > TF(0))
+                    {
+                        const TF x_s = particle_meanmass(snow, qs[ij], ns[ij]);
+                        const TF D_s = particle_diameter(snow, x_s);
+
+                        qst[ij] += rime_rate_qc[ij];
+                        qct[ij] -= rime_rate_qc[ij];
+                        nct[ij] -= rime_rate_nc[ij];
+                        qtt_liq[ij] += rime_rate_qc[ij];
+
+                        // ice multiplication;
+                        TF mult_q = TF(0);
+                        if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                        {
+                            TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const3;
+                            TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const4;
+
+                            mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                            mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                            const TF mult_n = C_mult<TF> * mult_1 * mult_2 * rime_rate_qc[ij];
+                            mult_q = mult_n * ice.x_min;
+
+                            nit[ij] += mult_n;
+                            qit[ij] += mult_q;
+                            qst[ij] -= mult_q;
+                            qtt_ice[ij] -= mult_q;
+                        }
+
+                        // Conversion of snow to graupel, depends on alpha_spacefilling;
+                        if (D_s > D_conv_sg<TF> && Ta[ij] < cfg_params.Tmax_gr_rime)
+                        {
+                            const TF conv_q = (rime_rate_qc[ij] - mult_q) /
+                                ( const5 * (pi6<TF> * rho_i<TF> * fm::pow3(D_s)/x_s - TF(1)) );
+                            const TF x_s = particle_meanmass(snow, qs[ij], ns[ij]);
+                            const TF conv_n = conv_q / std::max(x_s, x_conv<TF>);
+
+                            qst[ij] -= conv_q;
+                            qgt[ij] += conv_q;
+                            nst[ij] -= conv_n;
+                            ngt[ij] += conv_n;
+                        }
+                    }
+
+                    // snow_rain_riming;
+                    if (rime_rate_qs[ij] > TF(0))
+                    {
+                        nst[ij] -= rime_rate_nr[ij];
+                        nrt[ij] -= rime_rate_nr[ij];
+                        qst[ij] -= rime_rate_qs[ij];
+                        qrt[ij] -= rime_rate_qr[ij];
+
+                        // Ice multiplication;
+                        TF mult_q = TF(0);
+                        TF mult_n = TF(0);
+
+                        if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                        {
+                            TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const3;
+                            TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const4;
+
+                            mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                            mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                            mult_n = C_mult<TF> * mult_1 * mult_2 * rime_rate_qr[ij];
+                            mult_q = mult_n * ice.x_min;
+                        }
+
+                        if (Ta[ij] >= Constants::T0<TF>)
+                        {
+                            // Shedding of rain at warm temperatures;
+                            // i.e. undo time integration, but with modified rain.n;
+                            const TF x_r = particle_meanmass(rain, qr[ij], nr[ij]);
+
+                            nst[ij] += rime_rate_nr[ij];
+                            nrt[ij] += rime_rate_qr[ij] / x_r;
+                            qst[ij] += rime_rate_qs[ij];
+                            qrt[ij] += rime_rate_qr[ij];
+                        }
+                        else
+                        {
+                            // new ice particles from multiplication;
+                            nit[ij] += mult_n;
+                            qit[ij] += mult_q;
+                            qtt_ice[ij] -= mult_q;
+
+                            // riming to graupel;
+                            if (Ta[ij] < cfg_params.Tmax_gr_rime)
+                            {
+                                ngt[ij] += rime_rate_nr[ij];
+                                qgt[ij] += rime_rate_qr[ij] + rime_rate_qs[ij] - mult_q;
+                            }
+                            else
+                            {
+                                // Snow + frozen liquid stays snow:;
+                                nst[ij] += rime_rate_nr[ij];
+                                qst[ij] += rime_rate_qr[ij] + rime_rate_qs[ij] - mult_q;
+                            }
+                        }
+                    }
+                } // Outer if
+            } // i
+    } // function
 }

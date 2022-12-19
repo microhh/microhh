@@ -84,8 +84,8 @@ cmap = mcolors.ListedColormap(colors.values())
 
 date = datetime.datetime(2016, 8, 11)
 
-#cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
-cb_path = '/Users/bart/meteo/observations/cabauw/'
+cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
+#cb_path = '/Users/bart/meteo/observations/cabauw/'
 
 # Read the cloud net classification
 cn = xr.open_dataset('{path}/cloudnet/{year:04d}{month:02d}{day:02d}_cabauw_classification.nc'.format(

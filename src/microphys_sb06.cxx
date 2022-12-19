@@ -1239,6 +1239,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     auto rime_rate_qc = fields.get_tmp_xy();
     auto rime_rate_nc = fields.get_tmp_xy();
     auto rime_rate_qi = fields.get_tmp_xy();
+    auto rime_rate_qs = fields.get_tmp_xy();
     auto rime_rate_qr = fields.get_tmp_xy();
     auto rime_rate_nr = fields.get_tmp_xy();
 
@@ -1766,9 +1767,43 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("ice_riming", k);
 
-            //! riming of snow with cloud droplets and rain drops, and conversion to graupel
-            //CALL snow_riming(ik_slice, dt, scr_coeffs, srr_coeffs, atmo, snow, cloud, rain, ice, graupel, dep_rate_snow)
-            //IF (ischeck) CALL check(ik_slice, 'snow_riming',cloud,rain,ice,snow,graupel,hail)
+            // Riming of snow with cloud droplets and rain drops, and conversion to graupel
+            Sb_cold::snow_riming(
+                    (*qct_dummy).data(),
+                    (*nct_dummy).data(),
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    (*dep_rate_snow).data(),
+                    (*rime_rate_qc).data(),
+                    (*rime_rate_nc).data(),
+                    (*rime_rate_qs).data(),
+                    (*rime_rate_qr).data(),
+                    (*rime_rate_nr).data(),
+                    (*qtt_liq).data(),
+                    (*qtt_ice).data(),
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    &ql->fld.data()[k*gd.ijcells],
+                    (*nc_dummy).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow, ice, cloud, rain, graupel,
+                    scr_coeffs, srr_coeffs,
+                    t_cfg_2mom,
+                    rho_corr,
+                    this->ice_multiplication,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("snow_riming", k);
 
             //! hail-cloud and hail-rain riming
             //CALL particle_cloud_riming(ik_slice, dt, atmo, hail, hcr_coeffs, cloud, rain, ice)
@@ -1917,7 +1952,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             check("rain_selfcollectionSB", k);
 
             //ENDIF
-            //IF (ischeck) CALL check(ik_slice,'warm rain',cloud,rain,ice,snow,graupel,hail)
 
             // Evaporation of rain following Seifert (2008)
             Sb_cold::rain_evaporation(
@@ -1942,9 +1976,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     k);
 
             check("rain_evaporation", k);
-
-            //IF (ischeck) CALL check(ik_slice, 'clouds_twomoment end',cloud,rain,ice,snow,graupel,hail)
-            //IF (isdebug) CALL message(TRIM(routine),"clouds_twomoment end")
         }
 
         for (auto& it : hydro_types)
@@ -2059,6 +2090,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     fields.release_tmp_xy(rime_rate_qc);
     fields.release_tmp_xy(rime_rate_nc);
     fields.release_tmp_xy(rime_rate_qi);
+    fields.release_tmp_xy(rime_rate_qs);
     fields.release_tmp_xy(rime_rate_qr);
     fields.release_tmp_xy(rime_rate_nr);
 }
