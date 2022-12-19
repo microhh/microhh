@@ -1731,7 +1731,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     //CALL particle_particle_collection(ik_slice, dt, atmo, snow, hail, hsc_coeffs)
                     //IF (ischeck) CALL check(ik_slice, 'hail collection',cloud,rain,ice,snow,graupel,hail)
 
-            //! riming of ice with cloud droplets and rain drops, and conversion to graupel
+            // Riming of ice with cloud droplets and rain drops, and conversion to graupel
             //Sb_cold::ice_riming(
             //        (*qct_dummy).data(),
             //        (*nct_dummy).data(),
@@ -1747,6 +1747,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //        (*rime_rate_qi).data(),
             //        (*rime_rate_qr).data(),
             //        (*rime_rate_nr).data(),
+            //        (*qtt_liq).data(),
+            //        (*qtt_ice).data(),
             //        hydro_types.at("qi").slice,
             //        hydro_types.at("ni").slice,
             //        &ql->fld.data()[k*gd.ijcells],
@@ -1758,6 +1760,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //        icr_coeffs, irr_coeffs,
             //        t_cfg_2mom,
             //        rho_corr,
+            //        TF(dt),
             //        this->ice_multiplication,
             //        gd.istart, gd.iend,
             //        gd.jstart, gd.jend,
