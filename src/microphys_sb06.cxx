@@ -1262,34 +1262,33 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     auto check = [&](const std::string& name, const int k)
     {
+        /*
+           After each process, check if sum of all tendencies is zero.
+           If not, total water mass is not conserved...
+        */
+
         if (!sw_debug)
             return;
 
-        //const TF meps = TF(-1e-12);
+        TF dtq_sum = TF(0);
 
-        //// Check if fields after integration are negative.
-        //for (auto& it : hydro_types)
-        //{
-        //    int n_neg = 0;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ij = i + j*gd.icells;
 
-        //    for (int j=gd.jstart; j<gd.jend; ++j)
-        //        for (int i=gd.istart; i<gd.iend; ++i)
-        //        {
-        //            const int ij = i + j*gd.icells;
+                dtq_sum += (*qtt_liq)[ij] + (*qtt_ice)[ij];
 
-        //            const TF new_val = it.second.slice[ij] + it.second.conversion_tend[ij] * dt;
-        //            if (new_val < meps)
-        //                n_neg += 1;
-        //        }
+                for (auto& it : hydro_types)
+                    if (it.first != "qi" && it.second.is_mass)
+                        dtq_sum += it.second.conversion_tend[ij];
+            }
 
-        //    if (n_neg > 0)
-        //    {
-        //        std::string message =
-        //            "After: " + name + ", field=" + it.first + ", k=" + std::to_string(k)
-        //            + " has: " + std::to_string(n_neg) + " negative values!";
-        //        master.print_warning(message);
-        //    }
-        //}
+        if (std::abs(dtq_sum) > 1e-16)
+        {
+            std::cout << "ERROR, SB06 water not conserved after " << name << ", sum dqx/dt = " << dtq_sum << std::endl;
+            throw 1;
+        }
     };
 
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
@@ -1534,6 +1533,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                These are the new kernels ported from ICON.
             */
 
+            check("start", k);
+
             zero_tmp_xy(dep_rate_ice);
             zero_tmp_xy(dep_rate_snow);
 
@@ -1619,8 +1620,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("vapor_dep_relaxation", k);
 
-            //IF (ischeck) CALL check(ik_slice,'vapor_dep_relaxation',cloud,rain,ice,snow,graupel,hail)
-
             // Ice-ice collisions -> forms snow.
             Sb_cold::ice_selfcollection(
                     hydro_types.at("qi").conversion_tend,
@@ -1676,8 +1675,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("particle_particle_collection snow-ice", k);
 
-            //IF (ischeck) CALL check(ik_slice, 'ice and snow collection',cloud,rain,ice,snow,graupel,hail)
-
             //CALL graupel_selfcollection(ik_slice, dt, atmo, graupel, graupel_coeffs)
 
             // Collection of ice by graupel.
@@ -1698,6 +1695,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("particle_particle_collection graupel-ice", k);
+
             // Collection of snow by graupel.
             Sb_cold::particle_particle_collection(
                     hydro_types.at("qg").conversion_tend,
@@ -1716,7 +1715,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
-            check("particle_particle_collection grapuel-snow", k);
+            check("particle_particle_collection graupel-snow", k);
 
                     //! conversion of graupel to hail in wet growth regime
                     //IF (timers_level > 10) CALL timer_start(timer_phys_2mom_wetgrowth)
@@ -1825,6 +1824,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells);
 
+            check("evaporation of snow", k);
+
             Sb_cold::evaporation(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -1839,6 +1840,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
+
+            check("evaporation of graupel", k);
 
             //Sb_cold::evaporation(
             //        hydro_types.at("qh").conversion_tend,
@@ -1855,7 +1858,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //        gd.jstart, gd.jend,
             //        gd.icells);
 
-            check("evaporation of snow/graupel/hail", k);
+            //check("evaporation of hail", k);
 
             //! warm rain processes
             //! (using something other than SB is somewhat inconsistent and not recommended)
@@ -1941,7 +1944,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     k);
 
             check("rain_evaporation", k);
-
 
             //IF (ischeck) CALL check(ik_slice, 'clouds_twomoment end',cloud,rain,ice,snow,graupel,hail)
             //IF (isdebug) CALL message(TRIM(routine),"clouds_twomoment end")
