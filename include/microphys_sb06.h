@@ -237,6 +237,30 @@ struct Hydro_type
 };
 
 template<typename TF>
+struct Gamlookuptable
+{
+    bool is_initialised = false;
+
+    // Low-resolution
+    TF a;                   // a-parameter
+    int n;                  // Internal number of bins (low res part)
+    std::vector<TF> x;      // vector of x-parameters (limit of integration) -
+                            // always starts at 0 and has equidistant dx (low resolution part)
+    TF dx;                  // dx   (low resolution part)
+    TF odx;                 // one over dx
+    std::vector<TF> igf;    // value of the inc. gamma function at (a,x) (low res)
+
+    // High-resolution part.
+    //int nhr;                // Internal number of bins (high res part)
+    //std::vector<TF> xhr;    // vector of x-parameters (limit of integration) -
+    //                        // always starts at 0 and has equidistant dxhr (high resolution part)
+    //TF dxhr;                // dxhr (high resolution part)
+    //TF odxhr;               // one over dxhr
+    //std::vector<TF> igfhr;  // value of the inc. gamma function at (a,x) (high res)
+};
+
+
+template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
 {
     public:
@@ -342,6 +366,16 @@ class Microphys_sb06 : public Microphys<TF>
         Collection_coeffs<TF> gic_coeffs;  // graupel ice collection
         Collection_coeffs<TF> hsc_coeffs;  // hail snow collection
         Collection_coeffs<TF> gsc_coeffs;  // graupel snow collection
+
+        // Look up tables for graupel_hail_conv_wet_gamlook and rain_freeze_gamlook
+        Gamlookuptable<TF>  graupel_ltable1;
+        Gamlookuptable<TF>  graupel_ltable2;
+        Gamlookuptable<TF>  rain_ltable1;
+        Gamlookuptable<TF>  rain_ltable2;
+        Gamlookuptable<TF>  rain_ltable3;
+
+        TF rain_nm1, rain_nm2, rain_nm3, rain_g1, rain_g2;
+        TF graupel_nm1, graupel_nm2, graupel_g1, graupel_g2;
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name

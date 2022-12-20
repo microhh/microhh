@@ -23,6 +23,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <stdlib.h>
 
 #include "master.h"
 #include "grid.h"
@@ -864,6 +865,184 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
         }
     };
 
+    auto gser = [&](
+        const TF a,
+        const TF x)
+    {
+        const TF eps = 1e-7;
+        const int itmax = 100;
+
+        const TF gln = std::log(std::tgamma(a));
+
+        if (x <= TF(0))
+        {
+            std::cout << "ERROR in GSER: x < 0" << std::endl;
+            return TF(0);
+        }
+
+        TF ap = a;
+        TF sum = TF(1) / a;
+        TF del = sum;
+        for (int n=0; n<itmax; ++n)
+        {
+            ap = ap + TF(1);
+            del = del * x / ap;
+            sum = sum + del;
+            if (std::abs(del) < std::abs(sum) * eps)
+                break;
+        }
+
+        if (std::abs(del) >= std::abs(sum)*eps)
+        {
+            std::cout << "ERROR in GSER: a too large, ITMAX too small" << std::endl;
+            return TF(0);
+        }
+
+        return sum * std::exp(-x + a * std::log(x) - gln);
+    };
+
+    auto gcf = [&](
+            const TF a,
+            const TF x)
+    {
+        const int  itmax = 100;
+        const TF eps = 3.e-7;
+        const TF fpmin = 1.e-30;
+
+        const TF gln = std::log(std::tgamma(a));
+
+        TF b = x + TF(1) - a;
+        TF c = TF(1) / fpmin;
+        TF d = TF(1) / b;
+        TF h = d;
+        TF del;
+
+        for (int i=0; i<itmax; ++i)
+        {
+            const TF an=-(i+1)*((i+1)-a);
+            b = b + TF(2);
+            d = an * d + b;
+
+            if (std::abs(d) < fpmin)
+                d = fpmin;
+
+            c = b + an / c;
+
+            if (std::abs(c) < fpmin)
+                c = fpmin;
+
+            d = TF(1) / d;
+            del = d * c;
+            h = h * del;
+
+            if (std::abs(del-TF(1)) < eps)
+                break;
+        }
+
+        if (std::abs(del-TF(1)) >= eps)
+        {
+            std::cout << "ERROR in GCF: a too large, ITMAX too small" << std::endl;
+            return TF(0);
+        }
+
+        return std::exp(-x + a * std::log(x) - gln) * h;
+    };
+
+    auto gammp = [&](
+            const TF a,
+            const TF x)
+    {
+        if (x < TF(0) || a <= TF(0))
+        {
+            std::cout << "ERROR in GAMMP: bad arguments" << std::endl;
+            return TF(0);
+        }
+        else if (x < a+1)
+            return gser(a, x);
+        else
+        {
+            const TF gammp = gcf(a, x);
+            return TF(1) - gammp;
+        }
+    };
+
+    auto incgfct_lower = [&](
+        const TF a,
+        const TF x)
+    {
+        const TF gam = gammp(a, x);
+        const TF gln = std::log(std::tgamma(a));
+        return std::exp(gln) * gam;
+    };
+
+    auto incgfct_lower_lookupcreate = [&](
+            const TF a,
+            Gamlookuptable<TF>& ltable,
+            const int nl,
+            const int nlhr)
+    {
+         const TF c1 =  36.629433904824623;
+         const TF c2 = -0.119475603955226;
+         const TF c3 =  0.339332937820052;
+         const TF c4 =  1.156369000458310;
+
+        if (!ltable.is_initialised)
+        {
+            // Store parameters in the structure ltable:
+            ltable.a = a;
+            ltable.n = nl;
+
+            // Allocate Memory for the table vectors:
+            ltable.x.resize(nl);
+            ltable.igf.resize(nl);
+
+            // High-resolution part (not used, commented out for safety).
+            //ltable.nhr = nlhr;
+            //ltable.xhr.resize(nlhr);
+            //ltable.igfhr.resize(nlhr);
+
+            // Low resolution part of the table:
+            // -----------------------------------
+            // Maximum x-value of the lookup table (99.5-%-value):
+            ltable.x[ltable.n-2] = c1 * ( TF(1) - std::exp(c2 * std::pow(a, c3)) ) + c4*a;
+
+            // Create lookup table vectors:
+            ltable.dx = ltable.x[ltable.n-2] / (ltable.n-TF(2));
+            ltable.odx = TF(1) / ltable.dx;
+
+            // Diese Schleife vektorisiert nicht wg. incgfct_lower():
+            for (int i=0; i<ltable.n-1; i++)
+            {
+                ltable.x[i] = i * ltable.dx;
+                ltable.igf[i] = incgfct_lower(a, ltable.x[i]);
+            }
+
+            // The last value is for x = infinity:
+            ltable.x[ltable.n-1] = (ltable.n-1) * ltable.dx;
+            ltable.igf[ltable.n-1] = std::tgamma(a);
+
+            // High resolution part of the table (lowest 2% of the X-values):
+            // -----------------------------------
+            // NOTE BvS: for some reason, some of these functions (incgfct_lower...)
+            // fail if you throw in a small dummy number for `nlhr`.
+            // Create lookup table vectors:
+            //const int index = std::round(0.01*(ltable.n-1)) - 1;
+            //ltable.dxhr = ltable.x[index] / (ltable.nhr-TF(1));
+            //ltable.odxhr = TF(1) / ltable.dxhr;
+
+            //std::cout << index << " " << ltable.dxhr << std::endl;
+            //throw 1;
+
+            //// Diese Schleife vektorisiert nicht wg. incgfct_lower():
+            //for (int i=0; i<ltable.nhr; ++i)
+            //{
+            //    ltable.xhr[i] = i * ltable.dxhr;
+            //    ltable.igfhr[i] = incgfct_lower(a, ltable.xhr[i]);
+            //}
+
+            ltable.is_initialised = true;
+        }
+    };
 
     init_2mom_scheme();
 
@@ -903,23 +1082,31 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     init_2mom_sedi_vel(graupel, graupel_coeffs);
     init_2mom_sedi_vel(hail, hail_coeffs);
 
-    //! look-up table and parameters for rain_freeze_gamlook
-    //rain_nm1 = (rain%nu+1.0)/rain%mu
-    //rain_nm2 = (rain%nu+2.0)/rain%mu
-    //rain_nm3 = (rain%nu+3.0)/rain%mu
-    //CALL incgfct_lower_lookupcreate(rain_nm1, rain_ltable1, nlookup, nlookuphr_dummy)
-    //CALL incgfct_lower_lookupcreate(rain_nm2, rain_ltable2, nlookup, nlookuphr_dummy)
-    //CALL incgfct_lower_lookupcreate(rain_nm3, rain_ltable3, nlookup, nlookuphr_dummy)
-    //rain_g1 = rain_ltable1%igf(rain_ltable1%n) ! ordinary gamma function of nm1 is the last value in table 1
-    //rain_g2 = rain_ltable2%igf(rain_ltable2%n) ! ordinary gamma function of nm2 is the last value in table 2
+    // Look-up table and parameters for rain_freeze_gamlook
+    const int nlookup   = 2000;      // Internal number of bins (low res part)
+    const int nlookuphr_dummy = 10;  // Dummy if HR part is not needed.
 
-    //! table and parameters for graupel_hail_conv_wet_gamlook
-    //graupel_nm1 = (graupel%nu+1.0)/graupel%mu
-    //graupel_nm2 = (graupel%nu+2.0)/graupel%mu
-    //CALL incgfct_lower_lookupcreate(graupel_nm1, graupel_ltable1, nlookup, nlookuphr_dummy)
-    //CALL incgfct_lower_lookupcreate(graupel_nm2, graupel_ltable2, nlookup, nlookuphr_dummy)
-    //graupel_g1 = graupel_ltable1%igf(graupel_ltable1%n) ! ordinary gamma function of nm1 is the last value in table 1
-    //graupel_g2 = graupel_ltable2%igf(graupel_ltable2%n) ! ordinary gamma function of nm2 is the last value in table 2
+    this->rain_nm1 = (rain.nu+TF(1)) / rain.mu;
+    this->rain_nm2 = (rain.nu+TF(2)) / rain.mu;
+    this->rain_nm3 = (rain.nu+TF(3)) / rain.mu;
+
+    incgfct_lower_lookupcreate(rain_nm1, rain_ltable1, nlookup, nlookuphr_dummy);
+    incgfct_lower_lookupcreate(rain_nm2, rain_ltable2, nlookup, nlookuphr_dummy);
+    incgfct_lower_lookupcreate(rain_nm3, rain_ltable3, nlookup, nlookuphr_dummy);
+
+    this->rain_g1 = rain_ltable1.igf[rain_ltable1.n-1]; // ordinary gamma function of nm1 is the last value in table 1
+    this->rain_g2 = rain_ltable2.igf[rain_ltable2.n-1]; // ordinary gamma function of nm2 is the last value in table 2
+
+    // Table and parameters for graupel_hail_conv_wet_gamlook
+    this->graupel_nm1 = (graupel.nu+TF(1)) / graupel.mu;
+    this->graupel_nm2 = (graupel.nu+TF(2)) / graupel.mu;
+
+    incgfct_lower_lookupcreate(graupel_nm1, graupel_ltable1, nlookup, nlookuphr_dummy);
+    incgfct_lower_lookupcreate(graupel_nm2, graupel_ltable2, nlookup, nlookuphr_dummy);
+
+    this->graupel_g1 = graupel_ltable1.igf[graupel_ltable1.n-1]; // ordinary gamma function of nm1 is the last value in table 1
+    this->graupel_g2 = graupel_ltable2.igf[graupel_ltable2.n-1]; // ordinary gamma function of nm2 is the last value in table 2
+
 
     // Other options for mue-D-relation of raindrops (for sensitivity studies)
     if (this->mu_Dm_rain_typ == 0)
@@ -1841,8 +2028,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             check("particle_cloud_riming graupel-cloud", k);
-
-
 
             //CALL particle_rain_riming(ik_slice, dt, atmo, graupel, grr_coeffs, rain, ice)
             //IF (ischeck) CALL check(ik_slice, 'graupel riming',cloud,rain,ice,snow,graupel,hail)
