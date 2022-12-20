@@ -1584,7 +1584,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     hydro_types.at("ng").conversion_tend,
                     hydro_types.at("qh").conversion_tend,
                     hydro_types.at("nh").conversion_tend,
-                    (*qtt_liq).data(),
+                    (*qtt_ice).data(),
                     (*dep_rate_ice).data(),
                     (*dep_rate_snow).data(),
                     // 2D tmp fields:

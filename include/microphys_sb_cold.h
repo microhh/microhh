@@ -905,7 +905,7 @@ namespace Sb_cold
             TF* const restrict ngt,
             TF* const restrict qht,
             TF* const restrict nht,
-            TF* const restrict qtt_liq,
+            TF* const restrict qtt_ice,
             // Integrated deposition (so *dt):
             TF* const restrict dep_rate_ice,
             TF* const restrict dep_rate_snow,
@@ -1079,7 +1079,8 @@ namespace Sb_cold
                         qst[ij] += dep_snow[ij] * zdt;
                         qgt[ij] += dep_graupel[ij] * zdt;
                         qht[ij] += dep_hail[ij] * zdt;
-                        qtt_liq[ij] -= dep_sum * zdt;
+
+                        qtt_ice[ij] -= dep_sum * zdt;
 
                         // If deposition rate is negative, parameterize the complete evaporation of some of the
                         // particles in a way that mean size is conserved times a tuning factor < 1:
@@ -1550,6 +1551,10 @@ namespace Sb_cold
                     {
                         nit[ij] -= rime_rate_nr[ij];
                         nrt[ij] -= rime_rate_nr[ij];
+
+                        // BvS: I'm not sure about this part. If:
+                        //      rime_rate_qi != -rime_rate_qr,
+                        //      moisture is not conserved...?
                         qit[ij] -= rime_rate_qi[ij];
                         qrt[ij] -= rime_rate_qr[ij];
 
@@ -1577,6 +1582,10 @@ namespace Sb_cold
 
                             nit[ij] += rime_rate_nr[ij];
                             nrt[ij] += rime_rate_qr[ij] / x_r;
+
+                            // BvS: I'm not sure about this part. If:
+                            //      rime_rate_qi != -rime_rate_qr,
+                            //      moisture is not conserved...?
                             qit[ij] += rime_rate_qi[ij];
                             qrt[ij] += rime_rate_qr[ij];
 
@@ -1811,6 +1820,10 @@ namespace Sb_cold
                     {
                         nst[ij] -= rime_rate_nr[ij];
                         nrt[ij] -= rime_rate_nr[ij];
+
+                        // BvS: I'm not sure about this part. If:
+                        //      rime_rate_qs != -rime_rate_qr,
+                        //      moisture is not conserved...?
                         qst[ij] -= rime_rate_qs[ij];
                         qrt[ij] -= rime_rate_qr[ij];
 
@@ -1838,6 +1851,10 @@ namespace Sb_cold
 
                             nst[ij] += rime_rate_nr[ij];
                             nrt[ij] += rime_rate_qr[ij] / x_r;
+
+                            // BvS: I'm not sure about this part. If:
+                            //      rime_rate_qs != -rime_rate_qr,
+                            //      moisture is not conserved...?
                             qst[ij] += rime_rate_qs[ij];
                             qrt[ij] += rime_rate_qr[ij];
                         }
