@@ -781,6 +781,7 @@ namespace Sb_cold
             Particle_frozen<TF>& ptype,
             Collection_coeffs<TF>& coeffs,
             const TF rho_v,
+            const bool ice_tendency,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride)
@@ -842,7 +843,7 @@ namespace Sb_cold
                     qit[ij] -= coll_q;
                     nit[ij] -= coll_n;
 
-                    if (qtt_ice)
+                    if (ice_tendency)
                         qtt_ice[ij] -= coll_q;
 
                     //coll_n = MIN(n_i, coll_n)
@@ -1438,7 +1439,6 @@ namespace Sb_cold
                 jstart, jend,
                 jstride);
 
-
         // This changes the results: !!!    const5 = rho_w/rho_ice * cfg_params%alpha_spacefilling
         const TF const5 = cfg_params.alpha_spacefilling * rho_w<TF>/rho_i<TF>;
 
@@ -1458,8 +1458,9 @@ namespace Sb_cold
                         qit[ij] += rime_rate_qc[ij];
                         qct[ij] -= rime_rate_qc[ij];
                         nct[ij] -= rime_rate_nc[ij];
-                        qtt_ice[ij] -= rime_rate_qc[ij];
-                        qtt_liq[ij] += rime_rate_qc[ij];
+
+                        qtt_ice[ij] += rime_rate_qc[ij];
+                        qtt_liq[ij] -= rime_rate_qc[ij];
 
                         if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
                         {
@@ -1479,7 +1480,8 @@ namespace Sb_cold
                         qit[ij] += rime_rate_qr[ij];
                         qrt[ij] -= rime_rate_qr[ij];
                         nrt[ij] -= rime_rate_nr[ij];
-                        qtt_ice[ij] -= rime_rate_qr[ij];
+
+                        qtt_ice[ij] += rime_rate_qr[ij];
 
                         // .. Ice multiplication
                         if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
@@ -1508,8 +1510,9 @@ namespace Sb_cold
                         qit[ij] += rime_rate_qc[ij];
                         qct[ij] -= rime_rate_qc[ij];
                         nct[ij] -= rime_rate_nc[ij];
-                        qtt_ice[ij] -= rime_rate_qc[ij];
-                        qtt_liq[ij] += rime_rate_qc[ij];
+
+                        qtt_ice[ij] += rime_rate_qc[ij];
+                        qtt_liq[ij] -= rime_rate_qc[ij];
 
                         // Ice multiplication;
                         const TF mult_q = TF(0);
@@ -1549,7 +1552,8 @@ namespace Sb_cold
                         nrt[ij] -= rime_rate_nr[ij];
                         qit[ij] -= rime_rate_qi[ij];
                         qrt[ij] -= rime_rate_qr[ij];
-                        qtt_ice[ij] += rime_rate_qi[ij];
+
+                        qtt_ice[ij] -= rime_rate_qi[ij];
 
                         // Ice multiplication;
                         TF mult_q = TF(0);
@@ -1575,7 +1579,8 @@ namespace Sb_cold
                             nrt[ij] += rime_rate_qr[ij] / x_r;
                             qit[ij] += rime_rate_qi[ij];
                             qrt[ij] += rime_rate_qr[ij];
-                            qtt_ice[ij] -= rime_rate_qi[ij];
+
+                            qtt_ice[ij] += rime_rate_qi[ij];
                         }
                         else
                         {
@@ -1583,7 +1588,7 @@ namespace Sb_cold
                             nit[ij] += mult_n;
                             qit[ij] += mult_q;
 
-                            qtt_ice[ij] -= mult_q;
+                            qtt_ice[ij] += mult_q;
 
                             // Riming to graupel;
                             if (Ta[ij] < cfg_params.Tmax_gr_rime)
@@ -1598,7 +1603,7 @@ namespace Sb_cold
 
                                 nit[ij] += rime_rate_nr[ij];
                                 qit[ij] += conv_q;
-                                qtt_ice[ij] -= conv_q;
+                                qtt_ice[ij] += conv_q;
                             }
                         }
                     }
@@ -1629,8 +1634,6 @@ namespace Sb_cold
             TF* const restrict qtt_ice,
             const TF* const restrict qs,
             const TF* const restrict ns,
-            //const TF* const restrict qi,
-            //const TF* const restrict ni,
             const TF* const restrict qc,
             const TF* const restrict nc,
             const TF* const restrict qr,
@@ -1705,7 +1708,7 @@ namespace Sb_cold
                         qst[ij] += rime_rate_qc[ij];
                         qct[ij] -= rime_rate_qc[ij];
                         nct[ij] -= rime_rate_nc[ij];
-                        qtt_liq[ij] += rime_rate_qc[ij];
+                        qtt_liq[ij] -= rime_rate_qc[ij];
 
                         // Ice multiplication;
                         if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
@@ -1722,7 +1725,7 @@ namespace Sb_cold
                             nit[ij] += mult_n;
                             qit[ij] += mult_q;
                             qst[ij] -= mult_q;
-                            qtt_ice[ij] -= mult_q;
+                            qtt_ice[ij] += mult_q;
                         }
                     }
 
@@ -1736,6 +1739,7 @@ namespace Sb_cold
                         // Ice multiplication;
                         if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
                         {
+                            std::cout << "2.1" << std::endl;
                             TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const3;
                             TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const4;
 
@@ -1748,7 +1752,7 @@ namespace Sb_cold
                             nit[ij] += mult_n;
                             qit[ij] += mult_q;
                             qst[ij] -= mult_q;
-                            qtt_ice[ij] -= mult_q;
+                            qtt_ice[ij] += mult_q;
                         }
                     }
                 }
@@ -1766,7 +1770,7 @@ namespace Sb_cold
                         qst[ij] += rime_rate_qc[ij];
                         qct[ij] -= rime_rate_qc[ij];
                         nct[ij] -= rime_rate_nc[ij];
-                        qtt_liq[ij] += rime_rate_qc[ij];
+                        qtt_liq[ij] -= rime_rate_qc[ij];
 
                         // ice multiplication;
                         TF mult_q = TF(0);
@@ -1784,7 +1788,7 @@ namespace Sb_cold
                             nit[ij] += mult_n;
                             qit[ij] += mult_q;
                             qst[ij] -= mult_q;
-                            qtt_ice[ij] -= mult_q;
+                            qtt_ice[ij] += mult_q;
                         }
 
                         // Conversion of snow to graupel, depends on alpha_spacefilling;
@@ -1842,7 +1846,7 @@ namespace Sb_cold
                             // new ice particles from multiplication;
                             nit[ij] += mult_n;
                             qit[ij] += mult_q;
-                            qtt_ice[ij] -= mult_q;
+                            qtt_ice[ij] += mult_q;
 
                             // riming to graupel;
                             if (Ta[ij] < cfg_params.Tmax_gr_rime)

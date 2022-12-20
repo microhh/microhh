@@ -1657,6 +1657,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             check("snow_selfcollection", k);
 
             // Collection of ice by snow.
+            const bool save_ice_tendency = true;
+
             Sb_cold::particle_particle_collection(
                     hydro_types.at("qs").conversion_tend,
                     hydro_types.at("qi").conversion_tend,
@@ -1670,6 +1672,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     ice, snow,
                     sic_coeffs,
                     rho_corr,
+                    save_ice_tendency,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
@@ -1692,6 +1695,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     ice, graupel,
                     gic_coeffs,
                     rho_corr,
+                    save_ice_tendency,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
@@ -1712,6 +1716,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     snow, graupel,
                     gsc_coeffs,
                     rho_corr,
+                    !save_ice_tendency,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
