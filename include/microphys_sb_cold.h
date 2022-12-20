@@ -50,6 +50,8 @@ namespace Sb_cold
     template<typename TF> constexpr TF n_f  = 0.333;                   // Exponent von N_sc im Vent-koeff. (PK, S.541)
     template<typename TF> constexpr TF nu_l = 1.50E-5;                 // kinematic viscosity of dry air (m^2/s)
     template<typename TF> constexpr TF D_v = 2.22e-5;                  // diff coeff of H2O vapor in dry air at tmelt (m^2/s)
+    template<typename TF> constexpr TF rcpl = 3.1733;                  // cp_d / cp_l - 1
+    template<typename TF> constexpr TF clw = (rcpl<TF> + TF(1)) * Constants::cp<TF>; // cp_d / cp_l - 1
 
     // Limiters on ql/qr/etc.
     template<typename TF> constexpr TF ecoll_min = 0.01;               // min. eff. for graupel_cloud, ice_cloud and snow_cloud
@@ -1882,4 +1884,115 @@ namespace Sb_cold
                 } // Outer if
             } // i
     } // function
-}
+
+
+    template<typename TF>
+    void particle_cloud_riming(
+            TF* const restrict qpt,
+            TF* const restrict npt,
+            TF* const restrict qct,
+            TF* const restrict nct,
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qtt_ice,
+            const TF* const restrict qc,
+            const TF* const restrict nc,
+            const TF* const restrict qp,
+            const TF* const restrict np,
+            const TF* const restrict Ta,
+            Particle_frozen<TF> &ice,
+            Particle_frozen<TF> &ptype,
+            Particle<TF> &cloud,
+            Particle<TF> &rain,
+            Collection_coeffs<TF> &coeffs,
+            const TF rho_v,
+            const bool ice_multiplication,
+            const bool enhanced_melting,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        /*
+            Riming of graupel or hail with cloud droplets                                *
+        */
+        const TF const0 = TF(1)/(D_coll_c<TF> - D_crit_c<TF>);
+        const TF const2 = TF(1)/(T_mult_opt<TF> - T_mult_min<TF>);
+        const TF const3 = TF(1)/(T_mult_opt<TF> - T_mult_max<TF>);
+        const TF const4 = clw<TF> / Constants::Lf<TF>;
+        const TF const1 = const0 * ptype.ecoll_c;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                const TF x_p = particle_meanmass(ptype, qp[ij], np[ij]);
+                const TF D_p = particle_diameter(ptype, x_p);
+                const TF x_c = particle_meanmass(cloud, qc[ij], nc[ij]);
+                const TF D_c = particle_diameter(cloud, x_c);
+
+                if (qc[ij] > q_crit_c<TF> && qp[ij] > ptype.q_crit_c && D_p > ptype.D_crit_c && D_c > D_crit_c<TF>)
+                {
+                    const TF v_p = particle_velocity(ptype, x_p) * rho_v;
+                    const TF v_c = particle_velocity(cloud, x_c) * rho_v;
+
+                    const TF e_coll_n = std::min(ptype.ecoll_c, std::max(const1*(D_c - D_crit_c<TF>), ecoll_min<TF>));
+                    const TF e_coll_q = e_coll_n;
+
+                    // Both terms are multiplied by dt in ICON
+                    const TF rime_n = pi4<TF> * e_coll_n * np[ij] * nc[ij]
+                        *     (coeffs.delta_n_aa * D_p*D_p + coeffs.delta_n_ab * D_p*D_c + coeffs.delta_n_bb * D_c*D_c)
+                        * sqrt(coeffs.theta_n_aa * v_p*v_p - coeffs.theta_n_ab * v_p*v_c + coeffs.theta_n_bb * v_c*v_c);
+
+                    const TF rime_q = pi4<TF> * e_coll_q * np[ij] * qc[ij]
+                        *     (coeffs.delta_q_aa * D_p*D_p + coeffs.delta_q_ab * D_p*D_c + coeffs.delta_q_bb * D_c*D_c)
+                        * sqrt(coeffs.theta_q_aa * v_p*v_p - coeffs.theta_q_ab * v_p*v_c + coeffs.theta_q_bb * v_c*v_c);
+
+                    ptype.q[ij] = ptype.q[ij] + rime_q;
+                    cloud.q[ij] = cloud.q[ij] - rime_q;
+                    cloud.n[ij] = cloud.n[ij] - rime_n;
+
+                    qpt[ij] += rime_q;
+                    qct[ij] -= rime_q;
+                    nct[ij] -= rime_n;
+
+                    qtt_ice[ij] -= rime_q;
+
+                    // Ice multiplication based on Hallet and Mossop;
+                    if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                    {
+                        TF mult_1 = const2 * (Ta[ij] - T_mult_min<TF>);
+                        TF mult_2 = const3 * (Ta[ij] - T_mult_max<TF>);
+
+                        mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                        mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                        const TF mult_n = C_mult<TF> * mult_1 * mult_2 * rime_q;
+                        const TF mult_q = mult_n * ice.x_min;
+
+                        nit[ij] += mult_n;
+                        qit[ij] += mult_q;
+                        qpt[ij] -= mult_q;
+                        qtt_ice[ij] += mult_q;
+                    }
+
+                    // Enhancement of melting;
+                    if (Ta[ij] > Constants::T0<TF> && enhanced_melting)
+                    {
+                        const TF melt_q = const4 * (Ta[ij] - Constants::T0<TF>) * rime_q;
+                        const TF melt_n = melt_q / x_p;
+
+                        qpt[ij] -= melt_q;
+                        qrt[ij] += melt_q;
+                        npt[ij] -= melt_n;
+                        nrt[ij] += melt_n;
+                    }
+                }
+            } // i
+    } // function
+
+
+} // namespace

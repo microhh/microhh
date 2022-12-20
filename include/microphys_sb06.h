@@ -286,6 +286,7 @@ class Microphys_sb06 : public Microphys<TF>
         const int mu_Dm_rain_typ = 1;
         TF rain_gfak;
         const bool ice_multiplication = true;
+        const bool enhanced_melting = true;
 
         // Map with hydrometeor types.
         std::map<std::string, Hydro_type<TF>> hydro_types;
