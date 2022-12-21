@@ -56,8 +56,10 @@ namespace Sb_cold
     template<typename TF> constexpr TF clw = (rcpl<TF> + TF(1)) * Constants::cp<TF>; // cp_d / cp_l - 1
     template<typename TF> constexpr TF e_3 = 6.10780000e2;             // Saettigungsdamppfdruck bei T = T_3
 
-    // Limiters on ql/qr/etc.
+    // Various parameters for collision and conversion rates
     template<typename TF> constexpr TF ecoll_min = 0.01;               // min. eff. for graupel_cloud, ice_cloud and snow_cloud
+    template<typename TF> constexpr TF ecoll_gg = 0.10;                // collision efficiency for graupel selfcollection
+    template<typename TF> constexpr TF ecoll_gg_wet = 0.40;            // ...... in case of wet graupel
 
     // Hallet-Mossop ice multiplication
     template<typename TF> constexpr TF C_mult     = 3.5e8;             // Koeff. fuer Splintering
@@ -1222,6 +1224,44 @@ namespace Sb_cold
                             fm::pow2(snow.s_vel) ); // * dt in ICON
 
                     nst[ij] -= self_n;
+                }
+            }
+    }
+
+
+    template<typename TF>
+    void graupel_selfcollection(
+            TF* const restrict ngt,
+            const TF* const restrict qg,
+            const TF* const restrict ng,
+            const TF* const restrict Ta,
+            Particle<TF>& graupel,
+            Particle_graupel_coeffs<TF>& graupel_coeffs,
+            const TF rho_v,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (qg[ij] > q_crit<TF>)
+                {
+                    //const TF n_g = graupel.n[ij];
+                    const TF x_g = particle_meanmass(graupel, qg[ij], ng[ij]);
+                    const TF D_g = particle_diameter(graupel, x_g);
+                    const TF v_g = particle_velocity(graupel, x_g) * rho_v;
+
+                    // Times dt in ICON
+                    TF self_n = graupel_coeffs.sc_coll_n * fm::pow2(ng[ij]) * fm::pow2(D_g) * v_g;
+
+                    // Sticking efficiency does only distinguish dry and wet based on T_3;
+                    self_n = Ta[ij] > Constants::T0<TF> ? ecoll_gg_wet<TF> : ecoll_gg<TF>;
+
+                    ngt[ij] -= self_n;
                 }
             }
     }
