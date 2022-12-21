@@ -239,8 +239,6 @@ struct Hydro_type
 template<typename TF>
 struct Gamlookuptable
 {
-    bool is_initialised = false;
-
     // Low-resolution
     TF a;                   // a-parameter
     int n;                  // Internal number of bins (low res part)
