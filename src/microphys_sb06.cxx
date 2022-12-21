@@ -2007,7 +2007,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("snow_melting", k);
 
-            //! melting of graupel and hail can be simple or LWF-based
+            // Melting of graupel and hail can be simple or LWF-based
             //SELECT TYPE (graupel)
             //TYPE IS (particle_frozen)
 
@@ -2036,11 +2036,29 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             //SELECT TYPE (hail)
             //TYPE IS (particle_frozen)
-            //  CALL hail_melting_simple(ik_slice,dt,hail_coeffs,atmo,hail,rain)
+
+            Sb_cold::hail_melting_simple(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    hail_coeffs,
+                    hail,
+                    t_cfg_2mom,
+                    rho_corr,
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("hail_melting", k);
+
             //TYPE IS (particle_lwf)
             //  CALL particle_melting_lwf(ik_slice, dt, hail, rain, gmelting)
             //END SELECT
-            //IF (ischeck) CALL check(ik_slice, 'melting',cloud,rain,ice,snow,graupel,hail)
 
             // Evaporation from melting ice particles
             Sb_cold::evaporation(

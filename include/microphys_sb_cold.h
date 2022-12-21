@@ -2610,4 +2610,64 @@ namespace Sb_cold
     } // function
 
 
+    template<typename TF>
+    void hail_melting_simple(
+            TF* const restrict qht,
+            TF* const restrict nht,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qh,
+            const TF* const restrict nh,
+            const TF* const restrict Ta,
+            Particle_sphere<TF>& hail_coeffs,
+            Particle<TF>& hail,
+            const T_cfg_2mom<TF>& cfg_params,
+            const TF rho_v,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF zdt = TF(1)/dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (Ta[ij] > Constants::T0<TF> && qh[ij] > TF(0))
+                {
+                    const TF e_a = tmf::esat_liq(Ta[ij]);
+
+                    const TF x_h = particle_meanmass(hail, qh[ij], nh[ij]);
+                    const TF D_h = particle_diameter(hail, x_h);
+                    const TF v_h = particle_velocity(hail, x_h) * rho_v;
+
+                    const TF fv_q = hail_coeffs.a_f + hail_coeffs.b_f * sqrt(v_h * D_h);
+                    const TF fh_q = TF(1.05) * fv_q;    // UB: based on Rasmussen and Heymsfield
+
+                    const TF melt = TF(2) * pi<TF> / Constants::Lf<TF> * D_h * nh[ij] * dt;
+
+                    const TF melt_h = melt * K_T<TF> * (Ta[ij] - Constants::T0<TF>);
+                    const TF melt_v = melt * D_v<TF> * Constants::Lv<TF> /
+                                      Constants::Rv<TF> * (e_a/Ta[ij] - e_3<TF>/Constants::T0<TF>);
+                    TF melt_q = cfg_params.melt_h_tune_fak * (melt_h * fh_q + melt_v * fv_q);
+
+                    // UB: assume that x_h is constant during melting;
+                    TF melt_n = std::min(std::max( (melt_q - qh[ij]) / x_h + nh[ij], TF(0)), nh[ij]);
+
+                    melt_q = std::min(qh[ij], std::max(melt_q, TF(0)));
+                    melt_n = std::min(nh[ij], std::max(melt_n, TF(0)));
+
+                    qht[ij] -= melt_q * zdt;
+                    qrt[ij] += melt_q * zdt;
+
+                    nht[ij] -= melt_n * zdt;
+                    nrt[ij] += melt_n * zdt;
+                }
+            } // i
+    } // function
+
+
 } // namespace
