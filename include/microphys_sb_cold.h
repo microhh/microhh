@@ -54,6 +54,7 @@ namespace Sb_cold
     template<typename TF> constexpr TF D_v = 2.22e-5;                  // diff coeff of H2O vapor in dry air at tmelt (m^2/s)
     template<typename TF> constexpr TF rcpl = 3.1733;                  // cp_d / cp_l - 1
     template<typename TF> constexpr TF clw = (rcpl<TF> + TF(1)) * Constants::cp<TF>; // cp_d / cp_l - 1
+    template<typename TF> constexpr TF e_3 = 6.10780000e2;             // Saettigungsdamppfdruck bei T = T_3
 
     // Limiters on ql/qr/etc.
     template<typename TF> constexpr TF ecoll_min = 0.01;               // min. eff. for graupel_cloud, ice_cloud and snow_cloud
@@ -2437,4 +2438,77 @@ namespace Sb_cold
     } // function
 
 
-} // name
+    template<typename TF>
+    void snow_melting(
+            TF* const restrict qst,
+            TF* const restrict nst,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qs,
+            const TF* const restrict ns,
+            const TF* const restrict Ta,
+            Particle_sphere<TF>& snow_coeffs,
+            Particle<TF>& snow,
+            const TF rho_v,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF zdt = TF(1)/dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (Ta[ij] > Constants::T0<TF> && qs[ij] > TF(0))
+                {
+                    const TF e_a = tmf::esat_liq(Ta[ij]);
+
+                    const TF x_s = particle_meanmass(snow, qs[ij], ns[ij]);
+                    const TF D_s = particle_diameter(snow, x_s);
+                    const TF v_s = particle_velocity(snow, x_s) * rho_v;
+
+                    const TF fv_q = snow_coeffs.a_f + snow_coeffs.b_f * sqrt(v_s * D_s);
+
+                    // UB: Based on Rasmussen and Heymsfield (1987) the ratio fh_q / fv_q
+                    // is approx. 1.05 for a wide temperature- and pressure range;
+                    const TF fh_q = TF(1.05) * fv_q;
+
+                    const TF melt = TF(2) * pi<TF>/Constants::Lf<TF> * D_s * ns[ij] * dt;
+
+                    // NOTE: ICON uses R_d here, which is `gas constant of water vapor (dampf)`, so Rv in our case...
+                    const TF melt_h = melt * K_T<TF> * (Ta[ij] - Constants::T0<TF>);
+                    const TF melt_v = melt * D_v<TF> * Constants::Lv<TF> /
+                            Constants::Rv<TF> * (e_a/Ta[ij] - e_3<TF>/Constants::T0<TF>);
+                    TF melt_q = (melt_h * fh_q + melt_v * fv_q);
+
+                    // UB: for melt_n we assume that x_s is constant during melting;
+                    TF melt_n = std::min(std::max( (melt_q - qs[ij]) / x_s + ns[ij], TF(0)), ns[ij]);
+
+                    melt_q = std::min(qs[ij], std::max(melt_q, TF(0)));
+                    melt_n = std::min(ns[ij], std::max(melt_n, TF(0)));
+
+                    // UB: snow melts instantaneously at 10 C;
+                    if (Ta[ij] - Constants::T0<TF> > TF(10))
+                    {
+                        melt_q = qs[ij];
+                        melt_n = ns[ij];
+                    }
+
+                    qst[ij] -= melt_q * zdt;
+                    qrt[ij] += melt_q * zdt;
+
+                    nst[ij] -= melt_n * zdt;
+                    nrt[ij] += melt_n * zdt;
+
+                    // Oiiiii
+                    //snow.n[ij] = std::max(snow.n[ij], snow.q[ij]/snow.x_max);
+                }
+            } // i
+    } // function
+
+
+} // namespace

@@ -1975,7 +1975,24 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("ice_melting", k);
 
-            //CALL snow_melting(ik_slice,dt,snow_coeffs,atmo,snow,rain)
+            Sb_cold::snow_melting(
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("ns").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow_coeffs,
+                    snow,
+                    rho_corr,
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("snow_melting", k);
+
 
             //! melting of graupel and hail can be simple or LWF-based
             //SELECT TYPE (graupel)
