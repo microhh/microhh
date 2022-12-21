@@ -1853,11 +1853,37 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //CALL particle_rain_riming(ik_slice, dt, atmo, graupel, grr_coeffs, rain, ice)
             //IF (ischeck) CALL check(ik_slice, 'graupel riming',cloud,rain,ice,snow,graupel,hail)
 
-            //! freezing of rain and conversion to ice/graupel/hail
-            //CALL rain_freeze_gamlook(ik_slice, dt, rain_ltable1, rain_ltable2, rain_ltable3, &
-            //     &                   rain_nm1, rain_nm2, rain_nm3, rain_g1, rain_g2,         &
-            //     &                   rain_coeffs,atmo,rain,ice,snow,graupel,hail)
-            //IF (ischeck) CALL check(ik_slice, 'rain_freeze_gamlook',cloud,rain,ice,snow,graupel,hail)
+            // Freezing of rain and conversion to ice/graupel/hail
+            Sb_cold::rain_freeze_gamlook(
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    rain_ltable1,
+                    rain_ltable2,
+                    rain_ltable3,
+                    rain_coeffs,
+                    rain,
+                    t_cfg_2mom,
+                    this->rain_nm1,
+                    this->rain_nm2,
+                    this->rain_nm3,
+                    this->rain_g1,
+                    this->rain_g2,
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("rain_freeze_gamlook", k);
 
             //! melting of ice and snow
             //CALL ice_melting(ik_slice, atmo, ice, cloud, rain)

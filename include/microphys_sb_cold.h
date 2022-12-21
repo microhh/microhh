@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
+
 #include "constants.h"
 #include "fast_math.h"
 #include "thermo_moist_functions.h"
@@ -75,6 +77,9 @@ namespace Sb_cold
     template<typename TF> constexpr TF x_conv    = 0.100e-9;           // minimum mass of conversion due to riming
     template<typename TF> constexpr TF D_crit_c  = 10.00e-6;           // D-threshold for cloud drop collection efficiency
     template<typename TF> constexpr TF D_coll_c  = 40.00e-6;           // upper bound for diameter in collision efficiency
+
+    template<typename TF> constexpr TF T_freeze  = 273.15;             // Same as Constants::T0...
+    template<typename TF> constexpr TF T_f  = 233.0;                   // below this temperature there is no liquid water
 
 
     template<typename TF>
@@ -1993,6 +1998,284 @@ namespace Sb_cold
                 }
             } // i
     } // function
+
+
+    template<typename TF>
+    inline TF incgfct_lower_lookup(
+            const TF x,
+            Gamlookuptable<TF>& ltable)
+    {
+        /*
+            Retrieve values from a lookup table of the lower incomplete gamma function,
+            as function of x at a constant a, for which the lookup table has been
+            created.
+
+            The last value in the table has to correspond to x = infinity, so that
+            during the reconstruction of incgfct-values from the table,
+            the x-value can safely be truncated at the maximum table x-value:
+
+            ltable%igf( ltable%x(ltable%n),...) = gfct(a)
+
+            Profiling with ifort on a Linux-PC shows, that table lookup for the
+            incompl. gamma-Funktion is faster by a factor of about 15 compared
+            to the original function without optimization (-O0). Using optimization
+            could change this ratio (we encoutered up to 300 depending on function inlining).
+
+            Concerning the accuracy, comparisons show that the results of table lookup
+            are accurate to within better than 0.1 % or even much less, except for
+            very small values of X, for which the absolute values are however very
+            close to 0. For X -> infinity (X > 99.5 % - value), accuracy may be
+            somewhat reduced up to about 0.5 % ,
+            because the table is truncated at the 99.5 % value (second-last value)
+            and the last value is set to the ordinary gamma function.
+
+            This function only uses the low resolution part of the table!
+        */
+
+        // Trunkcate x to the range of the table:
+        const TF xt = std::max( std::min(x, ltable.x[ltable.n-1]), TF(0));
+
+        // Calculate indices of the neighbouring regular x-values in the table:
+        const int i0 = int(xt * ltable.odx);
+        const int iu = std::min(i0, ltable.n-2);
+        const int io = iu + 1;
+
+        // Interpolate linearly and subtract from the ordinary
+        // gamma function to get the upper incomplete gamma function:
+        const TF res = ltable.igf[iu] + (ltable.igf[io] - ltable.igf[iu]) * ltable.odx * (xt-ltable.x[iu]);
+
+        return res;
+    }
+
+
+    template<typename TF>
+    void rain_freeze_gamlook(
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qgt,
+            TF* const restrict ngt,
+            TF* const restrict qht,
+            TF* const restrict nht,
+            TF* const restrict qtt_ice,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict Ta,
+            Gamlookuptable<TF>& rain_ltable1,
+            Gamlookuptable<TF>& rain_ltable2,
+            Gamlookuptable<TF>& rain_ltable3,
+            Particle_rain_coeffs<TF>& rain_coeffs,
+            Particle<TF>& rain,
+            const T_cfg_2mom<TF>& cfg_params,
+            const TF rain_nm1,
+            const TF rain_nm2,
+            const TF rain_nm3,
+            const TF rain_g1,
+            const TF rain_g2,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF a_HET = 6.5e-1;      // Data of Barklie and Gokhale (PK S.350)
+        const TF b_HET = 2.0e+2;      //         Barklie and Gokhale (PK S.350)
+
+        //const TF eps = 1e-15;         // for clipping
+        //const bool lclipping = true;
+
+        const TF xmax_ice = std::pow( std::pow(cfg_params.D_rainfrz_ig / rain.a_geo, TF(1) / rain.b_geo), rain.mu);
+        const TF xmax_gr  = std::pow( std::pow(cfg_params.D_rainfrz_gh / rain.a_geo, TF(1) / rain.b_geo), rain.mu);
+
+        const TF zdt = TF(1) / dt;
+
+        TF fr_q;
+        TF fr_n;
+        TF fr_n_i;
+        TF fr_q_i;
+        TF fr_n_g;
+        TF fr_q_g;
+        TF fr_n_h;
+        TF fr_q_h;
+        TF fr_n_tmp;
+        TF fr_q_tmp;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                // Make copy; n_r is potentially changed..
+                TF q_r = qr[ij];
+                TF n_r = nr[ij];
+
+                if (Ta[ij] < T_freeze<TF>)
+                {
+                    if (q_r <= q_crit_fr<TF>)
+                    {
+                        if (Ta[ij] < T_f<TF>)
+                        {
+                            // Instantaneous freezing below T_f or -40 C
+                            fr_q = q_r;
+                            fr_n = n_r;
+                            fr_n_i = n_r;
+                            fr_q_i = q_r;
+                            fr_n_g = TF(0);
+                            fr_q_g = TF(0);
+                            fr_n_h = TF(0);
+                            fr_q_h = TF(0);
+                            fr_n_tmp = TF(1);
+                            fr_q_tmp = TF(1);
+                        }
+                        else
+                        {
+                            fr_q = TF(0);
+                            fr_n = TF(0);
+                            fr_n_i = TF(0);
+                            fr_q_i = TF(0);
+                            fr_n_g = TF(0);
+                            fr_q_g = TF(0);
+                            fr_n_h = TF(0);
+                            fr_q_h = TF(0);
+                            fr_n_tmp = TF(0);
+                            fr_q_tmp = TF(0);
+                        }
+                    }
+                    else
+                    {
+                        const TF x_r = particle_meanmass(rain, q_r, n_r);
+                        n_r = q_r / x_r;
+
+                        if (Ta[ij] < T_f<TF>)
+                        {
+                            // This branch could also be omitted. While it is quantitatively correct, it is not
+                            // consistent with the limit case for complete freezing of the
+                            // calculation in the T_a >= T_f branch below.
+                            fr_q = q_r;                 //  Ausfrieren unterhalb T_f \approx -40 C;
+                            fr_n = n_r;
+
+                            // Depending on the size, the frozen raindrops are added to the cloud ice, or to the
+                            // graupel or hail. For this purpose, a partial integration of the spectrum from 0;
+                            // up to a first separation mass xmax_ice (--> ice), from there to xmax_gr (--> graupel);
+                            // and from xmax_gr to infinity (--> hail).
+                            const TF lam = std::exp( std::log( rain_g1/rain_g2 * x_r ) * (-rain.mu) );
+                            const TF lam_rnm1 = std::exp(rain_nm1 * std::log(lam));  // lam**rain_nm1;
+                            const TF lam_rnm2 = std::exp(rain_nm2 * std::log(lam));  // lam**rain_nm2;
+
+                            const TF n_0 = rain.mu * n_r * lam_rnm1 / rain_g1;
+                            fr_n_i = n_0 / (rain.mu * lam_rnm1) * incgfct_lower_lookup(lam * xmax_ice, rain_ltable1);
+                            fr_q_i = n_0 / (rain.mu * lam_rnm2) * incgfct_lower_lookup(lam * xmax_ice, rain_ltable2);
+                            fr_n_g = n_0 / (rain.mu * lam_rnm1) * incgfct_lower_lookup(lam * xmax_gr,  rain_ltable1);
+                            fr_q_g = n_0 / (rain.mu * lam_rnm2) * incgfct_lower_lookup(lam * xmax_gr,  rain_ltable2);
+
+                            fr_n_h = fr_n - fr_n_g;
+                            fr_q_h = fr_q - fr_q_g;
+                            fr_n_g = fr_n_g - fr_n_i;
+                            fr_q_g = fr_q_g - fr_q_i;
+                            fr_n_tmp = n_r / std::max(fr_n, n_r);
+                            fr_q_tmp = q_r / std::max(fr_q, q_r);
+                        }
+                        else
+                        {
+                            //..Heterogeneous freezing;
+                            const TF j_het = std::max(b_HET * (
+                                std::exp( a_HET * (Constants::T0<TF> - Ta[ij]))- TF(1) ), TF(0)) / rho_w<TF> * dt;
+
+                            //if (use_prog_in) j_het = std::min(j_het, n_inact[ij]/q_r);
+
+                            // Depending on the size, the frozen raindrops are added to cloud ice; or to graupel or hail.
+                            // This is achieved by partial integration of the spectrum from 0; up to a first separation
+                            // mass xmax_ice (--> ice), from there up to xmax_gr (--> graupel);
+                            // and from xmax_gr to infinity (--> hail).
+                            if (j_het >= TF(1.0e-20))
+                            {
+                                fr_n  = j_het * q_r;
+                                fr_q  = j_het * q_r * x_r * rain_coeffs.c_z;
+
+                                // lam = ( rain_g1 / rain_g2 * x_r)**(-rain.mu);
+                                const TF lam = std::exp( std::log( rain_g1/rain_g2*x_r ) * (-rain.mu) );
+                                const TF lam_rnm1 = std::exp(rain_nm1*std::log(lam));  // lam**rain_nm1;
+                                const TF lam_rnm2 = std::exp(rain_nm2*std::log(lam));  // lam**rain_nm2;
+                                const TF lam_rnm3 = std::exp(rain_nm3*std::log(lam));  // lam**rain_nm3;
+
+                                const TF n_0 = rain.mu * n_r * lam_rnm1 / rain_g1;
+                                fr_n_i = j_het * n_0 / (rain.mu * lam_rnm2) *
+                                        incgfct_lower_lookup(lam*xmax_ice,rain_ltable2);
+                                fr_q_i = j_het * n_0 / (rain.mu * lam_rnm3) *
+                                        incgfct_lower_lookup(lam*xmax_ice,rain_ltable3);
+                                fr_n_g = j_het * n_0 / (rain.mu * lam_rnm2) *
+                                        incgfct_lower_lookup(lam*xmax_gr, rain_ltable2);
+                                fr_q_g = j_het * n_0 / (rain.mu * lam_rnm3) *
+                                        incgfct_lower_lookup(lam*xmax_gr, rain_ltable3);
+
+                                fr_n_h = fr_n - fr_n_g;
+                                fr_q_h = fr_q - fr_q_g;
+                                fr_n_g = fr_n_g - fr_n_i;
+                                fr_q_g = fr_q_g - fr_q_i;
+                                fr_n_tmp = n_r / std::max(fr_n, n_r);
+                                fr_q_tmp = q_r / std::max(fr_q, q_r);
+                            }
+                            else
+                            {
+                                fr_n = TF(0);
+                                fr_q = TF(0);
+                                fr_n_i = TF(0);
+                                fr_q_i = TF(0);
+                                fr_n_g = TF(0);
+                                fr_q_g = TF(0);
+                                fr_n_h = TF(0);
+                                fr_q_h = TF(0);
+                                fr_n_tmp = TF(0);
+                                fr_q_tmp = TF(0);
+                            }
+                        }
+
+                        fr_n = fr_n * fr_n_tmp;
+                        fr_q = fr_q * fr_q_tmp;
+                        fr_n_i = fr_n_i * fr_n_tmp;
+                        fr_n_g = fr_n_g * fr_n_tmp;
+                        fr_n_h = fr_n_h * fr_n_tmp;
+                        fr_q_i = fr_q_i * fr_q_tmp;
+                        fr_q_g = fr_q_g * fr_q_tmp;
+                        fr_q_h = fr_q_h * fr_q_tmp;
+                    }
+
+                    qrt[ij] -= fr_q * zdt;
+                    nrt[ij] -= fr_n * zdt;
+
+                    //if (use_prog_in) then;
+                    //   n_inact[ij] = n_inact[ij] + fr_n;
+                    //end if;
+
+                    // mit Hagelklasse, gefrierender Regen wird Eis, Graupel oder Hagel;
+                    //snow.q[ij] = snow.q[ij]  + fr_q_i;
+                    //snow.n[ij] = snow.n[ij]  + fr_n_i   // put this into snow;
+
+                    qit[ij] += fr_q_i * zdt; // ... or into ice? --> UB: original idea was to put it into ice;
+                    nit[ij] += fr_n_i * zdt;
+
+                    qgt[ij] += fr_q_g * zdt;
+                    ngt[ij] += fr_n_g * zdt;
+
+                    qht[ij] += fr_q_h * zdt;
+                    nht[ij] += fr_n_h * zdt;
+
+                    qtt_ice[ij] += fr_q_i * zdt;
+
+                    //! clipping of small negatives is necessary here
+                    //if (lclipping) then
+                    //    IF (rain%q(i,k) < 0.0 .and. abs(rain%q(i,k)) < eps) rain%q(i,k) = 0.0_wp
+                    //IF (rain%n(i,k) < 0.0 .and. abs(rain%n(i,k)) < eps) rain%n(i,k) = 0.0_wp
+                    //IF (graupel%q(i,k) < 0.0 .and. abs(graupel%q(i,k)) < eps) graupel%q(i,k) = 0.0_wp
+                    //IF (graupel%n(i,k) < 0.0 .and. abs(graupel%q(i,k)) < eps) graupel%n(i,k) = 0.0_wp
+                    //IF (hail%q(i,k) < 0.0 .and. abs(hail%q(i,k)) < eps) hail%q(i,k) = 0.0_wp
+                    //IF (hail%n(i,k) < 0.0 .and. abs(hail%n(i,k)) < eps) hail%n(i,k) = 0.0_wp
+                    //end if
+                }
+            } // i
+    }
+
 
 
 } // name
