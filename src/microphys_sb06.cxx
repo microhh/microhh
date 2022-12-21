@@ -1850,6 +1850,30 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("particle_cloud_riming graupel-cloud", k);
 
+            Sb_cold::particle_rain_riming(
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ng").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    rain, ice, graupel,
+                    grr_coeffs,
+                    rho_corr,
+                    this->ice_multiplication,
+                    this->enhanced_melting,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("particle_rain_riming graupel-rain", k);
+
             //CALL particle_rain_riming(ik_slice, dt, atmo, graupel, grr_coeffs, rain, ice)
             //IF (ischeck) CALL check(ik_slice, 'graupel riming',cloud,rain,ice,snow,graupel,hail)
 

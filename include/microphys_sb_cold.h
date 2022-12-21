@@ -2001,6 +2001,109 @@ namespace Sb_cold
 
 
     template<typename TF>
+    void particle_rain_riming(
+            TF* const restrict qpt,
+            TF* const restrict npt,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qtt_ice,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict qp,
+            const TF* const restrict np,
+            const TF* const restrict Ta,
+            Particle<TF>& rain,
+            Particle<TF>& ice,
+            Particle<TF>& ptype,
+            Collection_coeffs<TF>& coeffs,
+            const TF rho_v,
+            const bool ice_multiplication,
+            const bool enhanced_melting,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        /*
+            Riming of graupel or hail with rain droplets
+        */
+
+        const TF const2 = TF(1) / (T_mult_opt<TF> - T_mult_min<TF>);
+        const TF const3 = TF(1) / (T_mult_opt<TF> - T_mult_max<TF>);
+        const TF const4 = clw<TF> / Constants::Lf<TF>;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (qr[ij] > q_crit<TF> && qp[ij] > q_crit<TF>)
+                {
+                    const TF x_p = particle_meanmass(ptype, qp[ij], np[ij]);
+                    const TF D_p = particle_diameter(ptype, x_p);
+                    const TF v_p = particle_velocity(ptype, x_p) * rho_v;
+
+                    const TF x_r = particle_meanmass(rain, qr[ij], nr[ij]);
+                    const TF D_r = particle_diameter(rain, x_r);
+                    const TF v_r = particle_velocity(rain, x_r) * rho_v;
+
+                    // Both terms are `* dt` in ICON.
+                    const TF rime_n = pi4<TF> * np[ij] * nr[ij]
+                             * (coeffs.delta_n_aa * fm::pow2(D_p)
+                                + coeffs.delta_n_ab * D_p*D_r + coeffs.delta_n_bb * fm::pow2(D_r))
+                             * sqrt(coeffs.theta_n_aa * fm::pow2(v_p)
+                                - coeffs.theta_n_ab * v_p*v_r + coeffs.theta_n_bb * fm::pow2(v_r));
+
+                    const TF rime_q = pi4<TF> * np[ij] * qr[ij]
+                             * (coeffs.delta_n_aa * fm::pow2(D_p)
+                                + coeffs.delta_q_ab * D_p*D_r + coeffs.delta_q_bb * fm::pow2(D_r))
+                             * sqrt(coeffs.theta_n_aa * fm::pow2(v_p)
+                                - coeffs.theta_q_ab * v_p*v_r + coeffs.theta_q_bb * fm::pow2(v_r));
+
+                    qpt[ij] += rime_q;
+                    qrt[ij] -= rime_q;
+                    nrt[ij] -= rime_n;
+
+                    // Ice multiplication based on Hallet and Mossop;
+                    if (Ta[ij] < Constants::T0<TF> && ice_multiplication)
+                    {
+                        TF mult_1 = (Ta[ij] - T_mult_min<TF>) * const2;
+                        TF mult_2 = (Ta[ij] - T_mult_max<TF>) * const3;
+
+                        mult_1 = std::max(TF(0), std::min(mult_1, TF(1)));
+                        mult_2 = std::max(TF(0), std::min(mult_2, TF(1)));
+
+                        const TF mult_n = C_mult<TF> * mult_1 * mult_2 * rime_q;
+                        TF mult_q = mult_n * ice.x_min;
+                        mult_q = std::min(rime_q, mult_q);
+
+                        nit[ij] += mult_n;
+                        qit[ij] += mult_q;
+                        qpt[ij] -= mult_q;
+
+                        qtt_ice[ij] += mult_q;
+                    }
+
+                    // Enhancement of melting of ptype;
+                    if (Ta[ij] > Constants::T0<TF> && enhanced_melting)
+                    {
+                        const TF melt_q = const4 * (Ta[ij] - Constants::T0<TF>) * rime_q;
+                        const TF melt_n = melt_q / x_p;
+
+                        qpt[ij] -= melt_q;
+                        qrt[ij] += melt_q;
+
+                        npt[ij] -= melt_n;
+                        nrt[ij] += melt_n;
+                    }
+                }
+            } // i
+    } // function
+
+
+    template<typename TF>
     inline TF incgfct_lower_lookup(
             const TF x,
             Gamlookuptable<TF>& ltable)
