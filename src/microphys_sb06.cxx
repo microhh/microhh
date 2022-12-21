@@ -1818,12 +1818,59 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("snow_riming", k);
 
-                    //! hail-cloud and hail-rain riming
-                    //CALL particle_cloud_riming(ik_slice, dt, atmo, hail, hcr_coeffs, cloud, rain, ice)
-                    //CALL particle_rain_riming(ik_slice, dt, atmo, hail, hrr_coeffs, rain, ice)
-                    //IF (ischeck) CALL check(ik_slice, 'hail riming',cloud,rain,ice,snow,graupel,hail)
+            // Hail-cloud riming
+            Sb_cold::particle_cloud_riming(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    (*qct_dummy).data(),
+                    (*nct_dummy).data(),
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    (*qtt_ice).data(),
+                    &ql->fld.data()[k*gd.ijcells],
+                    (*nc_dummy).data(),
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, hail, cloud, rain,
+                    hcr_coeffs,
+                    rho_corr,
+                    this->ice_multiplication,
+                    this->enhanced_melting,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
-            // Graupel-cloud and graupel-rain riming
+            check("particle_cloud_riming hail-cloud", k);
+
+            // Hail-rain riming
+            Sb_cold::particle_rain_riming(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    rain, ice, hail,
+                    hrr_coeffs,
+                    rho_corr,
+                    this->ice_multiplication,
+                    this->enhanced_melting,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("particle_rain_riming hail-rain", k);
+
+            // Graupel-cloud riming
             Sb_cold::particle_cloud_riming(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -1850,6 +1897,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("particle_cloud_riming graupel-cloud", k);
 
+            // Graupel-rain riming
             Sb_cold::particle_rain_riming(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -1873,9 +1921,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.icells);
 
             check("particle_rain_riming graupel-rain", k);
-
-            //CALL particle_rain_riming(ik_slice, dt, atmo, graupel, grr_coeffs, rain, ice)
-            //IF (ischeck) CALL check(ik_slice, 'graupel riming',cloud,rain,ice,snow,graupel,hail)
 
             // Freezing of rain and conversion to ice/graupel/hail
             Sb_cold::rain_freeze_gamlook(
