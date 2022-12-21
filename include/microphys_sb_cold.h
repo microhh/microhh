@@ -1259,7 +1259,7 @@ namespace Sb_cold
                     TF self_n = graupel_coeffs.sc_coll_n * fm::pow2(ng[ij]) * fm::pow2(D_g) * v_g;
 
                     // Sticking efficiency does only distinguish dry and wet based on T_3;
-                    self_n = Ta[ij] > Constants::T0<TF> ? ecoll_gg_wet<TF> : ecoll_gg<TF>;
+                    self_n = Ta[ij] > Constants::T0<TF> ? self_n * ecoll_gg_wet<TF> : self_n * ecoll_gg<TF>;
 
                     ngt[ij] -= self_n;
                 }
@@ -2546,6 +2546,65 @@ namespace Sb_cold
 
                     // Oiiiii
                     //snow.n[ij] = std::max(snow.n[ij], snow.q[ij]/snow.x_max);
+                }
+            } // i
+    } // function
+
+
+    template<typename TF>
+    void graupel_melting(
+            TF* const restrict qgt,
+            TF* const restrict ngt,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            const TF* const restrict qg,
+            const TF* const restrict ng,
+            const TF* const restrict Ta,
+            Particle_sphere<TF>& graupel_coeffs,
+            Particle<TF>& graupel,
+            const TF rho_v,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF zdt = TF(1)/dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (Ta[ij] > Constants::T0<TF> && qg[ij] > TF(0))
+                {
+                    const TF e_a = tmf::esat_liq(Ta[ij]);
+
+                    const TF x_g = particle_meanmass(graupel, qg[ij], ng[ij]);
+                    const TF D_g = particle_diameter(graupel, x_g);
+                    const TF v_g = particle_velocity(graupel, x_g) * rho_v;
+
+                    const TF fv_q = graupel_coeffs.a_f + graupel_coeffs.b_f * sqrt(v_g * D_g);
+                    const TF fh_q = TF(1.05) * fv_q;
+
+                    const TF melt   = TF(2) * pi<TF> / Constants::Lf<TF> * D_g * ng[ij] * dt;
+
+                    const TF melt_h = melt * K_T<TF> * (Ta[ij] - Constants::T0<TF>);
+                    const TF melt_v = melt * D_v<TF> * Constants::Lv<TF> /
+                                      Constants::Rv<TF> * (e_a/Ta[ij] - e_3<TF>/Constants::T0<TF>);
+                    TF melt_q = (melt_h * fh_q + melt_v * fv_q);
+
+                    // UB: assume that x_g is constant during melting;
+                    TF melt_n = std::min(std::max( (melt_q - qg[ij]) / x_g + ng[ij], TF(0)), ng[ij]);
+
+                    melt_q = std::min(qg[ij], std::max(melt_q, TF(0)));
+                    melt_n = std::min(ng[ij], std::max(melt_n, TF(0)));
+
+                    qgt[ij] -= melt_q * zdt;
+                    qrt[ij] += melt_q * zdt;
+
+                    ngt[ij] -= melt_n * zdt;
+                    nrt[ij] += melt_n * zdt;
                 }
             } // i
     } // function

@@ -1665,7 +1665,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("snow_selfcollection", k);
 
-            // Selfcollection of snow
+            // Selfcollection of graupel.
             Sb_cold::graupel_selfcollection(
                     hydro_types.at("ng").conversion_tend,
                     hydro_types.at("qg").slice,
@@ -2007,15 +2007,33 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("snow_melting", k);
 
-
             //! melting of graupel and hail can be simple or LWF-based
             //SELECT TYPE (graupel)
             //TYPE IS (particle_frozen)
-            //  CALL graupel_melting(ik_slice,dt,graupel_coeffs,atmo,graupel,rain)
+
+            Sb_cold::graupel_melting(
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ng").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    graupel_coeffs,
+                    graupel,
+                    rho_corr,
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("graupel_melting", k);
+
             //TYPE IS (particle_lwf)
             //  CALL prepare_melting_lwf(ik_slice, atmo, gmelting)
             //  CALL particle_melting_lwf(ik_slice, dt, graupel, rain, gmelting)
             //END SELECT
+
             //SELECT TYPE (hail)
             //TYPE IS (particle_frozen)
             //  CALL hail_melting_simple(ik_slice,dt,hail_coeffs,atmo,hail,rain)
