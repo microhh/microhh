@@ -1954,8 +1954,27 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("rain_freeze_gamlook", k);
 
-            //! melting of ice and snow
-            //CALL ice_melting(ik_slice, atmo, ice, cloud, rain)
+            // Melting of ice
+            Sb_cold::ice_melting(
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    (*qct_dummy).data(),
+                    (*nct_dummy).data(),
+                    (*qtt_ice).data(),
+                    (*qtt_liq).data(),
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("ni").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, cloud,
+                    TF(dt),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("ice_melting", k);
+
             //CALL snow_melting(ik_slice,dt,snow_coeffs,atmo,snow,rain)
 
             //! melting of graupel and hail can be simple or LWF-based
@@ -2009,22 +2028,22 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("evaporation of graupel", k);
 
-            //Sb_cold::evaporation(
-            //        hydro_types.at("qh").conversion_tend,
-            //        hydro_types.at("nh").conversion_tend,
-            //        (*qtt_liq).data(),
-            //        hydro_types.at("qh").slice,
-            //        hydro_types.at("nh").slice,
-            //        (*qv).data(),
-            //        &T->fld.data()[k*gd.ijcells],
-            //        hail,
-            //        hail_coeffs,
-            //        rho_corr,
-            //        gd.istart, gd.iend,
-            //        gd.jstart, gd.jend,
-            //        gd.icells);
+            Sb_cold::evaporation(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    (*qtt_liq).data(),
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("nh").slice,
+                    (*qv).data(),
+                    &T->fld.data()[k*gd.ijcells],
+                    hail,
+                    hail_coeffs,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
 
-            //check("evaporation of hail", k);
+            check("evaporation of hail", k);
 
             //! warm rain processes
             //! (using something other than SB is somewhat inconsistent and not recommended)

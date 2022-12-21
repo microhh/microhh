@@ -2380,5 +2380,61 @@ namespace Sb_cold
     }
 
 
+    template<typename TF>
+    void ice_melting(
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qrt,
+            TF* const restrict nrt,
+            TF* const restrict qct,
+            TF* const restrict nct,
+            TF* const restrict qtt_ice,
+            TF* const restrict qtt_liq,
+            const TF* const restrict qi,
+            const TF* const restrict ni,
+            const TF* const restrict Ta,
+            Particle<TF>& ice,
+            Particle<TF>& cloud,
+            const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF zdt = TF(1)/dt;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (Ta[ij] > Constants::T0<TF> && qi[ij] > TF(0))
+                {
+                    const TF x_i = particle_meanmass(ice, qi[ij], ni[ij]);
+
+                    // Complete melting within this time step;
+                    const TF melt_q = qi[ij] * zdt;
+                    const TF melt_n = ni[ij] * zdt;
+
+                    qit[ij] -= melt_q;
+                    nit[ij] -= melt_n;
+                    qtt_ice[ij] -= melt_q;
+
+                    // Ice either melts into cloud droplets or rain depending on x_i;
+                    if (x_i > cloud.x_max)
+                    {
+                        qrt[ij] += melt_q;
+                        nrt[ij] += melt_n;
+                    }
+                    else
+                    {
+                        qct[ij] += melt_q;
+                        nct[ij] += melt_n;
+                        qtt_liq[ij] += melt_q;
+                    }
+                }
+            } // i
+    } // function
+
 
 } // name
