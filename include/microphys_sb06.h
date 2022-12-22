@@ -257,6 +257,41 @@ struct Gamlookuptable
     //std::vector<TF> igfhr;  // value of the inc. gamma function at (a,x) (high res)
 };
 
+template<typename TF>
+struct Lookupt_4D
+{
+    bool is_initialized = false;
+
+    int n;   // Total number of data points.
+    int n1;  // number of grid points in x1-direction
+    int n2;  // number of grid points in x2-direction
+    int n3;  // number of grid points in x3-direction
+    int n4;  // number of grid points in x4-direction
+
+    std::vector<TF> x1;  // grid vector in x1-direction
+    std::vector<TF> x2;  // grid vector in x2-direction
+    std::vector<TF> x3;  // grid vector in x3-direction
+    std::vector<TF> x4;  // grid vector in x4-direction
+
+    TF dx1;  // dx1   (grid distance w.r.t. x1)
+    TF dx2;  // dx2   (grid distance w.r.t. x2)
+    TF dx3;  // dx3   (grid distance w.r.t. x3)
+    TF dx4;  // dx4   (grid distance w.r.t. x4)
+
+    TF odx1;  // one over dx1
+    TF odx2;  // one over dx2
+    TF odx3;  // one over dx3
+    TF odx4;  // one over dx4
+
+    // NOTE: not in ICON, but needed for 4D indexing in 1D std::vector
+    int n1_stride;
+    int n2_stride;
+    int n3_stride;
+    int n4_stride;
+
+    std::vector<TF> ltable;
+};
+
 
 template<typename TF>
 class Microphys_sb06 : public Microphys<TF>
@@ -374,6 +409,9 @@ class Microphys_sb06 : public Microphys<TF>
 
         TF rain_nm1, rain_nm2, rain_nm3, rain_g1, rain_g2;
         TF graupel_nm1, graupel_nm2, graupel_g1, graupel_g2;
+
+        // Structure to hold the new equidistant lookup table for graupel wetgrowth diameter.
+        Lookupt_4D<TF> ltabdminwgg;
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name

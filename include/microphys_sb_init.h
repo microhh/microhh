@@ -25,6 +25,7 @@
 #include "constants.h"
 #include "fast_math.h"
 #include "microphys_sb06.h"
+#include "netcdf_interface.h"
 
 namespace Sb_init
 {
@@ -208,7 +209,132 @@ namespace Sb_init
     };
 
 
+    template<typename TF>
+    void init_dmin_wg_gr_ltab_equi(
+            Lookupt_4D<TF>& ltab,
+            const std::string& file_name,
+            Particle<TF>& particle,
+            Master& master)
+    {
+        /*
+            Function for setting up the wet growth diameter of a frozen hydrometeor
+            type as function of supercooled LWC qw, frozen content qi, pressure p and temperature T.
+            Is needed for the Parameterization of conversion from graupel to hail
+            via wet growth of graupel.
 
+            A corresponding 4D lookup table is read from an external file and is made
+            equidistant along all table dimensions for better vectorization of table lookup
+            (quadro-linear interpolation). Here, 3 of the dimensions (qw, qi, p) are already assumed
+            to be equidistant in the table file. Only T can be non-equidistant and is
+            made equidistant by linear interpolation.
 
+            NOTE BvS: I interpolated the table offline (which is a few lines of Python code with Xarray);
+            the interpolation functionality from ICON is therefore not available in this function!!
+        */
 
+        master.print_message("Reading lookup table \"%s\" for %s\n", file_name.c_str(), particle.name.c_str());
+
+        // Read the lookup table.
+        Netcdf_file coef_nc(master, file_name, Netcdf_mode::Read);
+
+        // NOTE to self: indexing is [n4,n3,n2,n1] = [qi,qw,T,p]
+
+        // Set dimensions in lookup table.
+        ltab.n4 = coef_nc.get_dimension_size("nqi");
+        ltab.n3 = coef_nc.get_dimension_size("nqw");
+        ltab.n2 = coef_nc.get_dimension_size("ntemp");
+        ltab.n1 = coef_nc.get_dimension_size("npres");
+        ltab.n  = ltab.n1 * ltab.n2 * ltab.n3 * ltab.n4;
+
+        // Set strides in lookup table for 1D access in 4D array.
+        ltab.n1_stride = 1;
+        ltab.n2_stride = ltab.n2;
+        ltab.n3_stride = ltab.n2 * ltab.n3;
+        ltab.n4_stride = ltab.n2 * ltab.n3 * ltab.n4;
+
+        // Check global attributes (a_geo et al.) with values in `particle`.
+        bool success = true;
+        auto check = [&](const std::string& name, const TF ref_value)
+        {
+            const TF nc_value = coef_nc.get_attribute<TF>(name, "global");
+            if (std::abs(ref_value - nc_value) > 1e-12)
+            {
+                master.print_warning(
+                    "Wrong \"%s\" in table; value from table=%f, from particle=%f\n", name.c_str(), nc_value, ref_value);
+                success=false;
+            }
+        };
+
+        check("a_geo", particle.a_geo);
+        check("b_geo", particle.b_geo);
+        check("a_vel", particle.a_vel);
+        check("b_vel", particle.b_vel);
+
+        if (success)
+            master.print_message("Check: a_geo/b_geo/a_vel/b_vel values are correct!\n");
+        else
+            throw std::runtime_error("One of more coefficients incorrect in lookup table.");
+
+        // Allocate vectors.
+        ltab.x1.resize(ltab.n1);
+        ltab.x2.resize(ltab.n2);
+        ltab.x3.resize(ltab.n3);
+        ltab.x4.resize(ltab.n4);
+        ltab.ltable.resize(ltab.n);
+
+        // Read data from NetCDF.
+        coef_nc.get_variable(ltab.x1, "p", {0}, {ltab.n1});
+        coef_nc.get_variable(ltab.x2, "T", {0}, {ltab.n2});
+        coef_nc.get_variable(ltab.x3, "qw", {0}, {ltab.n3});
+        coef_nc.get_variable(ltab.x4, "qi", {0}, {ltab.n4});
+        coef_nc.get_variable(ltab.ltable, "Dmin_wetgrowth_table",
+                {0, 0, 0, 0}, {ltab.n4, ltab.n3, ltab.n2, ltab.n1});
+
+        // Get fill_value from Dmin_wetgrowth_table, and mask lookup table.
+        const TF dmin_fillval = coef_nc.get_attribute<TF>("_FillValue", "Dmin_wetgrowth_table");
+
+        for (int i=0; i<ltab.n; ++i)
+        {
+            if (std::abs(ltab.ltable[i] - dmin_fillval) < 1e-6)
+                ltab.ltable[i] = TF(999.99);
+        }
+
+        // Unit conversion NetCDF file.
+        for (int i=0; i<ltab.n1; ++i)
+            ltab.x1[i] *= TF(100);                  // Conversion from hPa to P
+
+        for (int i=0; i<ltab.n2; ++i)
+            ltab.x2[i] += Constants::T0<TF>;        // Conversion from deg C to K
+
+        for (int i=0; i<ltab.n3; ++i)
+            ltab.x3[i] *= TF(0.001);                // Conversion from g/m3 to kg/m3
+
+        for (int i=0; i<ltab.n4; ++i)
+            ltab.x4[i] *= TF(0.001);                // Conversion from g/m3 to kg/m3
+
+        for (int i=0; i<ltab.n; ++i)
+            ltab.ltable[i] *= TF(0.001);           // Conversion from mm to m.
+
+        // Set dimension spacings.
+        ltab.dx1   = ltab.x1[1] - ltab.x1[0];
+        ltab.odx1  = TF(1) / ltab.dx1;
+
+        ltab.dx2   = ltab.x2[1] - ltab.x2[0];
+        ltab.odx2  = TF(1) / ltab.dx2;
+
+        ltab.dx3   = ltab.x3[1] - ltab.x3[0];
+        ltab.odx3  = TF(1) / ltab.dx3;
+
+        ltab.dx4   = ltab.x4[1] - ltab.x4[0];
+        ltab.odx4  = TF(1) / ltab.dx4;
+
+        // Check to make sure that users are not accidently using the non-interpolated version.
+        for (int i=0; i<ltab.n2-1; ++i)
+        {
+            if (std::abs((ltab.x2[i+1] - ltab.x2[i]) - ltab.dx2) > 1e-12)
+                throw std::runtime_error("Lookup table not equidistant in T-dimension!");
+        }
+
+        master.print_message("Table \"%s\" parsed successfully!\n", file_name.c_str());
+    };
 }

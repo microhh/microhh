@@ -430,9 +430,21 @@ Microphys_sb06<TF>::Microphys_sb06(
         fields.init_prognostic_field(it.first, it.second.long_name, it.second.units, group_name, gd.sloc);
         fields.sp.at(it.first)->visc = inputin.get_item<TF>("fields", "svisc", it.first);
     }
+
     // Setup/calculate cloud/rain/particle/... coefficients.
     init_2mom_scheme_once();
 
+    // Init lookup table for conversion graupel to hail (wet growth):
+    // NOTE: ICON supports input through ASCII and NetCDF files, and also
+    //       some hard-coded internal lookup table.. ICON by default uses
+    //       the NetCDF table; that's the only option that is supported here.
+    const std::string file_name = "dmin_wetgrowth_lookup_61.nc";
+
+    Sb_init::init_dmin_wg_gr_ltab_equi(
+            ltabdminwgg,
+            file_name,
+            graupel,
+            master);
 }
 
 template<typename TF>
@@ -1075,6 +1087,7 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     //    CALL message(routine,"Equidistant lookup table for Segal-Khain created")
     //  ENDIF
     //END IF
+
 
     if (sw_debug)
         master.print_message("---------------------------------------\n");
