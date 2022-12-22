@@ -1758,20 +1758,33 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("particle_particle_collection graupel-snow", k);
 
-                    //! conversion of graupel to hail in wet growth regime
-                    //IF (timers_level > 10) CALL timer_start(timer_phys_2mom_wetgrowth)
-
+            // Conversion of graupel to hail in wet growth regime
             Sb_cold::graupel_hail_conv_wet_gamlook(
+                    hydro_types.at("qg").conversion_tend,
+                    hydro_types.at("ng").conversion_tend,
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("nh").conversion_tend,
+                    &ql->fld.data()[k*gd.ijcells],
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("qg").slice,
+                    hydro_types.at("ng").slice,
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("qs").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    graupel_ltable1,
+                    graupel_ltable2,
+                    graupel,
                     ltabdminwgg,
+                    graupel_nm1,
+                    graupel_nm2,
+                    graupel_g1,
+                    graupel_g2,
+                    p[k], TF(dt),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
 
-                    //CALL graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
-                    //     &                             graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
-                    //     &                             atmo, graupel, cloud, rain, ice, snow, hail)
-                    //IF (timers_level > 10) CALL  timer_stop(timer_phys_2mom_wetgrowth)
-                    //IF (ischeck) CALL check(ik_slice, 'graupel_hail_conv_wet_gamlook',cloud,rain,ice,snow,graupel,hail)
+            check("graupel_hail_conv_wet_gamlook", k);
 
                     //! hail collisions
                     //CALL particle_particle_collection(ik_slice, dt, atmo, ice, hail, hic_coeffs)    ! Important?

@@ -2193,6 +2193,33 @@ namespace Sb_cold
 
 
     template<typename TF>
+    inline TF incgfct_upper_lookup(
+            const TF x,
+            Gamlookuptable<TF>& ltable)
+    {
+        // Trunkcate x to the range of the table:
+        const TF xt = std::max( std::min(x, ltable.x[ltable.n-1]), TF(0));
+
+        // Calculate indices of the neighbouring regular x-values in the table:
+        const int i0 = int(xt * ltable.odx);
+        const int iu = std::min(i0, ltable.n-2);
+        const int io = iu + 1;
+
+        // interpolate lower inc. gamma function linearily and subtract from
+        // the ordinary gamma function to get the upper incomplete gamma function:
+        const TF res = ltable.igf[ltable.n-1] - ltable.igf[iu] -
+            (ltable.igf[io] - ltable.igf[iu]) * ltable.odx * (xt - ltable.x[iu]);
+
+        // Aufgrund von Rundungsfehlern (Differenz von 2 fast gleichen Zahlen) kann es beim table lookup passieren,
+        // dass incgfct_upper_lookup(x, ltable) kleiner 0 wird, wenn eigentlich nahezu 0.0 herauskommen muesste.
+        // Dies kommt vor allem dann vor, wenn x sehr gross ist.
+        // Deswegen Begrenzung:
+
+        return std::max(res, TF(0));
+    }
+
+
+    template<typename TF>
     void rain_freeze_gamlook(
             TF* const restrict qit,
             TF* const restrict nit,
@@ -2505,162 +2532,90 @@ namespace Sb_cold
 
     template<typename TF>
     void graupel_hail_conv_wet_gamlook(
-            //TF* const restrict qit,
-            //TF* const restrict nit,
-            //TF* const restrict qrt,
-            //TF* const restrict nrt,
-            //TF* const restrict qgt,
-            //TF* const restrict ngt,
-            //TF* const restrict qht,
-            //TF* const restrict nht,
-            //TF* const restrict qtt_ice,
-            //const TF* const restrict qr,
-            //const TF* const restrict nr,
-            //const TF* const restrict Ta,
-            //Gamlookuptable<TF>& rain_ltable1,
-            //Gamlookuptable<TF>& rain_ltable2,
-            //Gamlookuptable<TF>& rain_ltable3,
-            //Particle_rain_coeffs<TF>& rain_coeffs,
-            //Particle<TF>& rain,
-            Lookupt_4D<TF>& ltab,
-            //const T_cfg_2mom<TF>& cfg_params,
-            //const TF rain_nm1,
-            //const TF rain_nm2,
-            //const TF rain_nm3,
-            //const TF rain_g1,
-            //const TF rain_g2,
-            //const TF dt,
+            TF* const restrict qgt,
+            TF* const restrict ngt,
+            TF* const restrict qht,
+            TF* const restrict nht,
+            const TF* const restrict qc,
+            const TF* const restrict qr,
+            const TF* const restrict qg,
+            const TF* const restrict ng,
+            const TF* const restrict qi,
+            const TF* const restrict qs,
+            const TF* const restrict Ta,
+            Gamlookuptable<TF>& graupel_ltable1,
+            Gamlookuptable<TF>& graupel_ltable2,
+            Particle_frozen<TF>& graupel,
+            Lookupt_4D<TF>& ltabdminwgg,
+            const TF graupel_nm1,
+            const TF graupel_nm2,
+            const TF graupel_g1,
+            const TF graupel_g2,
+            const TF pa,
+            const TF dt,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int jstride)
     {
+        /*
+            Wet growth and conversion of graupel to hail
+            (uses look-up table for incomplete gamma functions)
+            by Uli Blahak
+        */
+        const TF zdt = TF(1) / dt;
 
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
 
-        // Check with offline Python interpolation
-        const TF p_a = 40001;
-        const TF T_a = 252;
-        const TF qw_a = 0.0011;
-        const TF qi_a = 0.0013;
+                const TF x_g = particle_meanmass(graupel, qg[ij], ng[ij]);
+                const TF D_g = particle_diameter(graupel, x_g);
 
-        const TF val = Sb_cold::dmin_wg_gr_ltab_equi(
-                p_a, T_a, qw_a, qi_a, ltab);
+                const TF q_g = qg[ij];
+                const TF n_g = q_g / x_g; // for consistency for limiters, n_g is used explicitly below;
 
-        std::cout << val << std::endl;
+                // Supercooled liquid water in the cloud environment = sum of rain and cloud water;
+                const TF qw_a = qr[ij] + qc[ij];
 
-        //for (int j=jstart; j<jend; j++)
-        //    #pragma ivdep
-        //    for (int i=istart; i<iend; i++)
-        //    {
-        //        const int ij = i + j*jstride;
-        //
-        //
+                if (Ta[ij] < Constants::T0<TF> && q_g > graupel.q_crit_c && qw_a > 1e-3)
+                {
+                    // Umgebungsgehalt Eispartikel (vernachl. werden Graupel und Hagel wg. geringer Kollisionseff.);
+                    // koennte problematisch sein, weil in konvekt. Wolken viel mehr Graupel und Hagel enthalten ist;
+                    const TF qi_a = qi[ij] + qs[ij];
 
-        //    }
+                    //if (luse_dmin_wetgrowth_table)
+                    const TF d_trenn = dmin_wg_gr_ltab_equi(pa, Ta[ij], qw_a, qi_a, ltabdminwgg);
+                    //else
+                    //    d_trenn = dmin_wetgrowth_fun(p_a,T_a,qw_a,qi_a);
+                    //end if;
+
+                    if (d_trenn > TF(0) && d_trenn < TF(10) * D_g)
+                    {
+                        TF xmin = std::exp( std::log( d_trenn/graupel.a_geo ) * (TF(1) / graupel.b_geo) );
+                        const TF lam  = std::exp( std::log( graupel_g2 / (graupel_g1 * x_g)) * (graupel.mu) );
+                        xmin = std::exp( std::log(xmin) * graupel.mu );
+                        const TF n_0  = graupel.mu * n_g * std::exp( std::log(lam) * graupel_nm1 ) / graupel_g1;
+
+                        const TF conv_n = n_0 / (graupel.mu * std::exp( std::log(lam)*graupel_nm1))
+                                * incgfct_upper_lookup(lam*xmin, graupel_ltable1);
+                        const TF conv_q = n_0 / (graupel.mu * std::exp( std::log(lam)*graupel_nm2))
+                                * incgfct_upper_lookup(lam*xmin, graupel_ltable2);
+
+                        // BvS: this implies that conv_X is already time integrated here???
+                        //conv_n = std::min(conv_n, n_g);
+                        //conv_q = std::min(conv_q, q_g);
+
+                        qgt[ij] -= conv_q * zdt;
+                        ngt[ij] -= conv_n * zdt;
+
+                        qht[ij] += conv_q * zdt;
+                        nht[ij] += conv_n * zdt;
+                    }
+                }
+            }
     }
-
-
-
-
-
-//SUBROUTINE graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
-//       &                                   graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
-//                                                &                                   atmo, graupel, cloud, rain, ice, snow, hail)
-//*******************************************************************************
-//       !  Wet growth and conversion of graupel to hail                                *
-//  (uses look-up table for incomplete gamma functions)                         *
-//       !  by Uli Blahak                                                               *
-//*******************************************************************************
-
-//       ! start and end indices for 2D slices
-// istart = slice(1), iend = slice(2), kstart = slice(3), kend = slice(4)
-//NTEGER, INTENT(in) :: ik_slice(4)
-
-// Parameters and tables
-//YPE(gamlookuptable),INTENT(in) :: graupel_ltable1, graupel_ltable2
-//EAL(wp), INTENT(in)            :: graupel_nm1, graupel_nm2, graupel_g1, graupel_g2
-
-// 2mom variables
-//YPE(atmosphere), INTENT(inout)       :: atmo
-//LASS(particle),  INTENT(inout)       :: cloud, rain
-//LASS(particle_frozen), INTENT(inout) :: ice, graupel, snow, hail
-
-// start and end indices for 2D slices
-//       INTEGER :: istart, iend, kstart, kend
-
-// local variables
-//       INTEGER             :: i,k
-//EAL(wp)            :: T_a, p_a, d_trenn, qw_a, qi_a, N_0, lam, xmin
-//EAL(wp)            :: q_g,n_g,x_g,d_g
-//EAL(wp)            :: q_c,q_r
-//EAL(wp)            :: conv_n,conv_q
-
-//F (isdebug) CALL message(routine, "graupel_hail_conv_wet_gamlook")
-
-//start = ik_slice(1)
-//end   = ik_slice(2)
-//start = ik_slice(3)
-//end   = ik_slice(4)
-
-//O k = kstart,kend
-//NEC$ ivdep
-//O i = istart,iend
-
-//_c = cloud%q(i,k)
-//_r = rain%q(i,k)
-//_g = graupel%q(i,k)
-//_g = graupel%n(i,k)
-
-//_g = particle_meanmass(graupel, q_g,n_g)
-//_g = particle_diameter(graupel, x_g)
-//_g = q_g / x_g  ! for consistency for limiters, n_g is used explicitly below
-
-//_a = atmo%T(i,k)
-//_a = atmo%p(i,k)
-
-//..supercooled liquid water in the cloud environment = sum of rain and cloud water
-//       qw_a = q_r + q_c
-
-//F (T_a < T_3 .AND. q_g > graupel%q_crit_c .AND. qw_a > 1e-3) THEN
-
-//.. Umgebungsgehalt Eispartikel (vernachl. werden Graupel und Hagel wg. geringer Kollisionseff.)
-//.. koennte problematisch sein, weil in konvekt. Wolken viel mehr Graupel und Hagel enthalten ist!!!
-//       qi_a = ice%q(i,k) + snow%q(i,k)
-
-//f (luse_dmin_wetgrowth_table) then
-//           d_trenn = dmin_wg_gr_ltab_equi(p_a,T_a,qw_a,qi_a,ltabdminwgg)
-//       else
-//_trenn = dmin_wetgrowth_fun(p_a,T_a,qw_a,qi_a)
-//nd if
-
-//   IF (d_trenn > 0.0_wp .AND. d_trenn < 10.0_wp * D_g) THEN
-
-//       xmin = exp(log(d_trenn/graupel%a_geo)*(1.0_wp/graupel%b_geo))
-
-//am  = exp(log(graupel_g2/(graupel_g1*x_g))*(graupel%mu))
-//min = exp(log(xmin)*graupel%mu)
-//_0  = graupel%mu * n_g * exp(log(lam)*graupel_nm1) / graupel_g1
-
-//onv_n = n_0 / (graupel%mu * exp(log(lam)*graupel_nm1)) * incgfct_upper_lookup(lam*xmin,graupel_ltable1)
-//onv_q = n_0 / (graupel%mu * exp(log(lam)*graupel_nm2)) * incgfct_upper_lookup(lam*xmin,graupel_ltable2)
-
-//onv_n = MIN(conv_n,n_g)
-//onv_q = MIN(conv_q,q_g)
-
-//raupel%q(i,k) = q_g - conv_q
-//raupel%n(i,k) = n_g - conv_n
-
-//ail%q(i,k) = hail%q(i,k) + conv_q
-//ail%n(i,k) = hail%n(i,k) + conv_n
-
-//ND IF
-//NDIF
-//       ENDDO
-//NDDO
-
-//ND SUBROUTINE graupel_hail_conv_wet_gamlook
-
-
-
 
 
     template<typename TF>
