@@ -1786,10 +1786,47 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             check("graupel_hail_conv_wet_gamlook", k);
 
-                    //! hail collisions
-                    //CALL particle_particle_collection(ik_slice, dt, atmo, ice, hail, hic_coeffs)    ! Important?
-                    //CALL particle_particle_collection(ik_slice, dt, atmo, snow, hail, hsc_coeffs)
-                    //IF (ischeck) CALL check(ik_slice, 'hail collection',cloud,rain,ice,snow,graupel,hail)
+            // Collection of ice by hail.
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("ni").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, hail,
+                    hic_coeffs,
+                    rho_corr,
+                    save_ice_tendency,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("particle_particle_collection hail-ice", k);
+
+            // Collection of snow by hail.
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("ns").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow, hail,
+                    hsc_coeffs,
+                    rho_corr,
+                    !save_ice_tendency,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
+            check("particle_particle_collection hail-snow", k);
 
             // Riming of ice with cloud droplets and rain drops, and conversion to graupel
             Sb_cold::ice_riming(

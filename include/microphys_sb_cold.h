@@ -1997,10 +1997,6 @@ namespace Sb_cold
                         *     (coeffs.delta_q_aa * D_p*D_p + coeffs.delta_q_ab * D_p*D_c + coeffs.delta_q_bb * D_c*D_c)
                         * sqrt(coeffs.theta_q_aa * v_p*v_p - coeffs.theta_q_ab * v_p*v_c + coeffs.theta_q_bb * v_c*v_c);
 
-                    ptype.q[ij] = ptype.q[ij] + rime_q;
-                    cloud.q[ij] = cloud.q[ij] - rime_q;
-                    cloud.n[ij] = cloud.n[ij] - rime_n;
-
                     qpt[ij] += rime_q;
                     qct[ij] -= rime_q;
                     nct[ij] -= rime_n;
