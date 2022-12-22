@@ -248,9 +248,9 @@ namespace Sb_init
 
         // Set strides in lookup table for 1D access in 4D array.
         ltab.n1_stride = 1;
-        ltab.n2_stride = ltab.n2;
-        ltab.n3_stride = ltab.n2 * ltab.n3;
-        ltab.n4_stride = ltab.n2 * ltab.n3 * ltab.n4;
+        ltab.n2_stride = ltab.n1;
+        ltab.n3_stride = ltab.n1 * ltab.n2;
+        ltab.n4_stride = ltab.n1 * ltab.n2 * ltab.n3;
 
         // Check global attributes (a_geo et al.) with values in `particle`.
         bool success = true;
@@ -336,5 +336,9 @@ namespace Sb_init
         }
 
         master.print_message("Table \"%s\" parsed successfully!\n", file_name.c_str());
+
+
+
+
     };
 }

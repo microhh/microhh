@@ -1760,6 +1760,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
                     //! conversion of graupel to hail in wet growth regime
                     //IF (timers_level > 10) CALL timer_start(timer_phys_2mom_wetgrowth)
+
+            Sb_cold::graupel_hail_conv_wet_gamlook(
+                    ltabdminwgg,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+
                     //CALL graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
                     //     &                             graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
                     //     &                             atmo, graupel, cloud, rain, ice, snow, hail)

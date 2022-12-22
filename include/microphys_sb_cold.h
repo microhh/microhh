@@ -2422,6 +2422,248 @@ namespace Sb_cold
 
 
     template<typename TF>
+    TF dmin_wg_gr_ltab_equi(
+            const TF p_a,
+            const TF T_a,
+            const TF qw_a,
+            const TF qi_a,
+            Lookupt_4D<TF> ltab)
+    {
+        // Quadrilinear interpolation of lookup table.
+        // LUT is equidistant to simplify indexing.
+
+        if (T_a >= ltab.x2[ltab.n2-1])
+            return TF(0);
+        else if (T_a < ltab.x2[0])
+            return TF(999.99);
+        else
+        {
+            // Limit on lookup table bounds.
+            const TF p_lok  = std::min( std::max(p_a,  ltab.x1[0]), ltab.x1[ltab.n1-1]);
+            const TF T_lok  = std::min( std::max(T_a,  ltab.x2[0]), ltab.x2[ltab.n2-1]);
+            const TF qw_lok = std::min( std::max(qw_a, ltab.x3[0]), ltab.x3[ltab.n3-1]);
+            const TF qi_lok = std::min( std::max(qi_a, ltab.x4[0]), ltab.x4[ltab.n4-1]);
+
+            // Index left of interpolation value.
+            const int i0 = std::min( int((p_lok  - ltab.x1[0]) * ltab.odx1), ltab.n1-2);
+            const int j0 = std::min( int((T_lok  - ltab.x2[0]) * ltab.odx2), ltab.n2-2);
+            const int k0 = std::min( int((qw_lok - ltab.x3[0]) * ltab.odx3), ltab.n3-2);
+            const int l0 = std::min( int((qi_lok - ltab.x4[0]) * ltab.odx4), ltab.n4-2);
+
+            // Index right of interpolation value.
+            const int i1 = i0 + 1;
+            const int j1 = j0 + 1;
+            const int k1 = k0 + 1;
+            const int l1 = l0 + 1;
+
+            // Interpolation factors.
+            const TF fi0 = TF(1) - ((p_lok  - ltab.x1[i0]) / (ltab.x1[i1] - ltab.x1[i0]));
+            const TF fj0 = TF(1) - ((T_lok  - ltab.x2[j0]) / (ltab.x2[j1] - ltab.x2[j0]));
+            const TF fk0 = TF(1) - ((qw_lok - ltab.x3[k0]) / (ltab.x3[k1] - ltab.x3[k0]));
+            const TF fl0 = TF(1) - ((qi_lok - ltab.x4[l0]) / (ltab.x4[l1] - ltab.x4[l0]));
+
+            const TF fi1 = TF(1) - fi0;
+            const TF fj1 = TF(1) - fj0;
+            const TF fk1 = TF(1) - fk0;
+            const TF fl1 = TF(1) - fl0;
+
+            const int ls = ltab.n4_stride;
+            const int ks = ltab.n3_stride;
+            const int js = ltab.n2_stride;
+            const int is = ltab.n1_stride;
+
+            auto index = [](
+                    const int l,  const int k,  const int j,  const int i,
+                    const int ls, const int ks, const int js)
+            {
+                return i + j*js + k*ks + l*ls;
+            };
+
+            // Interpolate.
+            const TF val =
+                    fl0 * fk0 * fj0 * fi0 * ltab.ltable[ index(l0, k0, j0, i0, ls, ks, js) ] +
+                    fl0 * fk0 * fj0 * fi1 * ltab.ltable[ index(l0, k0, j0, i1, ls, ks, js) ] +
+                    fl0 * fk0 * fj1 * fi0 * ltab.ltable[ index(l0, k0, j1, i0, ls, ks, js) ] +
+                    fl0 * fk0 * fj1 * fi1 * ltab.ltable[ index(l0, k0, j1, i1, ls, ks, js) ] +
+                    fl0 * fk1 * fj0 * fi0 * ltab.ltable[ index(l0, k1, j0, i0, ls, ks, js) ] +
+                    fl0 * fk1 * fj0 * fi1 * ltab.ltable[ index(l0, k1, j0, i1, ls, ks, js) ] +
+                    fl0 * fk1 * fj1 * fi0 * ltab.ltable[ index(l0, k1, j1, i0, ls, ks, js) ] +
+                    fl0 * fk1 * fj1 * fi1 * ltab.ltable[ index(l0, k1, j1, i1, ls, ks, js) ] +
+                    fl1 * fk0 * fj0 * fi0 * ltab.ltable[ index(l1, k0, j0, i0, ls, ks, js) ] +
+                    fl1 * fk0 * fj0 * fi1 * ltab.ltable[ index(l1, k0, j0, i1, ls, ks, js) ] +
+                    fl1 * fk0 * fj1 * fi0 * ltab.ltable[ index(l1, k0, j1, i0, ls, ks, js) ] +
+                    fl1 * fk0 * fj1 * fi1 * ltab.ltable[ index(l1, k0, j1, i1, ls, ks, js) ] +
+                    fl1 * fk1 * fj0 * fi0 * ltab.ltable[ index(l1, k1, j0, i0, ls, ks, js) ] +
+                    fl1 * fk1 * fj0 * fi1 * ltab.ltable[ index(l1, k1, j0, i1, ls, ks, js) ] +
+                    fl1 * fk1 * fj1 * fi0 * ltab.ltable[ index(l1, k1, j1, i0, ls, ks, js) ] +
+                    fl1 * fk1 * fj1 * fi1 * ltab.ltable[ index(l1, k1, j1, i1, ls, ks, js) ];
+
+            return val;
+        }
+    }
+
+
+    template<typename TF>
+    void graupel_hail_conv_wet_gamlook(
+            //TF* const restrict qit,
+            //TF* const restrict nit,
+            //TF* const restrict qrt,
+            //TF* const restrict nrt,
+            //TF* const restrict qgt,
+            //TF* const restrict ngt,
+            //TF* const restrict qht,
+            //TF* const restrict nht,
+            //TF* const restrict qtt_ice,
+            //const TF* const restrict qr,
+            //const TF* const restrict nr,
+            //const TF* const restrict Ta,
+            //Gamlookuptable<TF>& rain_ltable1,
+            //Gamlookuptable<TF>& rain_ltable2,
+            //Gamlookuptable<TF>& rain_ltable3,
+            //Particle_rain_coeffs<TF>& rain_coeffs,
+            //Particle<TF>& rain,
+            Lookupt_4D<TF>& ltab,
+            //const T_cfg_2mom<TF>& cfg_params,
+            //const TF rain_nm1,
+            //const TF rain_nm2,
+            //const TF rain_nm3,
+            //const TF rain_g1,
+            //const TF rain_g2,
+            //const TF dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+
+
+        // Check with offline Python interpolation
+        const TF p_a = 40001;
+        const TF T_a = 252;
+        const TF qw_a = 0.0011;
+        const TF qi_a = 0.0013;
+
+        const TF val = Sb_cold::dmin_wg_gr_ltab_equi(
+                p_a, T_a, qw_a, qi_a, ltab);
+
+        std::cout << val << std::endl;
+
+        //for (int j=jstart; j<jend; j++)
+        //    #pragma ivdep
+        //    for (int i=istart; i<iend; i++)
+        //    {
+        //        const int ij = i + j*jstride;
+        //
+        //
+
+        //    }
+    }
+
+
+
+
+
+//SUBROUTINE graupel_hail_conv_wet_gamlook(ik_slice, graupel_ltable1, graupel_ltable2,       &
+//       &                                   graupel_nm1, graupel_nm2, graupel_g1, graupel_g2, &
+//                                                &                                   atmo, graupel, cloud, rain, ice, snow, hail)
+//*******************************************************************************
+//       !  Wet growth and conversion of graupel to hail                                *
+//  (uses look-up table for incomplete gamma functions)                         *
+//       !  by Uli Blahak                                                               *
+//*******************************************************************************
+
+//       ! start and end indices for 2D slices
+// istart = slice(1), iend = slice(2), kstart = slice(3), kend = slice(4)
+//NTEGER, INTENT(in) :: ik_slice(4)
+
+// Parameters and tables
+//YPE(gamlookuptable),INTENT(in) :: graupel_ltable1, graupel_ltable2
+//EAL(wp), INTENT(in)            :: graupel_nm1, graupel_nm2, graupel_g1, graupel_g2
+
+// 2mom variables
+//YPE(atmosphere), INTENT(inout)       :: atmo
+//LASS(particle),  INTENT(inout)       :: cloud, rain
+//LASS(particle_frozen), INTENT(inout) :: ice, graupel, snow, hail
+
+// start and end indices for 2D slices
+//       INTEGER :: istart, iend, kstart, kend
+
+// local variables
+//       INTEGER             :: i,k
+//EAL(wp)            :: T_a, p_a, d_trenn, qw_a, qi_a, N_0, lam, xmin
+//EAL(wp)            :: q_g,n_g,x_g,d_g
+//EAL(wp)            :: q_c,q_r
+//EAL(wp)            :: conv_n,conv_q
+
+//F (isdebug) CALL message(routine, "graupel_hail_conv_wet_gamlook")
+
+//start = ik_slice(1)
+//end   = ik_slice(2)
+//start = ik_slice(3)
+//end   = ik_slice(4)
+
+//O k = kstart,kend
+//NEC$ ivdep
+//O i = istart,iend
+
+//_c = cloud%q(i,k)
+//_r = rain%q(i,k)
+//_g = graupel%q(i,k)
+//_g = graupel%n(i,k)
+
+//_g = particle_meanmass(graupel, q_g,n_g)
+//_g = particle_diameter(graupel, x_g)
+//_g = q_g / x_g  ! for consistency for limiters, n_g is used explicitly below
+
+//_a = atmo%T(i,k)
+//_a = atmo%p(i,k)
+
+//..supercooled liquid water in the cloud environment = sum of rain and cloud water
+//       qw_a = q_r + q_c
+
+//F (T_a < T_3 .AND. q_g > graupel%q_crit_c .AND. qw_a > 1e-3) THEN
+
+//.. Umgebungsgehalt Eispartikel (vernachl. werden Graupel und Hagel wg. geringer Kollisionseff.)
+//.. koennte problematisch sein, weil in konvekt. Wolken viel mehr Graupel und Hagel enthalten ist!!!
+//       qi_a = ice%q(i,k) + snow%q(i,k)
+
+//f (luse_dmin_wetgrowth_table) then
+//           d_trenn = dmin_wg_gr_ltab_equi(p_a,T_a,qw_a,qi_a,ltabdminwgg)
+//       else
+//_trenn = dmin_wetgrowth_fun(p_a,T_a,qw_a,qi_a)
+//nd if
+
+//   IF (d_trenn > 0.0_wp .AND. d_trenn < 10.0_wp * D_g) THEN
+
+//       xmin = exp(log(d_trenn/graupel%a_geo)*(1.0_wp/graupel%b_geo))
+
+//am  = exp(log(graupel_g2/(graupel_g1*x_g))*(graupel%mu))
+//min = exp(log(xmin)*graupel%mu)
+//_0  = graupel%mu * n_g * exp(log(lam)*graupel_nm1) / graupel_g1
+
+//onv_n = n_0 / (graupel%mu * exp(log(lam)*graupel_nm1)) * incgfct_upper_lookup(lam*xmin,graupel_ltable1)
+//onv_q = n_0 / (graupel%mu * exp(log(lam)*graupel_nm2)) * incgfct_upper_lookup(lam*xmin,graupel_ltable2)
+
+//onv_n = MIN(conv_n,n_g)
+//onv_q = MIN(conv_q,q_g)
+
+//raupel%q(i,k) = q_g - conv_q
+//raupel%n(i,k) = n_g - conv_n
+
+//ail%q(i,k) = hail%q(i,k) + conv_q
+//ail%n(i,k) = hail%n(i,k) + conv_n
+
+//ND IF
+//NDIF
+//       ENDDO
+//NDDO
+
+//ND SUBROUTINE graupel_hail_conv_wet_gamlook
+
+
+
+
+
+    template<typename TF>
     void ice_melting(
             TF* const restrict qit,
             TF* const restrict nit,
@@ -2668,6 +2910,4 @@ namespace Sb_cold
                 }
             } // i
     } // function
-
-
 } // namespace
