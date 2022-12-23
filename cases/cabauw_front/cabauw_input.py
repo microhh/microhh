@@ -73,7 +73,6 @@ if __name__ == '__main__':
     #end   = datetime(year=2017, month=12, day=12, hour=0)
     #ls2d_file = 'ls2d_20171210.nc'
 
-
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = False          # False = prescribed surface H+LE fluxes from ERA5.
     use_rrtmgp = False           # False = prescribed radiation from ERA5.

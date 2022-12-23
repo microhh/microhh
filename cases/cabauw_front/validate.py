@@ -83,6 +83,7 @@ names = [
 cmap = mcolors.ListedColormap(colors.values())
 
 date = datetime.datetime(2016, 8, 11)
+#date = datetime.datetime(2017, 12, 11)
 
 cb_path = '/home/scratch1/meteo_data/observations/cabauw/old/'
 #cb_path = '/Users/bart/meteo/observations/cabauw/'
@@ -97,10 +98,94 @@ clw = xr.open_dataset('{path}/cloudnet/{year:04d}{month:02d}{day:02d}_cabauw_lwc
 sfc = xr.open_dataset('{path}/surface_meteo_lc1/cesar_surface_meteo_lc1_t10_v1.0_{year:04d}{month:02d}.nc'.format(
         path=cb_path, year=date.year, month=date.month))
 
+sfc = sfc.sel(time=slice(date, date+datetime.timedelta(hours=24)))
+
 #
 # MicroHH statistics
 #
 uhh = xr_read_all('cabauw.default.0000000.nc')
+
+
+if True:
+    """
+    Pcolormesh of ql/qi/qr/etc.
+    """
+
+    pl.figure(figsize=(12,7))
+
+    ylim = (0, 10000)
+    fields = ['l', 'i', 'r', 's', 'g', 'h']
+
+    ii = 1
+    for t in ['q', 'n']:
+        for f in fields:
+            fld = '{}{}'.format(t,f)
+
+            if t == 'q':
+                thres = 1e-9
+            else:
+                thres = 1
+
+            if fld not in ['nl', 'ni']:
+                ax = pl.subplot(2, len(fields), ii); ii+=1
+                pl.title(fld, loc='left')
+                pl.pcolormesh(
+                        uhh.time, uhh.z, uhh[fld].T,
+                        norm=mcolors.PowerNorm(gamma=0.2),
+                        cmap=pl.cm.gist_earth_r)
+                pl.ylim(ylim)
+                pl.colorbar(location='top', shrink=0.7)
+                pl.grid()
+                format_ax(ax, dt=6)
+            else:
+                ii+=1
+
+    pl.tight_layout()
+
+
+if True:
+    """
+    Precipitation rate vs obs
+    """
+    pl.figure()
+    pl.subplot(121)
+    pl.plot(uhh.time, uhh.rain_rate*3600, label='rain')
+    pl.plot(uhh.time, uhh.snow_rate*3600, label='snow')
+    pl.plot(uhh.time, uhh.graupel_rate*3600, label='graupel')
+    pl.plot(uhh.time, uhh.hail_rate*3600, label='hail')
+    pl.scatter(sfc.time, sfc.RAIN*6, label='Cabauw obs')
+    pl.legend()
+    pl.ylabel('rr (mm h-1)')
+
+    pl.subplot(122)
+    pl.plot(uhh.time, np.cumsum(uhh.rain_rate)*300, label='rain')
+    pl.plot(uhh.time, np.cumsum(uhh.snow_rate)*300, label='snow')
+    pl.plot(uhh.time, np.cumsum(uhh.graupel_rate)*300, label='graupel')
+    pl.plot(uhh.time, np.cumsum(uhh.hail_rate)*300, label='hail')
+    pl.scatter(sfc.time, np.cumsum(sfc.RAIN), label='Cabauw obs')
+    pl.legend()
+    pl.ylabel('sum(rr) (mm)')
+
+    pl.legend()
+
+
+if False:
+    """
+    rain/snow rate and cumulative values.
+    """
+
+    pl.figure()
+    pl.subplot(121)
+    pl.plot(uhh.time, uhh.snow_rate*3600*10)
+    pl.ylabel('snow rate (mm h-1)')
+
+    pl.subplot(122)
+    pl.plot(uhh.time, np.cumsum(uhh.snow_rate)*300*10)
+    pl.ylabel('accumulated snow (mm)')
+
+    pl.tight_layout()
+
+
 
 
 if False:
@@ -213,55 +298,4 @@ if False:
     pl.tight_layout()
 
 
-if True:
-    """
-    Pcolormesh of ql/qi/qr/etc.
-    """
-
-    pl.figure(figsize=(12,7))
-
-    ylim = (0, 10000)
-    fields = ['l', 'i', 'r', 's', 'g', 'h']
-
-    ii = 1
-    for t in ['q', 'n']:
-        for f in fields:
-            fld = '{}{}'.format(t,f)
-
-            if t == 'q':
-                thres = 1e-9
-            else:
-                thres = 1
-
-            if fld not in ['nl', 'ni']:
-                ax = pl.subplot(2, len(fields), ii); ii+=1
-                pl.title(fld, loc='left')
-                pl.pcolormesh(
-                        uhh.time, uhh.z, uhh[fld].T,
-                        norm=mcolors.PowerNorm(gamma=0.2),
-                        cmap=pl.cm.gist_earth_r)
-                pl.ylim(ylim)
-                pl.colorbar(location='top', shrink=0.7)
-                pl.grid()
-                format_ax(ax, dt=6)
-            else:
-                ii+=1
-
-    pl.tight_layout()
-
-if True:
-    """
-    rain/snow rate and cumulative values.
-    """
-
-    pl.figure()
-    pl.subplot(121)
-    pl.plot(uhh.time, uhh.snow_rate*3600*10)
-    pl.ylabel('snow rate (mm h-1)')
-
-    pl.subplot(122)
-    pl.plot(uhh.time, np.cumsum(uhh.snow_rate)*300*10)
-    pl.ylabel('accumulated snow (mm)')
-
-    pl.tight_layout()
 
