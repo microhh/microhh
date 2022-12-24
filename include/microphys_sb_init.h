@@ -41,7 +41,7 @@ namespace Sb_init
 
         if (x <= TF(0))
         {
-            std::cout << "ERROR in GSER: x < 0" << std::endl;
+            //std::cout << "ERROR in GSER: x < 0" << std::endl;
             return TF(0);
         }
 
@@ -59,7 +59,7 @@ namespace Sb_init
 
         if (std::abs(del) >= std::abs(sum)*eps)
         {
-            std::cout << "ERROR in GSER: a too large, ITMAX too small" << std::endl;
+            //std::cout << "ERROR in GSER: a too large, ITMAX too small" << std::endl;
             return TF(0);
         }
 
