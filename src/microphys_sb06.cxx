@@ -445,6 +445,43 @@ Microphys_sb06<TF>::Microphys_sb06(
             file_name,
             graupel,
             master);
+
+    // Add timers for individual kernels.
+    timer.add_timing("exec_total");
+
+    timer.add_timing("set_default_n");
+    timer.add_timing("limit_sizes");
+    timer.add_timing("qr_sedi_vel");
+    timer.add_timing("qs_sedi_vel");
+    timer.add_timing("implicit_core");
+    timer.add_timing("vapor_dep");
+    timer.add_timing("qi_selfc");
+    timer.add_timing("qs_selfc");
+    timer.add_timing("qg_selfc");
+    timer.add_timing("qiqs_coll");
+    timer.add_timing("qiqg_coll");
+    timer.add_timing("qsqg_coll");
+    timer.add_timing("qiqh_coll");
+    timer.add_timing("qsqh_coll");
+    timer.add_timing("qgqh_conv");
+    timer.add_timing("qi_riming");
+    timer.add_timing("qs_riming");
+    timer.add_timing("qhqc_riming");
+    timer.add_timing("qhqr_riming");
+    timer.add_timing("qgqc_riming");
+    timer.add_timing("qgqr_riming");
+    timer.add_timing("qr_freeze");
+    timer.add_timing("qi_melt");
+    timer.add_timing("qs_melt");
+    timer.add_timing("qg_melt");
+    timer.add_timing("qh_melt");
+    timer.add_timing("qi_evap");
+    timer.add_timing("qg_evap");
+    timer.add_timing("qh_evap");
+    timer.add_timing("qr_auto");
+    timer.add_timing("qr_evap");
+    timer.add_timing("qr_accr");
+    timer.add_timing("qr_selfc");
 }
 
 template<typename TF>
@@ -1180,6 +1217,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 {
     auto& gd = grid.get_grid_data();
 
+    timer.start("exec_total");
+
     // Get thermodynamic variables
     bool cyclic = false;
     bool is_stat = false;
@@ -1322,7 +1361,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
 
-    // Set to default values where qnx=0 and qx>0
+    // Set to default values where qnx=0 and qx0
+    timer.start("set_default_n");
     Sb_cold::set_default_n(
             fields.ap.at("qi")->fld.data(),
             fields.ap.at("ni")->fld.data(),
@@ -1336,6 +1376,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+    timer.stop("set_default_n");
 
     // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
     // We have to do it at the start, since we don't integrate the fields in this exec() function.
@@ -1362,11 +1403,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     //   END DO
     //END IF
 
+    timer.start("limit_sizes");
     limit_sizes_wrapper(fields.ap.at("ni")->fld.data(), fields.ap.at("qi")->fld.data(), ice);
     limit_sizes_wrapper(fields.ap.at("nr")->fld.data(), fields.ap.at("qr")->fld.data(), rain);
     limit_sizes_wrapper(fields.ap.at("ns")->fld.data(), fields.ap.at("qs")->fld.data(), snow);
     limit_sizes_wrapper(fields.ap.at("ng")->fld.data(), fields.ap.at("qg")->fld.data(), graupel);
     limit_sizes_wrapper(fields.ap.at("nh")->fld.data(), fields.ap.at("qh")->fld.data(), hail);
+    timer.stop("limit_sizes");
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
@@ -1411,6 +1454,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         const TF rho_corr = std::exp(-Sb_cold::rho_vel<TF>*hlp);
 
         // Sedimentation velocity rain species.
+        timer.start("qr_sedi_vel");
         Sb_cold::sedi_vel_rain<TF>(
                 hydro_types.at("qr").v_sed_now,
                 hydro_types.at("nr").v_sed_now,
@@ -1424,6 +1468,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells, gd.ijcells,
                 k, use_ql_sedi_rain);
+        timer.stop("qr_sedi_vel");
 
         //Sb_cold::sedi_vel_sphere(
         //        hydro_types.at("qi").v_sed_now,
@@ -1436,6 +1481,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
         //        gd.jstart, gd.jend,
         //        gd.icells);
 
+        timer.start("qs_sedi_vel");
         Sb_cold::sedi_vel_sphere(
                 hydro_types.at("qs").v_sed_now,
                 hydro_types.at("ns").v_sed_now,
@@ -1446,9 +1492,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+        timer.stop("qs_sedi_vel");
 
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
+        timer.start("implicit_core");
         for (auto& it : hydro_types)
             Sb_common::implicit_core(
                     it.second.slice,
@@ -1462,6 +1510,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
+        timer.stop("implicit_core");
 
         if (sw_warm)
         {
@@ -1595,6 +1644,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
             // Depositional growth of all ice particles.
             // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
+            timer.start("vapor_dep");
             Sb_cold::vapor_dep_relaxation(
                     // 2D Output tendencies:
                     hydro_types.at("qi").conversion_tend,
@@ -1639,10 +1689,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("vapor_dep");
             check("vapor_dep_relaxation", k);
 
             // Ice-ice collisions -> forms snow.
+            timer.start("qi_selfc");
             Sb_cold::ice_selfcollection(
                     hydro_types.at("qi").conversion_tend,
                     hydro_types.at("ni").conversion_tend,
@@ -1660,10 +1711,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qi_selfc");
             check("ice_selfcollection", k);
 
             // Selfcollection of snow
+            timer.start("qs_selfc");
             Sb_cold::snow_selfcollection(
                     hydro_types.at("ns").conversion_tend,
                     hydro_types.at("qs").slice,
@@ -1675,10 +1727,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qs_selfc");
             check("snow_selfcollection", k);
 
             // Selfcollection of graupel.
+            timer.start("qg_selfc");
             Sb_cold::graupel_selfcollection(
                     hydro_types.at("ng").conversion_tend,
                     hydro_types.at("qg").slice,
@@ -1690,12 +1743,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qg_selfc");
             check("graupel_selfcollection", k);
 
             // Collection of ice by snow.
             const bool save_ice_tendency = true;
 
+            timer.start("qiqs_coll");
             Sb_cold::particle_particle_collection(
                     hydro_types.at("qs").conversion_tend,
                     hydro_types.at("qi").conversion_tend,
@@ -1713,10 +1767,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qiqs_coll");
             check("particle_particle_collection snow-ice", k);
 
             // Collection of ice by graupel.
+            timer.start("qiqg_coll");
             Sb_cold::particle_particle_collection(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("qi").conversion_tend,
@@ -1734,10 +1789,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qiqg_coll");
             check("particle_particle_collection graupel-ice", k);
 
             // Collection of snow by graupel.
+            timer.start("qsqg_coll");
             Sb_cold::particle_particle_collection(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("qs").conversion_tend,
@@ -1755,10 +1811,55 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qsqg_coll");
             check("particle_particle_collection graupel-snow", k);
 
+            // Collection of ice by hail.
+            timer.start("qiqh_coll");
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("qi").conversion_tend,
+                    hydro_types.at("ni").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qi").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("ni").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    ice, hail,
+                    hic_coeffs,
+                    rho_corr,
+                    save_ice_tendency,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+            timer.stop("qiqh_coll");
+            check("particle_particle_collection hail-ice", k);
+
+            // Collection of snow by hail.
+            timer.start("qsqh_coll");
+            Sb_cold::particle_particle_collection(
+                    hydro_types.at("qh").conversion_tend,
+                    hydro_types.at("qs").conversion_tend,
+                    hydro_types.at("ns").conversion_tend,
+                    (*qtt_ice).data(),
+                    hydro_types.at("qs").slice,
+                    hydro_types.at("qh").slice,
+                    hydro_types.at("ns").slice,
+                    hydro_types.at("nh").slice,
+                    &T->fld.data()[k*gd.ijcells],
+                    snow, hail,
+                    hsc_coeffs,
+                    rho_corr,
+                    !save_ice_tendency,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells);
+            timer.stop("qsqh_coll");
+            check("particle_particle_collection hail-snow", k);
+
             // Conversion of graupel to hail in wet growth regime
+            timer.start("qgqh_conv");
             Sb_cold::graupel_hail_conv_wet_gamlook(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -1783,52 +1884,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qgqh_conv");
             check("graupel_hail_conv_wet_gamlook", k);
 
-            // Collection of ice by hail.
-            Sb_cold::particle_particle_collection(
-                    hydro_types.at("qh").conversion_tend,
-                    hydro_types.at("qi").conversion_tend,
-                    hydro_types.at("ni").conversion_tend,
-                    (*qtt_ice).data(),
-                    hydro_types.at("qi").slice,
-                    hydro_types.at("qh").slice,
-                    hydro_types.at("ni").slice,
-                    hydro_types.at("nh").slice,
-                    &T->fld.data()[k*gd.ijcells],
-                    ice, hail,
-                    hic_coeffs,
-                    rho_corr,
-                    save_ice_tendency,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells);
-
-            check("particle_particle_collection hail-ice", k);
-
-            // Collection of snow by hail.
-            Sb_cold::particle_particle_collection(
-                    hydro_types.at("qh").conversion_tend,
-                    hydro_types.at("qs").conversion_tend,
-                    hydro_types.at("ns").conversion_tend,
-                    (*qtt_ice).data(),
-                    hydro_types.at("qs").slice,
-                    hydro_types.at("qh").slice,
-                    hydro_types.at("ns").slice,
-                    hydro_types.at("nh").slice,
-                    &T->fld.data()[k*gd.ijcells],
-                    snow, hail,
-                    hsc_coeffs,
-                    rho_corr,
-                    !save_ice_tendency,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells);
-
-            check("particle_particle_collection hail-snow", k);
-
             // Riming of ice with cloud droplets and rain drops, and conversion to graupel
+            timer.start("qi_riming");
             Sb_cold::ice_riming(
                     (*qct_dummy).data(),
                     (*nct_dummy).data(),
@@ -1861,10 +1921,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qi_riming");
             check("ice_riming", k);
 
             // Riming of snow with cloud droplets and rain drops, and conversion to graupel
+            timer.start("qs_riming");
             Sb_cold::snow_riming(
                     (*qct_dummy).data(),
                     (*nct_dummy).data(),
@@ -1899,10 +1960,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qs_riming");
             check("snow_riming", k);
 
             // Hail-cloud riming
+            timer.start("qhqc_riming");
             Sb_cold::particle_cloud_riming(
                     hydro_types.at("qh").conversion_tend,
                     hydro_types.at("nh").conversion_tend,
@@ -1926,10 +1988,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qhqc_riming");
             check("particle_cloud_riming hail-cloud", k);
 
             // Hail-rain riming
+            timer.start("qhqr_riming");
             Sb_cold::particle_rain_riming(
                     hydro_types.at("qh").conversion_tend,
                     hydro_types.at("nh").conversion_tend,
@@ -1951,10 +2014,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qhqr_riming");
             check("particle_rain_riming hail-rain", k);
 
             // Graupel-cloud riming
+            timer.start("qgqc_riming");
             Sb_cold::particle_cloud_riming(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -1978,10 +2042,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qgqc_riming");
             check("particle_cloud_riming graupel-cloud", k);
 
             // Graupel-rain riming
+            timer.start("qgqr_riming");
             Sb_cold::particle_rain_riming(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -2003,10 +2068,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qgqr_riming");
             check("particle_rain_riming graupel-rain", k);
 
             // Freezing of rain and conversion to ice/graupel/hail
+            timer.start("qr_freeze");
             Sb_cold::rain_freeze_gamlook(
                     hydro_types.at("qi").conversion_tend,
                     hydro_types.at("ni").conversion_tend,
@@ -2035,10 +2101,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qr_freeze");
             check("rain_freeze_gamlook", k);
 
             // Melting of ice
+            timer.start("qi_melt");
             Sb_cold::ice_melting(
                     hydro_types.at("qi").conversion_tend,
                     hydro_types.at("ni").conversion_tend,
@@ -2056,9 +2123,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qi_melt");
             check("ice_melting", k);
 
+            timer.start("qs_melt");
             Sb_cold::snow_melting(
                     hydro_types.at("qs").conversion_tend,
                     hydro_types.at("ns").conversion_tend,
@@ -2074,13 +2142,14 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qs_melt");
             check("snow_melting", k);
 
             // Melting of graupel and hail can be simple or LWF-based
             //SELECT TYPE (graupel)
             //TYPE IS (particle_frozen)
 
+            timer.start("qg_melt");
             Sb_cold::graupel_melting(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -2096,7 +2165,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qg_melt");
             check("graupel_melting", k);
 
             //TYPE IS (particle_lwf)
@@ -2107,6 +2176,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //SELECT TYPE (hail)
             //TYPE IS (particle_frozen)
 
+            timer.start("qh_melt");
             Sb_cold::hail_melting_simple(
                     hydro_types.at("qh").conversion_tend,
                     hydro_types.at("nh").conversion_tend,
@@ -2123,7 +2193,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qh_melt");
             check("hail_melting", k);
 
             //TYPE IS (particle_lwf)
@@ -2131,6 +2201,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //END SELECT
 
             // Evaporation from melting ice particles
+            timer.start("qi_evap");
             Sb_cold::evaporation(
                     hydro_types.at("qs").conversion_tend,
                     hydro_types.at("ns").conversion_tend,
@@ -2145,9 +2216,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qi_evap");
             check("evaporation of snow", k);
 
+            timer.start("qg_evap");
             Sb_cold::evaporation(
                     hydro_types.at("qg").conversion_tend,
                     hydro_types.at("ng").conversion_tend,
@@ -2162,9 +2234,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qg_evap");
             check("evaporation of graupel", k);
 
+            timer.start("qh_evap");
             Sb_cold::evaporation(
                     hydro_types.at("qh").conversion_tend,
                     hydro_types.at("nh").conversion_tend,
@@ -2179,7 +2252,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells);
-
+            timer.stop("qh_evap");
             check("evaporation of hail", k);
 
             //! warm rain processes
@@ -2197,6 +2270,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
             //ELSE IF (auto_typ == 3) THEN
 
             // Autoconversion; formation of rain drop by coagulating cloud droplets.
+            timer.start("qr_auto");
             Sb_cold::autoconversionSB(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
@@ -2212,9 +2286,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-
+            timer.stop("qr_auto");
             check("autoconversionSB", k);
 
+            timer.start("qr_accr");
             Sb_cold::accretionSB(
                     hydro_types.at("qr").conversion_tend,
                     (*qtt_liq).data(),
@@ -2224,9 +2299,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-
+            timer.stop("qr_accr");
             check("accretionSB", k);
 
+            timer.start("qr_selfc");
             Sb_cold::rain_selfcollectionSB(
                     hydro_types.at("nr").conversion_tend,
                     hydro_types.at("qr").slice,
@@ -2237,12 +2313,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-
+            timer.stop("qr_selfc");
             check("rain_selfcollectionSB", k);
 
             //ENDIF
 
             // Evaporation of rain following Seifert (2008)
+            timer.start("qr_evap");
             Sb_cold::rain_evaporation(
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
@@ -2263,7 +2340,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-
+            timer.stop("qr_evap");
             check("rain_evaporation", k);
         }
 
@@ -2332,6 +2409,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     k);
     }
 
+
     for (auto& it : hydro_types)
     {
         // Store surface precipitation rates.
@@ -2351,6 +2429,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
     for (auto& it : hydro_types)
         stats.calc_tend(*fields.st.at(it.first), tend_name);
+
+    // Save timings.
+    timer.stop("exec_total");
+    timer.save();
 
     // Release temporary fields.
     fields.release_tmp(ql);

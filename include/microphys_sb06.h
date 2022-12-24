@@ -48,6 +48,7 @@ template<typename> class Cross;
 template<typename> class Thermo;
 template<typename> class Field3d;
 template<typename> class Microphys;
+template<typename> class Timer;
 
 
 // Derived type for hydrometeor species including pointers to data
@@ -329,6 +330,7 @@ class Microphys_sb06 : public Microphys<TF>
         using Microphys<TF>::grid;
         using Microphys<TF>::fields;
         using Microphys<TF>::field3d_operators;
+        using Microphys<TF>::timer;
 
         void init_2mom_scheme();
         void init_2mom_scheme_once();

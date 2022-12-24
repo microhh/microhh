@@ -25,6 +25,7 @@
 #include "constants.h"
 #include "fast_math.h"
 #include "thermo_moist_functions.h"
+#include "timer.h"
 
 namespace Sb_cold
 {

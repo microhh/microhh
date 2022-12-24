@@ -23,6 +23,8 @@
 #ifndef MICROPHYS_H
 #define MICROPHYS_H
 
+#include "timer.h"
+
 class Master;
 class Input;
 class Netcdf_handle;
@@ -82,6 +84,7 @@ class Microphys
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
+        Timer<TF> timer;
 
         Microphys_type swmicrophys;
 };
