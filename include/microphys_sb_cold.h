@@ -2451,7 +2451,7 @@ namespace Sb_cold
             const TF T_a,
             const TF qw_a,
             const TF qi_a,
-            Lookupt_4D<TF> ltab)
+            Lookupt_4D<TF>& ltab)
     {
         // Quadrilinear interpolation of lookup table.
         // LUT is equidistant to simplify indexing.
