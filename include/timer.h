@@ -74,7 +74,9 @@ class Timer
         {
             auto md = master.get_MPI_data();
 
-            std::cout << "Timer \"" << name << "\"" << std::endl;
+            if (md.mpiid == 0)
+                std::cout << "Timer \"" << name << "\"" << std::endl;
+
             for (auto& timer : timings)
             {
                 // Get statistics along all MPI tasks
