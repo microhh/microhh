@@ -453,6 +453,9 @@ Microphys_sb06<TF>::Microphys_sb06(
     timer.add_timing("limit_sizes");
     timer.add_timing("qr_sedi_vel");
     timer.add_timing("qs_sedi_vel");
+    timer.add_timing("qi_sedi_vel");
+    timer.add_timing("qg_sedi_vel");
+    timer.add_timing("qh_sedi_vel");
     timer.add_timing("implicit_core");
     timer.add_timing("vapor_dep");
     timer.add_timing("qi_selfc");
@@ -1470,16 +1473,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 k, use_ql_sedi_rain);
         timer.stop("qr_sedi_vel");
 
-        //Sb_cold::sedi_vel_sphere(
-        //        hydro_types.at("qi").v_sed_now,
-        //        hydro_types.at("ni").v_sed_now,
-        //        hydro_types.at("qi").slice,
-        //        hydro_types.at("ni").slice,
-        //        ice, ice_coeffs,
-        //        rho_corr,
-        //        gd.istart, gd.iend,
-        //        gd.jstart, gd.jend,
-        //        gd.icells);
+        timer.start("qi_sedi_vel");
+        Sb_cold::sedi_vel_sphere(
+                hydro_types.at("qi").v_sed_now,
+                hydro_types.at("ni").v_sed_now,
+                hydro_types.at("qi").slice,
+                hydro_types.at("ni").slice,
+                ice, ice_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        timer.stop("qi_sedi_vel");
 
         timer.start("qs_sedi_vel");
         Sb_cold::sedi_vel_sphere(
@@ -1493,6 +1498,39 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.jstart, gd.jend,
                 gd.icells);
         timer.stop("qs_sedi_vel");
+
+        //if (lprogmelt) then
+        //  call sedi_vel_lwf(graupel_lwf,graupel_coeffs,  &
+        //       & qg(:,k),qgl(:,k),xg_now,rhocorr(:,k),vg_sedn_now,vg_sedq_now,vg_sedl_now,its,ite)
+        //  call sedi_vel_lwf(hail_lwf,hail_coeffs,        &
+        //       & qh(:,k),qhl(:,k),xh_now,rhocorr(:,k),vh_sedn_now,vh_sedq_now,vh_sedl_now,its,ite)
+        //else
+        timer.start("qg_sedi_vel");
+        Sb_cold::sedi_vel_sphere(
+                hydro_types.at("qg").v_sed_now,
+                hydro_types.at("ng").v_sed_now,
+                hydro_types.at("qg").slice,
+                hydro_types.at("ng").slice,
+                graupel, graupel_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        timer.stop("qg_sedi_vel");
+
+        timer.start("qh_sedi_vel");
+        Sb_cold::sedi_vel_sphere(
+                hydro_types.at("qh").v_sed_now,
+                hydro_types.at("nh").v_sed_now,
+                hydro_types.at("qh").slice,
+                hydro_types.at("nh").slice,
+                hail, hail_coeffs,
+                rho_corr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        timer.stop("qh_sedi_vel");
+        //end if
 
         const TF rdzdt = TF(0.5) * gd.dzi[k] * dt;
 
