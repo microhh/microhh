@@ -445,46 +445,6 @@ Microphys_sb06<TF>::Microphys_sb06(
             file_name,
             graupel,
             master);
-
-    // Add timers for individual kernels.
-    timer.add_timing("exec_total");
-
-    timer.add_timing("set_default_n");
-    timer.add_timing("limit_sizes");
-    timer.add_timing("qr_sedi_vel");
-    timer.add_timing("qs_sedi_vel");
-    timer.add_timing("qi_sedi_vel");
-    timer.add_timing("qg_sedi_vel");
-    timer.add_timing("qh_sedi_vel");
-    timer.add_timing("implicit_core");
-    timer.add_timing("vapor_dep");
-    timer.add_timing("qi_selfc");
-    timer.add_timing("qs_selfc");
-    timer.add_timing("qg_selfc");
-    timer.add_timing("qiqs_coll");
-    timer.add_timing("qiqg_coll");
-    timer.add_timing("qsqg_coll");
-    timer.add_timing("qiqh_coll");
-    timer.add_timing("qsqh_coll");
-    timer.add_timing("qgqh_conv");
-    timer.add_timing("qi_riming");
-    timer.add_timing("qs_riming");
-    timer.add_timing("qhqc_riming");
-    timer.add_timing("qhqr_riming");
-    timer.add_timing("qgqc_riming");
-    timer.add_timing("qgqr_riming");
-    timer.add_timing("qr_freeze");
-    timer.add_timing("qi_melt");
-    timer.add_timing("qs_melt");
-    timer.add_timing("qg_melt");
-    timer.add_timing("qh_melt");
-    timer.add_timing("qi_evap");
-    timer.add_timing("qg_evap");
-    timer.add_timing("qh_evap");
-    timer.add_timing("qr_auto");
-    timer.add_timing("qr_evap");
-    timer.add_timing("qr_accr");
-    timer.add_timing("qr_selfc");
 }
 
 template<typename TF>
@@ -517,6 +477,8 @@ void Microphys_sb06<TF>::init_2mom_scheme()
     //TYPE IS (particle_lwf)
     //  call particle_lwf_assign(hail,hail_vivek)
     //END SELECT
+
+
 }
 
 template<typename TF>
@@ -1212,6 +1174,46 @@ void Microphys_sb06<TF>::create(
 
     // Cross-reference with the variables requested in the .ini file:
     crosslist = cross.get_enabled_variables(allowed_crossvars);
+
+    // Add timers for individual kernels.
+    timer.create();
+    timer.add_timing("exec_total");
+    timer.add_timing("set_default_n");
+    timer.add_timing("limit_sizes");
+    timer.add_timing("qr_sedi_vel");
+    timer.add_timing("qs_sedi_vel");
+    timer.add_timing("qi_sedi_vel");
+    timer.add_timing("qg_sedi_vel");
+    timer.add_timing("qh_sedi_vel");
+    timer.add_timing("implicit_core");
+    timer.add_timing("vapor_dep");
+    timer.add_timing("qi_selfc");
+    timer.add_timing("qs_selfc");
+    timer.add_timing("qg_selfc");
+    timer.add_timing("qiqs_coll");
+    timer.add_timing("qiqg_coll");
+    timer.add_timing("qsqg_coll");
+    timer.add_timing("qiqh_coll");
+    timer.add_timing("qsqh_coll");
+    timer.add_timing("qgqh_conv");
+    timer.add_timing("qi_riming");
+    timer.add_timing("qs_riming");
+    timer.add_timing("qhqc_riming");
+    timer.add_timing("qhqr_riming");
+    timer.add_timing("qgqc_riming");
+    timer.add_timing("qgqr_riming");
+    timer.add_timing("qr_freeze");
+    timer.add_timing("qi_melt");
+    timer.add_timing("qs_melt");
+    timer.add_timing("qg_melt");
+    timer.add_timing("qh_melt");
+    timer.add_timing("qi_evap");
+    timer.add_timing("qg_evap");
+    timer.add_timing("qh_evap");
+    timer.add_timing("qr_auto");
+    timer.add_timing("qr_evap");
+    timer.add_timing("qr_accr");
+    timer.add_timing("qr_selfc");
 }
 
 #ifndef USECUDA
@@ -2447,7 +2449,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                     k);
     }
 
-
     for (auto& it : hydro_types)
     {
         // Store surface precipitation rates.
@@ -2470,7 +2471,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Save timings.
     timer.stop("exec_total");
-    timer.save();
+    timer.save(0);
 
     // Release temporary fields.
     fields.release_tmp(ql);
