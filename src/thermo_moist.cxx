@@ -451,7 +451,9 @@ namespace
 
     template<typename TF>
     void calc_w500hpa(
-            TF* restrict w500, const TF* restrict w, const TF* restrict ph,
+            TF* restrict w500,
+            const TF* restrict w,
+            const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -700,10 +702,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
-                    const TF* const restrict exnrefh, const TF* const restrict threfh,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
-                    const int jj, const int kk)
+    void calc_T_bot(
+            TF* const restrict T_bot,
+            const TF* const restrict th,
+            const TF* const restrict exnrefh,
+            const TF* const restrict threfh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -718,12 +725,17 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
-                           TF* restrict thl,    TF* restrict thlbot,
-                           TF* restrict qt,     TF* restrict qtbot,
-                           TF* restrict thvref, TF* restrict thvrefh,
-                           const int icells, const int jcells,
-                           const int ijcells, const int kstart)
+    void calc_buoyancy_bot(
+            TF* restrict b,
+            TF* restrict bbot,
+            TF* restrict thl,
+            TF* restrict thlbot,
+            TF* restrict qt,
+            TF* restrict qtbot,
+            TF* restrict thvref,
+            TF* restrict thvrefh,
+            const int icells, const int jcells,
+            const int ijcells, const int kstart)
     {
         // assume no liquid water at the lowest model level
         for (int j=0; j<jcells; j++)
@@ -756,10 +768,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
-                               TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
-                               const int icells, const int jcells, const int kstart,
-                               const int ijcells)
+    void calc_buoyancy_fluxbot(
+            TF* restrict bfluxbot,
+            TF* restrict thl,
+            TF* restrict thlfluxbot,
+            TF* restrict qt,
+            TF* restrict qtfluxbot,
+            TF* restrict thvrefh,
+            const int icells, const int jcells,
+            const int kstart, const int ijcells)
     {
 
         // Assume no liquid water at the lowest model level.
@@ -778,8 +795,10 @@ namespace
     template<typename TF>
     void calc_thv_fluxbot(
             TF* const restrict thv_fluxbot,
-            const TF* const restrict thl, const TF* const restrict thl_fluxbot,
-            const TF* const restrict qt,  const TF* const restrict qt_fluxbot,
+            const TF* const restrict thl,
+            const TF* const restrict thl_fluxbot,
+            const TF* const restrict qt,
+            const TF* const restrict qt_fluxbot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
@@ -800,7 +819,11 @@ namespace
     }
 
     template<typename TF>
-    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    int calc_zi(
+            const TF* const restrict fldmean,
+            const int kstart,
+            const int kend,
+            const int plusminus)
     {
         TF maxgrad = 0.;
         TF grad = 0.;
