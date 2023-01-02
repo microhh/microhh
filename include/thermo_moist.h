@@ -128,6 +128,10 @@ class Thermo_moist : public Thermo<TF>
         Field3d_operators<TF> field3d_operators;
         Field3d_io<TF> field3d_io;
 
+        // Switches for saturation adjustment ql and qi.
+        bool sw_satadjust_ql;
+        bool sw_satadjust_qi;
+
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         bool swcross_b;

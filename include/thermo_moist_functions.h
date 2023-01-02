@@ -183,6 +183,111 @@ namespace Thermo_moist_functions
         TF qs;
     };
 
+    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
+    inline Struct_sat_adjust<TF> sat_adjust_flexi(
+            const TF thl, const TF qt, const TF p, const TF exn)
+    {
+        using Fast_math::pow2;
+
+        int niter = 0;
+        int nitermax = 10;
+        TF tnr_old = TF(1.e9);
+
+        const TF tl = thl * exn;
+        TF qs = qsat_liq(p, tl);
+
+        Struct_sat_adjust<TF> ans =
+        {
+            TF(0.), // ql
+            TF(0.), // qi
+            tl,     // t
+            qs,     // qs
+        };
+
+        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
+        if (!sw_satadjust_ql || qt-ans.qs <= TF(0.))
+            return ans;
+
+        /* Saturation adjustment solver.
+         * Root finding function is f(T) = T - tnr - Lv/cp*qt + alpha_w * Lv/cp*qs(T) + alpha_i*Ls/cp*qs(T)
+         * dq_sat/dT derivatives can be rewritten using Claussius-Clapeyron (desat/dT = L{v,s}*esat / (Rv*T^2)).
+         */
+
+        TF tnr = tl;
+
+        // Warm adjustment.
+        if (!sw_satadjust_qi || tl >= T0<TF>)
+        {
+            while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+            {
+                ++niter;
+                tnr_old = tnr;
+                qs = qsat_liq(p, tnr);
+                const TF f = tnr - tl - Lv<TF>/cp<TF>*(qt - qs);
+                const TF f_prime = TF(1.) + Lv<TF>/cp<TF>*dqsatdT_liq(p, tnr);
+                tnr -= f / f_prime;
+            }
+
+            qs = qsat_liq(p, tnr);
+            ans.ql = std::max(TF(0.), qt - qs);
+            ans.t  = tnr;
+            ans.qs = qs;
+        }
+            // Cold adjustment.
+        else
+        {
+            while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
+            {
+                ++niter;
+                tnr_old = tnr;
+                qs = qsat(p, tnr);
+                const TF alpha_w = water_fraction(tnr);
+                const TF alpha_i = TF(1.) - alpha_w;
+                const TF dalphadT = (alpha_w > TF(0.) && alpha_w < TF(1.)) ? TF(0.025) : TF(0.);
+                const TF dqsatdT_w = dqsatdT_liq(p, tnr);
+                const TF dqsatdT_i = dqsatdT_ice(p, tnr);
+
+                const TF f =
+                        tnr - tl - alpha_w*Lv<TF>/cp<TF>*qt - alpha_i*Ls<TF>/cp<TF>*qt
+                        + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
+
+                const TF f_prime = TF(1.)
+                        - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
+                        + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
+                        + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
+                        + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
+
+                tnr -= f / f_prime;
+            }
+
+            const TF alpha_w = water_fraction(tnr);
+            const TF alpha_i = TF(1.) - alpha_w;
+
+            qs = qsat(p, tnr);
+            const TF ql_qi = std::max(TF(0.), qt - qs);
+
+            ans.ql = alpha_w*ql_qi;
+            ans.qi = alpha_i*ql_qi;
+            ans.t  = tnr;
+            ans.qs = qs;
+        }
+
+        if (niter == nitermax)
+        {
+            std::string error = "Non-converging saturation adjustment: thl, qt, p = "
+                                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error(error);
+            #endif
+        }
+
+        return ans;
+    }
+
     template<typename TF>
     inline Struct_sat_adjust<TF> sat_adjust(const TF thl, const TF qt, const TF p, const TF exn)
     {
