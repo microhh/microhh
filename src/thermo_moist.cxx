@@ -817,13 +817,21 @@ namespace
         return kinv;
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
-            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
-            TF* restrict thlh, TF* restrict qth,
-            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
-            const TF* restrict p, const TF* restrict ph,
+            TF* restrict T,
+            TF* restrict T_h,
+            TF* restrict vmr_h2o,
+            TF* restrict clwp,
+            TF* restrict ciwp,
+            TF* restrict T_sfc,
+            TF* restrict thlh,
+            TF* restrict qth,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict thl_bot,
+            const TF* restrict p,
+            const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -845,7 +853,9 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+
+                    const Struct_sat_adjust<TF> ssa =
+                        sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex);
 
                     clwp[ijk_nogc] = ssa.ql * dpg;
                     ciwp[ijk_nogc] = ssa.qi * dpg;
@@ -876,7 +886,8 @@ namespace
                 {
                     const int ij = i + j*jj;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+
+                    T_h[ijk_nogc] = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thlh[ij], qth[ij], ph[k], exnh).t;
                 }
         }
 
@@ -893,13 +904,21 @@ namespace
             }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
     void calc_radiation_columns(
-            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o,
-            TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
-            const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
-            const TF* const restrict p, const TF* const restrict ph,
-            const int* const col_i, const int* const col_j,
+            TF* const restrict T,
+            TF* const restrict T_h,
+            TF* const restrict vmr_h2o,
+            TF* const restrict clwp,
+            TF* const restrict ciwp,
+            TF* const restrict T_sfc,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict thl_bot,
+            const TF* const restrict p,
+            const TF* const restrict ph,
+            const int* const col_i,
+            const int* const col_j,
             const int n_cols,
             const int kgc, const int kstart, const int kend,
             const int icells, const int ijcells)
@@ -924,7 +943,8 @@ namespace
                 const int ijk = i + j*icells + k*ijcells;
                 const int ijk_out = n + (k-kgc)*n_cols;
 
-                const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                const Struct_sat_adjust<TF> ssa =
+                        sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex);
 
                 clwp[ijk_out] = ssa.ql * dpg;
                 ciwp[ijk_out] = ssa.qi * dpg;
@@ -951,7 +971,7 @@ namespace
                 const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
                 const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
 
-                T_h[ijk_out] = sat_adjust(thlh, qth, ph[k], exnh).t;
+                T_h[ijk_out] = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thlh, qth, ph[k], exnh).t;
             }
         }
 
@@ -971,7 +991,7 @@ namespace
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
     void calc_land_surface_fields(
             TF* const restrict T_bot,
             TF* const restrict T_a,
@@ -998,15 +1018,15 @@ namespace
                 const int ijk = i + j*icells + kstart*ijcells;
 
                 // Saturation adjustment for first model level
-                Struct_sat_adjust<TF> sa = sat_adjust(
-                        thl[ijk], qt[ijk], p[kstart], exner[kstart]);
+                const Struct_sat_adjust<TF> ssa =
+                        sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[kstart], exner[kstart]);
 
                 T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
-                T_a[ij]   = sa.t;
+                T_a[ij]   = ssa.t;
 
                 // Vapor pressure deficit first model level
-                const TF es = esat(sa.t);
-                const TF e = qt[ijk]/sa.qs * es;
+                const TF es = esat(ssa.t);
+                const TF e = qt[ijk]/ssa.qs * es;
                 vpd[ij] = es-e;
 
                 // qsat(T_bot) + dqsatdT(T_bot)
@@ -1802,19 +1822,36 @@ void Thermo_moist<TF>::get_radiation_fields(
 {
     auto& gd = grid.get_grid_data();
 
-    calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(),
-            clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
-            T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
-            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            bs.pref.data(), bs.prefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.igc, gd.jgc, gd.kgc,
-            gd.icells, gd.ijcells,
-            gd.imax, gd.imax*gd.jmax);
+    auto calc_radiation_fields_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
+    {
+        calc_radiation_fields<TF, satadjust_ql, satadjust_qi>(
+                T.fld.data(),
+                T_h.fld.data(),
+                qv.fld.data(),
+                clwp.fld.data(),
+                ciwp.fld.data(),
+                T_h.fld_bot.data(),
+                T.fld_bot.data(),
+                T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                bs.pref.data(),
+                bs.prefh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax*gd.jmax);
+    };
+
+    if (sw_satadjust_ql && sw_satadjust_qi)
+        calc_radiation_fields_wrapper.template operator()<true, true>();
+    else if (sw_satadjust_ql)
+        calc_radiation_fields_wrapper.template operator()<true, false>();
+    else
+        calc_radiation_fields_wrapper.template operator()<false, false>();
 }
 
 template<typename TF>
@@ -1833,18 +1870,28 @@ void Thermo_moist<TF>::get_radiation_columns(
     TF* clwp_a  = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* ciwp_a  = &tmp.fld.data()[offset];
 
-    calc_radiation_columns(
-            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            bs.pref.data(),
-            bs.prefh.data(),
-            col_i.data(),
-            col_j.data(),
-            n_cols,
-            gd.kgc, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    auto calc_radiation_columns_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
+    {
+        calc_radiation_columns<TF, satadjust_ql, satadjust_qi>(
+                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
+                    fields.sp.at("thl")->fld.data(),
+                    fields.sp.at("qt")->fld.data(),
+                    fields.sp.at("thl")->fld_bot.data(),
+                    bs.pref.data(),
+                    bs.prefh.data(),
+                    col_i.data(),
+                    col_j.data(),
+                    n_cols,
+                    gd.kgc, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    };
+
+    if (sw_satadjust_ql && sw_satadjust_qi)
+        calc_radiation_columns_wrapper.template operator()<true, true>();
+    else if (sw_satadjust_ql)
+        calc_radiation_columns_wrapper.template operator()<true, false>();
+    else
+        calc_radiation_columns_wrapper.template operator()<false, false>();
 }
 
 template<typename TF>
@@ -1856,23 +1903,33 @@ void Thermo_moist<TF>::get_land_surface_fields(
        2D slices in the 3D tmp field */
     auto& gd = grid.get_grid_data();
 
-    calc_land_surface_fields(
-            T_bot.data(),
-            T_a.data(),
-            vpd.data(),
-            qsat.data(),
-            dqsatdT.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            bs.exnref.data(),
-            bs.exnrefh.data(),
-            bs.pref.data(),
-            bs.prefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
+    auto calc_land_surface_fields_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
+    {
+        calc_land_surface_fields<TF, satadjust_ql, satadjust_qi>(
+                T_bot.data(),
+                T_a.data(),
+                vpd.data(),
+                qsat.data(),
+                dqsatdT.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                bs.exnref.data(),
+                bs.exnrefh.data(),
+                bs.pref.data(),
+                bs.prefh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
+    };
+
+    if (sw_satadjust_ql && sw_satadjust_qi)
+        calc_land_surface_fields_wrapper.template operator()<true, true>();
+    else if (sw_satadjust_ql)
+        calc_land_surface_fields_wrapper.template operator()<true, false>();
+    else
+        calc_land_surface_fields_wrapper.template operator()<false, false>();
 }
 
 template<typename TF>
