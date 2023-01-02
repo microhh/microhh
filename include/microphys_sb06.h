@@ -302,7 +302,9 @@ class Microphys_sb06 : public Microphys<TF>
         virtual ~Microphys_sb06();
 
         void init();
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&);
+        void create(
+                Input&, Netcdf_handle&, Timeloop<TF>&, Stats<TF>&,
+                Cross<TF>&, Dump<TF>&, Column<TF>&, const std::string&);
         void exec(Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
 
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double);

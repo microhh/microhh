@@ -944,8 +944,8 @@ void Microphys_nsw6<TF>::init()
 
 template<typename TF>
 void Microphys_nsw6<TF>::create(
-        Input& inputin, Netcdf_handle& input_nc,
-        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column)
+        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop,
+        Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column, const std::string& sim_name)
 {
     const std::string group_name = "thermo";
 

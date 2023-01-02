@@ -252,7 +252,7 @@ void Model<TF>::load()
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
 
-    microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
+    microphys->create(*input, *input_nc, *timeloop, *stats, *cross, *dump, *column, sim_name);
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);

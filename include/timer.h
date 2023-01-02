@@ -27,6 +27,8 @@
 #include <string>
 #include <chrono>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 #include "netcdf_interface.h"
 
@@ -62,14 +64,15 @@ class Timer
 
         ~Timer(){};
 
-        void create()
+        void create(const int io_time, const std::string& sim_name)
         {
             if (sw_timer)
             {
                 // Create NetCDF file.
-                std::string file_name = this->name + "_timings.nc";
+                std::stringstream file_name;
+                file_name << sim_name << ".timing." << name << "." << std::setfill('0') << std::setw(7) << io_time << ".nc";
 
-                nc_file = std::make_unique<Netcdf_file>(master, file_name, Netcdf_mode::Create);
+                nc_file = std::make_unique<Netcdf_file>(master, file_name.str(), Netcdf_mode::Create);
                 nc_file->add_dimension("time");
 
                 time_var = std::make_unique<Netcdf_variable<TF>>(
