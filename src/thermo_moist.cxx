@@ -800,62 +800,6 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
-                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                                TF* restrict ql, TF* restrict thvrefh,
-                                const int istart, const int iend,
-                                const int jstart, const int jend,
-                                const int kstart, const int kend,
-                                const int icells, const int ijcells)
-    {
-        const int jj  = icells;
-        const int kk1 = 1*ijcells;
-        const int kk2 = 2*ijcells;
-
-        for (int k=kstart+1; k<kend; k++)
-        {
-            const TF exnh = exner(ph[k]);
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
-
-                    thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                    qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
-                    const TF tl = thlh[ij] * exnh;
-
-                    // Calculate first estimate of ql using Tl
-                    // if ql(Tl)>0, saturation adjustment routine needed
-                    ql[ij]  = qth[ij]-qsat(ph[k], tl);
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij = i + j*jj;
-
-                    if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
-                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                    else
-                        ql[ij] = 0.;
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
-
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-                }
-        }
-    }
-
-    template<typename TF>
     int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
     {
         TF maxgrad = 0.;
@@ -1070,7 +1014,6 @@ namespace
                 dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
             }
     }
-
 }
 
 
