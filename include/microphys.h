@@ -36,6 +36,7 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Thermo;
 template<typename> class Field3d;
+template<typename> class Timeloop;
 
 enum class Microphys_type {Disabled, Warm_2mom, Nsw6, SB06};
 
@@ -59,7 +60,7 @@ class Microphys
         virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
-        virtual void exec(Thermo<TF>&, const double, Stats<TF>&) = 0;
+        virtual void exec(Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
         virtual void exec_column(Column<TF>&) = 0;
 

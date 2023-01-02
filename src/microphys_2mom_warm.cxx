@@ -35,6 +35,7 @@
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 #include "fast_math.h"
+#include "timeloop.h"
 
 #include "constants.h"
 #include "microphys.h"
@@ -645,9 +646,10 @@ void Microphys_2mom_warm<TF>::create(
 
 #ifndef USECUDA
 template<typename TF>
-void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
+void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+    const double dt = timeloop.get_sub_time_step();
 
     // Remove spurious negative values from qr and nr fields
     remove_negative_values(fields.sp.at("qr")->fld.data(), gd.istart, gd.jstart, gd.kstart,

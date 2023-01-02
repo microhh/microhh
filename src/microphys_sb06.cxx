@@ -35,6 +35,7 @@
 #include "thermo.h"
 #include "thermo_moist_functions.h"
 #include "constants.h"
+#include "timeloop.h"
 
 #include "microphys.h"
 
@@ -1218,9 +1219,10 @@ void Microphys_sb06<TF>::create(
 
 #ifndef USECUDA
 template<typename TF>
-void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& stats)
+void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+    const double dt = timeloop.get_sub_time_step();
 
     timer.start("exec_total");
 
@@ -2471,7 +2473,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     // Save timings.
     timer.stop("exec_total");
-    timer.save(0);
+
+    // Only save on non-substeps. The timings are gathered over all substeps..
+    if (!timeloop.in_substep())
+        timer.save(timeloop.get_time());
 
     // Release temporary fields.
     fields.release_tmp(ql);

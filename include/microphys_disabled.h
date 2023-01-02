@@ -47,7 +47,7 @@ class Microphys_disabled : public Microphys<TF>
 
         void init() {};
         void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) {};
-        void exec(Thermo<TF>&, const double, Stats<TF>&) {};
+        void exec(Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double) {};
         void exec_column(Column<TF>&) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
