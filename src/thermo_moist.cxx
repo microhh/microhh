@@ -258,9 +258,9 @@ namespace
         }
     }
 
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
-    void calc_liquid_water(
-            TF* restrict ql,
+    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi, bool ql_out, bool qi_out, bool qs_out>
+    void calc_satadjust_fld(
+            TF* restrict fld,
             TF* restrict thl,
             TF* restrict qt,
             TF* restrict p,
@@ -269,7 +269,6 @@ namespace
             const int kstart, const int kend,
             const int jj, const int kk)
     {
-        // Calculate the ql field
         #pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
@@ -280,7 +279,17 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    ql[ijk] = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex).ql;
+                    Struct_sat_adjust<TF> ssa =
+                        sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex);
+
+                    fld[ijk] = TF(0);
+
+                    if (qs_out)
+                        fld[ijk] = ssa.qs;
+                    if (ql_out)
+                        fld[ijk] += ssa.ql;
+                    if (qi_out)
+                        fld[ijk] += ssa.qi;
                 }
         }
     }
@@ -333,90 +342,6 @@ namespace
                 const int ijk  = i + j*jj+kstart*kk;
                 qlh[ijk] = 0.;
             }
-    }
-
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
-    void calc_ice(
-            TF* restrict qi,
-            TF* restrict thl,
-            TF* restrict qt,
-            TF* restrict p,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        // Calculate the ql field
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; k++)
-        {
-            const TF ex = exner(p[k]);
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    qi[ijk] = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex).qi;
-                }
-        }
-    }
-
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
-    void calc_condensate(
-            TF* restrict qc,
-            TF* restrict thl,
-            TF* restrict qt,
-            TF* restrict p,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        // Calculate the ql+qi field
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; k++)
-        {
-            const TF ex = exner(p[k]);
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    Struct_sat_adjust<TF> ssa =
-                            sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex);
-
-                    qc[ijk] = std::max(qt[ijk] - ssa.qs, TF(0.));
-                }
-        }
-    }
-
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
-    void calc_saturated_water_vapor(
-            TF* restrict qsat,
-            TF* restrict thl,
-            TF* restrict qt,
-            TF* restrict p,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        // Calculate the ql field
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; k++)
-        {
-            const TF ex = exner(p[k]);
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    qsat[ijk] = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thl[ijk], qt[ijk], p[k], ex).qs;
-                }
-        }
     }
 
     template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
@@ -1590,6 +1515,21 @@ void Thermo_moist<TF>::get_thermo_field(
         fields.release_tmp(tmp);
     }
 
+    // Generic wrappers for calculating base state output at full and half levels.
+    auto calc_satadjust_fld_wrapper = [&]
+            <bool satadjust_ql, bool satadjust_qi, bool calc_ql, bool calc_qi, bool calc_qs>()
+    {
+        calc_satadjust_fld<TF, satadjust_ql, satadjust_qi, calc_ql, calc_qi, calc_qs>(
+                fld.fld.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                base.pref.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
     if (name == "b")
     {
         auto tmp  = fields.get_tmp();
@@ -1655,25 +1595,16 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "ql")
     {
-        auto calc_liquid_water_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
-        {
-            calc_liquid_water<TF, satadjust_ql, satadjust_qi>(
-                    fld.fld.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    base.pref.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        };
+        const bool calc_ql = true;
+        const bool calc_qi = false;
+        const bool calc_qs = false;
 
         if (sw_satadjust_ql && sw_satadjust_qi)
-            calc_liquid_water_wrapper.template operator()<true, true>();
+            calc_satadjust_fld_wrapper.template operator()<true, true, calc_ql, calc_qi, calc_qs>();
         else if (sw_satadjust_ql)
-            calc_liquid_water_wrapper.template operator()<true, false>();
+            calc_satadjust_fld_wrapper.template operator()<true, false, calc_ql, calc_qi, calc_qs>();
         else
-            calc_liquid_water_wrapper.template operator()<false, false>();
+            calc_satadjust_fld_wrapper.template operator()<false, false, calc_ql, calc_qi, calc_qs>();
     }
     else if (name == "ql_h")
     {
@@ -1705,69 +1636,42 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "qi")
     {
-        auto calc_ice_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
-        {
-            calc_ice<TF, satadjust_ql, satadjust_qi>(
-                    fld.fld.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    base.pref.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        };
+        const bool calc_ql = false;
+        const bool calc_qi = true;
+        const bool calc_qs = false;
 
         if (sw_satadjust_ql && sw_satadjust_qi)
-            calc_ice_wrapper.template operator()<true, true>();
+            calc_satadjust_fld_wrapper.template operator()<true, true, calc_ql, calc_qi, calc_qs>();
         else if (sw_satadjust_ql)
-            calc_ice_wrapper.template operator()<true, false>();
+            calc_satadjust_fld_wrapper.template operator()<true, false, calc_ql, calc_qi, calc_qs>();
         else
-            calc_ice_wrapper.template operator()<false, false>();
+            calc_satadjust_fld_wrapper.template operator()<false, false, calc_ql, calc_qi, calc_qs>();
     }
     else if (name == "ql_qi")
     {
-        auto calc_condensate_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
-        {
-            calc_condensate<TF, satadjust_ql, satadjust_qi>(
-                    fld.fld.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    base.pref.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        };
+        const bool calc_ql = true;
+        const bool calc_qi = true;
+        const bool calc_qs = false;
 
         if (sw_satadjust_ql && sw_satadjust_qi)
-            calc_condensate_wrapper.template operator()<true, true>();
+            calc_satadjust_fld_wrapper.template operator()<true, true, calc_ql, calc_qi, calc_qs>();
         else if (sw_satadjust_ql)
-            calc_condensate_wrapper.template operator()<true, false>();
+            calc_satadjust_fld_wrapper.template operator()<true, false, calc_ql, calc_qi, calc_qs>();
         else
-            calc_condensate_wrapper.template operator()<false, false>();
+            calc_satadjust_fld_wrapper.template operator()<false, false, calc_ql, calc_qi, calc_qs>();
     }
     else if (name == "qsat")
     {
-        auto calc_saturated_water_vapor_wrapper = [&]<bool satadjust_ql, bool satadjust_qi>()
-        {
-            calc_saturated_water_vapor<TF, satadjust_ql, satadjust_qi>(
-                    fld.fld.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    base.pref.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        };
+        const bool calc_ql = false;
+        const bool calc_qi = false;
+        const bool calc_qs = true;
 
         if (sw_satadjust_ql && sw_satadjust_qi)
-            calc_saturated_water_vapor_wrapper.template operator()<true, true>();
+            calc_satadjust_fld_wrapper.template operator()<true, true, calc_ql, calc_qi, calc_qs>();
         else if (sw_satadjust_ql)
-            calc_saturated_water_vapor_wrapper.template operator()<true, false>();
+            calc_satadjust_fld_wrapper.template operator()<true, false, calc_ql, calc_qi, calc_qs>();
         else
-            calc_saturated_water_vapor_wrapper.template operator()<false, false>();
+            calc_satadjust_fld_wrapper.template operator()<false, false, calc_ql, calc_qi, calc_qs>();
     }
     else if (name == "rh")
     {
