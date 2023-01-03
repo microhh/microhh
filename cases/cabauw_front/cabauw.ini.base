@@ -33,15 +33,16 @@ dnmax=0.4
 [thermo]
 swthermo=moist
 swbasestate=anelastic
-pbot=1e5
 swupdatebasestate=1
 swtimedep_pbot=1
+swsatadjust_ql=1
+swsatadjust_qi=1
+pbot=1e5
 
 [micro]
 swmicro=sb06
-cflmax=1.2
 swintegrate=0
-swdebug=1
+swdebug=0
 Nc0=200000000
 Ni0=200000000
 
