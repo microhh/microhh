@@ -36,6 +36,7 @@
 
 #include "constants.h"
 #include "fast_math.h"
+#include "thermo_moist.h"
 
 namespace Thermo_moist_functions
 {
@@ -183,8 +184,8 @@ namespace Thermo_moist_functions
         TF qs;
     };
 
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
-    inline Struct_sat_adjust<TF> sat_adjust_flexi(
+    template<typename TF, Satadjust_type sw_satadjust>
+    inline Struct_sat_adjust<TF> sat_adjust(
             const TF thl, const TF qt, const TF p, const TF exn)
     {
         using Fast_math::pow2;
@@ -198,14 +199,14 @@ namespace Thermo_moist_functions
 
         Struct_sat_adjust<TF> ans =
         {
-            TF(0.), // ql
-            TF(0.), // qi
-            tl,     // t
-            qs,     // qs
+                TF(0.), // ql
+                TF(0.), // qi
+                tl,     // t
+                qs,     // qs
         };
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
-        if (!sw_satadjust_ql || qt-ans.qs <= TF(0.))
+        if (sw_satadjust == Satadjust_type::Disabled || qt-ans.qs <= TF(0.))
             return ans;
 
         /* Saturation adjustment solver.
@@ -215,9 +216,9 @@ namespace Thermo_moist_functions
 
         TF tnr = tl;
 
-        // Warm adjustment.
-        if (!sw_satadjust_qi || tl >= T0<TF>)
+        if (sw_satadjust == Satadjust_type::Liquid || tl >= T0<TF>)
         {
+            // Warm adjustment.
             while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 ++niter;
@@ -233,9 +234,9 @@ namespace Thermo_moist_functions
             ans.t  = tnr;
             ans.qs = qs;
         }
-            // Cold adjustment.
         else
         {
+            // Cold adjustment.
             while (std::fabs(tnr-tnr_old)/tnr_old > TF(1.e-5) && niter < nitermax)
             {
                 ++niter;
@@ -252,10 +253,10 @@ namespace Thermo_moist_functions
                         + alpha_w*Lv<TF>/cp<TF>*qs + alpha_i*Ls<TF>/cp<TF>*qs;
 
                 const TF f_prime = TF(1.)
-                        - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
-                        + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
-                        + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
-                        + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
+                                   - dalphadT*Lv<TF>/cp<TF>*qt + dalphadT*Ls<TF>/cp<TF>*qt
+                                   + dalphadT*Lv<TF>/cp<TF>*qs - dalphadT*Ls<TF>/cp<TF>*qs
+                                   + alpha_w*Lv<TF>/cp<TF>*dqsatdT_w
+                                   + alpha_i*Ls<TF>/cp<TF>*dqsatdT_i;
 
                 tnr -= f / f_prime;
             }
@@ -274,8 +275,10 @@ namespace Thermo_moist_functions
 
         if (niter == nitermax)
         {
-            std::string error = "Non-converging saturation adjustment: thl, qt, p = "
-                                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+            std::string error = "Non-converging saturation-adjustment. Input: thl="
+                    + std::to_string(thl) + " K, qt="
+                    + std::to_string(qt) + " kg/kg, p="
+                    + std::to_string(p) + " Pa";
 
             #ifdef USEMPI
             std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
@@ -288,7 +291,7 @@ namespace Thermo_moist_functions
         return ans;
     }
 
-    template<typename TF, bool sw_satadjust_ql, bool sw_satadjust_qi>
+    template<typename TF, Satadjust_type sw_satadjust>
     void calc_base_state(
             TF* restrict pref,
             TF* restrict prefh,
@@ -315,7 +318,7 @@ namespace Thermo_moist_functions
         exh[kstart] = exner(prefh[kstart]);
 
         Struct_sat_adjust<TF> ssa =
-            sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
+            sat_adjust<TF, sw_satadjust>(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
 
         thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ssa.ql, ssa.qi);
         rhoh[kstart] = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
@@ -327,7 +330,7 @@ namespace Thermo_moist_functions
         {
             // 1. Calculate remaining values (thv and rho) at full-level[k-1]
             ex[k-1]  = exner(pref[k-1]);
-            ssa = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
+            ssa = sat_adjust<TF, sw_satadjust>(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
             thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ssa.ql, ssa.qi);
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
@@ -339,7 +342,7 @@ namespace Thermo_moist_functions
             const TF thli = TF(0.5)*(thlmean[k-1] + thlmean[k]);
             const TF qti = TF(0.5)*(qtmean [k-1] + qtmean [k]);
 
-            ssa = sat_adjust_flexi<TF, sw_satadjust_ql, sw_satadjust_qi>(thli, qti, prefh[k], exh[k]);
+            ssa = sat_adjust<TF, sw_satadjust>(thli, qti, prefh[k], exh[k]);
 
             thvh[k] = virtual_temperature(exh[k], thli, qti, ssa.ql, ssa.qi);
             rhoh[k] = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);

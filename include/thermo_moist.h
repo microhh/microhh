@@ -40,15 +40,13 @@ template<typename> class Field3d;
 template<typename> class Timedep;
 template<typename> class Timeloop;
 
-
 /**
- * Class for the dry thermodynamics.
+ * Class for the moist thermodynamics.
  * This class is responsible for the computation of the right hand side term related to
- * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
- * equivalent and no complex buoyancy function is required.
+ * the acceleration by buoyancy.
  */
 
- enum class Micro_type {disabled, two_mom_warm};
+enum class Satadjust_type {Disabled, Liquid_ice, Liquid};
 
 template<typename TF>
 class Thermo_moist : public Thermo<TF>
@@ -129,8 +127,7 @@ class Thermo_moist : public Thermo<TF>
         Field3d_io<TF> field3d_io;
 
         // Switches for saturation adjustment ql and qi.
-        bool sw_satadjust_ql;
-        bool sw_satadjust_qi;
+        Satadjust_type sw_satadjust;
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
