@@ -188,8 +188,6 @@ namespace Thermo_moist_functions
     inline Struct_sat_adjust<TF> sat_adjust(
             const TF thl, const TF qt, const TF p, const TF exn)
     {
-        using Fast_math::pow2;
-
         int niter = 0;
         int nitermax = 10;
         TF tnr_old = TF(1.e9);
@@ -199,10 +197,10 @@ namespace Thermo_moist_functions
 
         Struct_sat_adjust<TF> ans =
         {
-                TF(0.), // ql
-                TF(0.), // qi
-                tl,     // t
-                qs,     // qs
+            TF(0.), // ql
+            TF(0.), // qi
+            tl,     // t
+            qs,     // qs
         };
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment.
