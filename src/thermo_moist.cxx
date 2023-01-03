@@ -258,7 +258,7 @@ namespace
         }
     }
 
-    template<typename TF, Satadjust_type sw_satadjust, bool return_ql, bool return_qi, bool return_qs>
+    template<typename TF, Satadjust_type sw_satadjust, Satadjust_field satadj_field>
     void calc_satadjust_fld(
             TF* restrict fld,
             TF* restrict thl,
@@ -280,16 +280,18 @@ namespace
                     const int ijk = i + j*jj + k*kk;
 
                     Struct_sat_adjust<TF> ssa =
-                        sat_adjust<TF, sw_satadjust>(thl[ijk], qt[ijk], p[k], ex);
+                            sat_adjust<TF, sw_satadjust>(thl[ijk], qt[ijk], p[k], ex);
 
-                    fld[ijk] = TF(0);
-
-                    if (return_qs)
+                    if (satadj_field == Satadjust_field::Temperature)
+                        fld[ijk] = ssa.t;
+                    if (satadj_field == Satadjust_field::Saturation_vapor)
                         fld[ijk] = ssa.qs;
-                    if (return_ql)
-                        fld[ijk] += ssa.ql;
-                    if (return_qi)
-                        fld[ijk] += ssa.qi;
+                    if (satadj_field == Satadjust_field::Liquid)
+                        fld[ijk] = ssa.ql;
+                    if (satadj_field == Satadjust_field::Ice)
+                        fld[ijk] = ssa.qi;
+                    if (satadj_field == Satadjust_field::Liquid_ice)
+                        fld[ijk] = ssa.ql + ssa.qi;
                 }
         }
     }
@@ -466,32 +468,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                 }
-    }
-
-    template<typename TF, Satadjust_type sw_satadjust>
-    void calc_T(
-            TF* const restrict T,
-            const TF* const restrict thl,
-            const TF* const restrict qt,
-            const TF* const restrict pref,
-            const TF* const restrict exnref,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; ++k)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj+ k*kk;
-
-                    T[ijk] = sat_adjust<TF, sw_satadjust>(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
-                }
-        }
     }
 
     template<typename TF, Satadjust_type sw_satadjust>
@@ -1523,9 +1499,9 @@ void Thermo_moist<TF>::get_thermo_field(
 
     // Generic wrappers for calculating base state output at full and half levels.
     auto calc_satadjust_fld_wrapper = [&]
-            <Satadjust_type sw_satadjust, bool return_ql, bool return_qi, bool return_qs>()
+            <Satadjust_type sw_satadjust, Satadjust_field satadjust_field>()
     {
-        calc_satadjust_fld<TF, sw_satadjust, return_ql, return_qi, return_qs>(
+        calc_satadjust_fld<TF, sw_satadjust, satadjust_field>(
                 fld.fld.data(),
                 fields.sp.at("thl")->fld.data(),
                 fields.sp.at("qt")->fld.data(),
@@ -1601,16 +1577,14 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "ql")
     {
-        const bool calc_ql = true;
-        const bool calc_qi = false;
-        const bool calc_qs = false;
+        const Satadjust_field satadjust_field = Satadjust_field::Liquid;
 
         if (sw_satadjust == Satadjust_type::Liquid_ice)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, satadjust_field>();
         else if (sw_satadjust == Satadjust_type::Liquid)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, satadjust_field>();
         else
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
     else if (name == "ql_h")
     {
@@ -1642,42 +1616,36 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "qi")
     {
-        const bool calc_ql = false;
-        const bool calc_qi = true;
-        const bool calc_qs = false;
+        const Satadjust_field satadjust_field = Satadjust_field::Ice;
 
         if (sw_satadjust == Satadjust_type::Liquid_ice)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, satadjust_field>();
         else if (sw_satadjust == Satadjust_type::Liquid)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, satadjust_field>();
         else
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
     else if (name == "ql_qi")
     {
-        const bool calc_ql = true;
-        const bool calc_qi = true;
-        const bool calc_qs = false;
+        const Satadjust_field satadjust_field = Satadjust_field::Liquid_ice;
 
         if (sw_satadjust == Satadjust_type::Liquid_ice)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, satadjust_field>();
         else if (sw_satadjust == Satadjust_type::Liquid)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, satadjust_field>();
         else
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
     else if (name == "qsat")
     {
-        const bool calc_ql = false;
-        const bool calc_qi = false;
-        const bool calc_qs = true;
+        const Satadjust_field satadjust_field = Satadjust_field::Saturation_vapor;
 
         if (sw_satadjust == Satadjust_type::Liquid_ice)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, satadjust_field>();
         else if (sw_satadjust == Satadjust_type::Liquid)
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, satadjust_field>();
         else
-            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, calc_ql, calc_qi, calc_qs>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
     else if (name == "rh")
     {
@@ -1716,26 +1684,14 @@ void Thermo_moist<TF>::get_thermo_field(
     }
     else if (name == "T")
     {
-        auto calc_T_wrapper = [&]<Satadjust_type sw_satadjust>()
-        {
-            calc_T<TF, sw_satadjust>(
-                    fld.fld.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    base.pref.data(),
-                    base.exnref.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        };
+        const Satadjust_field satadjust_field = Satadjust_field::Temperature;
 
         if (sw_satadjust == Satadjust_type::Liquid_ice)
-            calc_T_wrapper.template operator()<Satadjust_type::Liquid_ice>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid_ice, satadjust_field>();
         else if (sw_satadjust == Satadjust_type::Liquid)
-            calc_T_wrapper.template operator()<Satadjust_type::Liquid>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Liquid, satadjust_field>();
         else
-            calc_T_wrapper.template operator()<Satadjust_type::Disabled>();
+            calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
     else if (name == "T_h")
     {
