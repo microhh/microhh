@@ -336,9 +336,43 @@ namespace Sb_init
         }
 
         master.print_message("Table \"%s\" parsed successfully!\n", file_name.c_str());
+    };
 
 
+    template<typename TF>
+    void init_ice_nucleation_phillips(
+            std::vector<TF>& afrac_dust,
+            std::vector<TF>& afrac_soot,
+            std::vector<TF>& afrac_orga,
+            const int dim0, const int dim1,
+            const std::string& file_name,
+            Master& master)
+    {
+        /*
+            Function to read the `phillips_nucleation_2010.nc` lookup table
+            (converted from `phillips_nucleation_2010.incf` using `phillips_nucleation_to_nc.py`,
+            located in `microhh_root/misc`.
+        */
 
+        master.print_message("Reading lookup table \"%s\"\n", file_name.c_str());
 
+        // Read the lookup table.
+        Netcdf_file lut_nc(master, file_name, Netcdf_mode::Read);
+
+        const int ni = lut_nc.get_dimension_size("i");
+        const int nj = lut_nc.get_dimension_size("j");
+
+        if (ni != dim0 || nj != dim1)
+            throw std::runtime_error("Invalid dimensions sizes lookup table!");
+
+        // Allocate arrays.
+        afrac_dust.resize(ni*nj);
+        afrac_soot.resize(ni*nj);
+        afrac_orga.resize(ni*nj);
+
+        // Read data from NetCDF.
+        lut_nc.get_variable(afrac_dust, "afrac_dust", {0, 0}, {ni, nj});
+        lut_nc.get_variable(afrac_soot, "afrac_soot", {0, 0}, {ni, nj});
+        lut_nc.get_variable(afrac_orga, "afrac_orga", {0, 0}, {ni, nj});
     };
 }

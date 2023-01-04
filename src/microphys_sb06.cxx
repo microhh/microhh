@@ -383,10 +383,12 @@ Microphys_sb06<TF>::Microphys_sb06(
     sw_microbudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
     sw_debug = inputin.get_item<bool>("micro", "swdebug", "", false);
     sw_integrate = inputin.get_item<bool>("micro", "swintegrate", "", false);
+    sw_prognostic_ice = inputin.get_item<bool>("micro", "swprognosticice", "", true);
 
-    cfl_max = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
-    Ni0 = inputin.get_item<TF>("micro", "Ni0", "");
+
+    if (!sw_prognostic_ice)
+        Ni0 = inputin.get_item<TF>("micro", "Ni0", "");
 
     auto add_type = [&](
             const std::string& symbol,
@@ -435,16 +437,38 @@ Microphys_sb06<TF>::Microphys_sb06(
     // Setup/calculate cloud/rain/particle/... coefficients.
     init_2mom_scheme_once();
 
-    // Init lookup table for conversion graupel to hail (wet growth):
-    // NOTE: ICON supports input through ASCII and NetCDF files, and also
-    //       some hard-coded internal lookup table.. ICON by default uses
-    //       the NetCDF table; that's the only option that is supported here.
-    const std::string file_name = "dmin_wetgrowth_lookup_61.nc";
+    /*
+        Init lookup table for conversion graupel to hail (wet growth):
+        NOTE 1: ICON supports input through ASCII and NetCDF files, and also
+                some hard-coded internal lookup table.. ICON by default uses
+                the NetCDF table; that's the only option that is supported here.
+        NOTE2:  Unlike ICON, we don't support interpolation of the LUT inside the
+                code. `dmin_wetgrowth_lookup_61.nc` is the LUT from ICON, but
+                interpolated offline using `interpolate_dmin_table.py` in
+                microhh_root/misc.
+    */
+    const std::string dmin_file_name = "dmin_wetgrowth_lookup_61.nc";
 
     Sb_init::init_dmin_wg_gr_ltab_equi(
             ltabdminwgg,
-            file_name,
+            dmin_file_name,
             graupel,
+            master);
+
+    /*
+        Read lookup table from Phillips ice nucleation.
+        The NetCDF file is converted from `phillips_nucleation_2010.incf`,
+        using `phillips_nucleation_to_nc.py` located in `microhh_root/misc`.
+    */
+    const std::string phillips_file_name = "phillips_nucleation_2010.nc";
+
+    Sb_init::init_ice_nucleation_phillips(
+            afrac_dust,
+            afrac_soot,
+            afrac_orga,
+            dim0_afrac,
+            dim1_afrac,
+            phillips_file_name,
             master);
 }
 
@@ -478,8 +502,6 @@ void Microphys_sb06<TF>::init_2mom_scheme()
     //TYPE IS (particle_lwf)
     //  call particle_lwf_assign(hail,hail_vivek)
     //END SELECT
-
-
 }
 
 template<typename TF>
@@ -883,10 +905,16 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
 
     init_2mom_scheme();
 
-    //ice_typ   = cloud_type/1000           ! (0) no ice, (1) no hail (2) with hail
-    //nuc_i_typ = MOD(cloud_type/100,10)    ! choice of ice nucleation, see ice_nucleation_homhet()
-    //nuc_c_typ = MOD(cloud_type/10,10)     ! choice of CCN assumptions, see cloud_nucleation()
-    //auto_typ  = MOD(cloud_type,10)        ! choice of warm rain scheme, see clouds_twomoment()
+    //ice_typ = cloud_type/1000            // (0) no ice, (1) no hail (2) with hail
+    nuc_i_typ = (cloud_type/100) % 10;     // choice of ice nucleation, see ice_nucleation_homhet()
+    //nuc_c_typ = MOD(cloud_type/10,10)    // choice of CCN assumptions, see cloud_nucleation()
+    auto_typ  = cloud_type%10;             // choice of warm rain scheme, see clouds_twomoment()
+
+    // Our implemented options are very limited at the moment....
+    if (nuc_i_typ != 6)
+        throw std::runtime_error("Invalid ice nucleation option in \"cloud_type\"");
+    if (auto_typ != 3)
+        throw std::runtime_error("Invalid warm micro option in \"cloud_type\"");
 
     // Set the rain_coeff types to the default provided values
     rain_coeffs = rainSBBcoeffs;
@@ -1091,7 +1119,6 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     //  ENDIF
     //END IF
 
-
     if (sw_debug)
         master.print_message("---------------------------------------\n");
 }
@@ -1236,14 +1263,16 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
     thermo.get_thermo_field(*T, "T", cyclic, is_stat);
 
-    // Hack 1; get diagnostic qi from saturation adjustment,
-    // as long as we don't have prognostic ice.
-    thermo.get_thermo_field(*fields.ap.at("qi"), "qi", cyclic, is_stat);
+    if (!sw_prognostic_ice)
+    {
+        // Overwrite prognostic ice field with sat_adjust values from thermodynamics.
+        thermo.get_thermo_field(*fields.ap.at("qi"), "qi", cyclic, is_stat);
 
-    // Hack 2; set ice number concentration to fixed value from .ini file.
-    std::fill(
-        fields.ap.at("ni")->fld.begin(),
-        fields.ap.at("ni")->fld.end(), Ni0);
+        // Set ice number density to fixed value from namelist.
+        std::fill(
+                fields.ap.at("ni")->fld.begin(),
+                fields.ap.at("ni")->fld.end(), Ni0);
+    }
 
     // Hack 3; calculate q_vapor as qt-ql-qi for now...
     auto qv = fields.get_tmp_xy();
@@ -1676,13 +1705,16 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
                     //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
 
-                    //! homogeneous and heterogeneous ice nucleation
-                    //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
-                    //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
+            if (sw_prognostic_ice)
+            {
+                // Homogeneous and heterogeneous ice nucleation
+                //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
+                //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
-                    //! homogeneous freezing of cloud droplets
-                    //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
-                    //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
+                // Homogeneous freezing of cloud droplets
+                //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
+                //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
+            }
 
             // Depositional growth of all ice particles.
             // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
@@ -2297,8 +2329,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
             timer.stop("qh_evap");
             check("evaporation of hail", k);
 
-            //! warm rain processes
-            //! (using something other than SB is somewhat inconsistent and not recommended)
+            // Warm rain processes
+            // (Using something other than SB is somewhat inconsistent and not recommended)
             //IF (auto_typ == 1) THEN
             //   CALL autoconversionKB(ik_slice, dt, cloud, rain)   ! Beheng (1994)
             //   CALL accretionKB(ik_slice, dt, cloud, rain)
@@ -2357,7 +2389,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     k);
             timer.stop("qr_selfc");
             check("rain_selfcollectionSB", k);
-
             //ENDIF
 
             // Evaporation of rain following Seifert (2008)
@@ -2816,21 +2847,7 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 unsigned long Microphys_sb06<TF>::get_time_limit(unsigned long idt, const double dt)
 {
-    auto& gd = grid.get_grid_data();
-    auto tmp = fields.get_tmp();
-
-    double cfl = 0.;
-
-    // TO-DO
-
-    // Get maximum CFL across all MPI tasks
-    master.max(&cfl, 1);
-    fields.release_tmp(tmp);
-
-    // Prevent zero division.
-    cfl = std::max(cfl, 1.e-5);
-
-    return idt * this->cfl_max / cfl;
+    return Constants::ulhuge;
 }
 #endif
 

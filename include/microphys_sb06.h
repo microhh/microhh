@@ -337,13 +337,16 @@ class Microphys_sb06 : public Microphys<TF>
         void init_2mom_scheme();
         void init_2mom_scheme_once();
 
-        bool sw_warm;         // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
-        bool sw_microbudget;  // Output full microphysics budget terms
-        bool sw_debug;        // Print debug info.
-        bool sw_integrate;    // Pre-integrate water species in implicit solver.
-        double cfl_max;       // Max CFL number in microphysics sedimentation.
+        bool sw_warm;           // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
+        bool sw_prognostic_ice; // Switch between prognostic (calculated by SB06) or diagnostic (satadjust) ice.
+        bool sw_microbudget;    // Output full microphysics budget terms
+        bool sw_debug;          // Print debug info.
+        bool sw_integrate;      // Pre-integrate water species in implicit solver.
 
         const int cloud_type = 2673;
+        int nuc_i_typ;
+        int auto_typ;
+
         const int mu_Dm_rain_typ = 1;
         TF rain_gfak;
         const bool ice_multiplication = true;
@@ -416,6 +419,15 @@ class Microphys_sb06 : public Microphys<TF>
 
         // Structure to hold the new equidistant lookup table for graupel wetgrowth diameter.
         Lookupt_4D<TF> ltabdminwgg;
+
+        // Arrays to hold the Phillips ice nucleation lookup tables.
+        const int dim0_afrac = 101;
+        const int dim1_afrac = 101;
+
+        std::vector<TF> afrac_dust;
+        std::vector<TF> afrac_soot;
+        std::vector<TF> afrac_orga;
+
 
         const Particle<TF> rainSBB = {
                 "rainSBB", // name
