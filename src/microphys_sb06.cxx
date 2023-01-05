@@ -425,6 +425,13 @@ Microphys_sb06<TF>::Microphys_sb06(
 
         add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
         add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
+
+        if (sw_prognostic_ice)
+        {
+            // Extra prog. field for activated ice nuclei. Keep this out of the `hydro_types`...
+            fields.init_prognostic_field("ina", "activated ice nuclei", "kg kg-1", "thermo", gd.sloc);
+            fields.sp.at("ina")->visc = inputin.get_item<TF>("fields", "svisc", "ina");
+        }
     }
 
     const std::string group_name = "thermo";
@@ -910,6 +917,8 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
     //nuc_c_typ = MOD(cloud_type/10,10)    // choice of CCN assumptions, see cloud_nucleation()
     auto_typ  = cloud_type%10;             // choice of warm rain scheme, see clouds_twomoment()
 
+    master.print_message("nuc_i_typ=%d, auto_typ=%d\n", nuc_i_typ, auto_typ);
+
     // Our implemented options are very limited at the moment....
     if (nuc_i_typ != 6)
         throw std::runtime_error("Invalid ice nucleation option in \"cloud_type\"");
@@ -1242,6 +1251,7 @@ void Microphys_sb06<TF>::create(
     timer.add_timing("qr_evap");
     timer.add_timing("qr_accr");
     timer.add_timing("qr_selfc");
+    timer.add_timing("ice_nucleation");
 }
 
 #ifndef USECUDA
@@ -1391,8 +1401,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
-    convert_units_short(fields.ap.at("qi")->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
+    convert_units_short(fields.ap.at("ina")->fld.data(), to_kgm3);
 
     for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
@@ -1707,9 +1717,35 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
             if (sw_prognostic_ice)
             {
-                const bool use_prog_in = false; // Only used with prognostic CCN and IN.
+                const bool use_prog_in = false;  // Only used with prognostic CCN and IN.
 
                 // Homogeneous and heterogeneous ice nucleation
+                timer.start("ice_nucleation");
+                Sb_cold::ice_nucleation_homhet(
+                        hydro_types.at("qi").conversion_tend,
+                        hydro_types.at("ni").conversion_tend,
+                        (*qtt_ice).data(),
+                        &fields.st.at("ina")->fld.data()[k*gd.ijcells],
+                        hydro_types.at("qi").slice,
+                        hydro_types.at("ni").slice,
+                        (*qv).data(),
+                        &ql->fld.data()[k*gd.ijcells],
+                        &T->fld.data()[k*gd.ijcells],
+                        &fields.mp.at("w")->fld.data()[k*gd.ijcells],
+                        afrac_dust.data(),
+                        afrac_soot.data(),
+                        afrac_orga.data(),
+                        ice,
+                        use_prog_in,
+                        nuc_i_typ,
+                        p[k], TF(dt),
+                        dim1_afrac,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells);
+                timer.stop("ice_nucleation");
+                check("ice_nucleation", k);
+
                 //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
                 //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
@@ -2497,10 +2533,12 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     // Convert specific humidity from `kg m-3` to `kg kg-1`
     convert_units_short(fields.ap.at("qt")->fld.data(), !to_kgm3);
+    convert_units_short(fields.ap.at("ina")->fld.data(), !to_kgm3);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
     stats.calc_tend(*fields.st.at("qt" ), tend_name);
+
     for (auto& it : hydro_types)
         stats.calc_tend(*fields.st.at(it.first), tend_name);
 
@@ -2551,8 +2589,8 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    const bool is_stat = true;
-    const bool cyclic = false;
+    //const bool is_stat = true;
+    //const bool cyclic = false;
 
     // Time series
     for (auto& it : hydro_types)

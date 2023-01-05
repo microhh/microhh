@@ -56,6 +56,10 @@ namespace Sb_cold
     template<typename TF> constexpr TF rcpl = 3.1733;                  // cp_d / cp_l - 1
     template<typename TF> constexpr TF clw = (rcpl<TF> + TF(1)) * Constants::cp<TF>; // cp_d / cp_l - 1
     template<typename TF> constexpr TF e_3 = 6.10780000e2;             // Saettigungsdamppfdruck bei T = T_3
+    template<typename TF> constexpr TF N_avo = 6.02214179e23;          // Avogadro constant [1/mo]
+    template<typename TF> constexpr TF k_b = 1.3806504e-23;            // Boltzmann constant [J/K]
+
+
 
     // Various parameters for collision and conversion rates
     template<typename TF> constexpr TF ecoll_min = 0.01;               // min. eff. for graupel_cloud, ice_cloud and snow_cloud
@@ -69,9 +73,9 @@ namespace Sb_cold
     template<typename TF> constexpr TF T_mult_opt = 268.0;             // Optimale Temp. Splintering
 
     // Phillips et al. ice nucleation scheme, see ice_nucleation_homhet() for more details
-    template<typename TF> constexpr TF na_dust    = 160.e4;    // initial number density of dust [1/m], Phillips08 value 162e3 (never used, reset later)
-    template<typename TF> constexpr TF na_soot    =  25.e6;    // initial number density of soot [1/m], Phillips08 value 15e6 (never used, reset later)
-    template<typename TF> constexpr TF na_orga    =  30.e6;    // initial number density of organics [1/m3], Phillips08 value 177e6 (never used, reset later)
+    //template<typename TF> constexpr TF na_dust    = 160.e4;    // initial number density of dust [1/m], Phillips08 value 162e3 (never used, reset later)
+    //template<typename TF> constexpr TF na_soot    =  25.e6;    // initial number density of soot [1/m], Phillips08 value 15e6 (never used, reset later)
+    //template<typename TF> constexpr TF na_orga    =  30.e6;    // initial number density of organics [1/m3], Phillips08 value 177e6 (never used, reset later)
     template<typename TF> constexpr TF ni_het_max = 100.0e3;   // max number of IN between 1-10 per liter, i.e. 1d3-10d3
     template<typename TF> constexpr TF ni_hom_max = 5000.0e3;  // number of liquid aerosols between 100-5000 per liter
 
@@ -213,8 +217,7 @@ namespace Sb_cold
     template<typename TF>
     inline TF set_qni(const TF qi)
     {
-        const TF Dmean = TF(100e-6);
-
+        //const TF Dmean = TF(100e-6);
         //!set_qni  = qi / 1e-10   !  qiin / ( ( Dmean / ageo) ** (1.0_wp / bgeo) )
         //!set_qni =  5.0E+0_wp * EXP(0.304_wp *  (T_3 - T))   ! FR: Cooper (1986) used by Greg Thompson(2008)
         return qi / TF(1e-10);  //  qiin / ( exp(log(( Dmean / ageo)) * (1.0_wp / bgeo)) )
@@ -2508,7 +2511,6 @@ namespace Sb_cold
             const int ls = ltab.n4_stride;
             const int ks = ltab.n3_stride;
             const int js = ltab.n2_stride;
-            const int is = ltab.n1_stride;
 
             auto index = [](
                     const int l,  const int k,  const int j,  const int i,
@@ -2885,13 +2887,16 @@ namespace Sb_cold
             TF* const restrict qtt_ice,
             TF* const restrict n_inact,
             const TF* const restrict qv,
+            const TF* const restrict ql,
             const TF* const restrict Ta,
             const TF* const restrict afrac_dust,
             const TF* const restrict afrac_soot,
             const TF* const restrict afrac_orga,
             Particle<TF>& ice,
-            Particle<TF>& cloud,
-            // bool use_prog_in
+            bool use_prog_in,
+            const TF na_dust,
+            const TF na_soot,
+            const TF na_orga,
             const TF dt,
             const int afrac_stride,
             const int istart, const int iend,
@@ -2912,7 +2917,7 @@ namespace Sb_cold
                 const int ij = i + j*jstride;
 
                 const TF e_si = tmf::esat_ice(Ta[ij]);    // e_es(T_a) in ICON = sat_pres_ice
-                const TF ssi  = qv[ij] * Constants::Rd<TF> * Ta[ij] / e_si;
+                const TF ssi  = qv[ij] * Constants::Rv<TF> * Ta[ij] / e_si;
 
                 TF infrac1, infrac2, infrac3; // Interpolated values from LUT
 
@@ -2927,7 +2932,7 @@ namespace Sb_cold
                     const TF f0x = TF(ii) + TF(1) - xt;
                     const TF f1x = xt - TF(ii);
 
-                    if (cloud.q[ij] > eps)
+                    if (ql[ij] > eps)
                     {
                         // Immersion freezing at water saturation.
                         const int jj = 99;
@@ -2974,18 +2979,20 @@ namespace Sb_cold
                     }
 
                     // Sum up the three modes;
-                    //if (use_prog_in)
-                    //{
-                    //    // `n_inpot` replaces `na_dust`; `na_soot` and `na_orga` are assumed to be constant;
-                    //    ndiag  = n_inpot[ij] * infrac1 + na_soot * infrac2 + na_orga * infrac3;
-                    //    ndiag_dust = n_inpot[ij] * infrac1;
-                    //    ndiag_all = ndiag;
-                    //}
-                    //else
-                    //{
-                    // All aerosol species are diagnostic;
-                    TF ndiag = na_dust<TF> * infrac1 + na_soot<TF> * infrac2 + na_orga<TF> * infrac3;
-                    //}
+                    TF ndiag;
+                    if (use_prog_in)
+                    {
+                        throw std::runtime_error("\"use_prog_in\" not (yet) supported..");
+                        // `n_inpot` replaces `na_dust`; `na_soot` and `na_orga` are assumed to be constant;
+                        //ndiag  = n_inpot[ij] * infrac1 + na_soot * infrac2 + na_orga * infrac3;
+                        //ndiag_dust = n_inpot[ij] * infrac1;
+                        //ndiag_all = ndiag;
+                    }
+                    else
+                    {
+                        // All aerosol species are diagnostic;
+                        ndiag = na_dust * infrac1 + na_soot * infrac2 + na_orga * infrac3;
+                    }
 
                     ndiag = std::min(ndiag, ni_het_max<TF>);
                     TF nuc_n = std::max(ndiag - n_inact[ij],TF(0));
@@ -2993,6 +3000,8 @@ namespace Sb_cold
                     nuc_n = nuc_q / ice.x_min;
 
                     // From absolute change -> tendency.
+                    // NOTE: there is no `*dt` in ICON, but `nuc_q` and `nuc_n` are assumed to
+                    // be total increments of `ni` and `qi`....?
                     nuc_q *= zdt;
                     nuc_n *= zdt;
 
@@ -3015,11 +3024,278 @@ namespace Sb_cold
                     //nuc_n_a(i, k) = TF(0);
                     //ndiag_mask(i, k) = .FALSE.;
                     //}
-                }
+                } // if
             } // loop
     } // function
 
 
+    template<typename TF>
+    void ice_nucleation_homhet(
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qtt_ice,
+            TF* const restrict n_inact,
+            //TF* const restrict n_inpot,
+            const TF* const restrict qi,
+            const TF* const restrict ni,
+            const TF* const restrict qv,
+            const TF* const restrict ql,
+            const TF* const restrict Ta,
+            const TF* const restrict w,
+            const TF* const restrict afrac_dust,
+            const TF* const restrict afrac_soot,
+            const TF* const restrict afrac_orga,
+            Particle<TF>& ice,
+            bool use_prog_in,
+            const int nuc_i_typ,
+            const TF p,
+            const TF dt,
+            const int afrac_stride,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        /*
+            Homogeneous and heterogeneous ice nucleation.
 
+            Nucleation scheme is based on the papers:
+            - "A parametrization of cirrus cloud formation: Homogenous
+              freezing of supercooled aerosols" by B. Kaercher and
+              U. Lohmann 2002 (KL02 hereafter)
+            - "Physically based parameterization of cirrus cloud formation
+              for use in global atmospheric models" by B. Kaercher, J. Hendricks
+              and U. Lohmann 2006 (KHL06 hereafter)
+            - Phillips et al. (2008) with extensions
+        */
+
+        const TF zdt = TF(1) / dt;
+
+        // Switch for version of Phillips et al. scheme.
+        // Only `2010` is supported (also in ICON)..
+        const int iphillips = 2010;
+
+        // Other switches, set below based on certain criteria.
+        bool use_homnuc;
+
+        // Variables set dynamically below
+        TF na_dust, na_soot, na_orga;
+
+        // Some more constants needed for homogeneous nucleation scheme.
+        const TF r_0     = 0.25e-6;                     // aerosol particle radius prior to freezing
+        const TF alpha_d = 0.5;                         // deposition coefficient (KL02; Spichtinger & Gierens 2009)
+        const TF M_w     = 18.01528e-3;                 // molecular mass of water [kg/mol]
+        const TF M_a     = 28.96e-3;                    // molecular mass of air [kg/mol]
+        const TF ma_w    = M_w / N_avo<TF>;             // mass of water molecule [kg]
+        const TF svol    = ma_w / Constants::rho_i<TF>; // specific volume of a water molecule in ice
+
+        // Parameters for Hande et al. nucleation parameterization for HDCP2 simulations
+        //TYPE(dep_imm_coeffs), PARAMETER :: hdcp2_nuc_coeffs(5) &
+        //     = (/ dep_imm_coeffs(&  ! Spring of Table 1
+        //     nin_imm = 1.5684e5, &
+        //     alf_imm = 0.2466,   &
+        //     bet_imm = 1.2293,   &
+        //     nin_dep = 1.7836e5, &
+        //     alf_dep = 0.0075,   &
+        //     bet_dep = 2.0341),  &
+        //     dep_imm_coeffs(     &  ! Summer
+        //     nin_imm = 2.9694e4, &
+        //     alf_imm = 0.2813,   &
+        //     bet_imm = 1.1778,   &
+        //     nin_dep = 2.6543e4, &
+        //     alf_dep = 0.0020,   &
+        //     bet_dep = 2.5128),  &
+        //     dep_imm_coeffs(     &  ! Autumn
+        //     nin_imm = 4.9920e4, &
+        //     alf_imm = 0.2622,   &
+        //     bet_imm = 1.2044,   &
+        //     nin_dep = 7.7167e4, &
+        //     alf_dep = 0.0406,   &
+        //     bet_dep = 1.4705),  &
+        //     dep_imm_coeffs(     &  ! Winter
+        //     nin_imm = 1.0259e5, &
+        //     alf_imm = 0.2073,   &
+        //     bet_imm = 1.2873,   &
+        //     nin_dep = 1.1663e4, &
+        //     alf_dep = 0.0194,   &
+        //     bet_dep = 1.6943),  &
+        //     dep_imm_coeffs(     &  ! Spring with 95th percentile scaling factor
+        //     nin_imm = 1.5684e5 * 17.82, &
+        //     alf_imm = 0.2466,   &
+        //     bet_imm = 1.2293,   &
+        //     nin_dep = 1.7836e5 * 5.87, &
+        //     alf_dep = 0.0075,   &
+        //     bet_dep = 2.0341) /)
+
+        if (nuc_i_typ == 0)
+            use_homnuc = false;
+        else if (nuc_i_typ < 10)
+            use_homnuc = true;
+        else
+            throw std::runtime_error("Invalid \"nuc_i_typ\".");
+
+        // switch for Hande et al. ice nucleation, if `true`, this turns off Phillips scheme.
+        const bool use_hdcp2_het = (nuc_i_typ <= 5);
+        if (use_hdcp2_het)
+            throw std::runtime_error("Hande et al. ice nucleation not (yet) implemented.");
+
+        // Heterogeneous nucleation using Hande et al. scheme;
+        if (use_hdcp2_het)
+        {
+            //IF (nuc_typ < 1 .OR. nuc_typ > 5) THEN
+            //    CALL finish(TRIM(routine), &
+            //        & 'Error in two_moment_mcrph: Invalid value nuc_typ in case of &
+            //        &use_hdcp2_het=.true.')
+            //END IF
+            //CALL ice_nucleation_het_hdcp2(ik_slice, atmo, ice, cloud, &
+            //    use_prog_in, hdcp2_nuc_coeffs(nuc_typ), n_inact, ndiag_mask, nuc_n_a)
+        }
+        else
+        {
+            // Heterogeneous nucleation using Phillips et al. scheme;
+            if (iphillips == 2010)
+            {
+                // Possible pre-defined choices.
+                if (nuc_i_typ == 6)
+                {
+                    // With no organics and rather high soot, coming close to Meyers formula at -20 C
+                    na_dust  = TF(160.e4);  // initial number density of dust [1/m3];
+                    na_soot  = TF(30.e6);   // initial number density of soot [1/m3];
+                    na_orga  = TF(0.e0);    // initial number density of organics [1/m3];
+                }
+                else if (nuc_i_typ == 7)
+                {
+                    // With some organics and rather high soot.
+                    na_dust  = TF(160.e4);  // Coming close to Meyers formula at -20 C;
+                    na_soot  = TF( 25.e6);
+                    na_orga  = TF( 30.e6);
+                }
+                else if (nuc_i_typ == 8)
+                {
+                    // No organics, no soot, coming close to DeMott et al. 2010 at -20 C
+                    na_dust  = TF(70.e4);  // i.e. roughly one order in magnitude lower than Meyers;
+                    na_soot  = TF(0.e6);
+                    na_orga  = TF(0.e6);
+                }
+                else
+                    throw std::runtime_error("Invalid value nuc_typ in case of use_hdcp2_het=false");
+            }
+
+            ice_nucleation_het_philips(
+                qit, nit, qtt_ice,
+                n_inact,
+                qv, ql, Ta,
+                afrac_dust, afrac_soot, afrac_orga,
+                ice, use_prog_in,
+                na_dust, na_soot, na_orga,
+                dt, afrac_stride,
+                istart, iend,
+                jstart, jend,
+                jstride);
+        }
+
+        //IF (use_prog_in) THEN
+        //  DO k = kstart, kend
+        //    DO i = istart, iend
+        //      n_inpot(i,k) = MERGE(MAX(n_inpot(i,k) - nuc_n_a(i, k), 0.0_wp), &
+        //           &               n_inpot(i, k), &
+        //           &               ndiag_mask(i, k))
+        //    END DO
+        //  END DO
+        //END IF
+
+        if (use_homnuc)
+        {
+            // Homogeneous nucleation using KHL06 approach
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jstride;
+
+                    const TF e_si = tmf::esat_ice(Ta[ij]);    // e_es(T_a) in ICON = sat_pres_ice
+                    const TF ssi  = qv[ij] * Constants::Rv<TF> * Ta[ij] / e_si;
+
+                    // Critical supersaturation for homogeneous nucleation;
+                    const TF scr = TF(2.349) - Ta[ij] * (TF(1) / TF(259));
+
+                    if (ssi > scr && Ta[ij] < TF(235) && ni[ij] < ni_hom_max<TF>)
+                    {
+                        const TF x_i = particle_meanmass(ice, qi[ij], ni[ij]);
+
+                        //r_i = (x_i/(4./3.*pi*rho_ice))**(1./3.);
+                        const TF r_i =
+                            std::exp( (TF(1)/TF(3)) * std::log(x_i / (TF(4)/TF(3) * pi<TF> * Constants::rho_i<TF>)) );
+
+                        const TF v_th = sqrt(TF(8)* k_b<TF> * Ta[ij] / (pi<TF> * ma_w));
+                        const TF flux = alpha_d * v_th / TF(4);
+                        const TF n_sat = e_si / (k_b<TF> * Ta[ij]);
+
+                        // Coeffs of supersaturation equation;
+                        const TF acoeff1 =
+                            (Constants::Ls<TF> * Constants::grav<TF>) /
+                            (Constants::cp<TF> * Constants::Rv<TF> * fm::pow2(Ta[ij])) - Constants::grav<TF> /
+                                    (Constants::Rd<TF> * Ta[ij]);
+                        const TF acoeff2 = TF(1) / n_sat;
+                        const TF acoeff3 =
+                            (fm::pow2(Constants::Ls<TF>) * M_w * ma_w) / (Constants::cp<TF> * p * Ta[ij] * M_a);
+
+                        // Coeffs of depositional growth equation;
+                        const TF bcoeff1 = flux * svol * n_sat * (ssi - TF(1));
+                        const TF bcoeff2 = flux / diffusivity(Ta[ij], p);
+
+                        // Pre-existing ice crystals included as reduced updraft speed;
+                        const TF ri_dot = bcoeff1 / (TF(1) + bcoeff2 * r_i);
+                        const TF R_ik = (TF(4) * pi<TF>) / svol * ni[ij] * fm::pow2(r_i) * ri_dot;
+                        TF w_pre = (acoeff2 + acoeff3 * ssi)/(acoeff1 * ssi) * R_ik;  // KHL06 Eq. 19;
+                        w_pre = std::max(w_pre, TF(0));
+
+                        // NOTE BvS: using `w[ij]` is a bit cheap (staggered grid); this assumes
+                        // that nucleation only happens if there is a positive vertical velocity
+                        // at the bottom of the current grid box...
+                        // Would interpolation of `w` to full levels be better?
+                        if (w[ij] > w_pre)
+                        {
+                            // Homogenous nucleation event
+                            // Timescales of freezing event (see KL02, RM05, KHL06);
+                            const TF cool = Constants::grav<TF> / Constants::cp<TF> * w[ij];
+                            const TF ctau = Ta[ij] * (TF(0.004) * Ta[ij] - TF(2)) + TF(304.4);
+                            const TF tau = TF(1) / (ctau * cool);   // freezing timescale, eq. (5);
+                            const TF delta = (bcoeff2 * r_0);       // dimless aerosol radius, eq.(4);
+                            const TF phi = acoeff1 * ssi / ( acoeff2 + acoeff3 * ssi) * (w[ij] - w_pre);
+
+                            // Monodisperse approximation following KHL06;
+                            const TF kappa = TF(2) * bcoeff1 * bcoeff2 * tau / fm::pow2(TF(1) + delta);  // kappa, Eq. 8 KHL06;
+                            const TF sqrtkap = sqrt(kappa);
+                            // Analytical approx. of erfc by RM05:
+                            const TF ren = TF(3) * sqrtkap / (TF(2) + sqrt(TF(1) + TF(9) * kappa / pi<TF>));
+                            const TF R_imfc  = TF(4) * pi<TF> * bcoeff1/fm::pow2(bcoeff2) / svol;
+                            const TF R_im    = R_imfc / (TF(1) + delta) * ( fm::pow2(delta) - TF(1)
+                                + (TF(1) + TF(0.5) * kappa * fm::pow2(TF(1) + delta)) * ren/sqrtkap);    // RIM Eq. 6 KHL06
+
+                            // Number concentration and radius of ice particles;
+                            const TF ni_hom  = phi / R_im;                                  // ni Eq.9 KHL06;
+                            const TF ri_0 = TF(1) + TF(0.5) * sqrtkap * ren;                // for Eq. 3 KHL06;
+                            const TF ri_hom  = (ri_0 * (TF(1) + delta) - TF(1)) / bcoeff2;  // Eq. 3 KHL06 * REN = Eq.23 KHL06;
+                            TF mi_hom  = (TF(4)/TF(3) * pi<TF> * Constants::rho_i<TF>) * ni_hom * fm::pow3(ri_hom);
+                            mi_hom  = std::max(mi_hom, ice.x_min);
+
+                            TF nuc_n = std::max(std::min(ni_hom, ni_hom_max<TF>), TF(0));
+                            //const TF nuc_q = std::min(nuc_n * mi_hom, atmo.qv[ij]);
+                            TF nuc_q = nuc_n * mi_hom;
+
+                            // From absolute change -> tendency.
+                            // NOTE: there is no `*dt` in ICON, but `nuc_q` and `nuc_n` are assumed to
+                            // be total increments of `ni` and `qi`....?
+                            nuc_n *= zdt;
+                            nuc_q *= zdt;
+
+                            nit[ij] += nuc_n;
+                            qit[ij] += nuc_q;
+                            qtt_ice[ij] -= nuc_q;
+                        }
+                    }
+                } // loop
+        } // if
+    } // function
 
 } // namespace

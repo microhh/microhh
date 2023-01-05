@@ -428,7 +428,6 @@ class Microphys_sb06 : public Microphys<TF>
         std::vector<TF> afrac_soot;
         std::vector<TF> afrac_orga;
 
-
         const Particle<TF> rainSBB = {
                 "rainSBB", // name
                 0.000000,  // nu
