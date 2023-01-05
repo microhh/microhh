@@ -386,7 +386,6 @@ Microphys_sb06<TF>::Microphys_sb06(
     sw_prognostic_ice = inputin.get_item<bool>("micro", "swprognosticice", "", true);
 
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
-
     if (!sw_prognostic_ice)
         Ni0 = inputin.get_item<TF>("micro", "Ni0", "");
 
@@ -1284,7 +1283,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 fields.ap.at("ni")->fld.end(), Ni0);
     }
 
-    // Hack 3; calculate q_vapor as qt-ql-qi for now...
+    // Qv is diagnosed as qt-ql (prognostic ice), or qt-ql-qi (satadjust ice).
     auto qv = fields.get_tmp_xy();
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
@@ -1355,18 +1354,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         std::fill((*fld_xy).begin(), (*fld_xy).end(), TF(0));
     };
 
-    auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
-    {
-        Sb_common::convert_unit(
-                data_ptr,
-                rho.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells,
-                is_to_kgm3);
-    };
-
+    // This function is called after each process conversion.
     auto check = [&](const std::string& name, const int k)
     {
         /*
@@ -1399,6 +1387,18 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     };
 
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
+    auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
+    {
+        Sb_common::convert_unit(
+                data_ptr,
+                rho.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells,
+                is_to_kgm3);
+    };
+
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
@@ -1407,7 +1407,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
 
-    // Set to default values where qnx=0 and qx0
+    // Set to default values where qnx=0 and qx0>0
     timer.start("set_default_n");
     Sb_cold::set_default_n(
             fields.ap.at("qi")->fld.data(),
@@ -1460,15 +1460,25 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {
         // Diagnose qv into 2D slice.
-        Sb_cold::diagnose_qv(
-            (*qv).data(),
-            fields.ap.at("qt")->fld.data(),
-            ql->fld.data(),
-            fields.ap.at("qi")->fld.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells, gd.ijcells,
-            k);
+        // With prognostic ice, qv = qt - ql.
+        // Without "       "    qv = qt - ql - qi.
+        auto diagnose_qv_wrapper = [&]<bool prognostic_ice>()
+        {
+            Sb_cold::diagnose_qv<TF, prognostic_ice>(
+                    (*qv).data(),
+                    fields.ap.at("qt")->fld.data(),
+                    ql->fld.data(),
+                    fields.ap.at("qi")->fld.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+        };
+
+        if (sw_prognostic_ice)
+            diagnose_qv_wrapper.template operator()<true>();
+        else
+            diagnose_qv_wrapper.template operator()<false>();
 
         for (auto& it : hydro_types)
         {
@@ -1745,9 +1755,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                         gd.icells);
                 timer.stop("ice_nucleation");
                 check("ice_nucleation", k);
-
-                //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
-                //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
 
                 // Homogeneous freezing of cloud droplets
                 //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)

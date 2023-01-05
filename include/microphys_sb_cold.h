@@ -183,7 +183,7 @@ namespace Sb_cold
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool sw_prognostic_ice>
     void diagnose_qv(
             TF* const restrict qv,
             const TF* const restrict qt,
@@ -201,7 +201,10 @@ namespace Sb_cold
                 const int ij = i + j*jstride;
                 const int ijk = i + j*jstride + k*kstride;
 
-                qv[ij] = qt[ijk] - ql[ijk] - qi[ijk];
+                if (sw_prognostic_ice)
+                    qv[ij] = qt[ijk] - ql[ijk];
+                else
+                    qv[ij] = qt[ijk] - ql[ijk] - qi[ijk];
             }
     }
 
