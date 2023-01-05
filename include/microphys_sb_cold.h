@@ -68,6 +68,19 @@ namespace Sb_cold
     template<typename TF> constexpr TF T_mult_max = 270.0;             // Maximale Temp. Splintering
     template<typename TF> constexpr TF T_mult_opt = 268.0;             // Optimale Temp. Splintering
 
+    // Phillips et al. ice nucleation scheme, see ice_nucleation_homhet() for more details
+    template<typename TF> constexpr TF na_dust    = 160.e4;    // initial number density of dust [1/m], Phillips08 value 162e3 (never used, reset later)
+    template<typename TF> constexpr TF na_soot    =  25.e6;    // initial number density of soot [1/m], Phillips08 value 15e6 (never used, reset later)
+    template<typename TF> constexpr TF na_orga    =  30.e6;    // initial number density of organics [1/m3], Phillips08 value 177e6 (never used, reset later)
+    template<typename TF> constexpr TF ni_het_max = 100.0e3;   // max number of IN between 1-10 per liter, i.e. 1d3-10d3
+    template<typename TF> constexpr TF ni_hom_max = 5000.0e3;  // number of liquid aerosols between 100-5000 per liter
+
+    // Look-up table for Phillips et al. nucleation
+    const int ttmax  = 30;   // sets limit for temperature in look-up table
+    const int ssmax  = 60;   // sets limit for ice supersaturation in look-up table
+    const int ttstep = 2;    // increment for temperature in look-up table
+    const int ssstep = 1;    // increment for ice supersaturation in look-up table
+
     // Even more parameters for collision and conversion rates
     template<typename TF> constexpr TF q_crit_ii = 1.000e-6;           // q-threshold for ice_selfcollection
     template<typename TF> constexpr TF D_crit_ii = 5.0e-6;             // D-threshold for ice_selfcollection
@@ -82,7 +95,8 @@ namespace Sb_cold
     template<typename TF> constexpr TF D_crit_c  = 10.00e-6;           // D-threshold for cloud drop collection efficiency
     template<typename TF> constexpr TF D_coll_c  = 40.00e-6;           // upper bound for diameter in collision efficiency
 
-    template<typename TF> constexpr TF T_freeze  = 273.15;             // Same as Constants::T0...
+    template<typename TF> constexpr TF T_nuc  = 268.15;                // lower temperature threshold for ice nucleation, -5 C
+    template<typename TF> constexpr TF T_freeze  = 273.15;             // lower temperature threshold for raindrop freezing
     template<typename TF> constexpr TF T_f  = 233.0;                   // below this temperature there is no liquid water
 
 
@@ -2862,4 +2876,150 @@ namespace Sb_cold
                 }
             } // i
     } // function
+
+
+    template<typename TF>
+    void ice_nucleation_het_philips(
+            TF* const restrict qit,
+            TF* const restrict nit,
+            TF* const restrict qtt_ice,
+            TF* const restrict n_inact,
+            const TF* const restrict qv,
+            const TF* const restrict Ta,
+            const TF* const restrict afrac_dust,
+            const TF* const restrict afrac_soot,
+            const TF* const restrict afrac_orga,
+            Particle<TF>& ice,
+            Particle<TF>& cloud,
+            // bool use_prog_in
+            const TF dt,
+            const int afrac_stride,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF eps = TF(1.0e-20);     // DANGEROUS for SP.
+        const TF zdt = TF(1) / dt;
+
+        // (i,j) strides in lookup table.
+        const int iis = afrac_stride;
+        const int jjs = 1;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                const TF e_si = tmf::esat_ice(Ta[ij]);    // e_es(T_a) in ICON = sat_pres_ice
+                const TF ssi  = qv[ij] * Constants::Rd<TF> * Ta[ij] / e_si;
+
+                TF infrac1, infrac2, infrac3; // Interpolated values from LUT
+
+                if (Ta[ij] < T_nuc<TF> && Ta[ij] > TF(180) && ssi > TF(1) && n_inact[ij] < ni_het_max<TF>)
+                {
+                    // Interpolation index x-direction
+                    TF xt = (TF(274.) - Ta[ij]) / ttstep;
+                    xt = std::min(xt, TF(ttmax-1));
+                    const int ii = int(xt);
+
+                    // Interpolation factors x-direction
+                    const TF f0x = TF(ii) + TF(1) - xt;
+                    const TF f1x = xt - TF(ii);
+
+                    if (cloud.q[ij] > eps)
+                    {
+                        // Immersion freezing at water saturation.
+                        const int jj = 99;
+                        const int ij  = jj + ii*iis;
+
+                        infrac1 = f0x * afrac_dust[ij]
+                                + f1x * afrac_dust[ij+iis];
+
+                        infrac2 = f0x * afrac_soot[ij]
+                                + f1x * afrac_soot[ij+iis];
+
+                        infrac3 = f0x * afrac_orga[ij]
+                                + f1x * afrac_orga[ij+iis];
+                    }
+                    else
+                    {
+                        // Deposition nucleation below water saturation;
+                        // Calculate indices used for 2D look-up tables;
+                        TF xs = 100. * (ssi - TF(1.0)) / ssstep;
+                        xs = std::min(xs, TF(ssmax-1));
+                        const int jj = std::max(1, int(xs));
+                        const TF ssr = std::max(TF(1), std::floor(xs));
+
+                        // Interpolation factor y-direction.
+                        const TF f0y = ssr + TF(1) - xs;
+                        const TF f1y = xs - ssr;
+
+                        const int ij  = jj + ii*iis;
+
+                        infrac1 = f0x * f0y * afrac_dust[ij]
+                                + f1x * f0y * afrac_dust[ij+iis]
+                                + f0x * f1y * afrac_dust[ij+jjs]
+                                + f1x * f1y * afrac_dust[ij+iis+jjs];
+
+                        infrac2 = f0x * f0y * afrac_soot[ij]
+                                + f1x * f0y * afrac_soot[ij+iis]
+                                + f0x * f1y * afrac_soot[ij+jjs]
+                                + f1x * f1y * afrac_soot[ij+iis+jjs];
+
+                        infrac3 = f0x * f0y * afrac_orga[ij]
+                                + f1x * f0y * afrac_orga[ij+iis]
+                                + f0x * f1y * afrac_orga[ij+jjs]
+                                + f1x * f1y * afrac_orga[ij+iis+jjs];
+                    }
+
+                    // Sum up the three modes;
+                    //if (use_prog_in)
+                    //{
+                    //    // `n_inpot` replaces `na_dust`; `na_soot` and `na_orga` are assumed to be constant;
+                    //    ndiag  = n_inpot[ij] * infrac1 + na_soot * infrac2 + na_orga * infrac3;
+                    //    ndiag_dust = n_inpot[ij] * infrac1;
+                    //    ndiag_all = ndiag;
+                    //}
+                    //else
+                    //{
+                    // All aerosol species are diagnostic;
+                    TF ndiag = na_dust<TF> * infrac1 + na_soot<TF> * infrac2 + na_orga<TF> * infrac3;
+                    //}
+
+                    ndiag = std::min(ndiag, ni_het_max<TF>);
+                    TF nuc_n = std::max(ndiag - n_inact[ij],TF(0));
+                    TF nuc_q = std::min(nuc_n * ice.x_min, qv[ij]);
+                    nuc_n = nuc_q / ice.x_min;
+
+                    // From absolute change -> tendency.
+                    nuc_q *= zdt;
+                    nuc_n *= zdt;
+
+                    // Store tendencies.
+                    nit[ij] += nuc_n;
+                    qit[ij] += nuc_q;
+                    qtt_ice[ij] -= nuc_q;
+                    n_inact[ij] += nuc_n;
+
+                    //lwrite_n_inpot = use_prog_in && ndiag .GT. 1.0e-12_wp;
+                    //ndiag_mask(i, k) = lwrite_n_inpot;
+                    //if (lwrite_n_inpot)
+                    //{
+                    //nuc_n = nuc_n * ndiag_dust / ndiag_all;
+                    //}
+                    //nuc_n_a(i, k) = nuc_n;
+                    //}
+                    //else
+                    //{
+                    //nuc_n_a(i, k) = TF(0);
+                    //ndiag_mask(i, k) = .FALSE.;
+                    //}
+                }
+            } // loop
+    } // function
+
+
+
+
 } // namespace

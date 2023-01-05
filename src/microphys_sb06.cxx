@@ -1707,6 +1707,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
             if (sw_prognostic_ice)
             {
+                const bool use_prog_in = false; // Only used with prognostic CCN and IN.
+
                 // Homogeneous and heterogeneous ice nucleation
                 //CALL ice_nucleation_homhet(ik_slice, use_prog_in, atmo, cloud, ice, n_inact, n_inpot)
                 //IF (ischeck) CALL check(ik_slice,'ice nucleation',cloud,rain,ice,snow,graupel,hail)
