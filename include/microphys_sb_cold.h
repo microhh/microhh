@@ -645,7 +645,7 @@ namespace Sb_cold
             {
                 const int ij = i + j * jstride;
 
-                const TF e_d = qv[ij] * Constants::Rd<TF> * T[ij];
+                const TF e_d = qv[ij] * Constants::Rv<TF> * T[ij];
                 const TF e_sw = tmf::esat_liq(T[ij]); // in ICON, this calls `sat_pres_water`
                 const TF s_sw = e_d / e_sw - TF(1);
 
@@ -655,8 +655,8 @@ namespace Sb_cold
 
                     // Note that 2*pi is correct, because c_r = 1/2 is assumed
                     const TF g_d =
-                        TF(2) * pi<TF> / ( Lv2 / (K_T<TF> * Constants::Rd<TF> * fm::pow2(T[ij]))
-                            + Constants::Rd<TF> * T[ij] / (D_vtp * e_sw) );
+                        TF(2) * pi<TF> / ( Lv2 / (K_T<TF> * Constants::Rv<TF> * fm::pow2(T[ij]))
+                            + Constants::Rv<TF> * T[ij] / (D_vtp * e_sw) );
 
                     const TF x_r = particle_meanmass(rain, qr[ij], nr[ij]);
                     const TF D_m = particle_diameter(rain, x_r);
@@ -768,14 +768,14 @@ namespace Sb_cold
 
                 if (qx[ij] > TF(0) && T[ij] > Constants::T0<TF>)
                 {
-                    const TF e_d = qv[ij] * Constants::Rd<TF> * T[ij];
+                    const TF e_d = qv[ij] * Constants::Rv<TF> * T[ij];
                     const TF e_sw = tmf::esat_liq(T[ij]); // in ICON, this calls `sat_pres_water`
                     const TF s_sw = e_d / e_sw - TF(1);
 
                     //.. Eq. (37) of SB2006, note that 4*pi is correct because c is used below
                     const TF g_d = TF(4)*Constants::pi<TF> / ( fm::pow2(Constants::Lv<TF>) /
-                            (K_T<TF> * Constants::Rd<TF> * fm::pow2(Constants::T0<TF>)) +
-                            Constants::Rd<TF> * Constants::T0<TF> / (D_v<TF> * e_sw) );
+                            (K_T<TF> * Constants::Rv<TF> * fm::pow2(Constants::T0<TF>)) +
+                            Constants::Rv<TF> * Constants::T0<TF> / (D_v<TF> * e_sw) );
 
                     const TF x = particle_meanmass(particle, qx[ij], nx[ij]);
                     const TF D = particle_diameter(particle, x);
@@ -988,13 +988,13 @@ namespace Sb_cold
 
                 if (T[ij] > Constants::T0<TF>)
                 {
-                    const TF e_d  = qv[ij] * Constants::Rd<TF> * T[ij];
+                    const TF e_d  = qv[ij] * Constants::Rv<TF> * T[ij];
                     const TF e_si = tmf::esat_ice(T[ij]);    // e_es(T_a) in ICON = sat_pres_ice
                     s_si[ij] = e_d / e_si - TF(1);           // Supersaturation over ice
                     const TF D_vtp = diffusivity(T[ij], p);  // D_v = 8.7602e-5 * T_a**(1.81) / p_a
                     g_i[ij] = TF(4) * Constants::pi<TF> / ( fm::pow2(Constants::Ls<TF>) /
-                            (K_T<TF> * Constants::Rd<TF> * fm::pow2(T[ij])) +
-                            Constants::Rd<TF> * T[ij] / (D_vtp * e_si) );
+                            (K_T<TF> * Constants::Rv<TF> * fm::pow2(T[ij])) +
+                            Constants::Rv<TF> * T[ij] / (D_vtp * e_si) );
                 }
                 else
                 {
@@ -1061,7 +1061,7 @@ namespace Sb_cold
                     // "A New Double-Moment Microphysics Parameterization for Application in Cloud and
                     // Climate Models. Part 1: Description" by H. Morrison, J.A.Curry, V.I. Khvorostyanov
 
-                    const TF qvsidiff = qv[ij] - tmf::esat_ice(T[ij]) / (Constants::Rd<TF> * T[ij]);
+                    const TF qvsidiff = qv[ij] - tmf::esat_ice(T[ij]) / (Constants::Rv<TF> * T[ij]);
 
                     if (std::abs(qvsidiff) > eps)
                     {
@@ -3229,7 +3229,7 @@ namespace Sb_cold
                         const TF r_i =
                             std::exp( (TF(1)/TF(3)) * std::log(x_i / (TF(4)/TF(3) * pi<TF> * Constants::rho_i<TF>)) );
 
-                        const TF v_th = sqrt(TF(8)* k_b<TF> * Ta[ij] / (pi<TF> * ma_w));
+                        const TF v_th = sqrt(TF(8) * k_b<TF> * Ta[ij] / (pi<TF> * ma_w));
                         const TF flux = alpha_d * v_th / TF(4);
                         const TF n_sat = e_si / (k_b<TF> * Ta[ij]);
 
