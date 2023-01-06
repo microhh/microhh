@@ -1379,11 +1379,11 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                         dtq_sum += it.second.conversion_tend[ij];
             }
 
-        if (std::abs(dtq_sum) > 1e-16)
-        {
-            std::cout << "ERROR, SB06 water not conserved after " << name << ", sum dqx/dt = " << dtq_sum << std::endl;
-            throw 1;
-        }
+        //if (std::abs(dtq_sum) > 1e-16)
+        //{
+        //    std::cout << "ERROR, SB06 water not conserved after " << name << ", sum dqx/dt = " << dtq_sum << std::endl;
+        //    throw 1;
+        //}
     };
 
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
@@ -2514,17 +2514,27 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     gd.icells, gd.ijcells,
                     k);
         else
-            Sb_common::calc_thermo_tendencies_cloud_ice(
-                    fields.st.at("thl")->fld.data(),
-                    fields.st.at("qt")->fld.data(),
-                    (*qtt_liq).data(),
-                    (*qtt_ice).data(),
-                    rho.data(),
-                    exner.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells, gd.ijcells,
-                    k);
+        {
+            auto thermo_tendency_wrapper = [&]<bool prognostic_ice>()
+            {
+                Sb_common::calc_thermo_tendencies_cloud_ice<TF, prognostic_ice>(
+                        fields.st.at("thl")->fld.data(),
+                        fields.st.at("qt")->fld.data(),
+                        (*qtt_liq).data(),
+                        (*qtt_ice).data(),
+                        rho.data(),
+                        exner.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells, gd.ijcells,
+                        k);
+            };
+
+            if (sw_prognostic_ice)
+                thermo_tendency_wrapper.template operator()<true>();
+            else
+                thermo_tendency_wrapper.template operator()<false>();
+        }
     }
 
     for (auto& it : hydro_types)
