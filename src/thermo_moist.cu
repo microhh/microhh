@@ -355,11 +355,29 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ice_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
+    void calc_ice_g(TF* __restrict__ qc, TF* __restrict__ th, TF* __restrict__ qt,
                              TF* __restrict__ exn, TF* __restrict__ p,
                              int istart, int jstart, int kstart,
                              int iend,   int jend,   int kend,
                              int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            qc[ijk] = fmax(qt[ijk] - sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qs, TF(0.));
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_condensate_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
+                           TF* __restrict__ exn, TF* __restrict__ p,
+                           int istart, int jstart, int kstart,
+                           int iend,   int jend,   int kend,
+                           int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -989,6 +1007,16 @@ void Thermo_moist<TF>::get_thermo_field_g(
     else if (name == "qi")
     {
         calc_ice_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "ql_qi")
+    {
+        calc_condensate_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             bs.exnrefh_g, bs.prefh_g,
             gd.istart,  gd.jstart,  gd.kstart,
