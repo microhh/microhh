@@ -486,6 +486,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_aerosols  = inputin.get_item<bool>("radiation", "swaerosols", "", true);
+    sw_always_rt = inputin.get_item<bool>("radiation", "swalwaysrt", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 

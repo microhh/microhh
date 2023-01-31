@@ -1406,6 +1406,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         fields.release_tmp_g(t_lay);
         fields.release_tmp_g(t_lev);
         fields.release_tmp_g(h2o);
+        fields.release_tmp_g(rh);
         fields.release_tmp_g(clwp);
         fields.release_tmp_g(ciwp);
     }

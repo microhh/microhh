@@ -54,6 +54,7 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Fields;
 template<typename> class Thermo;
 template<typename> class Timeloop;
 
@@ -168,6 +169,10 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const bool, const int);
 
         #ifdef USECUDA
+        Float calc_max_nogc(
+                const Float* const __restrict__ fld,
+                const int itot, const int jtot, const int ktot);
+
         void exec_longwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
@@ -190,7 +195,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&,
-                const bool);
+                const bool, const bool);
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
@@ -206,6 +211,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
         bool sw_aerosols;
+        bool sw_always_rt;
 
         bool sw_homogenize_sfc_sw;
         bool sw_homogenize_sfc_lw;
