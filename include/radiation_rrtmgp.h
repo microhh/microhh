@@ -137,7 +137,7 @@ class Radiation_rrtmgp : public Radiation<TF>
             std::unique_ptr<Optical_props_2str>&,
             Array<Float,2>&, Array<Float,2>&,
             Array<Float,2>&, Array<Float,2>&,
-            Array<Float,2>&, Array<Float,2>&, const Float,
+            Array<Float,2>&, Array<Float,2>&, Array<Float, 1>&, const Float,
             const Gas_concs&,
             const Gas_optics_rrtmgp&,
             const Array<Float,2>&,
@@ -149,7 +149,7 @@ class Radiation_rrtmgp : public Radiation<TF>
             const int,
             const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
             const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&);
+            const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&);
 
         void solve_longwave_column(
                 std::unique_ptr<Optical_props_arry>&,
@@ -174,6 +174,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
+		Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
@@ -261,7 +262,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float, 2> aermr09_col;
         Array<Float, 2> aermr10_col;
         Array<Float, 2> aermr11_col;
-        Array<Float, 2> rh_col;
 
         // Fluxes of reference column
         Array<Float,2> lw_flux_up_col;
@@ -272,6 +272,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
+	Array<Float,1> aod550;
 
         Gas_concs gas_concs_col;
 

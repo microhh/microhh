@@ -1580,7 +1580,7 @@ void Thermo_moist<TF>::get_aerosol_radiation_columns(
 
     // Calculate the relative humidity
     auto rh = fields.get_tmp();
-    get_thermo_field(*rh, "rh", true, true);
+    get_thermo_field(*rh, "rh", false, true);
 
     for (int k = gd.kstart; k < gd.kend; ++k)
     {

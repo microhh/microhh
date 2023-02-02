@@ -26,6 +26,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <algorithm>
+#include <memory>
 
 class Master;
 class Input;
