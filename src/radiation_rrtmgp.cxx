@@ -653,13 +653,14 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 {
     swradiation = "rrtmgp";
 
-    sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
-    sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
-    sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
-    sw_aerosols  = inputin.get_item<bool>("radiation", "swaerosols", "", true);
-
+    sw_longwave      = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
+    sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
+    sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
+    sw_aerosols      = inputin.get_item<bool>("radiation", "swaerosols", "", true);
+    sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
+    sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
+    
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
-
     sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
     sw_homogenize_sfc_lw = inputin.get_item<bool>("radiation", "swhomogenizesfc_lw", "", false);
     sw_homogenize_hr_sw = inputin.get_item<bool>("radiation", "swhomogenizehr_sw", "", false);
@@ -974,7 +975,8 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
                 p_lev,
                 *aerosol_props);
 
-        aerosol_props->delta_scale();
+        if (sw_delta_aer)
+            aerosol_props->delta_scale();
 
         add_to(
                 dynamic_cast<Optical_props_2str&>(*optical_props),
@@ -2391,7 +2393,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rel, rei,
                     *cloud_optical_props_in);
 
-            cloud_optical_props_in->delta_scale();
+            if (sw_delta_cloud)
+                cloud_optical_props_in->delta_scale();
             
             // Add the cloud optical props to the gas optical properties.
             add_to(
@@ -2408,7 +2411,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
                     *aerosol_optical_props_in);
             
-            aerosol_optical_props_in->delta_scale();
+            if (sw_delta_aer)
+                aerosol_optical_props_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(

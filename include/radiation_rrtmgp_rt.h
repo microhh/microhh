@@ -211,6 +211,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
         bool sw_aerosols;
+        bool sw_delta_cloud;
+        bool sw_delta_aer;
         bool sw_always_rt;
 
         bool sw_homogenize_sfc_sw;

@@ -955,7 +955,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rei,
                     *cloud_optical_props_subset_in);
 
-            cloud_optical_props_subset_in->delta_scale();
+            if (sw_delta_cloud)
+                cloud_optical_props_subset_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(
@@ -972,7 +973,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     p_lev_subset,
                     *aerosol_optical_props_subset_in);
 
-            aerosol_optical_props_subset_in->delta_scale();
+            if (sw_delta_aer)
+                aerosol_optical_props_subset_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(

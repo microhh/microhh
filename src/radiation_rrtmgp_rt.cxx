@@ -482,11 +482,13 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 {
     swradiation = "rrtmgp_rt";
 
-    sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
-    sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
-    sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
-    sw_aerosols  = inputin.get_item<bool>("radiation", "swaerosols", "", true);
-    sw_always_rt = inputin.get_item<bool>("radiation", "swalwaysrt", "", false);
+    sw_longwave      = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
+    sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
+    sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
+    sw_aerosols      = inputin.get_item<bool>("radiation", "swaerosols", "", true);
+    sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
+    sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
+    sw_always_rt     = inputin.get_item<bool>("radiation", "swalwaysrt", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
@@ -800,8 +802,9 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
                 rh,
                 p_lev,
                 *aerosol_props);
-
-        aerosol_props->delta_scale();
+        
+        if (sw_delta_aer)
+            aerosol_props->delta_scale();
 
         add_to(
                 dynamic_cast<Optical_props_2str&>(*optical_props),
