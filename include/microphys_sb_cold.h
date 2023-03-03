@@ -460,7 +460,7 @@ namespace Sb_cold
     void autoconversionSB(
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qtt_liq,
+            TF* const restrict qv_to_ql,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qc,
@@ -501,7 +501,7 @@ namespace Sb_cold
 
                     nrt[ij] += au * x_s_i;
                     qrt[ij] += au;
-                    qtt_liq[ij] -= au;
+                    qv_to_ql[ij] += au;
 
                     //au  = MAX(MIN(q_c,au),0.0_wp)
                     //sc  = cloud_coeffs%k_sc * q_c**2 * dt * cloud%rho_v(i,k)
@@ -517,7 +517,7 @@ namespace Sb_cold
     template<typename TF>
     void accretionSB(
             TF* const restrict qrt,
-            TF* const restrict qtt_liq,
+            TF* const restrict qv_to_ql,
             const TF* const restrict qr,
             const TF* const restrict qc,
             const int istart, const int iend,
@@ -548,7 +548,7 @@ namespace Sb_cold
                     const TF ac  = k_r *  qc[ij] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
 
                     qrt[ij] += ac;
-                    qtt_liq[ij] -= ac;
+                    qv_to_ql[ij] += ac;
 
                     //ac = MIN(q_c,ac)
                     //x_c = particle_meanmass(cloud, q_c,n_c)
@@ -609,7 +609,7 @@ namespace Sb_cold
     void rain_evaporation(
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qtt_liq,
+            TF* const restrict qv_to_ql,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qv,
@@ -717,12 +717,13 @@ namespace Sb_cold
                         eva_q *= eva_q_fak;
                     }
 
-                    // Note to self: `eva_q` is a negative number.
+                    // Note to self: `eva_q` is a negative number at this point.
                     // Sign diff compared to ICON is caused by their `eva_q = MAX(-eva_q,0.0_wp)`.
-                    qrt[ij] += eva_q;
-                    nrt[ij] += gamma_eva * eva_q / x_r;
-                    qtt_liq[ij] -= eva_q;
+                    eva_q = -eva_q;
 
+                    qrt[ij] -= eva_q;
+                    nrt[ij] -= gamma_eva * eva_q / x_r;
+                    qv_to_ql[ij] -= eva_q;
 
                     //const TF eva_q = MAX(-eva_q,0.0_wp)
                     //const TF eva_n = MAX(-eva_n,0.0_wp)

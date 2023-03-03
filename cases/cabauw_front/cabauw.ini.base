@@ -41,6 +41,7 @@ pbot=1e5
 
 [micro]
 swmicro=sb06
+swprognosticice=0
 swintegrate=0
 swdebug=0
 Nc0=200000000

@@ -227,8 +227,9 @@ namespace Sb_common
     void calc_thermo_tendencies_cloud_ice(
             TF* const restrict thlt,
             TF* const restrict qtt,
-            const TF* const restrict qtt_liq,
-            const TF* const restrict qtt_ice,
+            const TF* const restrict qv_to_ql,
+            const TF* const restrict qv_to_qf,
+            const TF* const restrict ql_to_qf,
             const TF* const restrict rho,
             const TF* const restrict exner,
             const int istart, const int iend,
@@ -246,13 +247,14 @@ namespace Sb_common
                     const int ijk = i + j * jstride + k*kstride;
 
                     if (sw_prognostic_ice)
-                        qtt[ijk] += rho_i * qtt_liq[ij];
+                        qtt[ijk] -= rho_i * qv_to_ql[ij];
                     else
-                        qtt[ijk] += rho_i * (qtt_liq[ij] + qtt_ice[ij]);
+                        qtt[ijk] -= rho_i * (qv_to_ql[ij] + qv_to_qf[ij]);
 
-                    thlt[ijk] -=
-                            ((rho_i * Lv<TF> / (cp<TF> * exner[k]) * qtt_liq[ij]) +
-                             (rho_i * Ls<TF> / (cp<TF> * exner[k]) * qtt_ice[ij]));
+                    thlt[ijk] +=
+                            ((rho_i * Lv<TF> / (cp<TF> * exner[k]) * qv_to_ql[ij]) +
+                             (rho_i * Lf<TF> / (cp<TF> * exner[k]) * ql_to_qf[ij]) +
+                             (rho_i * Ls<TF> / (cp<TF> * exner[k]) * qv_to_qf[ij]));
                 }
     }
 

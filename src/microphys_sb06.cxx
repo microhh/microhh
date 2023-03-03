@@ -1004,8 +1004,9 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     // Diagnostic change in qt by warm (cloud) and cold (ice) processes.
     // Used for bookkeeping difference between e.g. evaporation and sublimation.
-    auto qtt_liq = fields.get_tmp_xy();
-    auto qtt_ice = fields.get_tmp_xy();
+    auto qv_to_ql = fields.get_tmp_xy(); // qv -> ql = (qc,qr) = Lv
+    auto qv_to_qf = fields.get_tmp_xy(); // qv -> qf = (qi,qs,qg,qh) = Ls
+    auto ql_to_qf = fields.get_tmp_xy(); // ql -> qf = (qc,qr) -> (qi,qs,qg,qh) = Lf
 
     // More tmp slices :-)
     auto tmpxy1 = fields.get_tmp_xy();
@@ -1047,19 +1048,19 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         if (!sw_debug)
             return;
 
-        TF dtq_sum = TF(0);
+        //TF dtq_sum = TF(0);
 
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ij = i + j*gd.icells;
+        //for (int j=gd.jstart; j<gd.jend; ++j)
+        //    for (int i=gd.istart; i<gd.iend; ++i)
+        //    {
+        //        const int ij = i + j*gd.icells;
 
-                dtq_sum += (*qtt_liq)[ij] + (*qtt_ice)[ij];
+        //        dtq_sum += (*qtt_liq)[ij] + (*qtt_ice)[ij];
 
-                for (auto& it : hydro_types)
-                    if (it.first != "qi" && it.second.is_mass)
-                        dtq_sum += it.second.conversion_tend[ij];
-            }
+        //        for (auto& it : hydro_types)
+        //            if (it.first != "qi" && it.second.is_mass)
+        //                dtq_sum += it.second.conversion_tend[ij];
+        //    }
 
         //if (std::abs(dtq_sum) > 1e-16)
         //{
@@ -1084,7 +1085,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
-    convert_units_short(fields.ap.at("ina")->fld.data(), to_kgm3);
+    if (sw_prognostic_ice)
+        convert_units_short(fields.ap.at("ina")->fld.data(), to_kgm3);
 
     for (auto& it : hydro_types)
         convert_units_short(fields.ap.at(it.first)->fld.data(), to_kgm3);
@@ -1182,9 +1184,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 it.second.conversion_tend[n] = TF(0);
         }
 
-        // Zero diagnostic qt tendencies.
-        zero_tmp_xy(qtt_liq);
-        zero_tmp_xy(qtt_ice);
+        // Zero diagnostic qx tendencies.
+        zero_tmp_xy(qv_to_ql);
+        zero_tmp_xy(qv_to_qf);
+        zero_tmp_xy(ql_to_qf);
 
         // Density correction fall speeds
         // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
@@ -1320,723 +1323,725 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
                 //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
 
-        if (sw_prognostic_ice)
-        {
-            const bool use_prog_in = false;  // Only used with prognostic CCN and IN.
-
-            // Homogeneous and heterogeneous ice nucleation
-            timer.start("ice_nucleation");
-            Sb_cold::ice_nucleation_homhet(
-                    hydro_types.at("qi").conversion_tend,
-                    hydro_types.at("ni").conversion_tend,
-                    (*qtt_ice).data(),
-                    &fields.st.at("ina")->fld.data()[k*gd.ijcells],
-                    hydro_types.at("qi").slice,
-                    hydro_types.at("ni").slice,
-                    (*qv).data(),
-                    &ql->fld.data()[k*gd.ijcells],
-                    &T->fld.data()[k*gd.ijcells],
-                    &fields.mp.at("w")->fld.data()[k*gd.ijcells],
-                    afrac_dust.data(),
-                    afrac_soot.data(),
-                    afrac_orga.data(),
-                    ice,
-                    use_prog_in,
-                    nuc_i_typ,
-                    p[k], TF(dt),
-                    dim1_afrac,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.icells);
-            timer.stop("ice_nucleation");
-            check("ice_nucleation", k);
-
-            // Homogeneous freezing of cloud droplets
-            //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
-            //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
-        }
-
-        // Depositional growth of all ice particles.
-        // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
-        timer.start("vapor_dep");
-        Sb_cold::vapor_dep_relaxation(
-                // 2D Output tendencies:
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                (*qtt_ice).data(),
-                (*dep_rate_ice).data(),
-                (*dep_rate_snow).data(),
-                // 2D tmp fields:
-                (*tmpxy1).data(),
-                (*tmpxy2).data(),
-                hydro_types.at("qi").tmp1,
-                hydro_types.at("qs").tmp1,
-                hydro_types.at("qg").tmp1,
-                hydro_types.at("qh").tmp1,
-                // 2D input:
-                hydro_types.at("qi").slice,
-                hydro_types.at("ni").slice,
-                hydro_types.at("qs").slice,
-                hydro_types.at("ns").slice,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                hydro_types.at("qh").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                (*qv).data(),
-                p[k], TF(dt),
-                ice,
-                snow,
-                graupel,
-                hail,
-                ice_coeffs,
-                snow_coeffs,
-                graupel_coeffs,
-                hail_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("vapor_dep");
-        check("vapor_dep_relaxation", k);
-
-        // Ice-ice collisions -> forms snow.
-        timer.start("qi_selfc");
-        Sb_cold::ice_selfcollection(
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("ni").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice,
-                snow,
-                ice_coeffs,
-                t_cfg_2mom,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qi_selfc");
-        check("ice_selfcollection", k);
-
-        // Selfcollection of snow
-        timer.start("qs_selfc");
-        Sb_cold::snow_selfcollection(
-                hydro_types.at("ns").conversion_tend,
-                hydro_types.at("qs").slice,
-                hydro_types.at("ns").slice,
-                &T->fld.data()[k*gd.ijcells],
-                snow,
-                snow_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qs_selfc");
-        check("snow_selfcollection", k);
-
-        // Selfcollection of graupel.
-        timer.start("qg_selfc");
-        Sb_cold::graupel_selfcollection(
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                graupel,
-                graupel_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qg_selfc");
-        check("graupel_selfcollection", k);
-
-        // Collection of ice by snow.
-        const bool save_ice_tendency = true;
-
-        timer.start("qiqs_coll");
-        Sb_cold::particle_particle_collection(
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("qs").slice,
-                hydro_types.at("ni").slice,
-                hydro_types.at("ns").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, snow,
-                sic_coeffs,
-                rho_corr,
-                save_ice_tendency,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qiqs_coll");
-        check("particle_particle_collection snow-ice", k);
-
-        // Collection of ice by graupel.
-        timer.start("qiqg_coll");
-        Sb_cold::particle_particle_collection(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ni").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, graupel,
-                gic_coeffs,
-                rho_corr,
-                save_ice_tendency,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qiqg_coll");
-        check("particle_particle_collection graupel-ice", k);
-
-        // Collection of snow by graupel.
-        timer.start("qsqg_coll");
-        Sb_cold::particle_particle_collection(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qs").slice,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ns").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                snow, graupel,
-                gsc_coeffs,
-                rho_corr,
-                !save_ice_tendency,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qsqg_coll");
-        check("particle_particle_collection graupel-snow", k);
-
-        // Collection of ice by hail.
-        timer.start("qiqh_coll");
-        Sb_cold::particle_particle_collection(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("qh").slice,
-                hydro_types.at("ni").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, hail,
-                hic_coeffs,
-                rho_corr,
-                save_ice_tendency,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qiqh_coll");
-        check("particle_particle_collection hail-ice", k);
-
-        // Collection of snow by hail.
-        timer.start("qsqh_coll");
-        Sb_cold::particle_particle_collection(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qs").slice,
-                hydro_types.at("qh").slice,
-                hydro_types.at("ns").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                snow, hail,
-                hsc_coeffs,
-                rho_corr,
-                !save_ice_tendency,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qsqh_coll");
-        check("particle_particle_collection hail-snow", k);
-
-        // Conversion of graupel to hail in wet growth regime
-        timer.start("qgqh_conv");
-        Sb_cold::graupel_hail_conv_wet_gamlook(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                &ql->fld.data()[k*gd.ijcells],
-                hydro_types.at("qr").slice,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                hydro_types.at("qi").slice,
-                hydro_types.at("qs").slice,
-                &T->fld.data()[k*gd.ijcells],
-                graupel_ltable1,
-                graupel_ltable2,
-                graupel,
-                ltabdminwgg,
-                graupel_nm1,
-                graupel_nm2,
-                graupel_g1,
-                graupel_g2,
-                p[k], TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qgqh_conv");
-        check("graupel_hail_conv_wet_gamlook", k);
-
-        // Riming of ice with cloud droplets and rain drops, and conversion to graupel
-        timer.start("qi_riming");
-        Sb_cold::ice_riming(
-                (*qct_dummy).data(),
-                (*nct_dummy).data(),
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                (*dep_rate_ice).data(),
-                (*rime_rate_qc).data(),
-                (*rime_rate_nc).data(),
-                (*rime_rate_qi).data(),
-                (*rime_rate_qr).data(),
-                (*rime_rate_nr).data(),
-                (*qtt_liq).data(),
-                (*qtt_ice).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("ni").slice,
-                &ql->fld.data()[k*gd.ijcells],
-                (*nc_dummy).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, cloud, rain, graupel,
-                icr_coeffs, irr_coeffs,
-                t_cfg_2mom,
-                rho_corr,
-                this->ice_multiplication,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qi_riming");
-        check("ice_riming", k);
-
-        // Riming of snow with cloud droplets and rain drops, and conversion to graupel
-        timer.start("qs_riming");
-        Sb_cold::snow_riming(
-                (*qct_dummy).data(),
-                (*nct_dummy).data(),
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                (*dep_rate_snow).data(),
-                (*rime_rate_qc).data(),
-                (*rime_rate_nc).data(),
-                (*rime_rate_qs).data(),
-                (*rime_rate_qr).data(),
-                (*rime_rate_nr).data(),
-                (*qtt_liq).data(),
-                (*qtt_ice).data(),
-                hydro_types.at("qs").slice,
-                hydro_types.at("ns").slice,
-                &ql->fld.data()[k*gd.ijcells],
-                (*nc_dummy).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                &T->fld.data()[k*gd.ijcells],
-                snow, ice, cloud, rain, graupel,
-                scr_coeffs, srr_coeffs,
-                t_cfg_2mom,
-                rho_corr,
-                this->ice_multiplication,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qs_riming");
-        check("snow_riming", k);
-
-        // Hail-cloud riming
-        timer.start("qhqc_riming");
-        Sb_cold::particle_cloud_riming(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                (*qct_dummy).data(),
-                (*nct_dummy).data(),
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                (*qtt_ice).data(),
-                &ql->fld.data()[k*gd.ijcells],
-                (*nc_dummy).data(),
-                hydro_types.at("qh").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, hail, cloud, rain,
-                hcr_coeffs,
-                rho_corr,
-                this->ice_multiplication,
-                this->enhanced_melting,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qhqc_riming");
-        check("particle_cloud_riming hail-cloud", k);
-
-        // Hail-rain riming
-        timer.start("qhqr_riming");
-        Sb_cold::particle_rain_riming(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                hydro_types.at("qh").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                rain, ice, hail,
-                hrr_coeffs,
-                rho_corr,
-                this->ice_multiplication,
-                this->enhanced_melting,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qhqr_riming");
-        check("particle_rain_riming hail-rain", k);
-
-        // Graupel-cloud riming
-        timer.start("qgqc_riming");
-        Sb_cold::particle_cloud_riming(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                (*qct_dummy).data(),
-                (*nct_dummy).data(),
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                (*qtt_ice).data(),
-                &ql->fld.data()[k*gd.ijcells],
-                (*nc_dummy).data(),
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, graupel, cloud, rain,
-                gcr_coeffs,
-                rho_corr,
-                this->ice_multiplication,
-                this->enhanced_melting,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qgqc_riming");
-        check("particle_cloud_riming graupel-cloud", k);
-
-        // Graupel-rain riming
-        timer.start("qgqr_riming");
-        Sb_cold::particle_rain_riming(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                rain, ice, graupel,
-                grr_coeffs,
-                rho_corr,
-                this->ice_multiplication,
-                this->enhanced_melting,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qgqr_riming");
-        check("particle_rain_riming graupel-rain", k);
-
-        // Freezing of rain and conversion to ice/graupel/hail
-        timer.start("qr_freeze");
-        Sb_cold::rain_freeze_gamlook(
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                (*qtt_ice).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                &T->fld.data()[k*gd.ijcells],
-                rain_ltable1,
-                rain_ltable2,
-                rain_ltable3,
-                rain_coeffs,
-                rain,
-                t_cfg_2mom,
-                this->rain_nm1,
-                this->rain_nm2,
-                this->rain_nm3,
-                this->rain_g1,
-                this->rain_g2,
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qr_freeze");
-        check("rain_freeze_gamlook", k);
-
-        // Melting of ice
-        timer.start("qi_melt");
-        Sb_cold::ice_melting(
-                hydro_types.at("qi").conversion_tend,
-                hydro_types.at("ni").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                (*qct_dummy).data(),
-                (*nct_dummy).data(),
-                (*qtt_ice).data(),
-                (*qtt_liq).data(),
-                hydro_types.at("qi").slice,
-                hydro_types.at("ni").slice,
-                &T->fld.data()[k*gd.ijcells],
-                ice, cloud,
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qi_melt");
-        check("ice_melting", k);
-
-        timer.start("qs_melt");
-        Sb_cold::snow_melting(
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qs").slice,
-                hydro_types.at("ns").slice,
-                &T->fld.data()[k*gd.ijcells],
-                snow_coeffs,
-                snow,
-                rho_corr,
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qs_melt");
-        check("snow_melting", k);
-
-        // Melting of graupel and hail can be simple or LWF-based
-        //SELECT TYPE (graupel)
-        //TYPE IS (particle_frozen)
-
-        timer.start("qg_melt");
-        Sb_cold::graupel_melting(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                &T->fld.data()[k*gd.ijcells],
-                graupel_coeffs,
-                graupel,
-                rho_corr,
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qg_melt");
-        check("graupel_melting", k);
-
-        //TYPE IS (particle_lwf)
-        //  CALL prepare_melting_lwf(ik_slice, atmo, gmelting)
-        //  CALL particle_melting_lwf(ik_slice, dt, graupel, rain, gmelting)
-        //END SELECT
-
-        //SELECT TYPE (hail)
-        //TYPE IS (particle_frozen)
-
-        timer.start("qh_melt");
-        Sb_cold::hail_melting_simple(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qh").slice,
-                hydro_types.at("nh").slice,
-                &T->fld.data()[k*gd.ijcells],
-                hail_coeffs,
-                hail,
-                t_cfg_2mom,
-                rho_corr,
-                TF(dt),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qh_melt");
-        check("hail_melting", k);
-
-        //TYPE IS (particle_lwf)
-        //  CALL particle_melting_lwf(ik_slice, dt, hail, rain, gmelting)
-        //END SELECT
-
-        // Evaporation from melting ice particles
-        timer.start("qi_evap");
-        Sb_cold::evaporation(
-                hydro_types.at("qs").conversion_tend,
-                hydro_types.at("ns").conversion_tend,
-                (*qtt_liq).data(),
-                hydro_types.at("qs").slice,
-                hydro_types.at("ns").slice,
-                (*qv).data(),
-                &T->fld.data()[k*gd.ijcells],
-                snow,
-                snow_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qi_evap");
-        check("evaporation of snow", k);
-
-        timer.start("qg_evap");
-        Sb_cold::evaporation(
-                hydro_types.at("qg").conversion_tend,
-                hydro_types.at("ng").conversion_tend,
-                (*qtt_liq).data(),
-                hydro_types.at("qg").slice,
-                hydro_types.at("ng").slice,
-                (*qv).data(),
-                &T->fld.data()[k*gd.ijcells],
-                graupel,
-                graupel_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qg_evap");
-        check("evaporation of graupel", k);
-
-        timer.start("qh_evap");
-        Sb_cold::evaporation(
-                hydro_types.at("qh").conversion_tend,
-                hydro_types.at("nh").conversion_tend,
-                (*qtt_liq).data(),
-                hydro_types.at("qh").slice,
-                hydro_types.at("nh").slice,
-                (*qv).data(),
-                &T->fld.data()[k*gd.ijcells],
-                hail,
-                hail_coeffs,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells);
-        timer.stop("qh_evap");
-        check("evaporation of hail", k);
+//        if (sw_prognostic_ice)
+//        {
+//            const bool use_prog_in = false;  // Only used with prognostic CCN and IN.
+//
+//            // Homogeneous and heterogeneous ice nucleation
+//            timer.start("ice_nucleation");
+//            Sb_cold::ice_nucleation_homhet(
+//                    hydro_types.at("qi").conversion_tend,
+//                    hydro_types.at("ni").conversion_tend,
+//                    (*qtt_ice).data(),
+//                    &fields.st.at("ina")->fld.data()[k*gd.ijcells],
+//                    hydro_types.at("qi").slice,
+//                    hydro_types.at("ni").slice,
+//                    (*qv).data(),
+//                    &ql->fld.data()[k*gd.ijcells],
+//                    &T->fld.data()[k*gd.ijcells],
+//                    &fields.mp.at("w")->fld.data()[k*gd.ijcells],
+//                    afrac_dust.data(),
+//                    afrac_soot.data(),
+//                    afrac_orga.data(),
+//                    ice,
+//                    use_prog_in,
+//                    nuc_i_typ,
+//                    p[k], TF(dt),
+//                    dim1_afrac,
+//                    gd.istart, gd.iend,
+//                    gd.jstart, gd.jend,
+//                    gd.icells);
+//            timer.stop("ice_nucleation");
+//            check("ice_nucleation", k);
+//
+//            // Homogeneous freezing of cloud droplets
+//            //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
+//            //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
+//        }
+//
+//        // Depositional growth of all ice particles.
+//        // Store deposition rate of ice and snow for conversion calculation in ice_riming and snow_riming.
+//        timer.start("vapor_dep");
+//        Sb_cold::vapor_dep_relaxation(
+//                // 2D Output tendencies:
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                (*qtt_ice).data(),
+//                (*dep_rate_ice).data(),
+//                (*dep_rate_snow).data(),
+//                // 2D tmp fields:
+//                (*tmpxy1).data(),
+//                (*tmpxy2).data(),
+//                hydro_types.at("qi").tmp1,
+//                hydro_types.at("qs").tmp1,
+//                hydro_types.at("qg").tmp1,
+//                hydro_types.at("qh").tmp1,
+//                // 2D input:
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("ni").slice,
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ns").slice,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                (*qv).data(),
+//                p[k], TF(dt),
+//                ice,
+//                snow,
+//                graupel,
+//                hail,
+//                ice_coeffs,
+//                snow_coeffs,
+//                graupel_coeffs,
+//                hail_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("vapor_dep");
+//        check("vapor_dep_relaxation", k);
+//
+//        // Ice-ice collisions -> forms snow.
+//        timer.start("qi_selfc");
+//        Sb_cold::ice_selfcollection(
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("ni").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice,
+//                snow,
+//                ice_coeffs,
+//                t_cfg_2mom,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qi_selfc");
+//        check("ice_selfcollection", k);
+//
+//        // Selfcollection of snow
+//        timer.start("qs_selfc");
+//        Sb_cold::snow_selfcollection(
+//                hydro_types.at("ns").conversion_tend,
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ns").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                snow,
+//                snow_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qs_selfc");
+//        check("snow_selfcollection", k);
+//
+//        // Selfcollection of graupel.
+//        timer.start("qg_selfc");
+//        Sb_cold::graupel_selfcollection(
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                graupel,
+//                graupel_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qg_selfc");
+//        check("graupel_selfcollection", k);
+//
+//        // Collection of ice by snow.
+//        const bool save_ice_tendency = true;
+//
+//        timer.start("qiqs_coll");
+//        Sb_cold::particle_particle_collection(
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ni").slice,
+//                hydro_types.at("ns").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, snow,
+//                sic_coeffs,
+//                rho_corr,
+//                save_ice_tendency,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qiqs_coll");
+//        check("particle_particle_collection snow-ice", k);
+//
+//        // Collection of ice by graupel.
+//        timer.start("qiqg_coll");
+//        Sb_cold::particle_particle_collection(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ni").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, graupel,
+//                gic_coeffs,
+//                rho_corr,
+//                save_ice_tendency,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qiqg_coll");
+//        check("particle_particle_collection graupel-ice", k);
+//
+//        // Collection of snow by graupel.
+//        timer.start("qsqg_coll");
+//        Sb_cold::particle_particle_collection(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ns").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                snow, graupel,
+//                gsc_coeffs,
+//                rho_corr,
+//                !save_ice_tendency,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qsqg_coll");
+//        check("particle_particle_collection graupel-snow", k);
+//
+//        // Collection of ice by hail.
+//        timer.start("qiqh_coll");
+//        Sb_cold::particle_particle_collection(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("ni").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, hail,
+//                hic_coeffs,
+//                rho_corr,
+//                save_ice_tendency,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qiqh_coll");
+//        check("particle_particle_collection hail-ice", k);
+//
+//        // Collection of snow by hail.
+//        timer.start("qsqh_coll");
+//        Sb_cold::particle_particle_collection(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("ns").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                snow, hail,
+//                hsc_coeffs,
+//                rho_corr,
+//                !save_ice_tendency,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qsqh_coll");
+//        check("particle_particle_collection hail-snow", k);
+//
+//        // Conversion of graupel to hail in wet growth regime
+//        timer.start("qgqh_conv");
+//        Sb_cold::graupel_hail_conv_wet_gamlook(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                &ql->fld.data()[k*gd.ijcells],
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("qs").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                graupel_ltable1,
+//                graupel_ltable2,
+//                graupel,
+//                ltabdminwgg,
+//                graupel_nm1,
+//                graupel_nm2,
+//                graupel_g1,
+//                graupel_g2,
+//                p[k], TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qgqh_conv");
+//        check("graupel_hail_conv_wet_gamlook", k);
+//
+//        // Riming of ice with cloud droplets and rain drops, and conversion to graupel
+//        timer.start("qi_riming");
+//        Sb_cold::ice_riming(
+//                (*qct_dummy).data(),
+//                (*nct_dummy).data(),
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                (*dep_rate_ice).data(),
+//                (*rime_rate_qc).data(),
+//                (*rime_rate_nc).data(),
+//                (*rime_rate_qi).data(),
+//                (*rime_rate_qr).data(),
+//                (*rime_rate_nr).data(),
+//                (*qtt_liq).data(),
+//                (*qtt_ice).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("ni").slice,
+//                &ql->fld.data()[k*gd.ijcells],
+//                (*nc_dummy).data(),
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("nr").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, cloud, rain, graupel,
+//                icr_coeffs, irr_coeffs,
+//                t_cfg_2mom,
+//                rho_corr,
+//                this->ice_multiplication,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qi_riming");
+//        check("ice_riming", k);
+//
+//        // Riming of snow with cloud droplets and rain drops, and conversion to graupel
+//        timer.start("qs_riming");
+//        Sb_cold::snow_riming(
+//                (*qct_dummy).data(),
+//                (*nct_dummy).data(),
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                (*dep_rate_snow).data(),
+//                (*rime_rate_qc).data(),
+//                (*rime_rate_nc).data(),
+//                (*rime_rate_qs).data(),
+//                (*rime_rate_qr).data(),
+//                (*rime_rate_nr).data(),
+//                (*qtt_liq).data(),
+//                (*qtt_ice).data(),
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ns").slice,
+//                &ql->fld.data()[k*gd.ijcells],
+//                (*nc_dummy).data(),
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("nr").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                snow, ice, cloud, rain, graupel,
+//                scr_coeffs, srr_coeffs,
+//                t_cfg_2mom,
+//                rho_corr,
+//                this->ice_multiplication,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qs_riming");
+//        check("snow_riming", k);
+//
+//        // Hail-cloud riming
+//        timer.start("qhqc_riming");
+//        Sb_cold::particle_cloud_riming(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                (*qct_dummy).data(),
+//                (*nct_dummy).data(),
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                (*qtt_ice).data(),
+//                &ql->fld.data()[k*gd.ijcells],
+//                (*nc_dummy).data(),
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, hail, cloud, rain,
+//                hcr_coeffs,
+//                rho_corr,
+//                this->ice_multiplication,
+//                this->enhanced_melting,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qhqc_riming");
+//        check("particle_cloud_riming hail-cloud", k);
+//
+//        // Hail-rain riming
+//        timer.start("qhqr_riming");
+//        Sb_cold::particle_rain_riming(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("nr").slice,
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                rain, ice, hail,
+//                hrr_coeffs,
+//                rho_corr,
+//                this->ice_multiplication,
+//                this->enhanced_melting,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qhqr_riming");
+//        check("particle_rain_riming hail-rain", k);
+//
+//        // Graupel-cloud riming
+//        timer.start("qgqc_riming");
+//        Sb_cold::particle_cloud_riming(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                (*qct_dummy).data(),
+//                (*nct_dummy).data(),
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                (*qtt_ice).data(),
+//                &ql->fld.data()[k*gd.ijcells],
+//                (*nc_dummy).data(),
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, graupel, cloud, rain,
+//                gcr_coeffs,
+//                rho_corr,
+//                this->ice_multiplication,
+//                this->enhanced_melting,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qgqc_riming");
+//        check("particle_cloud_riming graupel-cloud", k);
+//
+//        // Graupel-rain riming
+//        timer.start("qgqr_riming");
+//        Sb_cold::particle_rain_riming(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("nr").slice,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                rain, ice, graupel,
+//                grr_coeffs,
+//                rho_corr,
+//                this->ice_multiplication,
+//                this->enhanced_melting,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qgqr_riming");
+//        check("particle_rain_riming graupel-rain", k);
+//
+//        // Freezing of rain and conversion to ice/graupel/hail
+//        timer.start("qr_freeze");
+//        Sb_cold::rain_freeze_gamlook(
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                (*qtt_ice).data(),
+//                hydro_types.at("qr").slice,
+//                hydro_types.at("nr").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                rain_ltable1,
+//                rain_ltable2,
+//                rain_ltable3,
+//                rain_coeffs,
+//                rain,
+//                t_cfg_2mom,
+//                this->rain_nm1,
+//                this->rain_nm2,
+//                this->rain_nm3,
+//                this->rain_g1,
+//                this->rain_g2,
+//                TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qr_freeze");
+//        check("rain_freeze_gamlook", k);
+//
+//        // Melting of ice
+//        timer.start("qi_melt");
+//        Sb_cold::ice_melting(
+//                hydro_types.at("qi").conversion_tend,
+//                hydro_types.at("ni").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                (*qct_dummy).data(),
+//                (*nct_dummy).data(),
+//                (*qtt_ice).data(),
+//                (*qtt_liq).data(),
+//                hydro_types.at("qi").slice,
+//                hydro_types.at("ni").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                ice, cloud,
+//                TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qi_melt");
+//        check("ice_melting", k);
+//
+//        timer.start("qs_melt");
+//        Sb_cold::snow_melting(
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ns").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                snow_coeffs,
+//                snow,
+//                rho_corr,
+//                TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qs_melt");
+//        check("snow_melting", k);
+//
+//        // Melting of graupel and hail can be simple or LWF-based
+//        //SELECT TYPE (graupel)
+//        //TYPE IS (particle_frozen)
+//
+//        timer.start("qg_melt");
+//        Sb_cold::graupel_melting(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                graupel_coeffs,
+//                graupel,
+//                rho_corr,
+//                TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qg_melt");
+//        check("graupel_melting", k);
+//
+//        //TYPE IS (particle_lwf)
+//        //  CALL prepare_melting_lwf(ik_slice, atmo, gmelting)
+//        //  CALL particle_melting_lwf(ik_slice, dt, graupel, rain, gmelting)
+//        //END SELECT
+//
+//        //SELECT TYPE (hail)
+//        //TYPE IS (particle_frozen)
+//
+//        timer.start("qh_melt");
+//        Sb_cold::hail_melting_simple(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                hydro_types.at("qr").conversion_tend,
+//                hydro_types.at("nr").conversion_tend,
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("nh").slice,
+//                &T->fld.data()[k*gd.ijcells],
+//                hail_coeffs,
+//                hail,
+//                t_cfg_2mom,
+//                rho_corr,
+//                TF(dt),
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qh_melt");
+//        check("hail_melting", k);
+//
+//        //TYPE IS (particle_lwf)
+//        //  CALL particle_melting_lwf(ik_slice, dt, hail, rain, gmelting)
+//        //END SELECT
+//
+//        // Evaporation from melting ice particles
+//        timer.start("qi_evap");
+//        Sb_cold::evaporation(
+//                hydro_types.at("qs").conversion_tend,
+//                hydro_types.at("ns").conversion_tend,
+//                (*qtt_liq).data(),
+//                hydro_types.at("qs").slice,
+//                hydro_types.at("ns").slice,
+//                (*qv).data(),
+//                &T->fld.data()[k*gd.ijcells],
+//                snow,
+//                snow_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qi_evap");
+//        check("evaporation of snow", k);
+//
+//        timer.start("qg_evap");
+//        Sb_cold::evaporation(
+//                hydro_types.at("qg").conversion_tend,
+//                hydro_types.at("ng").conversion_tend,
+//                (*qtt_liq).data(),
+//                hydro_types.at("qg").slice,
+//                hydro_types.at("ng").slice,
+//                (*qv).data(),
+//                &T->fld.data()[k*gd.ijcells],
+//                graupel,
+//                graupel_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qg_evap");
+//        check("evaporation of graupel", k);
+//
+//        timer.start("qh_evap");
+//        Sb_cold::evaporation(
+//                hydro_types.at("qh").conversion_tend,
+//                hydro_types.at("nh").conversion_tend,
+//                (*qtt_liq).data(),
+//                hydro_types.at("qh").slice,
+//                hydro_types.at("nh").slice,
+//                (*qv).data(),
+//                &T->fld.data()[k*gd.ijcells],
+//                hail,
+//                hail_coeffs,
+//                rho_corr,
+//                gd.istart, gd.iend,
+//                gd.jstart, gd.jend,
+//                gd.icells);
+//        timer.stop("qh_evap");
+//        check("evaporation of hail", k);
 
         // Warm rain processes
         // (Using something other than SB is somewhat inconsistent and not recommended)
-        //IF (auto_typ == 1) THEN
+        if (auto_typ == 1)
+            throw std::runtime_error("SB06 auto_typ=1 is not (yet) supported..");
         //   CALL autoconversionKB(ik_slice, dt, cloud, rain)   ! Beheng (1994)
         //   CALL accretionKB(ik_slice, dt, cloud, rain)
         //   CALL rain_selfcollectionSB(ik_slice, dt, rain)
-        //ELSE IF (auto_typ == 2) THEN
+        else if (auto_typ == 2)
+            throw std::runtime_error("SB06 auto_typ=2 is not (yet) supported..");
         //   ! Khairoutdinov and Kogan (2000)
         //   ! (KK2000 originally assume a 25 micron size threshold)
         //   CALL autoconversionKK(ik_slice, dt, cloud, rain)
         //   CALL accretionKK(ik_slice, dt, cloud, rain)
         //   CALL rain_selfcollectionSB(ik_slice, dt, rain)
-        //ELSE IF (auto_typ == 3) THEN
+        else if (auto_typ == 3)
+        {
+            // Autoconversion; formation of rain drop by coagulating cloud droplets.
+            timer.start("qr_auto");
+            Sb_cold::autoconversionSB(
+                    hydro_types.at("qr").conversion_tend,
+                    hydro_types.at("nr").conversion_tend,
+                    (*qv_to_ql).data(),
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    &ql->fld.data()[k * gd.ijcells],
+                    cloud_coeffs,
+                    cloud, rain,
+                    rho_corr,
+                    Nc0,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+            timer.stop("qr_auto");
+            check("autoconversionSB", k);
 
-        // Autoconversion; formation of rain drop by coagulating cloud droplets.
-        timer.start("qr_auto");
-        Sb_cold::autoconversionSB(
-                hydro_types.at("qr").conversion_tend,
-                hydro_types.at("nr").conversion_tend,
-                (*qtt_liq).data(),
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                &ql->fld.data()[k*gd.ijcells],
-                cloud_coeffs,
-                cloud, rain,
-                rho_corr,
-                Nc0,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k);
-        timer.stop("qr_auto");
-        check("autoconversionSB", k);
+            timer.start("qr_accr");
+            Sb_cold::accretionSB(
+                    hydro_types.at("qr").conversion_tend,
+                    (*qv_to_ql).data(),
+                    hydro_types.at("qr").slice,
+                    &ql->fld.data()[k * gd.ijcells],
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+            timer.stop("qr_accr");
+            check("accretionSB", k);
 
-        timer.start("qr_accr");
-        Sb_cold::accretionSB(
-                hydro_types.at("qr").conversion_tend,
-                (*qtt_liq).data(),
-                hydro_types.at("qr").slice,
-                &ql->fld.data()[k*gd.ijcells],
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k);
-        timer.stop("qr_accr");
-        check("accretionSB", k);
-
-        timer.start("qr_selfc");
-        Sb_cold::rain_selfcollectionSB(
-                hydro_types.at("nr").conversion_tend,
-                hydro_types.at("qr").slice,
-                hydro_types.at("nr").slice,
-                rain,
-                rho_corr,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.icells, gd.ijcells,
-                k);
-        timer.stop("qr_selfc");
-        check("rain_selfcollectionSB", k);
-        //ENDIF
+            timer.start("qr_selfc");
+            Sb_cold::rain_selfcollectionSB(
+                    hydro_types.at("nr").conversion_tend,
+                    hydro_types.at("qr").slice,
+                    hydro_types.at("nr").slice,
+                    rain,
+                    rho_corr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.icells, gd.ijcells,
+                    k);
+            timer.stop("qr_selfc");
+            check("rain_selfcollectionSB", k);
+        }
 
         // Evaporation of rain following Seifert (2008)
         timer.start("qr_evap");
         Sb_cold::rain_evaporation(
                 hydro_types.at("qr").conversion_tend,
                 hydro_types.at("nr").conversion_tend,
-                (*qtt_liq).data(),
+                (*qv_to_ql).data(),
                 hydro_types.at("qr").slice,
                 hydro_types.at("nr").slice,
                 (*qv).data(),
@@ -2055,7 +2060,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 k);
         timer.stop("qr_evap");
         check("rain_evaporation", k);
-        
 
         for (auto& it : hydro_types)
         {
@@ -2097,39 +2101,26 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
         // Calculate thermodynamic tendencies `thl` and `qt`,
         // from microphysics tendencies excluding sedimentation.
-        if (sw_warm)
-            Sb_common::calc_thermo_tendencies_cloud(
+        auto thermo_tendency_wrapper = [&]<bool prognostic_ice>()
+        {
+            Sb_common::calc_thermo_tendencies_cloud_ice<TF, prognostic_ice>(
                     fields.st.at("thl")->fld.data(),
                     fields.st.at("qt")->fld.data(),
-                    hydro_types.at("qr").conversion_tend,
+                    (*qv_to_ql).data(),
+                    (*qv_to_qf).data(),
+                    (*ql_to_qf).data(),
                     rho.data(),
                     exner.data(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
-        else
-        {
-            auto thermo_tendency_wrapper = [&]<bool prognostic_ice>()
-            {
-                Sb_common::calc_thermo_tendencies_cloud_ice<TF, prognostic_ice>(
-                        fields.st.at("thl")->fld.data(),
-                        fields.st.at("qt")->fld.data(),
-                        (*qtt_liq).data(),
-                        (*qtt_ice).data(),
-                        rho.data(),
-                        exner.data(),
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        gd.icells, gd.ijcells,
-                        k);
-            };
+        };
 
-            if (sw_prognostic_ice)
-                thermo_tendency_wrapper.template operator()<true>();
-            else
-                thermo_tendency_wrapper.template operator()<false>();
-        }
+        if (sw_prognostic_ice)
+            thermo_tendency_wrapper.template operator()<true>();
+        else
+            thermo_tendency_wrapper.template operator()<false>();
     }
 
     for (auto& it : hydro_types)
@@ -2145,7 +2136,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     // Convert specific humidity from `kg m-3` to `kg kg-1`
     convert_units_short(fields.ap.at("qt")->fld.data(), !to_kgm3);
-    convert_units_short(fields.ap.at("ina")->fld.data(), !to_kgm3);
+    if (sw_prognostic_ice)
+        convert_units_short(fields.ap.at("ina")->fld.data(), !to_kgm3);
 
     // Calculate tendencies.
     stats.calc_tend(*fields.st.at("thl"), tend_name);
@@ -2171,8 +2163,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     fields.release_tmp_xy(mu_r);
     fields.release_tmp_xy(lambda_r);
 
-    fields.release_tmp_xy(qtt_liq);
-    fields.release_tmp_xy(qtt_ice);
+    fields.release_tmp_xy(qv_to_ql);
+    fields.release_tmp_xy(qv_to_qf);
+    fields.release_tmp_xy(ql_to_qf);
+
     fields.release_tmp_xy(qv);
 
     fields.release_tmp_xy(tmpxy1);
