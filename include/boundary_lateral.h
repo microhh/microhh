@@ -55,6 +55,9 @@ class Boundary_lateral
         bool sw_inoutflow;
         bool sw_inoutflow_u;
         bool sw_inoutflow_v;
+        bool sw_sponge;
+        TF w_sponge;
+        int n_sponge;
         std::vector<std::string> inoutflow_s;
 
         // Current (time interpolated) boundary conditions:

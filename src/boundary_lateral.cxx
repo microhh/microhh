@@ -32,11 +32,6 @@
 
 namespace
 {
-    // Constants for lateral sponge layer.
-    const int N_sponge = 5;
-    template<typename TF> constexpr TF w1_sponge = 0.2;
-    template<typename TF> constexpr TF w2_sponge = 0.2;
-
     template<typename TF, Lbc_location location>
     void set_ghost_cell_kernel(
             TF* const restrict a,
@@ -115,6 +110,8 @@ namespace
             const TF* const restrict a,
             const TF* const restrict lbc,
             const double dt,
+            const TF w1_sponge,
+            const int N_sponge,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -124,7 +121,8 @@ namespace
         const int jj = jstride;
         const int kk = kstride;
 
-        const TF w_dt = w1_sponge<TF> / dt;
+        const TF w_dt = w1_sponge / dt;
+        const TF w2_sponge = 0.2;
 
         if (location == Lbc_location::West || location == Lbc_location::East)
         {
@@ -139,7 +137,7 @@ namespace
                         const int ijk = i + j*jstride + k*kstride;
 
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
-                        const TF w2 = w2_sponge<TF> * w1;
+                        const TF w2 = w2_sponge * w1;
 
                         const TF a_smooth =
                                 - a[ijk-ii] - a[ijk+ii]
@@ -163,7 +161,7 @@ namespace
                         const int ijk = i + j*jstride + k*kstride;
 
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
-                        const TF w2 = w2_sponge<TF> * w1;
+                        const TF w2 = w2_sponge * w1;
 
                         const TF a_smooth =
                                 - a[ijk-ii] - a[ijk+ii]
@@ -182,14 +180,17 @@ Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
         master(masterin), grid(gridin), fields(fieldsin)
 {
-    sw_inoutflow = inputin.get_item<bool>("boundary", "swinoutflow", "", false);
+    sw_inoutflow = inputin.get_item<bool>("boundary", "sw_inoutflow", "", false);
 
     if (sw_inoutflow)
     {
-        sw_inoutflow_u = inputin.get_item<bool>("boundary", "swinoutflow_u", "", true);
-        sw_inoutflow_v = inputin.get_item<bool>("boundary", "swinoutflow_v", "", true);
+        sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
+        sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
+        inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
-        inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_s", "", std::vector<std::string>());
+        sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
+        w_sponge = inputin.get_item<TF>("boundary", "w_sponge", "", 0.1);
+        n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
     }
 }
 
@@ -368,10 +369,14 @@ void Boundary_lateral<TF>::set_ghost_cells(const double dt)
         auto sponge_layer_wrapper = [&]<Lbc_location location>(
                 std::map<std::string, std::vector<TF>>& lbc_map)
         {
+            if (!sw_sponge)
+                return;
+
             lateral_sponge_layer_kernel<TF, location>(
                     fields.at.at(fld)->fld.data(),
                     fields.ap.at(fld)->fld.data(),
                     lbc_map.at(fld).data(), dt,
+                    w_sponge, n_sponge,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
