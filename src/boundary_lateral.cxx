@@ -32,6 +32,11 @@
 
 namespace
 {
+    // Constants for lateral sponge layer.
+    const int N_sponge = 5;
+    template<typename TF> constexpr TF w1_sponge = 0.2;
+    template<typename TF> constexpr TF w2_sponge = 0.2;
+
     template<typename TF, Lbc_location location>
     void set_ghost_cell_kernel(
             TF* const restrict a,
@@ -102,6 +107,166 @@ namespace
                     }
                 }
         }
+    }
+
+    template<typename TF>
+    void sponge_s_west(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict lbc,
+            const double dt,
+            const int istart,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const int ii = 1;
+        const int jj = jstride;
+        const int kk = kstride;
+
+        const TF w_dt = w1_sponge<TF> / dt;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+            {
+                const int jk = j + k*kstride;
+
+                for (int n=1; n<=N_sponge; ++n)
+                {
+                    const int i = istart+(n-1);
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF w1 = w_dt * (1+N_sponge-n) / N_sponge;
+                    const TF w2 = w2_sponge<TF> * w1;
+
+                    const TF a_smooth =
+                            - a[ijk-ii] - a[ijk+ii]
+                            - a[ijk-jj] - a[ijk+jj]
+                            - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+
+                    at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
+                }
+            }
+    }
+
+    template<typename TF>
+    void sponge_s_east(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict lbc,
+            const double dt,
+            const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const int ii = 1;
+        const int jj = jstride;
+        const int kk = kstride;
+
+        const TF w_dt = w1_sponge<TF> / dt;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+            {
+                const int jk = j + k*kstride;
+
+                for (int n=1; n<=N_sponge; ++n)
+                {
+                    const int i = iend-n;
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF w1 = w_dt * (1+N_sponge-n) / N_sponge;
+                    const TF w2 = w2_sponge<TF> * w1;
+
+                    const TF a_smooth =
+                            - a[ijk-ii] - a[ijk+ii]
+                            - a[ijk-jj] - a[ijk+jj]
+                            - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+
+                    at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
+                }
+            }
+    }
+
+    template<typename TF>
+    void sponge_s_south(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict lbc,
+            const double dt,
+            const int istart, const int iend,
+            const int jstart,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const int ii = 1;
+        const int jj = jstride;
+        const int kk = kstride;
+
+        const TF w_dt = w1_sponge<TF> / dt;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int jk = i + k*kstride;
+
+                for (int n=1; n<=N_sponge; ++n)
+                {
+                    const int j = jstart+(n-1);
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF w1 = w_dt * (1+N_sponge-n) / N_sponge;
+                    const TF w2 = w2_sponge<TF> * w1;
+
+                    const TF a_smooth =
+                            - a[ijk-ii] - a[ijk+ii]
+                            - a[ijk-jj] - a[ijk+jj]
+                            - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+
+                    at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
+                }
+            }
+    }
+
+    template<typename TF>
+    void sponge_s_north(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict lbc,
+            const double dt,
+            const int istart, const int iend,
+            const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const int ii = 1;
+        const int jj = jstride;
+        const int kk = kstride;
+
+        const TF w_dt = w1_sponge<TF> / dt;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int jk = i + k*kstride;
+
+                for (int n=1; n<=N_sponge; ++n)
+                {
+                    const int j = jend-n;
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF w1 = w_dt * (1+N_sponge-n) / N_sponge;
+                    const TF w2 = w2_sponge<TF> * w1;
+
+                    const TF a_smooth =
+                            - a[ijk-ii] - a[ijk+ii]
+                            - a[ijk-jj] - a[ijk+jj]
+                            - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+
+                    at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
+                }
+            }
     }
 }
 
@@ -270,7 +435,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::set_ghost_cells()
+void Boundary_lateral<TF>::set_ghost_cells(const double dt)
 {
     if (!sw_inoutflow)
         return;
@@ -294,13 +459,59 @@ void Boundary_lateral<TF>::set_ghost_cells()
         };
 
         if (md.mpicoordx == 0)
+        {
             set_ghost_cell_wrapper.template operator()<Lbc_location::West>(lbc_w);
+
+            sponge_s_west(
+                    fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_w.at(fld).data(), dt,
+                    gd.istart,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells);
+        }
         if (md.mpicoordx == md.npx-1)
+        {
             set_ghost_cell_wrapper.template operator()<Lbc_location::East>(lbc_e);
+
+            sponge_s_east(
+                    fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_e.at(fld).data(), dt,
+                    gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells);
+        }
         if (md.mpicoordy == 0)
+        {
             set_ghost_cell_wrapper.template operator()<Lbc_location::South>(lbc_s);
+
+            sponge_s_south(
+                    fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_s.at(fld).data(), dt,
+                    gd.istart, gd.iend,
+                    gd.jstart,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells);
+        }
         if (md.mpicoordy == md.npy-1)
+        {
             set_ghost_cell_wrapper.template operator()<Lbc_location::North>(lbc_n);
+
+            sponge_s_north(
+                    fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_n.at(fld).data(), dt,
+                    gd.istart, gd.iend,
+                    gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells);
+        }
+
+
     }
 }
 
