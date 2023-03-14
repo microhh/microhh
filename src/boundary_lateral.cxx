@@ -21,14 +21,88 @@
  */
 
 #include <cstdio>
+#include <iostream>
+
 #include "boundary_lateral.h"
 #include "netcdf_interface.h"
 #include "grid.h"
+#include "fields.h"
 #include "input.h"
 #include "master.h"
 
 namespace
 {
+    template<typename TF, Lbc_location location>
+    void set_ghost_cell_kernel(
+            TF* const restrict a,
+            const TF* const restrict lbc,
+            const int istart, const int iend, const int igc,
+            const int jstart, const int jend, const int jgc,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int ii = 1;
+        int ijk;
+        int ijk_gc;
+        int ijk_d;
+
+        // Set the ghost cells using extrapolation.
+        if (location == Lbc_location::West || location == Lbc_location::East)
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart; j<jend; ++j)
+                {
+                    const int jk = j+k*jcells;
+
+                    for (int i=0; i<igc; ++i)
+                    {
+                        if (location == Lbc_location::West)
+                        {
+                            ijk_d  = (istart    ) + j*icells + k*ijcells;
+                            ijk    = (istart+i  ) + j*icells + k*ijcells;
+                            ijk_gc = (istart-1-i) + j*icells + k*ijcells;
+                        }
+                        else if (location == Lbc_location::East)
+                        {
+                            ijk_d  = (iend-1  ) + j*icells + k*ijcells;
+                            ijk    = (iend-1-i) + j*icells + k*ijcells;
+                            ijk_gc = (iend+i  ) + j*icells + k*ijcells;
+                        }
+
+                        a[ijk_gc] = a[ijk_d] - (i+1)*TF(2)*(a[ijk_d] - lbc[jk]);
+                    }
+                }
+
+        }
+        else if (location == Lbc_location::North || location == Lbc_location::South)
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ik = i+k*icells;
+
+                    for (int j=0; j<jgc; ++j)
+                    {
+                        if (location == Lbc_location::South)
+                        {
+                            ijk_d  = i + (jstart    )*icells + k*ijcells;
+                            ijk    = i + (jstart+j  )*icells + k*ijcells;
+                            ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
+                        }
+                        else if (location == Lbc_location::North)
+                        {
+                            ijk_d  = i + (jend-1  )*icells + k*ijcells;
+                            ijk    = i + (jend-1-j)*icells + k*ijcells;
+                            ijk_gc = i + (jend+j  )*icells + k*ijcells;
+                        }
+
+                        const TF lbc_val = lbc[ik];
+                        a[ijk_gc] = a[ijk_d] - (j+1)*TF(2)*(a[ijk_d] - lbc[ik]);
+                    }
+                }
+        }
+    }
 }
 
 template<typename TF>
@@ -102,7 +176,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
             const int istart, const int iend,
             const int igc, const int imax,
             const int istride_in, const int istride_out,
-            const int mpicoord, const std::string name)
+            const int mpicoord, const std::string& name)
     {
         std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * istride_out);
 
@@ -145,9 +219,9 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 
         if (md.mpicoordx == 0)
             copy_boundary(
-                lbc_w_in, lbc_w_full,
-                gd.jstart, gd.jend, gd.jgc, gd.jmax,
-                gd.jtot, gd.jcells, md.mpicoordy, fld);
+                    lbc_w_in, lbc_w_full,
+                    gd.jstart, gd.jend, gd.jgc, gd.jmax,
+                    gd.jtot, gd.jcells, md.mpicoordy, fld);
 
         if (md.mpicoordx == md.npx-1)
             copy_boundary(
@@ -166,6 +240,32 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     lbc_n_in, lbc_n_full,
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, fld);
+
+        // ----------- HACK-HACK-HACK -----------
+        if (md.mpicoordx == 0)
+        {
+            for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                lbc_w.at(fld)[n] = lbc_w_in.at(fld)[n];
+        }
+
+        if (md.mpicoordx == md.npx-1)
+        {
+            for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                lbc_e.at(fld)[n] = lbc_e_in.at(fld)[n];
+        }
+
+        if (md.mpicoordy == 0)
+        {
+            for (int n=0; n<gd.icells*gd.kcells; ++n)
+                lbc_s.at(fld)[n] = lbc_s_in.at(fld)[n];
+        }
+
+        if (md.mpicoordy == md.npy-1)
+        {
+            for (int n=0; n<gd.icells*gd.kcells; ++n)
+                lbc_n.at(fld)[n] = lbc_n_in.at(fld)[n];
+        }
+        // ----------- End of HACK-HACK-HACK -----------
     }
 }
 
@@ -176,6 +276,32 @@ void Boundary_lateral<TF>::set_ghost_cells()
         return;
 
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& fld : inoutflow_s)
+    {
+        auto set_ghost_cell_wrapper = [&]<Lbc_location location>(
+                std::map<std::string, std::vector<TF>>& lbc_map)
+        {
+            set_ghost_cell_kernel<TF, location>(
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_map.at(fld).data(),
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.jgc,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
+        };
+
+        if (md.mpicoordx == 0)
+            set_ghost_cell_wrapper.template operator()<Lbc_location::West>(lbc_w);
+        if (md.mpicoordx == md.npx-1)
+            set_ghost_cell_wrapper.template operator()<Lbc_location::East>(lbc_e);
+        if (md.mpicoordy == 0)
+            set_ghost_cell_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        if (md.mpicoordy == md.npy-1)
+            set_ghost_cell_wrapper.template operator()<Lbc_location::North>(lbc_n);
+    }
 }
 
 template <typename TF>

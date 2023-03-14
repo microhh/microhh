@@ -33,6 +33,8 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Timeloop;
 
+enum class Lbc_location {West, East, South, North};
+
 template<typename TF>
 class Boundary_lateral
 {
