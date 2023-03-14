@@ -37,6 +37,7 @@
 #include "timeloop.h"
 #include "fft.h"
 #include "boundary.h"
+#include "boundary_lateral.h"
 #include "immersed_boundary.h"
 #include "advec.h"
 #include "diff.h"
@@ -133,6 +134,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        lbc       = std::make_shared<Boundary_lateral<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -180,6 +182,7 @@ void Model<TF>::init()
     fft->init();
 
     boundary->init(*input, *thermo);
+    lbc->init();
     ib->init(*input, *cross);
     buffer->init();
     diff->init();
@@ -243,6 +246,8 @@ void Model<TF>::load()
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
+
+    lbc->create(*input, sim_name);
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);
@@ -332,6 +337,7 @@ void Model<TF>::exec()
             {
                 // Update the time dependent parameters.
                 boundary ->update_time_dependent(*timeloop);
+                lbc      ->update_time_dependent(*timeloop);
                 thermo   ->update_time_dependent(*timeloop);
                 force    ->update_time_dependent(*timeloop);
                 radiation->update_time_dependent(*timeloop);
@@ -340,6 +346,9 @@ void Model<TF>::exec()
                 boundary->set_prognostic_cyclic_bcs();
                 boundary->set_prognostic_outflow_bcs();
                 boundary->set_ghost_cells();
+
+                // Set open boundary conditions.
+                lbc->set_ghost_cells();
 
                 // Calculate the field means, in case needed.
                 fields->exec();
