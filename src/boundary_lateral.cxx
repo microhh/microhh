@@ -108,6 +108,8 @@ namespace
             const double dt,
             const TF w1_sponge,
             const int N_sponge,
+            const int npx, const int npy,
+            const int mpiidx, const int mpiidy,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -138,29 +140,36 @@ namespace
 
                         // Calculate difference with 3x3x3 grid point mean.
                         // Offset near boundaries, to avoid using ghost cells.
-                        int io = (location == Lbc_location::West && n==1) ? ii :
-                                 (location == Lbc_location::East && n==1) ? -ii : 0;
-                        int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
+                        //int io = (location == Lbc_location::West && n==1) ? ii :
+                        //         (location == Lbc_location::East && n==1) ? -ii : 0;
+                        //int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
 
-                        const TF a_smooth =
-                                - a[ijk-ii+io+ko] - a[ijk+ii+io+ko]
-                                - a[ijk-jj+io+ko] - a[ijk+jj+io+ko]
-                                - a[ijk-kk+io+ko] - a[ijk+kk+io+ko] + TF(6)*a[ijk];
+                        //const TF a_smooth =
+                        //        - a[ijk-ii+io+ko] - a[ijk+ii+io+ko]
+                        //        - a[ijk-jj+io+ko] - a[ijk+jj+io+ko]
+                        //        - a[ijk-kk+io+ko] - a[ijk+kk+io+ko] + TF(6)*a[ijk];
 
                         // Calculate difference with 3x3x3 grid point mean.
-                        // Offset block near boundaries to avoid using ghost cells.
-                        //int io = (location == Lbc_location::West && n==1) ? 1 :
-                        //         (location == Lbc_location::East && n==1) ? -1 : 0;
-                        //
-                        //TF a_smooth = 0;
-                        //for (int dk=-1; dk<=1; ++dk)
-                        //    for (int dj=-1; dj<=1; ++dj)
-                        //        for (int di=-1; di<=1; ++di)
-                        //            if (!(di == 0 and dj == 0 and dk == 0))
-                        //                a_smooth -= a[ijk+di*ii+dj*jj+dk*kk];
-                        //a_smooth += TF(26)*a[ijk];
+                        // Offset block near lateral boundaries to avoid using ghost cells.
+                        int io = (location == Lbc_location::West && n==1) ? 1 :
+                                 (location == Lbc_location::East && n==1) ? -1 : 0;
 
-                        at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
+                        int jo = (mpiidy == 0 && j == jstart) ? 1 :
+                                 (mpiidy == npy-1 && j == jend-1) ? -1 : 0;
+
+                        int ko = (k == kstart) ? 1 :
+                                 (k == kend-1) ? -1 : 0;
+
+                        TF a_smooth = 0;
+                        for (int dk=-1; dk<=1; ++dk)
+                            for (int dj=-1; dj<=1; ++dj)
+                                for (int di=-1; di<=1; ++di)
+                                    if (!(di == 0 and dj == 0 and dk == 0))
+                                        a_smooth -= a[ijk + (di+io)*ii + (dj+jo)*jj + (dk+ko)*kk];
+                        a_smooth += TF(26)*a[ijk];
+
+                        at[ijk] += w1*(lbc[jk]-a[ijk]);
+                        at[ijk] -= w2*a_smooth;
                     }
                 }
         }
@@ -181,16 +190,36 @@ namespace
 
                         // Calculate difference with 3x3x3 grid point mean.
                         // Offset near boundaries, to avoid using ghost cells.
-                        int jo = (location == Lbc_location::South && n==1) ? jj :
-                                 (location == Lbc_location::North && n==1) ? -jj : 0;
-                        int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
+                        //int jo = (location == Lbc_location::South && n==1) ? jj :
+                        //         (location == Lbc_location::North && n==1) ? -jj : 0;
+                        //int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
+                        //const TF a_smooth =
+                        //        - a[ijk-ii+jo+ko] - a[ijk+ii+jo+ko]
+                        //        - a[ijk-jj+jo+ko] - a[ijk+jj+jo+ko]
+                        //        - a[ijk-kk+jo+ko] - a[ijk+kk+jo+ko] + TF(6)*a[ijk];
 
-                        const TF a_smooth =
-                                - a[ijk-ii+jo+ko] - a[ijk+ii+jo+ko]
-                                - a[ijk-jj+jo+ko] - a[ijk+jj+jo+ko]
-                                - a[ijk-kk+jo+ko] - a[ijk+kk+jo+ko] + TF(6)*a[ijk];
+                        // Calculate difference with 3x3x3 grid point mean.
+                        // Offset block near lateral boundaries to avoid using ghost cells.
 
-                        at[ijk] += w1*(lbc[ik]-a[ijk]) - w2*a_smooth;
+                        int io = (mpiidx == 0 && i == istart) ? 1 :
+                                 (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
+
+                        int jo = (location == Lbc_location::South && n==1) ? 1 :
+                                 (location == Lbc_location::North && n==1) ? -1 : 0;
+
+                        int ko = (k == kstart) ? 1 :
+                                 (k == kend-1) ? -1 : 0;
+
+                        TF a_smooth = 0;
+                        for (int dk=-1; dk<=1; ++dk)
+                            for (int dj=-1; dj<=1; ++dj)
+                                for (int di=-1; di<=1; ++di)
+                                    if (!(di == 0 and dj == 0 and dk == 0))
+                                        a_smooth -= a[ijk + (di+io)*ii + (dj+jo)*jj + (dk+ko)*kk];
+                        a_smooth += TF(26)*a[ijk];
+
+                        at[ijk] += w1*(lbc[ik]-a[ijk]);
+                        at[ijk] -= w2*a_smooth;
                     }
                 }
         }
@@ -399,6 +428,8 @@ void Boundary_lateral<TF>::set_ghost_cells(const double dt)
                     fields.ap.at(fld)->fld.data(),
                     lbc_map.at(fld).data(), dt,
                     w_sponge, n_sponge,
+                    md.npx, md.npy,
+                    md.mpicoordx, md.mpicoordy,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
