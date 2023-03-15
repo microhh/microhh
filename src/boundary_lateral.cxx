@@ -60,13 +60,11 @@ namespace
                         if (location == Lbc_location::West)
                         {
                             ijk_d  = (istart    ) + j*icells + k*ijcells;
-                            ijk    = (istart+i  ) + j*icells + k*ijcells;
                             ijk_gc = (istart-1-i) + j*icells + k*ijcells;
                         }
                         else if (location == Lbc_location::East)
                         {
                             ijk_d  = (iend-1  ) + j*icells + k*ijcells;
-                            ijk    = (iend-1-i) + j*icells + k*ijcells;
                             ijk_gc = (iend+i  ) + j*icells + k*ijcells;
                         }
 
@@ -87,13 +85,11 @@ namespace
                         if (location == Lbc_location::South)
                         {
                             ijk_d  = i + (jstart    )*icells + k*ijcells;
-                            ijk    = i + (jstart+j  )*icells + k*ijcells;
                             ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
                         }
                         else if (location == Lbc_location::North)
                         {
                             ijk_d  = i + (jend-1  )*icells + k*ijcells;
-                            ijk    = i + (jend-1-j)*icells + k*ijcells;
                             ijk_gc = i + (jend+j  )*icells + k*ijcells;
                         }
 
@@ -115,11 +111,12 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int jstride, const int kstride)
+            const int icells, const int jcells,
+            const int ijcells)
     {
         const int ii = 1;
-        const int jj = jstride;
-        const int kk = kstride;
+        const int jj = icells;
+        const int kk = ijcells;
 
         const TF w_dt = w1_sponge / dt;
         const TF w2_sponge = 0.2;
@@ -129,20 +126,39 @@ namespace
             for (int k=kstart; k<kend; ++k)
                 for (int j=jstart; j<jend; ++j)
                 {
-                    const int jk = j + k*kstride;
+                    const int jk = j + k*jcells;
 
                     for (int n=1; n<=N_sponge; ++n)
                     {
                         const int i = (location==Lbc_location::West) ? istart+(n-1) : iend-n;
-                        const int ijk = i + j*jstride + k*kstride;
+                        const int ijk = i + j*icells + k*ijcells;
 
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
                         const TF w2 = w2_sponge * w1;
 
+                        // Calculate difference with 3x3x3 grid point mean.
+                        // Offset near boundaries, to avoid using ghost cells.
+                        int io = (location == Lbc_location::West && n==1) ? ii :
+                                 (location == Lbc_location::East && n==1) ? -ii : 0;
+                        int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
+
                         const TF a_smooth =
-                                - a[ijk-ii] - a[ijk+ii]
-                                - a[ijk-jj] - a[ijk+jj]
-                                - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+                                - a[ijk-ii+io+ko] - a[ijk+ii+io+ko]
+                                - a[ijk-jj+io+ko] - a[ijk+jj+io+ko]
+                                - a[ijk-kk+io+ko] - a[ijk+kk+io+ko] + TF(6)*a[ijk];
+
+                        // Calculate difference with 3x3x3 grid point mean.
+                        // Offset block near boundaries to avoid using ghost cells.
+                        //int io = (location == Lbc_location::West && n==1) ? 1 :
+                        //         (location == Lbc_location::East && n==1) ? -1 : 0;
+                        //
+                        //TF a_smooth = 0;
+                        //for (int dk=-1; dk<=1; ++dk)
+                        //    for (int dj=-1; dj<=1; ++dj)
+                        //        for (int di=-1; di<=1; ++di)
+                        //            if (!(di == 0 and dj == 0 and dk == 0))
+                        //                a_smooth -= a[ijk+di*ii+dj*jj+dk*kk];
+                        //a_smooth += TF(26)*a[ijk];
 
                         at[ijk] += w1*(lbc[jk]-a[ijk]) - w2*a_smooth;
                     }
@@ -153,20 +169,26 @@ namespace
             for (int k=kstart; k<kend; ++k)
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ik = i + k*kstride;
+                    const int ik = i + k*icells;
 
                     for (int n=1; n<=N_sponge; ++n)
                     {
                         const int j = (location==Lbc_location::South) ? jstart+(n-1) : jend-n;
-                        const int ijk = i + j*jstride + k*kstride;
+                        const int ijk = i + j*icells + k*ijcells;
 
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
                         const TF w2 = w2_sponge * w1;
 
+                        // Calculate difference with 3x3x3 grid point mean.
+                        // Offset near boundaries, to avoid using ghost cells.
+                        int jo = (location == Lbc_location::South && n==1) ? jj :
+                                 (location == Lbc_location::North && n==1) ? -jj : 0;
+                        int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
+
                         const TF a_smooth =
-                                - a[ijk-ii] - a[ijk+ii]
-                                - a[ijk-jj] - a[ijk+jj]
-                                - a[ijk-kk] - a[ijk+kk] + TF(6)*a[ijk];
+                                - a[ijk-ii+jo+ko] - a[ijk+ii+jo+ko]
+                                - a[ijk-jj+jo+ko] - a[ijk+jj+jo+ko]
+                                - a[ijk-kk+jo+ko] - a[ijk+kk+jo+ko] + TF(6)*a[ijk];
 
                         at[ijk] += w1*(lbc[ik]-a[ijk]) - w2*a_smooth;
                     }
@@ -380,7 +402,8 @@ void Boundary_lateral<TF>::set_ghost_cells(const double dt)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.jcells);
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
         };
 
         if (md.mpicoordx == 0)
