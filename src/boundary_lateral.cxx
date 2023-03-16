@@ -105,8 +105,8 @@ namespace
             TF* const restrict at,
             const TF* const restrict a,
             const TF* const restrict lbc,
-            const double dt,
-            const TF w1_sponge,
+            const TF tau_nudge,
+            const TF w_diff,
             const int N_sponge,
             const int npx, const int npy,
             const int mpiidx, const int mpiidy,
@@ -120,8 +120,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        const TF w_dt = w1_sponge / dt;
-        const TF w2_sponge = 0.2;
+        const TF w_dt = TF(1) / tau_nudge;
 
         if (location == Lbc_location::West || location == Lbc_location::East)
         {
@@ -137,10 +136,6 @@ namespace
 
                         const int i = (location==Lbc_location::West) ? istart+(n-1) : iend-n;
                         const int ijk = i + j*icells + k*ijcells;
-
-                        // Nudge (w1) and diffusion (w2) coefficients.
-                        const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
-                        const TF w2 = w2_sponge * w1;
 
                         // Calculate diffusion term over 3x3x3 stencil.
                         // Offset block near lateral boundaries to avoid using ghost cells.
@@ -175,8 +170,11 @@ namespace
                                 + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
                                 - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
 
+                        // Nudge coefficient.
+                        const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
+
                         at[ijk] += w1*(lbc[jk]-a[ijk]);
-                        at[ijk] -= w2*a_diff;
+                        at[ijk] -= w_diff*a_diff;
                     }
                 }
         }
@@ -194,10 +192,6 @@ namespace
 
                         const int j = (location==Lbc_location::South) ? jstart+(n-1) : jend-n;
                         const int ijk = i + j*icells + k*ijcells;
-
-                        // Nudge (w1) and diffusion (w2) coefficients.
-                        const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
-                        const TF w2 = w2_sponge * w1;
 
                         // Calculate diffusion term over 3x3x3 stencil.
                         // Offset block near lateral boundaries to avoid using ghost cells.
@@ -232,8 +226,11 @@ namespace
                                 + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
                                 - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
 
+                        // Nudge coefficient.
+                        const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
+
                         at[ijk] += w1*(lbc[ik]-a[ijk]);
-                        at[ijk] -= w2*a_diff;
+                        at[ijk] -= w_diff*a_diff;
                     }
                 }
         }
@@ -254,8 +251,10 @@ Boundary_lateral<TF>::Boundary_lateral(
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
-        w_sponge = inputin.get_item<TF>("boundary", "w_sponge", "", 0.1);
         n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
+
+        tau_nudge = inputin.get_item<int>("boundary", "tau_sponge", "", 5);
+        w_diff = inputin.get_item<int>("boundary", "w_diff", "", 0.04);
     }
 }
 
@@ -408,7 +407,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::set_ghost_cells(const double dt)
+void Boundary_lateral<TF>::set_ghost_cells()
 {
     if (!sw_inoutflow)
         return;
@@ -440,8 +439,10 @@ void Boundary_lateral<TF>::set_ghost_cells(const double dt)
             lateral_sponge_layer_kernel<TF, location>(
                     fields.at.at(fld)->fld.data(),
                     fields.ap.at(fld)->fld.data(),
-                    lbc_map.at(fld).data(), dt,
-                    w_sponge, n_sponge,
+                    lbc_map.at(fld).data(),
+                    tau_nudge,
+                    w_diff,
+                    n_sponge,
                     md.npx, md.npy,
                     md.mpicoordx, md.mpicoordy,
                     gd.istart, gd.iend,

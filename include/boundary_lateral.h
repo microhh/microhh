@@ -44,7 +44,7 @@ class Boundary_lateral
 
         void init();
         void create(Input&, const std::string&);
-        void set_ghost_cells(const double);
+        void set_ghost_cells();
         void update_time_dependent(Timeloop<TF>&);
 
     private:
@@ -56,8 +56,9 @@ class Boundary_lateral
         bool sw_inoutflow_u;
         bool sw_inoutflow_v;
         bool sw_sponge;
-        TF w_sponge;
         int n_sponge;
+        TF tau_nudge;
+        TF w_diff;
         std::vector<std::string> inoutflow_s;
 
         // Current (time interpolated) boundary conditions:
