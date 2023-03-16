@@ -1,7 +1,20 @@
 import numpy as np
 
-xsize, ysize, zsize = 25600., 25600., 3200
-itot, jtot, ktot = 256, 256, 32
+# Get number of vertical levels and size from .ini file
+with open('drycblles.ini') as f:
+    for line in f:
+        if(line.split('=')[0]=='itot'):
+            itot = int(line.split('=')[1])
+        if(line.split('=')[0]=='jtot'):
+            jtot = int(line.split('=')[1])
+        if(line.split('=')[0]=='ktot'):
+            ktot = int(line.split('=')[1])
+        if(line.split('=')[0]=='xsize'):
+            xsize = float(line.split('=')[1])
+        if(line.split('=')[0]=='ysize'):
+            ysize = float(line.split('=')[1])
+        if(line.split('=')[0]=='zsize'):
+            zsize = float(line.split('=')[1])
 
 dx, dy, dz = xsize/itot, ysize/jtot, zsize/ktot
 
@@ -19,10 +32,10 @@ rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float32)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
-u_west = 2.1
+u_west = 2
 u_east = 2
 v_south = 2
-v_north = 2.1
+v_north = 2
 
 u[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
 v[:, :, :] = v_south + (v_north - v_south) * yh[None, :, None]/ysize
