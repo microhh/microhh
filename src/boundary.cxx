@@ -471,7 +471,7 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
         {
             const int ijk_west = gd.istart + j*jj + k*kk;
             const int ijk_east = gd.iend   + j*jj + k*kk;
-            u[ijk_west] = TF(3.);
+            u[ijk_west] = TF(2.1);
             u[ijk_east] = TF(2.);
         }
 
@@ -489,10 +489,10 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
 
     for (int k=gd.kstart; k<gd.kend; ++k)
     {
-        const TF hor_div = rhoref[k]*(TF(3.) - TF(2.)) / gd.xsize
+        const TF hor_div = rhoref[k]*(TF(2.) - TF(2.1)) / gd.xsize
                          + rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize;
 
-        w_top += (rhoref[k]*w_top - hor_div) / rhoref[k+1];
+        w_top = (rhorefh[k]*w_top - gd.dz[k]*hor_div) / rhorefh[k+1];
     }
 
     for (int j=gd.jstart; j<gd.jend; ++j)
