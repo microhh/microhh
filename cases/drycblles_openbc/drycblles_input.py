@@ -28,8 +28,8 @@ dthetadz = 0.003
 
 # set the height
 z  = np.linspace(0.5*dz, zsize-0.5*dz, ktot)
-u  = np.zeros(np.size(z))+2
-v  = np.zeros(np.size(z))+2
+u  = np.zeros(np.size(z))
+v  = np.zeros(np.size(z))
 th = np.zeros(np.size(z))
 
 # linearly stratified profile
@@ -80,13 +80,17 @@ x = np.arange(dx/2, xsize, dx)
 y = np.arange(dy/2, ysize, dy)
 
 time = np.array([0, 10800])
-fields = ['s']
+fields = ['u','v','s']
 
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
 lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
-lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
+
+lbc.u_west[:] = 1
+lbc.u_east[:] = 0
+lbc.v_south[:] = 0.
+lbc.v_north[:] = 1.
 
 lbc.to_netcdf('drycblles')
