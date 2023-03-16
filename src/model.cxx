@@ -289,6 +289,7 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
+    fields->save_rhoref();
     timeloop->save(
             timeloop->get_iotime(),
             timeloop->get_itime(),

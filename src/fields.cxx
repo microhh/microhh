@@ -1111,6 +1111,29 @@ void Fields<TF>::save(int n)
         throw std::runtime_error("Error saving 3D fields");
 }
 
+
+template<typename TF>
+void Fields<TF>::save_rhoref()
+{
+    auto& gd = grid.get_grid_data();
+
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", "rhoref", 0);
+    master.print_message("Saving \"%s\" ... ", filename);
+
+    if (master.get_mpiid() == 0)
+    {
+        FILE *pFile;
+        pFile = fopen(filename, "ab");
+        fwrite(&rhoref [gd.kstart], sizeof(TF), gd.kmax, pFile);
+        fwrite(&rhorefh[gd.kstart], sizeof(TF), gd.kmax+1, pFile);
+        fclose(pFile);
+    }
+
+    master.print_message("OK\n", filename);
+}
+
+
 template<typename TF>
 void Fields<TF>::load(int n)
 {
