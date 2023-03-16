@@ -253,8 +253,8 @@ Boundary_lateral<TF>::Boundary_lateral(
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
         n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
 
-        tau_nudge = inputin.get_item<int>("boundary", "tau_sponge", "", 5);
-        w_diff = inputin.get_item<int>("boundary", "w_diff", "", 0.04);
+        tau_nudge = inputin.get_item<TF>("boundary", "tau_sponge", "", 60);
+        w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
     }
 }
 
