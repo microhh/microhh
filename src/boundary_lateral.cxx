@@ -126,100 +126,114 @@ namespace
         if (location == Lbc_location::West || location == Lbc_location::East)
         {
             for (int k=kstart; k<kend; ++k)
-                for (int j=jstart; j<jend; ++j)
+                for (int n=1; n<=N_sponge; ++n)
                 {
-                    const int jk = j + k*jcells;
+                    const int jstart_loc = mpiidy == 0     ? jstart + (n-1) : jstart;
+                    const int jend_loc   = mpiidy == npy-1 ? jend   - (n-1) : jend;
 
-                    for (int n=1; n<=N_sponge; ++n)
+                    for (int j=jstart_loc; j<jend_loc; ++j)
                     {
+                        const int jk = j + k*jcells;
+
                         const int i = (location==Lbc_location::West) ? istart+(n-1) : iend-n;
                         const int ijk = i + j*icells + k*ijcells;
 
+                        // Nudge (w1) and diffusion (w2) coefficients.
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
                         const TF w2 = w2_sponge * w1;
 
-                        // Calculate difference with 3x3x3 grid point mean.
-                        // Offset near boundaries, to avoid using ghost cells.
-                        //int io = (location == Lbc_location::West && n==1) ? ii :
-                        //         (location == Lbc_location::East && n==1) ? -ii : 0;
-                        //int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
-
-                        //const TF a_smooth =
-                        //        - a[ijk-ii+io+ko] - a[ijk+ii+io+ko]
-                        //        - a[ijk-jj+io+ko] - a[ijk+jj+io+ko]
-                        //        - a[ijk-kk+io+ko] - a[ijk+kk+io+ko] + TF(6)*a[ijk];
-
-                        // Calculate difference with 3x3x3 grid point mean.
+                        // Calculate diffusion term over 3x3x3 stencil.
                         // Offset block near lateral boundaries to avoid using ghost cells.
-                        int io = (location == Lbc_location::West && n==1) ? 1 :
-                                 (location == Lbc_location::East && n==1) ? -1 : 0;
+                        const int io =
+                                (location == Lbc_location::West && n==1) ? 1 :
+                                (location == Lbc_location::East && n==1) ? -1 : 0;
 
-                        int jo = (mpiidy == 0 && j == jstart) ? 1 :
-                                 (mpiidy == npy-1 && j == jend-1) ? -1 : 0;
+                        const int jo =
+                                (mpiidy == 0 && j == jstart) ? 1 :
+                                (mpiidy == npy-1 && j == jend-1) ? -1 : 0;
 
-                        int ko = (k == kstart) ? 1 :
-                                 (k == kend-1) ? -1 : 0;
+                        const int ko =
+                                (k == kstart) ? 1 :
+                                (k == kend-1) ? -1 : 0;
 
-                        TF a_smooth = 0;
-                        for (int dk=-1; dk<=1; ++dk)
-                            for (int dj=-1; dj<=1; ++dj)
-                                for (int di=-1; di<=1; ++di)
-                                    if (!(di == 0 and dj == 0 and dk == 0))
-                                        a_smooth -= a[ijk + (di+io)*ii + (dj+jo)*jj + (dk+ko)*kk];
-                        a_smooth += TF(26)*a[ijk];
+                        const int ijc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+
+                        auto index = [&](
+                                const int i3, const int j3, const int k3)
+                        {
+                            return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
+                        };
+
+                        const TF a_diff =
+                                - TF(1) * a[index(0,0,0)] + TF(2) * a[index(0,1,0)] - TF(1) * a[index(0,2,0)]
+                                + TF(2) * a[index(1,0,0)] - TF(4) * a[index(1,1,0)] + TF(2) * a[index(1,2,0)]
+                                - TF(1) * a[index(2,0,0)] + TF(2) * a[index(2,1,0)] - TF(1) * a[index(2,2,0)]
+                                + TF(2) * a[index(0,0,1)] - TF(4) * a[index(0,1,1)] + TF(2) * a[index(0,2,1)]
+                                - TF(4) * a[index(1,0,1)] + TF(8) * a[index(1,1,1)] - TF(4) * a[index(1,2,1)]
+                                + TF(2) * a[index(2,0,1)] - TF(4) * a[index(2,1,1)] + TF(2) * a[index(2,2,1)]
+                                - TF(1) * a[index(0,0,2)] + TF(2) * a[index(0,1,2)] - TF(1) * a[index(0,2,2)]
+                                + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
+                                - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
 
                         at[ijk] += w1*(lbc[jk]-a[ijk]);
-                        at[ijk] -= w2*a_smooth;
+                        at[ijk] -= w2*a_diff;
                     }
                 }
         }
         else if (location == Lbc_location::South || location == Lbc_location::North)
         {
             for (int k=kstart; k<kend; ++k)
-                for (int i=istart; i<iend; ++i)
+                for (int n=1; n<=N_sponge; ++n)
                 {
-                    const int ik = i + k*icells;
+                    const int istart_loc = (mpiidx == 0)     ? istart + n : istart;
+                    const int iend_loc   = (mpiidx == npx-1) ? iend   - n : iend;
 
-                    for (int n=1; n<=N_sponge; ++n)
+                    for (int i=istart_loc; i<iend_loc; ++i)
                     {
+                        const int ik = i + k*icells;
+
                         const int j = (location==Lbc_location::South) ? jstart+(n-1) : jend-n;
                         const int ijk = i + j*icells + k*ijcells;
 
+                        // Nudge (w1) and diffusion (w2) coefficients.
                         const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
                         const TF w2 = w2_sponge * w1;
 
-                        // Calculate difference with 3x3x3 grid point mean.
-                        // Offset near boundaries, to avoid using ghost cells.
-                        //int jo = (location == Lbc_location::South && n==1) ? jj :
-                        //         (location == Lbc_location::North && n==1) ? -jj : 0;
-                        //int ko = (k == kstart) ? kk : (k == kend-1) ? -kk : 0;
-                        //const TF a_smooth =
-                        //        - a[ijk-ii+jo+ko] - a[ijk+ii+jo+ko]
-                        //        - a[ijk-jj+jo+ko] - a[ijk+jj+jo+ko]
-                        //        - a[ijk-kk+jo+ko] - a[ijk+kk+jo+ko] + TF(6)*a[ijk];
-
-                        // Calculate difference with 3x3x3 grid point mean.
+                        // Calculate diffusion term over 3x3x3 stencil.
                         // Offset block near lateral boundaries to avoid using ghost cells.
+                        const int io =
+                                (mpiidx == 0 && i == istart) ? 1 :
+                                (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
 
-                        int io = (mpiidx == 0 && i == istart) ? 1 :
-                                 (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
+                        const int jo =
+                                (location == Lbc_location::South && n==1) ? 1 :
+                                (location == Lbc_location::North && n==1) ? -1 : 0;
 
-                        int jo = (location == Lbc_location::South && n==1) ? 1 :
-                                 (location == Lbc_location::North && n==1) ? -1 : 0;
+                        const int ko =
+                                (k == kstart) ? 1 :
+                                (k == kend-1) ? -1 : 0;
 
-                        int ko = (k == kstart) ? 1 :
-                                 (k == kend-1) ? -1 : 0;
+                        const int ijc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
 
-                        TF a_smooth = 0;
-                        for (int dk=-1; dk<=1; ++dk)
-                            for (int dj=-1; dj<=1; ++dj)
-                                for (int di=-1; di<=1; ++di)
-                                    if (!(di == 0 and dj == 0 and dk == 0))
-                                        a_smooth -= a[ijk + (di+io)*ii + (dj+jo)*jj + (dk+ko)*kk];
-                        a_smooth += TF(26)*a[ijk];
+                        auto index = [&](
+                                const int i3, const int j3, const int k3)
+                        {
+                            return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
+                        };
+
+                        const TF a_diff =
+                                - TF(1) * a[index(0,0,0)] + TF(2) * a[index(0,1,0)] - TF(1) * a[index(0,2,0)]
+                                + TF(2) * a[index(1,0,0)] - TF(4) * a[index(1,1,0)] + TF(2) * a[index(1,2,0)]
+                                - TF(1) * a[index(2,0,0)] + TF(2) * a[index(2,1,0)] - TF(1) * a[index(2,2,0)]
+                                + TF(2) * a[index(0,0,1)] - TF(4) * a[index(0,1,1)] + TF(2) * a[index(0,2,1)]
+                                - TF(4) * a[index(1,0,1)] + TF(8) * a[index(1,1,1)] - TF(4) * a[index(1,2,1)]
+                                + TF(2) * a[index(2,0,1)] - TF(4) * a[index(2,1,1)] + TF(2) * a[index(2,2,1)]
+                                - TF(1) * a[index(0,0,2)] + TF(2) * a[index(0,1,2)] - TF(1) * a[index(0,2,2)]
+                                + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
+                                - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
 
                         at[ijk] += w1*(lbc[ik]-a[ijk]);
-                        at[ijk] -= w2*a_smooth;
+                        at[ijk] -= w2*a_diff;
                     }
                 }
         }
