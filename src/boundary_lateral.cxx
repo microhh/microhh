@@ -549,6 +549,25 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
         }
         // ----------- End of HACK-HACK-HACK -----------
     }
+
+    // Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
+    //    // TF w_top = TF(0);
+
+    // for (int k=gd.kstart; k<gd.kend; ++k)
+    // {
+    //     const TF hor_div = rhoref[k]*(TF(2.) - TF(2.1)) / gd.xsize
+    //                      + rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize;
+
+    //     w_top = (rhorefh[k]*w_top - gd.dz[k]*hor_div) / rhorefh[k+1];
+    // }
+
+    // for (int j=gd.jstart; j<gd.jend; ++j)
+    //     for (int i=gd.istart; i<gd.iend; ++i)
+    //     {
+    //         const int ijk = i + j*jj + gd.kend*kk;
+    //         w[ijk] = w_top;
+    //     }
+    // // END
 }
 
 template <typename TF>

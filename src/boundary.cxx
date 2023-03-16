@@ -454,54 +454,54 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
     boundary_cyclic.exec(fields.mp.at("v")->fld.data());
     boundary_cyclic.exec(fields.mp.at("w")->fld.data());
 
-    // CvH OVERWRITE THE VALUES TO TEST NEW PRESSURE SOLVER
-    // CvH: NEED MPI FIX
-    const int ii = 1;
-    const int jj = gd.icells;
-    const int kk = gd.icells*gd.jcells;
+    // // CvH OVERWRITE THE VALUES TO TEST NEW PRESSURE SOLVER
+    // // CvH: NEED MPI FIX
+    // const int ii = 1;
+    // const int jj = gd.icells;
+    // const int kk = gd.icells*gd.jcells;
 
-    TF* u = fields.mp.at("u")->fld.data();
-    TF* v = fields.mp.at("v")->fld.data();
-    TF* w = fields.mp.at("w")->fld.data();
-    TF* rhoref = fields.rhoref.data();
-    TF* rhorefh = fields.rhorefh.data();
+    // TF* u = fields.mp.at("u")->fld.data();
+    // TF* v = fields.mp.at("v")->fld.data();
+    // TF* w = fields.mp.at("w")->fld.data();
+    // TF* rhoref = fields.rhoref.data();
+    // TF* rhorefh = fields.rhorefh.data();
 
-    for (int k=0; k<gd.kcells; ++k)
-        for (int j=0; j<gd.jcells; ++j)
-        {
-            const int ijk_west = gd.istart + j*jj + k*kk;
-            const int ijk_east = gd.iend   + j*jj + k*kk;
-            u[ijk_west] = TF(2.1);
-            u[ijk_east] = TF(2.);
-        }
+    // for (int k=0; k<gd.kcells; ++k)
+    //     for (int j=0; j<gd.jcells; ++j)
+    //     {
+    //         const int ijk_west = gd.istart + j*jj + k*kk;
+    //         const int ijk_east = gd.iend   + j*jj + k*kk;
+    //         u[ijk_west] = TF(2.1);
+    //         u[ijk_east] = TF(2.);
+    //     }
 
-    for (int k=0; k<gd.kcells; ++k)
-        for (int i=0; i<gd.icells; ++i)
-        {
-            const int ijk_south = i + gd.jstart*jj + k*kk;
-            const int ijk_north = i + gd.jend  *jj + k*kk;
-            v[ijk_south] = TF(2.);
-            v[ijk_north] = TF(2.);
-        }
+    // for (int k=0; k<gd.kcells; ++k)
+    //     for (int i=0; i<gd.icells; ++i)
+    //     {
+    //         const int ijk_south = i + gd.jstart*jj + k*kk;
+    //         const int ijk_north = i + gd.jend  *jj + k*kk;
+    //         v[ijk_south] = TF(2.);
+    //         v[ijk_north] = TF(2.);
+    //     }
 
 
-    TF w_top = TF(0);
+    // TF w_top = TF(0);
 
-    for (int k=gd.kstart; k<gd.kend; ++k)
-    {
-        const TF hor_div = rhoref[k]*(TF(2.) - TF(2.1)) / gd.xsize
-                         + rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize;
+    // for (int k=gd.kstart; k<gd.kend; ++k)
+    // {
+    //     const TF hor_div = rhoref[k]*(TF(2.) - TF(2.1)) / gd.xsize
+    //                      + rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize;
 
-        w_top = (rhorefh[k]*w_top - gd.dz[k]*hor_div) / rhorefh[k+1];
-    }
+    //     w_top = (rhorefh[k]*w_top - gd.dz[k]*hor_div) / rhorefh[k+1];
+    // }
 
-    for (int j=gd.jstart; j<gd.jend; ++j)
-        for (int i=gd.istart; i<gd.iend; ++i)
-        {
-            const int ijk = i + j*jj + gd.kend*kk;
-            w[ijk] = w_top;
-        }
-    // END
+    // for (int j=gd.jstart; j<gd.jend; ++j)
+    //     for (int i=gd.istart; i<gd.iend; ++i)
+    //     {
+    //         const int ijk = i + j*jj + gd.kend*kk;
+    //         w[ijk] = w_top;
+    //     }
+    // // END
 
     for (auto& it : fields.sp)
         boundary_cyclic.exec(it.second->fld.data());
