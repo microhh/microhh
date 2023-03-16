@@ -137,8 +137,8 @@ void FFT<double>::load()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
+    fftw_r2r_kind kindf[] = {FFTW_REDFT10};
+    fftw_r2r_kind kindb[] = {FFTW_REDFT01};
 
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
             fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
@@ -185,8 +185,8 @@ void FFT<float>::load()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    fftwf_r2r_kind kindf[] = {FFTW_REDFT10};
+    fftwf_r2r_kind kindb[] = {FFTW_REDFT01};
 
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
             fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
@@ -219,8 +219,8 @@ void FFT<double>::save()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
+    fftw_r2r_kind kindf[] = {FFTW_REDFT10};
+    fftw_r2r_kind kindb[] = {FFTW_REDFT01};
 
     iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
                                 fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
@@ -273,8 +273,8 @@ void FFT<float>::save()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    fftwf_r2r_kind kindf[] = {FFTW_REDFT10};
+    fftwf_r2r_kind kindb[] = {FFTW_REDFT01};
 
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
                                   fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
@@ -417,7 +417,7 @@ namespace
             {
                 const int ij = n;
                 const int ijk = n + k*kk;
-                data[ijk] = fftoutj[ij] / gd.jtot;
+                data[ijk] = fftoutj[ij] / (TF(2.)*gd.jtot);
             }
         }
 
@@ -442,7 +442,7 @@ namespace
                 const int ij = n;
                 const int ijk = n + k*kk;
                 // swap array here to avoid unnecessary 3d loop
-                tmp1[ijk] = fftouti[ij] / gd.itot;
+                tmp1[ijk] = fftouti[ij] / (TF(2.)*gd.jtot);
             }
         }
     }

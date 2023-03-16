@@ -132,17 +132,17 @@ void Pres_2<TF>::set_values()
 
     const TF pi = std::acos(-1.);
 
-    for (int j=0; j<gd.jtot/2+1; ++j)
-        bmatj[j] = 2. * (std::cos(2.*pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
+    for (int j=0; j<gd.jtot; ++j)
+        bmatj[j] = 2. * (std::cos(pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
 
-    for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
-        bmatj[j] = bmatj[gd.jtot-j];
+    // for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
+    //     bmatj[j] = bmatj[gd.jtot-j];
 
-    for (int i=0; i<gd.itot/2+1; ++i)
-        bmati[i] = 2. * (std::cos(2.*pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
+    for (int i=0; i<gd.itot; ++i)
+        bmati[i] = 2. * (std::cos(pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
 
-    for (int i=gd.itot/2+1; i<gd.itot; ++i)
-        bmati[i] = bmati[gd.itot-i];
+    // for (int i=gd.itot/2+1; i<gd.itot; ++i)
+    //     bmati[i] = bmati[gd.itot-i];
 
     // create vectors that go into the tridiagonal matrix solver
     for (int k=0; k<gd.kmax; ++k)
@@ -179,6 +179,25 @@ void Pres_2<TF>::input(TF* const restrict p,
     // set the cyclic boundary conditions for the tendencies
     boundary_cyclic.exec(ut, Edge::East_west_edge  );
     boundary_cyclic.exec(vt, Edge::North_south_edge);
+
+    // CvH: NEED MPI FIX
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            const int ijk_west = gd.istart + j*jj + k*kk;
+            const int ijk_east = gd.iend   + j*jj + k*kk;
+            ut[ijk_west] = 0.;
+            ut[ijk_east] = 0.;
+        }
+
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ijk_south = i + gd.jstart*jj + k*kk;
+            const int ijk_north = i + gd.jend  *jj + k*kk;
+            vt[ijk_south] = 0.;
+            vt[ijk_north] = 0.;
+        }
 
     // write pressure as a 3d array without ghost cells
     for (int k=0; k<gd.kmax; ++k)
@@ -359,6 +378,26 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
 
     // set the cyclic boundary conditions
     boundary_cyclic.exec(p);
+
+    // set the pressure ghost cells enforce neumann = 0
+    // CvH: NEED MPI FIX
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+        {
+            const int ijk_west = gd.istart + j*jjp + k*kkp;
+            const int ijk_east = gd.iend   + j*jjp + k*kkp;
+            p[ijk_west-1] = p[ijk_west];
+            p[ijk_east] = p[ijk_east-1];
+        }
+
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int i=gd.istart; i<gd.iend; ++i)
+        {
+            const int ijk_south = i + gd.jstart*jjp + k*kkp;
+            const int ijk_north = i + gd.jend  *jjp + k*kkp;
+            p[ijk_south-jjp] = p[ijk_south];
+            p[ijk_north] = p[ijk_north-jjp];
+        }
 }
 
 template<typename TF>

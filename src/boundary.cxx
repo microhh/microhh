@@ -448,10 +448,35 @@ void Boundary<TF>::set_prognostic_cyclic_bcs()
 {
     /* Set cyclic boundary conditions of the
        prognostic 3D fields */
+    const Grid_data<TF>& gd = grid.get_grid_data();
 
     boundary_cyclic.exec(fields.mp.at("u")->fld.data());
     boundary_cyclic.exec(fields.mp.at("v")->fld.data());
     boundary_cyclic.exec(fields.mp.at("w")->fld.data());
+
+    // CvH OVERWRITE THE VALUES TO TEST NEW PRESSURE SOLVER
+    // CvH: NEED MPI FIX
+    const int jj = gd.icells;
+    const int kk = gd.icells*gd.jcells;
+
+    for (int k=0; k<gd.kcells; ++k)
+        for (int j=0; j<gd.jcells; ++j)
+        {
+            const int ijk_west = gd.istart + j*jj + k*kk;
+            const int ijk_east = gd.iend   + j*jj + k*kk;
+            fields.mp.at("u")->fld[ijk_west] = TF(2.);
+            fields.mp.at("u")->fld[ijk_east] = TF(2.);
+        }
+
+    for (int k=0; k<gd.kcells; ++k)
+        for (int i=0; i<gd.icells; ++i)
+        {
+            const int ijk_south = i + gd.jstart*jj + k*kk;
+            const int ijk_north = i + gd.jend  *jj + k*kk;
+            fields.mp.at("v")->fld[ijk_south] = TF(2.);
+            fields.mp.at("v")->fld[ijk_north] = TF(2.);
+        }
+    // END
 
     for (auto& it : fields.sp)
         boundary_cyclic.exec(it.second->fld.data());
