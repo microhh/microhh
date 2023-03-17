@@ -85,12 +85,20 @@ fields = ['u','v','s']
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
 lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
+lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 
+<<<<<<<<< Temporary merge branch 1
 lbc.u_west[:, :, :] = 2. * z[None, :, None] / zsize
 lbc.u_east[:, :, :] = 2. * z[None, :, None] / zsize
 lbc.v_south[:, :, :] = 2. * z[None, :, None] / zsize
 lbc.v_north[:, :, :] = 2. * z[None, :, None] / zsize
+=========
+lbc.u_west[:] = 1
+lbc.u_east[:] = 0
+lbc.v_south[:] = 0
+lbc.v_north[:] = 1
+>>>>>>>>> Temporary merge branch 2
 
 lbc.to_netcdf('drycblles')
