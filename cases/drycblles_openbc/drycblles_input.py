@@ -85,6 +85,7 @@ fields = ['u','v','s']
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
 lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
+#lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 
