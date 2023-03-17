@@ -90,7 +90,7 @@ lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
 
 lbc.u_west[:] = 1
 lbc.u_east[:] = 0
-lbc.v_south[:] = 0.
-lbc.v_north[:] = 1.
+lbc.v_south[:] = 0
+lbc.v_north[:] = 1
 
 lbc.to_netcdf('drycblles')
