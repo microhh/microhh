@@ -25,20 +25,20 @@ y = np.arange(dy/2, ysize , dy)
 zh = np.arange(0, zsize - dz/2, dz)
 z = np.arange(dz/2, zsize , dz)
 
-u = np.fromfile('u.0000000', dtype=np.float32).reshape(ktot, jtot, itot)
-v = np.fromfile('v.0000000', dtype=np.float32).reshape(ktot, jtot, itot)
-w = np.fromfile('w.0000000', dtype=np.float32).reshape(ktot, jtot, itot)
-rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float32)
+u = np.fromfile('u.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+v = np.fromfile('v.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+w = np.fromfile('w.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
-u_west = 2
-u_east = 2
-v_south = 2
-v_north = 2
+u_west = 2.
+u_east = 2.
+v_south = 2.
+v_north = 2.
 
-u[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
-v[:, :, :] = v_south + (v_north - v_south) * yh[None, :, None]/ysize
+u[:, :, :] = (u_west + (u_east - u_west) * xh[None, None, :]/xsize) * z[:, None, None]/zsize
+v[:, :, :] = (v_south + (v_north - v_south) * yh[None, :, None]/ysize) * z[:, None, None]/zsize
 
 for k in range(1, ktot):
     hor_div = (u_east - u_west) / xsize + (v_north - v_south) / ysize

@@ -550,24 +550,6 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
         // ----------- End of HACK-HACK-HACK -----------
     }
 
-    // Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
-    //    // TF w_top = TF(0);
-
-    // for (int k=gd.kstart; k<gd.kend; ++k)
-    // {
-    //     const TF hor_div = rhoref[k]*(TF(2.) - TF(2.1)) / gd.xsize
-    //                      + rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize;
-
-    //     w_top = (rhorefh[k]*w_top - gd.dz[k]*hor_div) / rhorefh[k+1];
-    // }
-
-    // for (int j=gd.jstart; j<gd.jend; ++j)
-    //     for (int i=gd.istart; i<gd.iend; ++i)
-    //     {
-    //         const int ijk = i + j*jj + gd.kend*kk;
-    //         w[ijk] = w_top;
-    //     }
-    // // END
 }
 
 template <typename TF>
@@ -620,6 +602,32 @@ void Boundary_lateral<TF>::set_ghost_cells()
         if (md.mpicoordy == md.npy-1)
             set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
     }
+
+    if (sw_inoutflow_u || sw_inoutflow_v)
+    {
+        const int jstride = gd.icells;
+        const int kstride = gd.icells*gd.jcells;
+
+        // Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
+        // CvH THIS IS A FIRST ATTEMPT THAT ASSUMES UNIFORM W.
+        TF w_top = TF(0);
+
+        for (int k=gd.kstart; k<gd.kend; ++k)
+        {
+            const TF hor_div = fields.rhoref[k]*(TF(2.) - TF(2.)) / gd.xsize * gd.z[k]/gd.zsize
+                             + fields.rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize * gd.z[k]/gd.zsize;
+
+            w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
+        }
+
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*jstride + gd.kend*kstride;
+                fields.mp.at("w")->fld[ijk] = w_top;
+            }
+    }
+    // END
 
     for (auto& fld : inoutflow_s)
     {

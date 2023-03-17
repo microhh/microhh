@@ -88,9 +88,9 @@ lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 
-lbc.u_west[:] = 2.
-lbc.u_east[:] = 2.
-lbc.v_south[:] = 2.
-lbc.v_north[:] = 2.
+lbc.u_west[:, :, :] = 2. * z[None, :, None] / zsize
+lbc.u_east[:, :, :] = 2. * z[None, :, None] / zsize
+lbc.v_south[:, :, :] = 2. * z[None, :, None] / zsize
+lbc.v_north[:, :, :] = 2. * z[None, :, None] / zsize
 
 lbc.to_netcdf('drycblles')
