@@ -64,8 +64,8 @@ nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
 nc_th = nc_group_init.createVariable("th", float_type, ("z"))
 
 nc_z [:] = z [:]
-nc_u [:] = u [:]
-nc_v [:] = v [:]
+nc_u [:] = u [:] + 2
+nc_v [:] = v [:] + 1
 nc_th[:] = th[:]
 
 nc_file.close()
@@ -85,6 +85,7 @@ fields = ['u','v','s']
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
 lbc.s_west[:] = np.cos(4*np.pi*y/ysize)
+lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 

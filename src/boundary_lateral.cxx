@@ -189,6 +189,33 @@ namespace
         }
     }
 
+    template<typename TF>
+    TF diffusion_3x3x3(
+        const TF* const restrict fld,
+        const int ijk,
+        const int icells,
+        const int ijcells)
+    {
+        auto index = [&](
+                const int i3, const int j3, const int k3)
+        {
+            return ijk + i3-1 + (j3-1)*icells + (k3-1)*ijcells;
+        };
+
+        const TF fld_diff =
+                - TF(1) * fld[index(0,0,0)] + TF(2) * fld[index(0,1,0)] - TF(1) * fld[index(0,2,0)]
+                + TF(2) * fld[index(1,0,0)] - TF(4) * fld[index(1,1,0)] + TF(2) * fld[index(1,2,0)]
+                - TF(1) * fld[index(2,0,0)] + TF(2) * fld[index(2,1,0)] - TF(1) * fld[index(2,2,0)]
+                + TF(2) * fld[index(0,0,1)] - TF(4) * fld[index(0,1,1)] + TF(2) * fld[index(0,2,1)]
+                - TF(4) * fld[index(1,0,1)] + TF(8) * fld[index(1,1,1)] - TF(4) * fld[index(1,2,1)]
+                + TF(2) * fld[index(2,0,1)] - TF(4) * fld[index(2,1,1)] + TF(2) * fld[index(2,2,1)]
+                - TF(1) * fld[index(0,0,2)] + TF(2) * fld[index(0,1,2)] - TF(1) * fld[index(0,2,2)]
+                + TF(2) * fld[index(1,0,2)] - TF(4) * fld[index(1,1,2)] + TF(2) * fld[index(1,2,2)]
+                - TF(1) * fld[index(2,0,2)] + TF(2) * fld[index(2,1,2)] - TF(1) * fld[index(2,2,2)];
+
+        return fld_diff;
+    }
+
     template<typename TF, Lbc_location location>
     void lateral_sponge_kernel_u(
             TF* const restrict ut,
@@ -233,24 +260,10 @@ namespace
                             (k == kstart) ? 1 :
                             (k == kend-1) ? -1 : 0;
 
-                    const int ijc = i + (j+jo)*icells + (k+ko)*(ijcells);
+                    const int ijkc = i + (j+jo)*icells + (k+ko)*(ijcells);
 
-                    auto index = [&](
-                            const int i3, const int j3, const int k3)
-                    {
-                        return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
-                    };
-
-                    const TF u_diff =
-                            - TF(1) * u[index(0,0,0)] + TF(2) * u[index(0,1,0)] - TF(1) * u[index(0,2,0)]
-                            + TF(2) * u[index(1,0,0)] - TF(4) * u[index(1,1,0)] + TF(2) * u[index(1,2,0)]
-                            - TF(1) * u[index(2,0,0)] + TF(2) * u[index(2,1,0)] - TF(1) * u[index(2,2,0)]
-                            + TF(2) * u[index(0,0,1)] - TF(4) * u[index(0,1,1)] + TF(2) * u[index(0,2,1)]
-                            - TF(4) * u[index(1,0,1)] + TF(8) * u[index(1,1,1)] - TF(4) * u[index(1,2,1)]
-                            + TF(2) * u[index(2,0,1)] - TF(4) * u[index(2,1,1)] + TF(2) * u[index(2,2,1)]
-                            - TF(1) * u[index(0,0,2)] + TF(2) * u[index(0,1,2)] - TF(1) * u[index(0,2,2)]
-                            + TF(2) * u[index(1,0,2)] - TF(4) * u[index(1,1,2)] + TF(2) * u[index(1,2,2)]
-                            - TF(1) * u[index(2,0,2)] + TF(2) * u[index(2,1,2)] - TF(1) * u[index(2,2,2)];
+                    const TF u_diff = diffusion_3x3x3(
+                            u, ijkc, icells, ijcells);
 
                     // Nudge coefficient.
                     const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
@@ -305,30 +318,16 @@ namespace
                             (k == kstart) ? 1 :
                             (k == kend-1) ? -1 : 0;
 
-                    const int ijc = i+io + j*icells + (k+ko)*(ijcells);
+                    const int ijkc = i+io + j*icells + (k+ko)*(ijcells);
 
-                    auto index = [&](
-                            const int i3, const int j3, const int k3)
-                    {
-                        return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
-                    };
-
-                    const TF u_diff =
-                            - TF(1) * v[index(0,0,0)] + TF(2) * v[index(0,1,0)] - TF(1) * v[index(0,2,0)]
-                            + TF(2) * v[index(1,0,0)] - TF(4) * v[index(1,1,0)] + TF(2) * v[index(1,2,0)]
-                            - TF(1) * v[index(2,0,0)] + TF(2) * v[index(2,1,0)] - TF(1) * v[index(2,2,0)]
-                            + TF(2) * v[index(0,0,1)] - TF(4) * v[index(0,1,1)] + TF(2) * v[index(0,2,1)]
-                            - TF(4) * v[index(1,0,1)] + TF(8) * v[index(1,1,1)] - TF(4) * v[index(1,2,1)]
-                            + TF(2) * v[index(2,0,1)] - TF(4) * v[index(2,1,1)] + TF(2) * v[index(2,2,1)]
-                            - TF(1) * v[index(0,0,2)] + TF(2) * v[index(0,1,2)] - TF(1) * v[index(0,2,2)]
-                            + TF(2) * v[index(1,0,2)] - TF(4) * v[index(1,1,2)] + TF(2) * v[index(1,2,2)]
-                            - TF(1) * v[index(2,0,2)] + TF(2) * v[index(2,1,2)] - TF(1) * v[index(2,2,2)];
+                    const TF v_diff = diffusion_3x3x3(
+                            v, ijkc, icells, ijcells);
 
                     // Nudge coefficient.
                     const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
 
                     vt[ijk] += w1*(lbc_v[ik]-v[ijk]);
-                    vt[ijk] -= w_diff*u_diff;
+                    vt[ijk] -= w_diff*v_diff;
                 }
             }
     }
@@ -384,24 +383,10 @@ namespace
                                 (k == kstart) ? 1 :
                                 (k == kend-1) ? -1 : 0;
 
-                        const int ijc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+                        const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
 
-                        auto index = [&](
-                                const int i3, const int j3, const int k3)
-                        {
-                            return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
-                        };
-
-                        const TF a_diff =
-                                - TF(1) * a[index(0,0,0)] + TF(2) * a[index(0,1,0)] - TF(1) * a[index(0,2,0)]
-                                + TF(2) * a[index(1,0,0)] - TF(4) * a[index(1,1,0)] + TF(2) * a[index(1,2,0)]
-                                - TF(1) * a[index(2,0,0)] + TF(2) * a[index(2,1,0)] - TF(1) * a[index(2,2,0)]
-                                + TF(2) * a[index(0,0,1)] - TF(4) * a[index(0,1,1)] + TF(2) * a[index(0,2,1)]
-                                - TF(4) * a[index(1,0,1)] + TF(8) * a[index(1,1,1)] - TF(4) * a[index(1,2,1)]
-                                + TF(2) * a[index(2,0,1)] - TF(4) * a[index(2,1,1)] + TF(2) * a[index(2,2,1)]
-                                - TF(1) * a[index(0,0,2)] + TF(2) * a[index(0,1,2)] - TF(1) * a[index(0,2,2)]
-                                + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
-                                - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
+                        const TF a_diff = diffusion_3x3x3(
+                                a, ijkc, icells, ijcells);
 
                         // Nudge coefficient.
                         const TF w1 = w_dt * (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
@@ -440,24 +425,10 @@ namespace
                                 (k == kstart) ? 1 :
                                 (k == kend-1) ? -1 : 0;
 
-                        const int ijc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+                        const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
 
-                        auto index = [&](
-                                const int i3, const int j3, const int k3)
-                        {
-                            return ijc + i3-1 + (j3-1)*jj + (k3-1)*kk;
-                        };
-
-                        const TF a_diff =
-                                - TF(1) * a[index(0,0,0)] + TF(2) * a[index(0,1,0)] - TF(1) * a[index(0,2,0)]
-                                + TF(2) * a[index(1,0,0)] - TF(4) * a[index(1,1,0)] + TF(2) * a[index(1,2,0)]
-                                - TF(1) * a[index(2,0,0)] + TF(2) * a[index(2,1,0)] - TF(1) * a[index(2,2,0)]
-                                + TF(2) * a[index(0,0,1)] - TF(4) * a[index(0,1,1)] + TF(2) * a[index(0,2,1)]
-                                - TF(4) * a[index(1,0,1)] + TF(8) * a[index(1,1,1)] - TF(4) * a[index(1,2,1)]
-                                + TF(2) * a[index(2,0,1)] - TF(4) * a[index(2,1,1)] + TF(2) * a[index(2,2,1)]
-                                - TF(1) * a[index(0,0,2)] + TF(2) * a[index(0,1,2)] - TF(1) * a[index(0,2,2)]
-                                + TF(2) * a[index(1,0,2)] - TF(4) * a[index(1,1,2)] + TF(2) * a[index(1,2,2)]
-                                - TF(1) * a[index(2,0,2)] + TF(2) * a[index(2,1,2)] - TF(1) * a[index(2,2,2)];
+                        const TF a_diff = diffusion_3x3x3(
+                                a, ijkc, icells, ijcells);
 
                         // Nudge coefficient.
                         const TF w1 = w_dt * (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
