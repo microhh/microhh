@@ -546,7 +546,7 @@ namespace
             {
                 const int ij = n;
                 const int ijk = n + k*kk;
-                data[ijk] = fftoutj[ij] / gd.jtot;
+                data[ijk] = fftoutj[ij] / (TF(2.)*gd.jtot);
             }
         }
 
@@ -574,7 +574,7 @@ namespace
                 const int ij = n;
                 const int ijk = n + k*kk;
                 // swap array here to avoid unnecessary 3d loop
-                data[ijk] = fftouti[ij] / gd.itot;
+                data[ijk] = fftouti[ij] / (TF(2.)*gd.itot);
             }
         }
 
