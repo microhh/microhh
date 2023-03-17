@@ -32,7 +32,7 @@ rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
-u_west = 2.
+u_west = 2.1
 u_east = 2.
 v_south = 2.
 v_north = 2.
