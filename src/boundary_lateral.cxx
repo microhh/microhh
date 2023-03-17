@@ -450,6 +450,7 @@ Boundary_lateral<TF>::Boundary_lateral(
 
     if (sw_inoutflow)
     {
+        sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
         sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
         sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
@@ -553,10 +554,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.jstart, gd.jend, gd.jgc, gd.jmax,
                     gd.jtot, gd.jcells, md.mpicoordy, "u");
 
-            // ----------- HACK-HACK-HACK -----------
-            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                lbc_w.at("u")[n] = lbc_w_in.at("u")[n];
-            // ----------- End of HACK-HACK-HACK -----------
+            if (!sw_timedep)
+            {
+                for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                    lbc_w.at("u")[n] = lbc_w_in.at("u")[n];
+            }
         }
 
         if (md.mpicoordx == md.npx-1)
@@ -566,10 +568,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.jstart, gd.jend, gd.jgc, gd.jmax,
                     gd.jtot, gd.jcells, md.mpicoordy, "u");
 
-            // ----------- HACK-HACK-HACK -----------
-            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                lbc_e.at("u")[n] = lbc_e_in.at("u")[n];
-            // ----------- End of HACK-HACK-HACK -----------
+            if (!sw_timedep)
+            {
+                for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                    lbc_e.at("u")[n] = lbc_e_in.at("u")[n];
+            }
         }
     }
 
@@ -585,10 +588,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, "v");
 
-            // ----------- HACK-HACK-HACK -----------
-            for (int n=0; n<gd.icells*gd.kcells; ++n)
-                lbc_s.at("v")[n] = lbc_s_in.at("v")[n];
-            // ----------- End of HACK-HACK-HACK -----------
+            if (!sw_timedep)
+            {
+                for (int n=0; n<gd.icells*gd.kcells; ++n)
+                    lbc_s.at("v")[n] = lbc_s_in.at("v")[n];
+            }
         }
 
         if (md.mpicoordy == md.npy-1)
@@ -598,10 +602,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, "v");
 
-            // ----------- HACK-HACK-HACK -----------
-            for (int n=0; n<gd.icells*gd.kcells; ++n)
-                lbc_n.at("v")[n] = lbc_n_in.at("v")[n];
-            // ----------- End of HACK-HACK-HACK -----------
+            if (!sw_timedep)
+            {
+                for (int n=0; n<gd.icells*gd.kcells; ++n)
+                    lbc_n.at("v")[n] = lbc_n_in.at("v")[n];
+            }
         }
     }
 
@@ -637,31 +642,32 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, fld);
 
-        // ----------- HACK-HACK-HACK -----------
-        if (md.mpicoordx == 0)
+        if (!sw_timedep)
         {
-            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                lbc_w.at(fld)[n] = lbc_w_in.at(fld)[n];
-        }
+            if (md.mpicoordx == 0)
+            {
+                for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                    lbc_w.at(fld)[n] = lbc_w_in.at(fld)[n];
+            }
 
-        if (md.mpicoordx == md.npx-1)
-        {
-            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                lbc_e.at(fld)[n] = lbc_e_in.at(fld)[n];
-        }
+            if (md.mpicoordx == md.npx-1)
+            {
+                for (int n=0; n<gd.jcells*gd.kcells; ++n)
+                    lbc_e.at(fld)[n] = lbc_e_in.at(fld)[n];
+            }
 
-        if (md.mpicoordy == 0)
-        {
-            for (int n=0; n<gd.icells*gd.kcells; ++n)
-                lbc_s.at(fld)[n] = lbc_s_in.at(fld)[n];
-        }
+            if (md.mpicoordy == 0)
+            {
+                for (int n=0; n<gd.icells*gd.kcells; ++n)
+                    lbc_s.at(fld)[n] = lbc_s_in.at(fld)[n];
+            }
 
-        if (md.mpicoordy == md.npy-1)
-        {
-            for (int n=0; n<gd.icells*gd.kcells; ++n)
-                lbc_n.at(fld)[n] = lbc_n_in.at(fld)[n];
+            if (md.mpicoordy == md.npy-1)
+            {
+                for (int n=0; n<gd.icells*gd.kcells; ++n)
+                    lbc_n.at(fld)[n] = lbc_n_in.at(fld)[n];
+            }
         }
-        // ----------- End of HACK-HACK-HACK -----------
     }
 
     // Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
