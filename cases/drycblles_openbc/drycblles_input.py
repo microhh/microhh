@@ -80,7 +80,7 @@ x = np.arange(dx/2, xsize, dx)
 y = np.arange(dy/2, ysize, dy)
 
 time = np.array([0, 10800])
-fields = ['u','v','s']
+fields = ['u','v','w','s']
 
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
@@ -89,9 +89,14 @@ lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 
-lbc.u_west[:, :, :] = 2.1 * z[None, :, None] / zsize
-lbc.u_east[:, :, :] = 2. * z[None, :, None] / zsize
-lbc.v_south[:, :, :] = 2. * z[None, :, None] / zsize
-lbc.v_north[:, :, :] = 2. * z[None, :, None] / zsize
+lbc.u_west[:, :, :]  = 2 * z[None, :, None] / zsize
+lbc.u_east[:, :, :]  = 0
+lbc.u_south[:, :, :] = 0
+lbc.u_north[:, :, :] = 0
+
+lbc.v_west[:, :, :]  = 0
+lbc.v_east[:, :, :]  = 0
+lbc.v_south[:, :, :] = 0
+lbc.v_north[:, :, :] = 2 * z[None, :, None] / zsize
 
 lbc.to_netcdf('drycblles')
