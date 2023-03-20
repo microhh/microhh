@@ -475,13 +475,18 @@ void Boundary_lateral<TF>::init()
         return;
 
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     auto add_lbc = [&](const std::string& name)
     {
-        lbc_w.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-        lbc_e.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-        lbc_s.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
-        lbc_n.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
+        if (md.mpicoordx == 0)
+            lbc_w.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
+        if (md.mpicoordx == md.npx-1)
+            lbc_e.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
+        if (md.mpicoordy == 0)
+            lbc_s.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
+        if (md.mpicoordy == md.npy-1)
+            lbc_n.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
     };
 
     if (sw_inoutflow_u)
