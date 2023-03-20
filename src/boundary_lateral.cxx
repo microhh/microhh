@@ -781,8 +781,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
 
         for (int k=gd.kstart; k<gd.kend; ++k)
         {
-            const TF hor_div = fields.rhoref[k]*(TF(2.) - TF(2.)) / gd.xsize * gd.z[k]/gd.zsize
-                             + fields.rhoref[k]*(TF(2.) - TF(2.)) / gd.ysize * gd.z[k]/gd.zsize;
+            const TF hor_div = fields.rhoref[k]*(TF(0) - TF(2)) / gd.xsize * gd.z[k]/gd.zsize
+                             + fields.rhoref[k]*(TF(2) - TF(0)) / gd.ysize * gd.z[k]/gd.zsize;
 
             w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
         }
