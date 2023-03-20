@@ -32,9 +32,9 @@ rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
-u_west = 2.1
-u_east = 2.
-v_south = 2.
+u_west = 2
+u_east = 0.
+v_south = 0.
 v_north = 2.
 
 u[:, :, :] = (u_west + (u_east - u_west) * xh[None, None, :]/xsize) * z[:, None, None]/zsize

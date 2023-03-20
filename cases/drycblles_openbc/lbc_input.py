@@ -20,12 +20,12 @@ class LBC_input:
         if 'u' in fields:
             self.u_west = np.zeros((self.nt, ktot, jtot), dtype)
             self.u_east = np.zeros((self.nt, ktot, jtot), dtype)
-            self.u_south = np.zeros((self.nt, ktot, itot+1), dtype)
-            self.u_north = np.zeros((self.nt, ktot, itot+1), dtype)
+            self.u_south = np.zeros((self.nt, ktot, itot), dtype)
+            self.u_north = np.zeros((self.nt, ktot, itot), dtype)
 
         if 'v' in fields:
-            self.v_west = np.zeros((self.nt, ktot, jtot+1), dtype)
-            self.v_east = np.zeros((self.nt, ktot, jtot+1), dtype)
+            self.v_west = np.zeros((self.nt, ktot, jtot), dtype)
+            self.v_east = np.zeros((self.nt, ktot, jtot), dtype)
             self.v_south = np.zeros((self.nt, ktot, itot), dtype)
             self.v_north = np.zeros((self.nt, ktot, itot), dtype)
 
@@ -57,18 +57,16 @@ class LBC_input:
         nc.createDimension('y', self.jtot)
         nc.createDimension('z', self.ktot)
 
-        nc.createDimension('xh', self.itot+1)
-        nc.createDimension('yh', self.jtot+1)
-        nc.createDimension('zh', self.ktot+1)
+        nc.createDimension('xh', self.itot)
+        nc.createDimension('yh', self.jtot)
+        nc.createDimension('zh', self.ktot)
 
         nc_t = nc.createVariable('time',  self.dtype, ('time'))
         nc_t[:] = self.time
 
-
         def add_variable(name, dims, data):
             var = nc.createVariable(name, self.dtype, dims)
             var[:] = data
-
 
         if 'u' in self.fields:
             add_variable('u_west', ('time', 'z', 'y'), self.u_west)
