@@ -82,7 +82,7 @@ y = np.arange(dy/2, ysize, dy)
 yh = np.arange(0, ysize, dy)
 
 time = np.array([0, 10800])
-fields = ['u','v','w','s']
+fields = ['u','v','s','th']
 
 lbc = LBC_input(fields, itot, jtot, ktot, time)
 
@@ -91,10 +91,15 @@ lbc.s_south[:] = np.cos(4*np.pi*x/xsize)
 #lbc.s_north[:] = np.cos(4*np.pi*y/ysize)
 #lbc.s_east[:] = np.cos(4*np.pi*x/xsize)
 
+lbc.th_west[:] = th[None, :, None]
+lbc.th_south[:] = th[None, :, None]
+lbc.th_north[:] = th[None, :, None]
+lbc.th_east[:] = th[None, :, None]
+
 lbc.u_west[:, :, :]  = 2. # * z[None, :, None]/zsize
 lbc.u_east[:, :, :]  = 0.
-lbc.u_south[:, :, :] = 2. - 2.*xh[None, None, :]/xsize # * z[None, :, None]/zsize
-lbc.u_north[:, :, :] = 2. - 2.*xh[None, None, :]/xsize # * z[None, :, None]/zsize
+lbc.u_south[:, :, :] = 2. - 2*xh[None, None, :]/xsize # * z[None, :, None]/zsize
+lbc.u_north[:, :, :] = 2. - 2*xh[None, None, :]/xsize # * z[None, :, None]/zsize
 
 lbc.v_west[:, :, :]  = 0. + 2*yh[None, None, :]/ysize # * z[None, :, None]/zsize
 lbc.v_east[:, :, :]  = 0. + 2*yh[None, None, :]/ysize # * z[None, :, None]/zsize
