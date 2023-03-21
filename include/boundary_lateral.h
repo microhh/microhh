@@ -55,6 +55,7 @@ class Boundary_lateral
         bool sw_inoutflow;
         bool sw_inoutflow_u;
         bool sw_inoutflow_v;
+        bool sw_inoutflow_w;
         bool sw_sponge;
         bool sw_timedep;
         int n_sponge;

@@ -122,6 +122,64 @@ namespace
             }
     }
 
+    // This kernel enforces a Neumann BC of 0 on w.
+    template<typename TF, Lbc_location location>
+    void set_ghost_cell_kernel_w(
+            TF* const restrict a,
+            const int istart, const int iend, const int igc,
+            const int jstart, const int jend, const int jgc,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        int ijk;
+        int ijk_gc;
+        int ijk_d;
+
+        // Set the ghost cells using extrapolation.
+        if (location == Lbc_location::West || location == Lbc_location::East)
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart; j<jend; ++j)
+                    for (int i=0; i<igc; ++i)
+                    {
+                        if (location == Lbc_location::West)
+                        {
+                            ijk_d  = (istart    ) + j*icells + k*ijcells;
+                            ijk_gc = (istart-1-i) + j*icells + k*ijcells;
+                        }
+                        else if (location == Lbc_location::East)
+                        {
+                            ijk_d  = (iend-1  ) + j*icells + k*ijcells;
+                            ijk_gc = (iend+i  ) + j*icells + k*ijcells;
+                        }
+
+                        a[ijk_gc] = a[ijk_d];
+                    }
+        }
+        else if (location == Lbc_location::North || location == Lbc_location::South)
+        {
+            for (int k=kstart; k<kend; ++k)
+                for (int i=istart; i<iend; ++i)
+                    for (int j=0; j<jgc; ++j)
+                    {
+                        if (location == Lbc_location::South)
+                        {
+                            ijk_d  = i + (jstart    )*icells + k*ijcells;
+                            ijk_gc = i + (jstart-1-j)*icells + k*ijcells;
+                        }
+                        else if (location == Lbc_location::North)
+                        {
+                            ijk_d  = i + (jend-1  )*icells + k*ijcells;
+                            ijk_gc = i + (jend+j  )*icells + k*ijcells;
+                        }
+
+                        a[ijk_gc] = a[ijk_d];
+                    }
+        }
+    }
+
+
     template<typename TF, Lbc_location location>
     void set_ghost_cell_kernel_s(
             TF* const restrict a,
@@ -453,6 +511,7 @@ Boundary_lateral<TF>::Boundary_lateral(
         sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
         sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
         sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
+        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
@@ -727,6 +786,17 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 gd.ijcells);
     };
 
+    auto set_ghost_cell_w_wrapper = [&]<Lbc_location location>()
+    {
+        set_ghost_cell_kernel_w<TF, location>(
+                fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.igc,
+                gd.jstart, gd.jend, gd.jgc,
+                gd.kstart, gd.kend+1,
+                gd.icells, gd.jcells, gd.kcells,
+                gd.ijcells);
+    };
+
     if (sw_inoutflow_u)
     {
         if (md.mpicoordx == 0)
@@ -800,6 +870,34 @@ void Boundary_lateral<TF>::set_ghost_cells()
             }
     }
     // END
+
+    // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
+    // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
+    // be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
+    // gradient into the ghost cells.
+    if (sw_inoutflow_w)
+    {
+        if (md.mpicoordx == 0)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::West>();
+            // sponge_layer_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
+        }
+        if (md.mpicoordx == md.npx-1)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::East>();
+            // sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
+        }
+        if (md.mpicoordy == 0)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
+            // sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
+            // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+        }
+    }
 
     for (auto& fld : inoutflow_s)
     {
