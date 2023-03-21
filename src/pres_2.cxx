@@ -492,6 +492,7 @@ TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restr
             #pragma ivdep
             for (int i=gd.istart; i<gd.iend; ++i)
             {
+
                 const int ijk = i + j*jj + k*kk;
                 div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
                     + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
