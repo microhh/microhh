@@ -876,6 +876,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
         TF* u = fields.mp.at("u")->fld.data();
         TF* v = fields.mp.at("v")->fld.data();
         TF* w = fields.mp.at("w")->fld.data();
+
+        TF* rho  = fields.rhoref.data();
         TF* rhoh = fields.rhorefh.data();
 
         const TF dxi = TF(1)/gd.dx;
@@ -886,35 +888,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-                w[ijk+kk] = -(((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
+                w[ijk+kk] = -(rho[k] * ((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
             }
-
-        // CHECK CHECK
-        TF div_max = 0.;
-        int i_max = 0;
-        int j_max = 0;
-        int k_max = 0;
-
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-                for (int i=gd.istart; i<gd.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const TF div =
-                        (u[ijk+ii] - u[ijk]) * dxi +
-                        (v[ijk+jj] - v[ijk]) * dyi +
-                        (rhoh[k+1] * w[ijk+kk] - rhoh[k] * w[ijk]) * gd.dzi[k];
-
-                    if (div > div_max)
-                    {
-                        div_max = div;
-                        i_max = i;
-                        j_max = j;
-                        k_max = k;
-                    }
-                }
-
-        std::cout << "(i,j,k,div) = " << i_max << " " << j_max << " " << k_max << " " << div_max << std::endl;
     }
     // END
 
