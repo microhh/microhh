@@ -289,7 +289,6 @@ void Model<TF>::save()
     grid->save();
     fft->save();
     fields->save(timeloop->get_iotime());
-    fields->save_rhoref();
     timeloop->save(
             timeloop->get_iotime(),
             timeloop->get_itime(),
@@ -298,6 +297,9 @@ void Model<TF>::save()
 
     thermo->create_basestate(*input, *input_nc);
     thermo->save(timeloop->get_iotime());
+
+    // Save basestate rho after thermo.
+    fields->save_rhoref();
 
     boundary->create_cold_start(*input_nc);
     boundary->save(timeloop->get_iotime(), *thermo);
