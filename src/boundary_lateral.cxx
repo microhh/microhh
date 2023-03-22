@@ -890,28 +890,31 @@ void Boundary_lateral<TF>::set_ghost_cells()
             }
 
         // CHECK CHECK
-        //TF div_max = 0.;
-        //int i_max = 0;
-        //int j_max = 0;
-        //int k_max = 0;
+        TF div_max = 0.;
+        int i_max = 0;
+        int j_max = 0;
+        int k_max = 0;
 
-        //for (int k=gd.kstart; k<gd.kend; ++k)
-        //    for (int j=gd.jstart; j<gd.jend; ++j)
-        //        for (int i=gd.istart; i<gd.iend; ++i)
-        //        {
-        //            const int ijk=i + j * jj + k * kk;
-        //            const TF div = (u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi + (rhoh[k+1] * w[ijk+kk] - rhoh[k] * w[ijk]) * gd.dzi[k];
+        for (int k=gd.kstart; k<gd.kend; ++k)
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const TF div =
+                        (u[ijk+ii] - u[ijk]) * dxi +
+                        (v[ijk+jj] - v[ijk]) * dyi +
+                        (rhoh[k+1] * w[ijk+kk] - rhoh[k] * w[ijk]) * gd.dzi[k];
 
-        //            if (div > div_max)
-        //            {
-        //                div_max = div;
-        //                i_max = i;
-        //                j_max = j;
-        //                k_max = k;
-        //            }
-        //        }
-        //std::cout << i_max << " " << j_max << " " << k_max << " div=" << div_max << std::endl;
-        //throw 1;
+                    if (div > div_max)
+                    {
+                        div_max = div;
+                        i_max = i;
+                        j_max = j;
+                        k_max = k;
+                    }
+                }
+
+        std::cout << "(i,j,k,div) = " << i_max << " " << j_max << " " << k_max << " " << div_max << std::endl;
     }
     // END
 
