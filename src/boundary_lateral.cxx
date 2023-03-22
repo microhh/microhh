@@ -847,27 +847,71 @@ void Boundary_lateral<TF>::set_ghost_cells()
 
     if (sw_inoutflow_u || sw_inoutflow_v)
     {
-        const int jstride = gd.icells;
-        const int kstride = gd.icells*gd.jcells;
+        //const int jstride = gd.icells;
+        //const int kstride = gd.icells*gd.jcells;
 
-        // Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
-        // CvH THIS IS A FIRST ATTEMPT THAT ASSUMES UNIFORM W.
-        TF w_top = TF(0);
+        //// Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
+        //// CvH THIS IS A FIRST ATTEMPT THAT ASSUMES UNIFORM W.
+        //TF w_top = TF(0);
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            const TF hor_div = fields.rhoref[k]*(TF(0.) - TF(2.)) / gd.xsize // * gd.z[k]/gd.zsize
-                             + fields.rhoref[k]*(TF(2.) - TF(0.)) / gd.ysize; // * gd.z[k]/gd.zsize;
+        //for (int k=gd.kstart; k<gd.kend; ++k)
+        //{
+        //    const TF hor_div = fields.rhoref[k]*(TF(0.) - TF(2.)) / gd.xsize // * gd.z[k]/gd.zsize
+        //                     + fields.rhoref[k]*(TF(2.) - TF(0.)) / gd.ysize; // * gd.z[k]/gd.zsize;
 
-            w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
-        }
+        //    w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
+        //}
 
+        //for (int j=gd.jstart; j<gd.jend; ++j)
+        //    for (int i=gd.istart; i<gd.iend; ++i)
+        //    {
+        //        const int ijk = i + j*jstride + gd.kend*kstride;
+        //        fields.mp.at("w")->fld[ijk] = w_top;
+        //    }
+
+        const int ii = 1;
+        const int jj = gd.icells;
+        const int kk = gd.ijcells;
+
+        TF* u = fields.mp.at("u")->fld.data();
+        TF* v = fields.mp.at("v")->fld.data();
+        TF* w = fields.mp.at("w")->fld.data();
+        TF* rhoh = fields.rhorefh.data();
+
+        const TF dxi = TF(1)/gd.dx;
+        const TF dyi = TF(1)/gd.dy;
+
+        const int k = gd.kend-1;
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
-                const int ijk = i + j*jstride + gd.kend*kstride;
-                fields.mp.at("w")->fld[ijk] = w_top;
+                const int ijk = i + j*jj + k*kk;
+                w[ijk+kk] = -(((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
             }
+
+        // CHECK CHECK
+        //TF div_max = 0.;
+        //int i_max = 0;
+        //int j_max = 0;
+        //int k_max = 0;
+
+        //for (int k=gd.kstart; k<gd.kend; ++k)
+        //    for (int j=gd.jstart; j<gd.jend; ++j)
+        //        for (int i=gd.istart; i<gd.iend; ++i)
+        //        {
+        //            const int ijk=i + j * jj + k * kk;
+        //            const TF div = (u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi + (rhoh[k+1] * w[ijk+kk] - rhoh[k] * w[ijk]) * gd.dzi[k];
+
+        //            if (div > div_max)
+        //            {
+        //                div_max = div;
+        //                i_max = i;
+        //                j_max = j;
+        //                k_max = k;
+        //            }
+        //        }
+        //std::cout << i_max << " " << j_max << " " << k_max << " div=" << div_max << std::endl;
+        //throw 1;
     }
     // END
 
