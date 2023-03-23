@@ -29,12 +29,6 @@ class LBC_input:
             self.v_south = np.zeros((self.nt, ktot, itot), dtype)
             self.v_north = np.zeros((self.nt, ktot, itot), dtype)
 
-        #if 'w' in fields:
-        #    self.w_west = np.zeros((self.nt, ktot+1, jtot), dtype)
-        #    self.w_east = np.zeros((self.nt, ktot+1, jtot), dtype)
-        #    self.w_south = np.zeros((self.nt, ktot+1, itot), dtype)
-        #    self.w_north = np.zeros((self.nt, ktot+1, itot), dtype)
-
         for f in fields:
             if f not in ['u', 'v', 'w']:
                 setattr(self, '{}_west'.format(f), np.zeros((self.nt, ktot, jtot), dtype))
@@ -59,7 +53,6 @@ class LBC_input:
 
         nc.createDimension('xh', self.itot)
         nc.createDimension('yh', self.jtot)
-        nc.createDimension('zh', self.ktot)
 
         nc_t = nc.createVariable('time',  self.dtype, ('time'))
         nc_t[:] = self.time
@@ -79,12 +72,6 @@ class LBC_input:
             add_variable('v_east', ('time', 'z', 'yh'), self.v_east)
             add_variable('v_south', ('time', 'z', 'x'), self.v_south)
             add_variable('v_north', ('time', 'z', 'x'), self.v_north)
-
-        #if 'w' in self.fields:
-        #    add_variable('w_west', ('time', 'zh', 'y'), self.w_west)
-        #    add_variable('w_east', ('time', 'zh', 'y'), self.w_east)
-        #    add_variable('w_south', ('time', 'zh', 'x'), self.w_south)
-        #    add_variable('w_north', ('time', 'zh', 'x'), self.w_north)
 
         for f in self.fields:
             if f not in ['u', 'v', 'w']:

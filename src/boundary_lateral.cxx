@@ -497,6 +497,70 @@ namespace
                 }
         }
     }
+
+
+    template<typename TF>
+    void blend_corners_kernel(
+            TF* const restrict fld,
+            const int mpiidx, const int mpiidy,
+            const int npx, const int npy,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        if (mpiidx == 0 && mpiidy == 0)
+        {
+            // South-west corner
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk+jj]);
+                    }
+        }
+
+        if (mpiidx == npx-1 && mpiidy == 0)
+        {
+            // South-east corner
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk+jj]);
+                    }
+        }
+
+        if (mpiidx == 0 && mpiidy == npy-1)
+        {
+            // North-west corner
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk-jj]);
+                    }
+        }
+
+        if (mpiidx == npx-1 && mpiidy == npy-1)
+        {
+            // North-east corner
+            for (int k=kstart; k<kend; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk-jj]);
+                    }
+        }
+    }
 }
 
 template<typename TF>
@@ -601,8 +665,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                 std::forward_as_tuple(std::move(fld_out)));
     };
 
-    auto copy_boundaries = [&](
-                const std::string& name)
+    auto copy_boundaries = [&](const std::string& name)
     {
         std::vector<TF> lbc_w_full = input_nc.get_variable<TF>(name + "_west", {ntime, gd.ktot, gd.jtot});
         std::vector<TF> lbc_e_full = input_nc.get_variable<TF>(name + "_east", {ntime, gd.ktot, gd.jtot});
@@ -663,6 +726,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 
     if (sw_inoutflow_u)
         copy_boundaries("u");
+
     if (sw_inoutflow_v)
         copy_boundaries("v");
 
@@ -678,6 +742,25 @@ void Boundary_lateral<TF>::set_ghost_cells()
 
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
+
+    //auto dump_fld3d = [&](
+    //        std::vector<TF>& fld,
+    //        const std::string& name)
+    //{
+    //    FILE *pFile;
+    //    pFile = fopen(name.c_str(), "wbx");
+
+    //    const int jj = gd.icells;
+    //    const int kk = gd.icells*gd.jcells;
+
+    //    for (int k=0; k<gd.kcells; ++k)
+    //        for (int j=0; j<gd.jcells; ++j)
+    //        {
+    //            const int ijk = j*jj + k*kk;
+    //            fwrite(&fld.data()[ijk], sizeof(TF), gd.icells, pFile);
+    //        }
+    //    fclose(pFile);
+    //};
 
     auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
             std::map<std::string, std::vector<TF>>& lbc_map,
@@ -797,18 +880,22 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 gd.ijcells);
     };
 
+    auto blend_corners_wrapper = [&](
+            std::vector<TF>& fld)
+    {
+        blend_corners_kernel(
+                fld.data(),
+                md.mpicoordx, md.mpicoordy,
+                md.npx, md.npy,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells,
+                gd.ijcells);
+    };
+
     if (sw_inoutflow_u)
     {
-        if (md.mpicoordx == 0)
-        {
-            set_ghost_cell_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
-            sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
-        }
-        if (md.mpicoordx == md.npx-1)
-        {
-            set_ghost_cell_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
-            sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
-        }
         if (md.mpicoordy == 0)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
@@ -819,6 +906,18 @@ void Boundary_lateral<TF>::set_ghost_cells()
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
             sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
         }
+        if (md.mpicoordx == 0)
+        {
+            set_ghost_cell_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
+            sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
+        }
+        if (md.mpicoordx == md.npx-1)
+        {
+            set_ghost_cell_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
+            sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
+        }
+
+        blend_corners_wrapper(fields.mp.at("u")->fld);
     }
 
     if (sw_inoutflow_v)
@@ -843,6 +942,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
             set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
             sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
+
+        blend_corners_wrapper(fields.mp.at("v")->fld);
     }
 
     if (sw_inoutflow_u || sw_inoutflow_v)
@@ -943,6 +1044,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
             sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
         }
+
+        blend_corners_wrapper(fields.ap.at(fld)->fld);
     }
 }
 
