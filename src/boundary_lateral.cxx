@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "input.h"
 #include "master.h"
+#include "timeloop.h"
 
 namespace
 {
@@ -1049,11 +1050,89 @@ void Boundary_lateral<TF>::set_ghost_cells()
     }
 }
 
+namespace
+{
+    template<typename TF>
+    void interpolate_lbc_kernel(
+            TF* const restrict fld,
+            const TF* const restrict fld_in,
+            const int stride,
+            const int t0,
+            const TF f0)
+    {
+        for (int n=0; n<stride; ++n)
+        {
+            const int n0 = n + t0*stride;
+            const int n1 = n + (t0+1)*stride;
+
+            fld[n] = f0 * fld_in[n0] + (TF(1)-f0) * fld_in[n1];
+        }
+    }
+}
+
 template <typename TF>
 void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    if (!sw_inoutflow)
+    if (!sw_inoutflow || !sw_timedep)
         return;
+
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    // Find index in time array.
+    const double time = timeloop.get_time();
+
+    int t0;
+    for (int i=0; i<time_in.size()-1; ++i)
+        if (time_in[i] <= time and time_in[i+1] > time)
+        {
+            t0=i;
+            break;
+        }
+
+    // Interpolation factor.
+    const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+
+    // Interpolate boundaries in time.
+    if (md.mpicoordx == 0)
+    {
+        for (auto& it : lbc_w)
+            interpolate_lbc_kernel(
+                lbc_w.at(it.first).data(),
+                lbc_w_in.at(it.first).data(),
+                gd.kcells*gd.jcells,
+                t0, f0);
+    }
+
+    if (md.mpicoordx == md.npx-1)
+    {
+        for (auto& it : lbc_e)
+            interpolate_lbc_kernel(
+                    lbc_e.at(it.first).data(),
+                    lbc_e_in.at(it.first).data(),
+                    gd.kcells*gd.jcells,
+                    t0, f0);
+    }
+
+    if (md.mpicoordy == 0)
+    {
+        for (auto& it : lbc_s)
+            interpolate_lbc_kernel(
+                    lbc_s.at(it.first).data(),
+                    lbc_s_in.at(it.first).data(),
+                    gd.kcells*gd.icells,
+                    t0, f0);
+    }
+
+    if (md.mpicoordy == md.npy-1)
+    {
+        for (auto& it : lbc_n)
+            interpolate_lbc_kernel(
+                    lbc_n.at(it.first).data(),
+                    lbc_n_in.at(it.first).data(),
+                    gd.kcells*gd.icells,
+                    t0, f0);
+    }
 }
 
 template class Boundary_lateral<double>;
