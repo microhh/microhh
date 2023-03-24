@@ -508,7 +508,8 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int jcells, const int ijcells)
+            const int icells, const int jcells,
+            const int kcells, const int ijcells)
     {
         const int ii = 1;
         const int jj = icells;
@@ -524,6 +525,24 @@ namespace
                         const int ijk = i + j*jj + k*kk;
                         fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk+jj]);
                     }
+
+            for (int k=0; k<kstart; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijks = i+j*jj + kstart*kk;
+                        fld[ijk] = fld[ijks];
+                    }
+
+            for (int k=kend; k<kcells; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijke = i+j*jj + (kend-1)*kk;
+                        fld[ijk] = fld[ijke];
+                    }
         }
 
         if (mpiidx == npx-1 && mpiidy == 0)
@@ -535,6 +554,24 @@ namespace
                     {
                         const int ijk = i + j*jj + k*kk;
                         fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk+jj]);
+                    }
+
+            for (int k=0; k<kstart; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijks = i+j*jj + kstart*kk;
+                        fld[ijk] = fld[ijks];
+                    }
+
+            for (int k=kend; k<kcells; ++k)
+                for (int j=jstart-1; j>=0; --j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijke = i+j*jj + (kend-1)*kk;
+                        fld[ijk] = fld[ijke];
                     }
         }
 
@@ -548,6 +585,24 @@ namespace
                         const int ijk = i + j*jj + k*kk;
                         fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk-jj]);
                     }
+
+            for (int k=0; k<kstart; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijks = i+j*jj + kstart*kk;
+                        fld[ijk] = fld[ijks];
+                    }
+
+            for (int k=kend; k<kcells; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=istart-1; i>=0; --i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijke = i+j*jj + (kend-1)*kk;
+                        fld[ijk] = fld[ijke];
+                    }
         }
 
         if (mpiidx == npx-1 && mpiidy == npy-1)
@@ -559,6 +614,24 @@ namespace
                     {
                         const int ijk = i + j*jj + k*kk;
                         fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk-jj]);
+                    }
+
+            for (int k=0; k<kstart; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijks = i+j*jj + kstart*kk;
+                        fld[ijk] = fld[ijks];
+                    }
+
+            for (int k=kend; k<kcells; ++k)
+                for (int j=jend; j<jcells; ++j)
+                    for (int i=iend; i<icells; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijke = i+j*jj + (kend-1)*kk;
+                        fld[ijk] = fld[ijke];
                     }
         }
     }
@@ -882,7 +955,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
     };
 
     auto blend_corners_wrapper = [&](
-            std::vector<TF>& fld)
+            std::vector<TF>& fld,
+            const int kend)
     {
         blend_corners_kernel(
                 fld.data(),
@@ -890,9 +964,9 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 md.npx, md.npy,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
+                gd.kstart, kend,
                 gd.icells, gd.jcells,
-                gd.ijcells);
+                gd.kcells, gd.ijcells);
     };
 
     if (sw_inoutflow_u)
@@ -918,7 +992,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
             sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
         }
 
-        blend_corners_wrapper(fields.mp.at("u")->fld);
+        blend_corners_wrapper(fields.mp.at("u")->fld, gd.kend);
     }
 
     if (sw_inoutflow_v)
@@ -944,7 +1018,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
             sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
 
-        blend_corners_wrapper(fields.mp.at("v")->fld);
+        blend_corners_wrapper(fields.mp.at("v")->fld, gd.kend);
     }
 
     if (sw_inoutflow_u || sw_inoutflow_v)
@@ -1021,6 +1095,8 @@ void Boundary_lateral<TF>::set_ghost_cells()
             set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
             // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
+
+        blend_corners_wrapper(fields.mp.at("w")->fld, gd.kend+1);
     }
 
     for (auto& fld : inoutflow_s)
@@ -1046,7 +1122,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
             sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
         }
 
-        blend_corners_wrapper(fields.ap.at(fld)->fld);
+        blend_corners_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
 }
 
