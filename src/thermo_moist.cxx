@@ -84,38 +84,38 @@ namespace
             const int kstart, const int kend,
             const int jj, const int kk)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart+1; k<kend; k++)
         {
             const TF exnh = exner(ph[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ij  = i + j*jj;
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                    }
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij  = i + j*jj;
-                    Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
-                    ql[ij] = ssa.ql;
-                    qi[ij] = ssa.qi;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                        ql[ij] = ssa.ql;
+                        qi[ij] = ssa.qi;
+                    }
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ij  = i + j*jj;
+                        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
+                    }
         }
     }
 
@@ -128,41 +128,41 @@ namespace
             const int kstart, const int kend,
             const int kcells, const int jj, const int kk)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=0; k<kcells; k++)
         {
             const TF ex = exner(p[k]);
             if (k >= kstart && k < kend)
             {
                 for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ijk = i + j*jj + k*kk;
-                        Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
-                        ql[ijk] = ssa.ql;
-                        qi[ijk] = ssa.qi;
-                    }
+#pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ijk = i + j*jj + k*kk;
+                            Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                            ql[ijk] = ssa.ql;
+                            qi[ijk] = ssa.qi;
+                        }
             }
             else
             {
                 for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ijk  = i + j*jj+k*kk;
-                        ql[ijk] = 0.;
-                        qi[ijk] = 0.;
-                    }
+#pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ijk  = i + j*jj+k*kk;
+                            ql[ijk] = 0.;
+                            qi[ijk] = 0.;
+                        }
 
             }
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
+                    }
         }
     }
 
@@ -184,46 +184,46 @@ namespace
             if (k>=kstart)
             {
                 for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
+#pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ijk = i + j*jj + k*kk;
+                            const int ij  = i + j*jj;
+
+                            thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                            qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                        }
+
+                for (int j=jstart; j<jend; j++)
+#pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ij  = i + j*jj;
+                            Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                            ql[ij] = ssa.ql;
+                            qi[ij] = ssa.qi;
+                        }
+            }
+            else
+            {
+                for (int j=jstart; j<jend; j++)
+#pragma ivdep
+                        for (int i=istart; i<iend; i++)
+                        {
+                            const int ij  = i + j*jj;
+                            ql[ij] = 0.;
+                            qi[ij] = 0.;
+                        }
+            }
+            for (int j=jstart; j<jend; j++)
+#pragma ivdep
                     for (int i=istart; i<iend; i++)
                     {
                         const int ijk = i + j*jj + k*kk;
                         const int ij  = i + j*jj;
 
-                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                        bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                     }
-
-                for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ij  = i + j*jj;
-                        Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
-                        ql[ij] = ssa.ql;
-                        qi[ij] = ssa.qi;
-                    }
-            }
-            else
-            {
-                for (int j=jstart; j<jend; j++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ij  = i + j*jj;
-                        ql[ij] = 0.;
-                        qi[ij] = 0.;
-                    }
-            }
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
-                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
-                }
         }
     }
 
@@ -235,17 +235,17 @@ namespace
                            const int jj, const int kk)
     {
         // Calculate the ql field
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).ql;
+                    }
         }
     }
 
@@ -258,17 +258,17 @@ namespace
             const int jj, const int kk)
     {
         // Calculate the ql field
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qsat[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        qsat[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs;
+                    }
         }
     }
 
@@ -281,17 +281,17 @@ namespace
             const int jj, const int kk)
     {
         // Calculate the ql field
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    rh[ijk] = std::min( qt[ijk] / sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(1.));
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        rh[ijk] = std::min( qt[ijk] / sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(1.));
+                    }
         }
     }
 
@@ -316,15 +316,15 @@ namespace
         if (index500 == 0 || index500 == kend)
             throw std::runtime_error("calc_w500hPa cannot find pressure level inside of domain");
 
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + index500*kk;
-                w500[ij] = w[ijk];
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + index500*kk;
+                    w500[ij] = w[ijk];
+                }
     }
 
     template<typename TF>
@@ -338,31 +338,31 @@ namespace
             const int kstart, const int kend,
             const int icells, const int ijcells)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij = i + j*icells;
-                thv_prime[ij] = -Constants::dbig;
-
-                bool has_cloud = false;
-                for (int k=kstart; k<kend; k++)
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
                 {
-                    const int ijk = ij + k*ijcells;
+                    const int ij = i + j*icells;
+                    thv_prime[ij] = -Constants::dbig;
 
-                    if (qlqi[ijk] > 0)
+                    bool has_cloud = false;
+                    for (int k=kstart; k<kend; k++)
                     {
-                        has_cloud = true;
+                        const int ijk = ij + k*ijcells;
 
-                        if (thv[ijk]-thv_mean[k] > thv_prime[ij])
-                            thv_prime[ij] = thv[ijk]-thv_mean[k];
+                        if (qlqi[ijk] > 0)
+                        {
+                            has_cloud = true;
+
+                            if (thv[ijk]-thv_mean[k] > thv_prime[ij])
+                                thv_prime[ij] = thv[ijk]-thv_mean[k];
+                        }
                     }
-                }
 
-                if (!has_cloud)
-                    thv_prime[ij] = netcdf_fp_fillvalue<TF>();
-            }
+                    if (!has_cloud)
+                        thv_prime[ij] = netcdf_fp_fillvalue<TF>();
+                }
     }
 
     template<typename TF>
@@ -380,34 +380,34 @@ namespace
             const TF exnh = exner(ph[k]);
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ij  = i + j*jj;
 
-                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                }
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                    }
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk  = i + j*jj+k*kk;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        const int ijk  = i + j*jj+k*kk;
 
-                    qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                }
+                        qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                    }
         }
 
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ijk  = i + j*jj+kstart*kk;
-                qlh[ijk] = 0.;
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk  = i + j*jj+kstart*kk;
+                    qlh[ijk] = 0.;
+                }
     }
 
     template<typename TF>
@@ -419,17 +419,17 @@ namespace
             const int jj, const int kk)
     {
         // Calculate the ql field
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qi[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qi;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        qi[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex).qi;
+                    }
         }
     }
 
@@ -442,17 +442,17 @@ namespace
             const int jj, const int kk)
     {
         // Calculate the ql field
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qc[ijk] = std::max(qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(0.));
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        qc[ijk] = std::max(qt[ijk] - sat_adjust(thl[ijk], qt[ijk], p[k], ex).qs, TF(0.));
+                    }
         }
     }
 
@@ -463,15 +463,15 @@ namespace
                  const int kstart, const int kend,
                  const int jj, const int kk)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
+                    }
     }
 
     template<typename TF>
@@ -482,51 +482,51 @@ namespace
                 const int kstart, const int kend,
                 const int jj, const int kk)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj+ k*kk;
-                    T[ijk] = sat_adjust(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj+ k*kk;
+                        T[ijk] = sat_adjust(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
+                    }
         }
     }
 
     template<typename TF>
     void calc_path(
-        TF* const restrict path,
-        const TF* const restrict fld,
-        const TF* const restrict rhoref,
-        const TF* const restrict dz,
-        const int istart, const int iend,
-        const int jstart, const int jend,
-        const int kstart, const int kend,
-        const int icells, const int ijcells)
+            TF* const restrict path,
+            const TF* const restrict fld,
+            const TF* const restrict rhoref,
+            const TF* const restrict dz,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
     {
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*icells;
-                path[ij] = TF(0);
-            }
-
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; ++k)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
+#pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ij = i + j*icells;
-                    const int ijk = ij + k*ijcells;
-
-                    path[ij] += rhoref[k] * fld[ijk] * dz[k];
+                    path[ij] = TF(0);
                 }
+
+#pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ij = i + j*icells;
+                        const int ijk = ij + k*ijcells;
+
+                        path[ij] += rhoref[k] * fld[ijk] * dz[k];
+                    }
         }
     }
 
@@ -544,25 +544,25 @@ namespace
         {
             const TF exnh = exner(ph[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ij  = i + j*jj;
 
-                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                }
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                    }
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk  = i + j*jj+k*kk;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij  = i + j*jj;
+                        const int ijk  = i + j*jj+k*kk;
 
-                    Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
-                }
+                        Th[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                    }
         }
     }
 
@@ -581,38 +581,38 @@ namespace
         // Make sure that we don't `sat_adjust()` the ghost cells...
 
         // Calculate the thv field: ghost cells
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ijk = i + j*jj + kstart_minus_one*kk;
-                thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + kstart_minus_one*kk;
+                    thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
+                }
 
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ijk = i + j*jj + (kend_plus_one-1)*kk;
-                thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + (kend_plus_one-1)*kk;
+                    thv[ijk] = virtual_temperature_no_ql(thl[ijk], qt[ijk]);
+                }
 
         // Calculate the thv field: interior
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart_minus_one+1; k<kend_plus_one-1; k++)
         {
             const TF ex = exner(p[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk;
 
-                    Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
-                    thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
-                }
+                        Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                        thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
+                    }
         }
     }
 
@@ -625,13 +625,13 @@ namespace
         using Finite_difference::O2::interp2;
 
         for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jj;
-                const int ijk = i + j*jj + kstart*kk;
-                T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk;
+                    T_bot[ij] = exnrefh[kstart]*threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+                }
     }
 
     template<typename TF>
@@ -644,14 +644,14 @@ namespace
     {
         // assume no liquid water at the lowest model level
         for (int j=0; j<jcells; j++)
-            #pragma ivdep
-            for (int i=0; i<icells; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-                bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
-                b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
-            }
+#pragma ivdep
+                for (int i=0; i<icells; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
+                    b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
+                }
     }
 
     template<typename TF>
@@ -664,12 +664,12 @@ namespace
     {
         // assume no liquid water at the lowest model level
         for (int j=0; j<jcells; j++)
-            #pragma ivdep
-            for (int i=0; i<icells; i++)
-            {
-                const int ij  = i + j*icells;
-                b_bot[ij] = buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
-            }
+#pragma ivdep
+                for (int i=0; i<icells; i++)
+                {
+                    const int ij  = i + j*icells;
+                    b_bot[ij] = buoyancy_no_ql(thl_bot[ij], qt_bot[ij], thvrefh[kstart]);
+                }
     }
 
     template<typename TF>
@@ -683,13 +683,13 @@ namespace
         // Pass the temperature and moisture of the first model level, because the surface values are
         // unknown before the surface layer solver.
         for (int j=0; j<jcells; j++)
-            #pragma ivdep
-            for (int i=0; i<icells; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
-                bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
-            }
+#pragma ivdep
+                for (int i=0; i<icells; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + kstart*ijcells;
+                    bfluxbot[ij] = buoyancy_flux_no_ql(thl[ijk], thlfluxbot[ij], qt[ijk], qtfluxbot[ij], thvrefh[kstart]);
+                }
     }
 
     template<typename TF>
@@ -706,14 +706,14 @@ namespace
         // Pass the temperature and moisture of the first model level, because the surface values are
         // unknown before the surface layer solver.
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = ij + kstart*ijcells;
-                thv_fluxbot[ij] = virtual_temperature_flux_no_ql(
-                        thl[ijk], thl_fluxbot[ij], qt[ijk], qt_fluxbot[ij]);
-            }
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = ij + kstart*ijcells;
+                    thv_fluxbot[ij] = virtual_temperature_flux_no_ql(
+                            thl[ijk], thl_fluxbot[ij], qt[ijk], qt_fluxbot[ij]);
+                }
     }
 
     template<typename TF>
@@ -733,42 +733,42 @@ namespace
         {
             const TF exnh = exner(ph[k]);
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk1;
+                        const int ij  = i + j*jj;
 
-                    thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                    qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
-                    const TF tl = thlh[ij] * exnh;
+                        thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+                        qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+                        const TF tl = thlh[ij] * exnh;
 
-                    // Calculate first estimate of ql using Tl
-                    // if ql(Tl)>0, saturation adjustment routine needed
-                    ql[ij]  = qth[ij]-qsat(ph[k], tl);
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij = i + j*jj;
-
-                    if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
-                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                    else
-                        ql[ij] = 0.;
-                }
+                        // Calculate first estimate of ql using Tl
+                        // if ql(Tl)>0, saturation adjustment routine needed
+                        ql[ij]  = qth[ij]-qsat(ph[k], tl);
+                    }
 
             for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ij = i + j*jj;
 
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-                }
+                        if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
+                            ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                        else
+                            ql[ij] = 0.;
+                    }
+
+            for (int j=jstart; j<jend; j++)
+#pragma ivdep
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk = i + j*jj + k*kk1;
+                        const int ij  = i + j*jj;
+
+                        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+                    }
         }
     }
 
@@ -807,68 +807,145 @@ namespace
         // This routine strips off the ghost cells, because of the data handling in radiation.
         using Finite_difference::O2::interp2;
 
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             const TF ex = exner(p[k]);
             const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
             for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                        const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
 
-                    clwp[ijk_nogc] = ssa.ql * dpg;
-                    ciwp[ijk_nogc] = ssa.qi * dpg;
+                        clwp[ijk_nogc] = ssa.ql * dpg;
+                        ciwp[ijk_nogc] = ssa.qi * dpg;
 
-                    const TF qv = qt[ijk] - ssa.ql - ssa.qi;
-                    vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
+                        const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                        vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
 
-                    T[ijk_nogc] = ssa.t;
-                }
+                        T[ijk_nogc] = ssa.t;
+                    }
         }
 
         for (int k=kstart; k<kend+1; ++k)
         {
             const TF exnh = exner(ph[k]);
             for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + k*kk;
-                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ij  = i + j*jj;
+                        const int ijk = i + j*jj + k*kk;
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
+                    }
 
             for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij = i + j*jj;
-                    const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
-                }
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ij = i + j*jj;
+                        const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                        T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                    }
         }
 
         // Calculate surface temperature (assuming no liquid water)
         const TF exn_bot = exner(ph[kstart]);
         for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jj;
-                const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+#pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
 
-                T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
-            }
+                    T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+                }
+    }
+
+    template<typename TF>
+    void calc_radiation_fields(
+            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict rh,
+            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
+            TF* restrict thlh, TF* restrict qth,
+            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
+            const TF* restrict p, const TF* restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+#pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF ex = exner(p[k]);
+            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            for (int j=jstart; j<jend; ++j)
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                        const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+
+                        clwp[ijk_nogc] = ssa.ql * dpg;
+                        ciwp[ijk_nogc] = ssa.qi * dpg;
+
+                        const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+                        vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
+                        rh[ijk_nogc] = std::min(qt[ijk] / ssa.qs, TF(1.));
+                        T[ijk_nogc] = ssa.t;
+                    }
+        }
+
+        for (int k=kstart; k<kend+1; ++k)
+        {
+            const TF exnh = exner(ph[k]);
+            for (int j=jstart; j<jend; ++j)
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ij  = i + j*jj;
+                        const int ijk = i + j*jj + k*kk;
+                        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                        qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
+                    }
+
+            for (int j=jstart; j<jend; ++j)
+#pragma ivdep
+                    for (int i=istart; i<iend; ++i)
+                    {
+                        const int ij = i + j*jj;
+                        const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+                        T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+                    }
+        }
+
+        // Calculate surface temperature (assuming no liquid water)
+        const TF exn_bot = exner(ph[kstart]);
+        for (int j=jstart; j<jend; ++j)
+#pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+                    T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+                }
     }
 
     template<typename TF>
     void calc_radiation_columns(
-            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o,
+            TF* const restrict T, TF* const restrict T_h,
+            TF* const restrict vmr_h2o, TF* const restrict rh,
             TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
             const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
             const TF* const restrict p, const TF* const restrict ph,
@@ -882,13 +959,13 @@ namespace
 
         const int ktot = kend-kstart;
 
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
             const TF ex = exner(p[k]);
             const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
 
-            #pragma ivdep
+#pragma ivdep
             for (int n=0; n<n_cols; ++n)
             {
                 const int i = col_i[n];
@@ -904,6 +981,7 @@ namespace
 
                 const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                 vmr_h2o[ijk_out] = qv / (ep<TF> - ep<TF>*qv);
+                rh[ijk_out]= std::min(qt[ijk] / ssa.qs, TF(1.));
                 T[ijk_out] = ssa.t;
             }
         }
@@ -912,7 +990,7 @@ namespace
         {
             const TF exnh = exner(ph[k]);
 
-            #pragma ivdep
+#pragma ivdep
             for (int n=0; n<n_cols; ++n)
             {
                 const int i = col_i[n];
@@ -931,7 +1009,7 @@ namespace
         // Calculate surface temperature (assuming no liquid water)
         const TF exn_bot = exner(ph[kstart]);
 
-        #pragma ivdep
+#pragma ivdep
         for (int n=0; n<n_cols; ++n)
         {
             const int i = col_i[n];
@@ -964,28 +1042,28 @@ namespace
             const int icells, const int ijcells)
     {
         for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ij  = i + j*icells;
-                const int ijk = i + j*icells + kstart*ijcells;
+#pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*icells;
+                    const int ijk = i + j*icells + kstart*ijcells;
 
-                // Saturation adjustment for first model level
-                Struct_sat_adjust<TF> sa = sat_adjust(
-                        thl[ijk], qt[ijk], p[kstart], exner[kstart]);
+                    // Saturation adjustment for first model level
+                    Struct_sat_adjust<TF> sa = sat_adjust(
+                            thl[ijk], qt[ijk], p[kstart], exner[kstart]);
 
-                T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
-                T_a[ij]   = sa.t;
+                    T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
+                    T_a[ij]   = sa.t;
 
-                // Vapor pressure deficit first model level
-                const TF es = esat(sa.t);
-                const TF e = qt[ijk]/sa.qs * es;
-                vpd[ij] = es-e;
+                    // Vapor pressure deficit first model level
+                    const TF es = esat(sa.t);
+                    const TF e = qt[ijk]/sa.qs * es;
+                    vpd[ij] = es-e;
 
-                // qsat(T_bot) + dqsatdT(T_bot)
-                qs[ij] = qsat(ph[kstart], T_bot[ij]);
-                dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
-            }
+                    // qsat(T_bot) + dqsatdT(T_bot)
+                    qs[ij] = qsat(ph[kstart], T_bot[ij]);
+                    dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
+                }
     }
 
 }
@@ -993,10 +1071,10 @@ namespace
 
 template<typename TF>
 Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Thermo<TF>(masterin, gridin, fieldsin, inputin),
-    boundary_cyclic(masterin, gridin),
-    field3d_operators(master, grid, fieldsin),
-    field3d_io(master, grid)
+        Thermo<TF>(masterin, gridin, fieldsin, inputin),
+        boundary_cyclic(masterin, gridin),
+        field3d_operators(master, grid, fieldsin),
+        field3d_io(master, grid)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1035,7 +1113,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
-    bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", false);
+    bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", true);
 
     // Time variable surface pressure
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
@@ -1503,7 +1581,7 @@ void Thermo_moist<TF>::get_thermo_field(
     {
         // Calculate thv including one ghost cell, for the calculation of gradients in the statistics
         calc_thv(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart-1, gd.kend+1, gd.icells, gd.ijcells);
+                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart-1, gd.kend+1, gd.icells, gd.ijcells);
     }
     else if (name == "thv_fluxbot")
     {
@@ -1545,65 +1623,29 @@ void Thermo_moist<TF>::get_radiation_fields(
 }
 
 template<typename TF>
-void Thermo_moist<TF>::get_aerosol_radiation_fields(
-        std::vector<TF>& dp_g, Field3d<TF>& relative_humidity)
+void Thermo_moist<TF>::get_radiation_fields(
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& rh, Field3d<TF>& clwp, Field3d<TF>& ciwp) const
 {
     auto& gd = grid.get_grid_data();
 
-    // Calculate the relative humidity
-    auto rh = fields.get_tmp();
-    get_thermo_field(*rh, "rh", true, true);
-
-    // strip off the ghost cells
-    for (int k=gd.kstart; k<gd.kend; ++k)
-    {
-        const int k_nogc = k-gd.kgc;
-        dp_g[k_nogc] = (bs.prefh.data()[k] - bs.prefh.data()[k+1]) / Constants::grav<TF>;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                const int ijk_nogc = (i-gd.igc) + (j-gd.jgc)*gd.imax + (k-gd.kgc)*gd.imax*gd.jmax;
-                relative_humidity.fld.data()[ijk_nogc] = rh->fld.data()[ijk];
-
-            }
-    }
-    fields.release_tmp(rh);
-}
-
-template<typename TF>
-void Thermo_moist<TF>::get_aerosol_radiation_columns(
-        std::vector<TF>& dp_g, Field3d<TF>& relative_humidity, std::vector<int>& col_i, std::vector<int>& col_j)
-{
-    auto &gd = grid.get_grid_data();
-    const int n_cols = col_i.size();
-
-    // Calculate the relative humidity
-    auto rh = fields.get_tmp();
-    get_thermo_field(*rh, "rh", false, true);
-
-    for (int k = gd.kstart; k < gd.kend; ++k)
-    {
-        const int k_nogc = k - gd.kgc;
-        dp_g[k_nogc] = (bs.prefh.data()[k] - bs.prefh.data()[k + 1]) / Constants::grav<TF>;
-
-        for (int n = 0; n < n_cols; ++n)
-        {
-            const int i = col_i[n];
-            const int j = col_j[n];
-
-            const int ijk = i + j * gd.icells + k * gd.ijcells;
-            const int ijk_out = n + (k - gd.kgc) * n_cols;
-
-            relative_humidity.fld.data()[ijk_out] = rh->fld.data()[ijk];
-        }
-    }
-    fields.release_tmp(rh);
+    calc_radiation_fields(
+            T.fld.data(), T_h.fld.data(), qv.fld.data(), rh.fld.data(),
+            clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
+            T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+            fields.sp.at("thl")->fld_bot.data(),
+            bs.pref.data(), bs.prefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.igc, gd.jgc, gd.kgc,
+            gd.icells, gd.ijcells,
+            gd.imax, gd.imax*gd.jmax);
 }
 
 template<typename TF>
 void Thermo_moist<TF>::get_radiation_columns(
-    Field3d<TF>& tmp, std::vector<int>& col_i, std::vector<int>& col_j) const
+        Field3d<TF>& tmp, std::vector<int>& col_i, std::vector<int>& col_j) const
 {
     auto& gd = grid.get_grid_data();
 
@@ -1614,11 +1656,12 @@ void Thermo_moist<TF>::get_radiation_columns(
     TF* t_lev_a = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot+1);
     TF* t_sfc_a = &tmp.fld.data()[offset]; offset += n_cols;
     TF* h2o_a   = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
+    TF* rh_a    = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* clwp_a  = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* ciwp_a  = &tmp.fld.data()[offset];
 
     calc_radiation_columns(
-            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
+            t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a, t_sfc_a,
             fields.sp.at("thl")->fld.data(),
             fields.sp.at("qt")->fld.data(),
             fields.sp.at("thl")->fld_bot.data(),
@@ -1984,9 +2027,9 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    #ifndef USECUDA
+#ifndef USECUDA
     bs_stats = bs;
-    #endif
+#endif
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
@@ -2076,9 +2119,9 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {
     auto& gd = grid.get_grid_data();
 
-    #ifndef USECUDA
+#ifndef USECUDA
     bs_stats = bs;
-    #endif
+#endif
 
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
@@ -2090,14 +2133,14 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     get_thermo_field(*output, "ql", false, true);
 
     calc_path(
-        output->fld_bot.data(),
-        output->fld.data(),
-        bs_stats.rhoref.data(),
-        gd.dz.data(),
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+            output->fld_bot.data(),
+            output->fld.data(),
+            bs_stats.rhoref.data(),
+            gd.dz.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     column.calc_column("ql", output->fld.data(), no_offset);
     column.calc_time_series("ql_path", output->fld_bot.data(), no_offset);
@@ -2105,14 +2148,14 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     get_thermo_field(*output, "qi", false, true);
 
     calc_path(
-        output->fld_bot.data(),
-        output->fld.data(),
-        bs_stats.rhoref.data(),
-        gd.dz.data(),
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+            output->fld_bot.data(),
+            output->fld.data(),
+            bs_stats.rhoref.data(),
+            gd.dz.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     column.calc_column("qi", output->fld.data(), no_offset);
     column.calc_time_series("qi_path", output->fld_bot.data(), no_offset);
@@ -2127,9 +2170,9 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
 
-    #ifndef USECUDA
+#ifndef USECUDA
     bs_stats = bs;
-    #endif
+#endif
 
     auto output = fields.get_tmp();
 
@@ -2248,9 +2291,9 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 {
-    #ifndef USECUDA
+#ifndef USECUDA
     bs_stats = bs;
-    #endif
+#endif
 
     auto output = fields.get_tmp();
 

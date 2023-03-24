@@ -48,6 +48,8 @@ template<typename> class Thermo;
 template<typename> class Timeloop;
 template<typename TF> class Aerosol;
 
+using Aerosol_concs = Gas_concs;
+using Aerosol_concs_gpu = Gas_concs_gpu;
 
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
@@ -117,20 +119,6 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Gas_concs&);
         void create_diffuse_filter();
 
-        void solve_shortwave_column(
-                std::unique_ptr<Optical_props_arry>&,
-                Array<Float,2>&, Array<Float,2>&,
-                Array<Float,2>&, Array<Float,2>&,
-                Array<Float,2>&, Array<Float,2>&, const Float,
-                const Gas_concs&,
-                const Gas_optics_rrtmgp&,
-                const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,1>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Float,
-                const int);
 
     void solve_shortwave_column(
             std::unique_ptr<Optical_props_arry>&,
@@ -143,13 +131,12 @@ class Radiation_rrtmgp : public Radiation<TF>
             const Array<Float,2>&,
             const Array<Float,2>&, const Array<Float,2>&,
             const Array<Float,2>&, const Array<Float,2>&,
+            Gas_concs&,
             const Array<Float,1>&,
             const Array<Float,2>&, const Array<Float,2>&,
             const Float,
-            const int,
-            const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&);
+            const int
+            );
 
         void solve_longwave_column(
                 std::unique_ptr<Optical_props_arry>&,
@@ -174,20 +161,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
-		Array<Float,1>&,
+		        Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const bool, const int);
-
-        void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
-                Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&,const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&,
                 const bool, const int);
 
         #ifdef USECUDA
@@ -251,17 +228,17 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> t_lev_col;
         Array<Float,2> col_dry;
 
-        Array<Float, 2> aermr01_col;
-        Array<Float, 2> aermr02_col;
-        Array<Float, 2> aermr03_col;
-        Array<Float, 2> aermr04_col;
-        Array<Float, 2> aermr05_col;
-        Array<Float, 2> aermr06_col;
-        Array<Float, 2> aermr07_col;
-        Array<Float, 2> aermr08_col;
-        Array<Float, 2> aermr09_col;
-        Array<Float, 2> aermr10_col;
-        Array<Float, 2> aermr11_col;
+//        Array<Float, 2> aermr01_col;
+//        Array<Float, 2> aermr02_col;
+//        Array<Float, 2> aermr03_col;
+//        Array<Float, 2> aermr04_col;
+//        Array<Float, 2> aermr05_col;
+//        Array<Float, 2> aermr06_col;
+//        Array<Float, 2> aermr07_col;
+//        Array<Float, 2> aermr08_col;
+//        Array<Float, 2> aermr09_col;
+//        Array<Float, 2> aermr10_col;
+//        Array<Float, 2> aermr11_col;
 
         // Fluxes of reference column
         Array<Float,2> lw_flux_up_col;
@@ -272,17 +249,22 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
-	Array<Float,1> aod550;
+	    Array<Float,1> aod550;
 
         Gas_concs gas_concs_col;
+
+        Gas_concs aerosol_concs_col;
+        Array<Float,2> rh_col;
 
         std::unique_ptr<Source_func_lw> sources_lw;
         std::unique_ptr<Optical_props_arry> optical_props_lw;
         std::unique_ptr<Optical_props_arry> optical_props_sw;
-        std::unique_ptr<Optical_props_2str> optical_props_aerosol;
+        std::unique_ptr<Optical_props_2str> aerosol_props_sw;
 
         // The full solver.
         Gas_concs gas_concs;
+        Gas_concs aerosol_concs;
+
         std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
