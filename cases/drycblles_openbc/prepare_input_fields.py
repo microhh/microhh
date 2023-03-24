@@ -3,8 +3,6 @@ import numpy as np
 import xarray as xr
 from numba import jit
 
-from interpolation_tools import calc_w_from_uv
-
 pl.close('all')
 
 @jit(nopython=True, nogil=True, fastmath=True)

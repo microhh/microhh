@@ -102,14 +102,24 @@ u_east = 0
 v_south = 0.
 v_north = 2.
 
-lbc.u_west[:, :, :]  = u_west
-lbc.u_east[:, :, :]  = u_east
-lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
-lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
+lbc.u_west [0, :, :] = u_west
+lbc.u_east [0, :, :] = u_east
+lbc.u_south[0, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
+lbc.u_north[0, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
 
-lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize
-lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize
-lbc.v_south[:, :, :] = v_south
-lbc.v_north[:, :, :] = v_north
+lbc.u_west [1, :, :] = u_west
+lbc.u_east [1, :, :] = u_east
+lbc.u_south[1, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
+lbc.u_north[1, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
+
+lbc.v_west [0, :, :] = v_south + (v_north - v_south) * yh[None, None, :]/ysize
+lbc.v_east [0, :, :] = v_south + (v_north - v_south) * yh[None, None, :]/ysize
+lbc.v_south[0, :, :] = v_south
+lbc.v_north[0, :, :] = v_north
+
+lbc.v_west [1, :, :] = v_south + (v_north - v_south) * yh[None, None, :]/ysize
+lbc.v_east [1, :, :] = v_south + (v_north - v_south) * yh[None, None, :]/ysize
+lbc.v_south[1, :, :] = v_south
+lbc.v_north[1, :, :] = v_north
 
 lbc.to_netcdf('drycblles')
