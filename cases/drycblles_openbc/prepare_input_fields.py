@@ -1,4 +1,52 @@
+import matplotlib.pyplot as pl
 import numpy as np
+import xarray as xr
+from numba import jit
+
+from interpolation_tools import calc_w_from_uv
+
+pl.close('all')
+
+@jit(nopython=True, nogil=True, fastmath=True)
+def calc_w_from_uv(
+        w, u, v,
+        u_lbc_west,
+        u_lbc_east,
+        v_lbc_south,
+        v_lbc_north,
+        rho, rhoh, dz,
+        dxi, dyi,
+        itot, jtot, ktot):
+
+    for j in range(jtot):
+        for i in range(itot):
+            w[0,j,i] = 0.
+
+    for k in range(ktot):
+        for j in range(jtot):
+            for i in range(itot):
+                if i == 0:
+                    um = u_lbc_west[k,j]
+                else:
+                    um = u[k,j,i]
+
+                if i == itot-1:
+                    up = u_lbc_east[k,j]
+                else:
+                    up = u[k,j,i+1]
+
+                if j == 0:
+                    vm = v_lbc_south[k,i]
+                else:
+                    vm = v[k,j,i]
+
+                if j == jtot-1:
+                    vp = v_lbc_north[k,i]
+                else:
+                    vp = v[k,j+1,i]
+
+                w[k+1,j,i] = -(rho[k] * ((up - um) * dxi + (vp - vm) * dyi) * dz[k] - rhoh[k] * w[k,j,i]) / rhoh[k+1]
+
 
 # Get number of vertical levels and size from .ini file
 with open('drycblles.ini') as f:
@@ -28,25 +76,50 @@ z = np.arange(dz/2, zsize , dz)
 u = np.fromfile('u.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
 v = np.fromfile('v.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
 w = np.fromfile('w.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+
 rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
-u_west = 2.
-u_east = 0.
-v_south = 0.
-v_north = 2.
+lbc = xr.open_dataset('drycblles_lbc_input.nc')
 
-u[:, :, :] = (u_west + (u_east - u_west) * xh[None, None, :]/xsize) # * z[:, None, None]/zsize
-v[:, :, :] = (v_south + (v_north - v_south) * yh[None, :, None]/ysize) # * z[:, None, None]/zsize
+u_west = lbc.u_west[0].values
+u_east = lbc.u_east[0].values
 
-for k in range(1, ktot):
-    hor_div = (u_east - u_west) / xsize + (v_north - v_south) / ysize
-    w[k, :, :] = (rhorefh[k]*w[k-1, :, :] - rhoref[k]*hor_div*dz) / rhorefh[k+1]
+v_south = lbc.v_south[0].values
+v_north = lbc.v_north[0].values
+
+u[:, :, :] = (u_west[:,:,None] + (u_east[:,:,None] - u_west[:,:,None])    * xh[None,None,:] / xsize)
+v[:, :, :] = (v_south[:,None,:] + (v_north[:,None,:] - v_south[:,None,:]) * yh[None,:,None] / ysize)
+
+dz = np.ones(ktot)*dz
+
+calc_w_from_uv(
+        w, u, v,
+        u_west,
+        u_east,
+        v_south,
+        v_north,
+        rhoref, rhorefh, dz,
+        1/dx, 1/dy,
+        itot, jtot, ktot-1)
 
 u.tofile('u.0000000')
 v.tofile('v.0000000')
 w.tofile('w.0000000')
 
-print(w[-1, :, :])
+print('<w_top> = ', w[-1,:,:].mean())
 
+pl.figure()
+k = 10
+pl.subplot(131)
+pl.imshow(u[k,:,:], origin='lower')
+pl.colorbar()
+
+pl.subplot(132)
+pl.imshow(v[k,:,:], origin='lower')
+pl.colorbar()
+
+pl.subplot(133)
+pl.imshow(w[k,:,:], origin='lower')
+pl.colorbar()
