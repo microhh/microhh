@@ -515,16 +515,27 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        const int igc = istart;
+        const int jgc = jstart;
+
         if (mpiidx == 0 && mpiidy == 0)
         {
-            // South-west corner
             for (int k=kstart; k<kend; ++k)
-                for (int j=jstart-1; j>=0; --j)
-                    for (int i=istart-1; i>=0; --i)
+            {
+                const int ijk0 = istart + jstart*jj + k*kk;
+                const TF dfdi = fld[ijk0] - fld[ijk0-ii];
+                const TF dfdj = fld[ijk0] - fld[ijk0-jj];
+
+                for (int dj=1; dj<jgc+1; ++dj)
+                    for (int di=1; di<igc+1; ++di)
                     {
+                        const int i = istart-di;
+                        const int j = jstart-dj;
                         const int ijk = i + j*jj + k*kk;
-                        fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk+jj]);
+
+                        fld[ijk] = fld[ijk0] - di*dfdi - dj*dfdj;
                     }
+            }
 
             for (int k=0; k<kstart; ++k)
                 for (int j=jstart-1; j>=0; --j)
@@ -549,12 +560,21 @@ namespace
         {
             // South-east corner
             for (int k=kstart; k<kend; ++k)
-                for (int j=jstart-1; j>=0; --j)
-                    for (int i=iend; i<icells; ++i)
+            {
+                const int ijk0 = (iend-1) + jstart*jj + k*kk;
+                const TF dfdi = fld[ijk0+ii] - fld[ijk0];
+                const TF dfdj = fld[ijk0] - fld[ijk0-jj];
+
+                for (int dj=1; dj<jgc+1; ++dj)
+                    for (int di=1; di<igc+1; ++di)
                     {
+                        const int i = (iend-1)+di;
+                        const int j = jstart-dj;
                         const int ijk = i + j*jj + k*kk;
-                        fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk+jj]);
+
+                        fld[ijk] = fld[ijk0] + di*dfdi - dj*dfdj;
                     }
+            }
 
             for (int k=0; k<kstart; ++k)
                 for (int j=jstart-1; j>=0; --j)
@@ -579,12 +599,21 @@ namespace
         {
             // North-west corner
             for (int k=kstart; k<kend; ++k)
-                for (int j=jend; j<jcells; ++j)
-                    for (int i=istart-1; i>=0; --i)
+            {
+                const int ijk0 = istart + (jend-1)*jj + k*kk;
+                const TF dfdi = fld[ijk0] - fld[ijk0-ii];
+                const TF dfdj = fld[ijk0+jj] - fld[ijk0];
+
+                for (int dj=1; dj<jgc+1; ++dj)
+                    for (int di=1; di<igc+1; ++di)
                     {
+                        const int i = istart-di;
+                        const int j = (jend-1)+dj;
                         const int ijk = i + j*jj + k*kk;
-                        fld[ijk] = TF(0.5) * (fld[ijk+ii] + fld[ijk-jj]);
+
+                        fld[ijk] = fld[ijk0] - di*dfdi + dj*dfdj;
                     }
+            }
 
             for (int k=0; k<kstart; ++k)
                 for (int j=jend; j<jcells; ++j)
@@ -609,12 +638,21 @@ namespace
         {
             // North-east corner
             for (int k=kstart; k<kend; ++k)
-                for (int j=jend; j<jcells; ++j)
-                    for (int i=iend; i<icells; ++i)
+            {
+                const int ijk0 = (iend-1) + (jend-1)*jj + k*kk;
+                const TF dfdi = fld[ijk0+ii] - fld[ijk0];
+                const TF dfdj = fld[ijk0+jj] - fld[ijk0];
+
+                for (int dj=1; dj<jgc+1; ++dj)
+                    for (int di=1; di<igc+1; ++di)
                     {
+                        const int i = (iend-1)+di;
+                        const int j = (jend-1)+dj;
                         const int ijk = i + j*jj + k*kk;
-                        fld[ijk] = TF(0.5) * (fld[ijk-ii] + fld[ijk-jj]);
+
+                        fld[ijk] = fld[ijk0] + di*dfdi + dj*dfdj;
                     }
+            }
 
             for (int k=0; k<kstart; ++k)
                 for (int j=jend; j<jcells; ++j)
@@ -834,24 +872,30 @@ void Boundary_lateral<TF>::set_ghost_cells()
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    //auto dump_fld3d = [&](
-    //        std::vector<TF>& fld,
-    //        const std::string& name)
-    //{
-    //    FILE *pFile;
-    //    pFile = fopen(name.c_str(), "wbx");
+    auto dump_fld3d = [&](
+            std::vector<TF>& fld,
+            const std::string& name)
+    {
+        if (md.npx > 1 || md.npy > 1)
+            throw std::runtime_error("Raw dump function does not support npx,npy>1");
 
-    //    const int jj = gd.icells;
-    //    const int kk = gd.icells*gd.jcells;
+        FILE *pFile;
+        pFile = fopen(name.c_str(), "wbx");
 
-    //    for (int k=0; k<gd.kcells; ++k)
-    //        for (int j=0; j<gd.jcells; ++j)
-    //        {
-    //            const int ijk = j*jj + k*kk;
-    //            fwrite(&fld.data()[ijk], sizeof(TF), gd.icells, pFile);
-    //        }
-    //    fclose(pFile);
-    //};
+        if (pFile == NULL)
+            throw std::runtime_error("Opening raw dump field failed.");
+
+        const int jj = gd.icells;
+        const int kk = gd.icells*gd.jcells;
+
+        for (int k=0; k<gd.kcells; ++k)
+            for (int j=0; j<gd.jcells; ++j)
+            {
+                const int ijk = j*jj + k*kk;
+                fwrite(&fld.data()[ijk], sizeof(TF), gd.icells, pFile);
+            }
+        fclose(pFile);
+    };
 
     auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
             std::map<std::string, std::vector<TF>>& lbc_map,
@@ -1141,6 +1185,12 @@ void Boundary_lateral<TF>::set_ghost_cells()
 
         blend_corners_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
+
+    //dump_fld3d(fields.ap.at("th")->fld, "th0");
+    //dump_fld3d(fields.mp.at("u")->fld, "u0");
+    //dump_fld3d(fields.mp.at("v")->fld, "v0");
+    //dump_fld3d(fields.mp.at("w")->fld, "w0");
+    //throw 1;
 }
 
 
