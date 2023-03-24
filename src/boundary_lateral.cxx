@@ -635,6 +635,23 @@ namespace
                     }
         }
     }
+
+    template<typename TF>
+    void interpolate_lbc_kernel(
+            TF* const restrict fld,
+            const TF* const restrict fld_in,
+            const int stride,
+            const int t0,
+            const TF f0)
+    {
+        for (int n=0; n<stride; ++n)
+        {
+            const int n0 = n + t0*stride;
+            const int n1 = n + (t0+1)*stride;
+
+            fld[n] = f0 * fld_in[n0] + (TF(1)-f0) * fld_in[n1];
+        }
+    }
 }
 
 template<typename TF>
@@ -1126,25 +1143,6 @@ void Boundary_lateral<TF>::set_ghost_cells()
     }
 }
 
-namespace
-{
-    template<typename TF>
-    void interpolate_lbc_kernel(
-            TF* const restrict fld,
-            const TF* const restrict fld_in,
-            const int stride,
-            const int t0,
-            const TF f0)
-    {
-        for (int n=0; n<stride; ++n)
-        {
-            const int n0 = n + t0*stride;
-            const int n1 = n + (t0+1)*stride;
-
-            fld[n] = f0 * fld_in[n0] + (TF(1)-f0) * fld_in[n1];
-        }
-    }
-}
 
 template <typename TF>
 void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
