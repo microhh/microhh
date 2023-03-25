@@ -66,6 +66,7 @@ class Buffer
 
         bool swbuffer; ///< Switch for buffer.
         bool swupdate; ///< Switch for enabling runtime updating of buffer profile.
+        bool swupdate_local; ///< Switch for enabling local means for swupdate
 
         // GPU functions and variables
         std::map<std::string, TF*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.

@@ -57,7 +57,52 @@ namespace
         }
     }
 
+
+    template<typename TF>
+    void calc_buffer_local(
+            TF* const restrict at, const TF* const restrict a,
+            TF* const restrict abuf, const TF* const restrict z,
+            const TF zstart, const TF zsize, const TF beta, const TF sigma,
+            const int istart, const int iend, const int icells, const int jstart, const int jend,
+            const int jstride, const int kstride, const int bufferkstart, const int kend)
+    {
+        const TF zsizebuf = zsize - zstart;
+
+        for (int k=bufferkstart; k<kend; ++k)
+        {
+            const TF sigmaz = sigma*std::pow((z[k]-zstart)/zsizebuf, beta);
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jstride;
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    abuf[ij] = TF(0.);
+
+                    for (int jc=-3; jc<4; ++jc)
+                        for (int ic=-3; ic<4; ++ic)
+                            abuf[ij] += a[ijk + ic + jc*jstride];
+
+                    abuf[ij] /= TF(49.);
+                }
+
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jstride;
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    at[ijk] -= sigmaz*(a[ijk]-abuf[ij]);
+                }
+        }
+    }
 }
+
+
 template<typename TF>
 Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
@@ -66,10 +111,12 @@ Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
 
     if (swbuffer)
     {
-        swupdate = inputin.get_item<bool>("buffer", "swupdate", "", false);
-        zstart   = inputin.get_item<TF>("buffer", "zstart", "");
-        sigma    = inputin.get_item<TF>("buffer", "sigma", "", 2.);
-        beta     = inputin.get_item<TF>("buffer", "beta", "", 2.);
+        swupdate       = inputin.get_item<bool>("buffer", "swupdate", "", false);
+        swupdate_local = inputin.get_item<bool>("buffer", "swupdate_local", "", false);
+
+        zstart = inputin.get_item<TF>("buffer", "zstart", "");
+        sigma  = inputin.get_item<TF>("buffer", "sigma", "", 2.);
+        beta   = inputin.get_item<TF>("buffer", "beta", "", 2.);
     }
 
     if (swbuffer && swupdate)
@@ -150,6 +197,7 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
                 std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
             }
         }
+
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
@@ -166,21 +214,48 @@ void Buffer<TF>::exec(Stats<TF>& stats)
     {
         const Grid_data<TF>& gd = grid.get_grid_data();
 
-        if (swupdate)
+        if (swupdate == 1)
         {
-            // Calculate the buffer tendencies.
-            calc_buffer(fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_mean.data(),
-                        gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+            if (swupdate_local)
+            {
+                auto tmp = fields.get_tmp();
 
-            calc_buffer(fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_mean.data(),
-                        gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+                // Calculate the buffer tendencies.
+                calc_buffer_local(
+                        fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), tmp->fld.data(),
+                        gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.ijcells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
 
-            calc_buffer(fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), fields.mp.at("w")->fld_mean.data(),
-                        gd.zh.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstarth, gd.kend);
+                calc_buffer_local(
+                        fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), tmp->fld.data(),
+                        gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.ijcells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
 
-            for (auto& it : fields.sp)
-                calc_buffer(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(),
+                calc_buffer_local(
+                        fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), tmp->fld.data(),
+                        gd.zh.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.ijcells, gd.jstart, gd.jend, gd.ijcells, bufferkstarth, gd.kend);
+
+                for (auto& it : fields.sp)
+                    calc_buffer_local(
+                            fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), tmp->fld.data(),
+                            gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.ijcells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+
+                fields.release_tmp(tmp);
+            }
+            else
+            {
+                // Calculate the buffer tendencies.
+                calc_buffer(fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("u")->fld_mean.data(),
                             gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+
+                calc_buffer(fields.mt.at("v")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("v")->fld_mean.data(),
+                            gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+
+                calc_buffer(fields.mt.at("w")->fld.data(), fields.mp.at("w")->fld.data(), fields.mp.at("w")->fld_mean.data(),
+                            gd.zh.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstarth, gd.kend);
+
+                for (auto& it : fields.sp)
+                    calc_buffer(fields.st.at(it.first)->fld.data(), fields.sp.at(it.first)->fld.data(), fields.sp.at(it.first)->fld_mean.data(),
+                                gd.z.data(), zstart, gd.zsize, beta, sigma, gd.istart, gd.iend, gd.icells, gd.jstart, gd.jend, gd.ijcells, bufferkstart, gd.kend);
+            }
         }
         else
         {

@@ -97,19 +97,21 @@ lbc.th_north[:] = th[None, :, None]
 lbc.th_east[:] = th[None, :, None]
 
 u_west = 2.1
-u_east = 0
+u_east = 0.
 
 v_south = 0.
 v_north = 2.
 
-lbc.u_west[:, :, :]  = u_west
-lbc.u_east[:, :, :]  = u_east
-lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
-lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize
+rnd_amp = 0.01
 
-lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize
-lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize
-lbc.v_south[:, :, :] = v_south
-lbc.v_north[:, :, :] = v_north
+lbc.u_west[:, :, :]  = u_west + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.u_east[:, :, :]  = u_east + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+
+lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+lbc.v_south[:, :, :] = v_south + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.v_north[:, :, :] = v_north + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
 
 lbc.to_netcdf('drycblles')
