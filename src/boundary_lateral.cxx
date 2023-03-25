@@ -690,7 +690,32 @@ namespace
             fld[n] = f0 * fld_in[n0] + (TF(1)-f0) * fld_in[n1];
         }
     }
+
+
+    template<typename TF>
+    void calc_div_h(
+            TF* const restrict div,
+            const TF* const restrict lbc_u,
+            const TF* const restrict lbc_d,
+            const TF* const restrict rhoref,
+            const TF size,
+            const int ntime,
+            const int ntot, const int ktot)
+    {
+        for (int t=0; t<ntime; ++t)
+        {
+            div[t] = TF(0);
+            for (int k=0; k<ktot; ++k)
+                for (int n=0; n<ntot; ++n)
+                {
+                    const int nk = n + k*ntot;
+                    div[t] += rhoref[k] * (lbc_u[nk] - lbc_d[nk]) / size;
+                }
+            div[t] /= (ktot*ntot);
+        }
+    }
 }
+
 
 template<typename TF>
 Boundary_lateral<TF>::Boundary_lateral(
@@ -765,6 +790,16 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     const int ntime = input_nc.get_dimension_size("time");
     time_in = input_nc.get_variable<TF>("time", {ntime});
 
+    TF* rhoref = fields.rhoref.data();
+
+    // Domain total divergence in u and v direction.
+    if (sw_inoutflow_u && sw_inoutflow_v)
+    {
+        div_u.resize(ntime);
+        div_v.resize(ntime);
+        w_top_in.resize(ntime);
+    }
+
     auto copy_boundary = [&](
             std::map<std::string, std::vector<TF>>& map_out,
             std::vector<TF>& fld_in,
@@ -825,8 +860,26 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, name);
 
-        if (!sw_timedep)
-        {
+        // Calculate domain total horizontal divergence.
+        if (name == "u")
+            calc_div_h(
+                    div_u.data(),
+                    lbc_e_full.data(),
+                    lbc_w_full.data(),
+                    fields.rhoref.data(),
+                    gd.xsize, ntime,
+                    gd.itot, gd.ktot);
+        else if (name == "v")
+            calc_div_h(
+                    div_v.data(),
+                    lbc_n_full.data(),
+                    lbc_s_full.data(),
+                    fields.rhoref.data(),
+                    gd.xsize, ntime,
+                    gd.jtot, gd.ktot);
+
+        //if (!sw_timedep)
+        //{
             if (md.mpicoordx == 0)
             {
                 for (int n=0; n<gd.jcells*gd.kcells; ++n)
@@ -850,7 +903,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                 for (int n=0; n<gd.icells*gd.kcells; ++n)
                     lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
             }
-        }
+        //}
     };
 
     if (sw_inoutflow_u)
@@ -861,6 +914,18 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 
     for (auto& fld : inoutflow_s)
         copy_boundaries(fld);
+
+    // Calculate domain mean vertical velocity.
+    if (sw_inoutflow_u && sw_inoutflow_v)
+    {
+        for (int t=0; t<ntime; ++t)
+        {
+            w_top_in[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
+        }
+
+        if (!sw_timedep)
+            w_top = w_top_in[0];
+    }
 }
 
 template <typename TF>
@@ -1093,7 +1158,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
 
         //for (int k=gd.kstart; k<gd.kend; ++k)
         //{
-        //    const TF hor_div = fields.rhoref[k]*(TF(0.) - TF(2.)) / gd.xsize // * gd.z[k]/gd.zsize
+        //    const TF hor_div = fields.rhoref[k]*(TF(0.) - TF(2.)) / gd.xsize  // * gd.z[k]/gd.zsize
         //                     + fields.rhoref[k]*(TF(2.) - TF(0.)) / gd.ysize; // * gd.z[k]/gd.zsize;
 
         //    w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
@@ -1106,26 +1171,35 @@ void Boundary_lateral<TF>::set_ghost_cells()
         //        fields.mp.at("w")->fld[ijk] = w_top;
         //    }
 
-        const int ii = 1;
-        const int jj = gd.icells;
-        const int kk = gd.ijcells;
 
-        TF* u = fields.mp.at("u")->fld.data();
-        TF* v = fields.mp.at("v")->fld.data();
-        TF* w = fields.mp.at("w")->fld.data();
+        //const int ii = 1;
+        //const int jj = gd.icells;
+        //const int kk = gd.ijcells;
 
-        TF* rho  = fields.rhoref.data();
-        TF* rhoh = fields.rhorefh.data();
+        //TF* u = fields.mp.at("u")->fld.data();
+        //TF* v = fields.mp.at("v")->fld.data();
+        //TF* w = fields.mp.at("w")->fld.data();
 
-        const TF dxi = TF(1)/gd.dx;
-        const TF dyi = TF(1)/gd.dy;
+        //TF* rho  = fields.rhoref.data();
+        //TF* rhoh = fields.rhorefh.data();
 
-        const int k = gd.kend-1;
+        //const TF dxi = TF(1)/gd.dx;
+        //const TF dyi = TF(1)/gd.dy;
+
+        //const int k = gd.kend-1;
+        //for (int j=gd.jstart; j<gd.jend; ++j)
+        //    for (int i=gd.istart; i<gd.iend; ++i)
+        //    {
+        //        const int ijk = i + j*jj + k*kk;
+        //        w[ijk+kk] = -(rho[k] * ((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
+        //    }
+
+        const int k = gd.kend;
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
-                const int ijk = i + j*jj + k*kk;
-                w[ijk+kk] = -(rho[k] * ((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                fields.mp.at("w")->fld[ijk] = w_top;
             }
     }
     // END
@@ -1216,6 +1290,9 @@ void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     // Interpolation factor.
     const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+
+    // Interpolate mean domain top velocity
+    w_top = f0 * w_top_in[t0] + (TF(1) - f0) * w_top_in[t0+1];
 
     // Interpolate boundaries in time.
     if (md.mpicoordx == 0)

@@ -75,5 +75,11 @@ class Boundary_lateral
         std::map<std::string, std::vector<TF>> lbc_s_in;
         std::map<std::string, std::vector<TF>> lbc_e_in;
         std::map<std::string, std::vector<TF>> lbc_n_in;
+
+        std::vector<TF> div_u;
+        std::vector<TF> div_v;
+
+        std::vector<TF> w_top_in;
+        TF w_top;
 };
 #endif
