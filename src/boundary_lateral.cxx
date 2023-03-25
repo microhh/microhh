@@ -797,7 +797,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     {
         div_u.resize(ntime);
         div_v.resize(ntime);
-        w_top.resize(ntime);
+        w_top_in.resize(ntime);
     }
 
     auto copy_boundary = [&](
@@ -878,8 +878,8 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.xsize, ntime,
                     gd.jtot, gd.ktot);
 
-        if (!sw_timedep)
-        {
+        //if (!sw_timedep)
+        //{
             if (md.mpicoordx == 0)
             {
                 for (int n=0; n<gd.jcells*gd.kcells; ++n)
@@ -903,7 +903,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                 for (int n=0; n<gd.icells*gd.kcells; ++n)
                     lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
             }
-        }
+        //}
     };
 
     if (sw_inoutflow_u)
@@ -920,10 +920,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     {
         for (int t=0; t<ntime; ++t)
         {
-            w_top[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
-            std::cout << w_top[t] << std::endl;
+            w_top_in[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
         }
-        throw 1;
+
+        if (!sw_timedep)
+            w_top = w_top_in[0];
     }
 }
 
@@ -1171,9 +1172,6 @@ void Boundary_lateral<TF>::set_ghost_cells()
         //    }
 
 
-
-
-
         //const int ii = 1;
         //const int jj = gd.icells;
         //const int kk = gd.ijcells;
@@ -1195,6 +1193,14 @@ void Boundary_lateral<TF>::set_ghost_cells()
         //        const int ijk = i + j*jj + k*kk;
         //        w[ijk+kk] = -(rho[k] * ((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
         //    }
+
+        const int k = gd.kend;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                fields.mp.at("w")->fld[ijk] = w_top;
+            }
     }
     // END
 
@@ -1284,6 +1290,9 @@ void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     // Interpolation factor.
     const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+
+    // Interpolate mean domain top velocity
+    w_top = f0 * w_top_in[t0] + (TF(1) - f0) * w_top_in[t0+1];
 
     // Interpolate boundaries in time.
     if (md.mpicoordx == 0)

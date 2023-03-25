@@ -78,6 +78,8 @@ class Boundary_lateral
 
         std::vector<TF> div_u;
         std::vector<TF> div_v;
-        std::vector<TF> w_top;
+
+        std::vector<TF> w_top_in;
+        TF w_top;
 };
 #endif

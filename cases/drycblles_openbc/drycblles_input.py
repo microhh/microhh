@@ -104,14 +104,18 @@ v_north = 2.
 
 rnd_amp = 0.01
 
-lbc.u_west[:, :, :]  = u_west + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-lbc.u_east[:, :, :]  = u_east + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+def make_rand(n0, n1, n2):
+    rnd = np.random.rand(n0, n1, n2)
+    return rnd - rnd.mean()
 
-lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * np.random.rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-lbc.v_south[:, :, :] = v_south + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-lbc.v_north[:, :, :] = v_north + rnd_amp * np.random.rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.u_west[:, :, :]  = u_west + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.u_east[:, :, :]  = u_east + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+
+lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
+lbc.v_south[:, :, :] = v_south + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+lbc.v_north[:, :, :] = v_north + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
 
 lbc.to_netcdf('drycblles')
