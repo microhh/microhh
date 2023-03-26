@@ -708,7 +708,7 @@ namespace
             for (int k=0; k<ktot; ++k)
                 for (int n=0; n<ntot; ++n)
                 {
-                    const int nk = n + k*ntot;
+                    const int nk = n + k*ntot + t*ntot*ktot;
                     div[t] += rhoref[k] * (lbc_u[nk] - lbc_d[nk]) / size;
                 }
             div[t] /= (ktot*ntot);
@@ -921,6 +921,9 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
         for (int t=0; t<ntime; ++t)
         {
             w_top_in[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
+
+            std::string message = "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+            master.print_message(message);
         }
 
         if (!sw_timedep)
