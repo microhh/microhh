@@ -368,7 +368,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            qc[ijk] = fmax(qt[ijk] - sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qs, TF(0.));
+            qi[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qi;
         }
     }
 
@@ -386,7 +386,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            qi[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qi;
+            qc[ijk] = fmax(qt[ijk] - sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qs, TF(0.));
         }
     }
 
