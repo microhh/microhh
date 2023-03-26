@@ -868,7 +868,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     lbc_w_full.data(),
                     fields.rhoref.data(),
                     gd.xsize, ntime,
-                    gd.itot, gd.ktot);
+                    gd.jtot, gd.ktot);
         else if (name == "v")
             calc_div_h(
                     div_v.data(),
@@ -876,7 +876,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     lbc_s_full.data(),
                     fields.rhoref.data(),
                     gd.xsize, ntime,
-                    gd.jtot, gd.ktot);
+                    gd.itot, gd.ktot);
 
         //if (!sw_timedep)
         //{
