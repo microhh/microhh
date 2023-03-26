@@ -698,7 +698,8 @@ namespace
             const TF* const restrict lbc_u,
             const TF* const restrict lbc_d,
             const TF* const restrict rhoref,
-            const TF size,
+            const TF* const restrict dz,
+            const TF dx_or_dy,
             const int ntime,
             const int ntot, const int ktot)
     {
@@ -709,9 +710,8 @@ namespace
                 for (int n=0; n<ntot; ++n)
                 {
                     const int nk = n + k*ntot + t*ntot*ktot;
-                    div[t] += rhoref[k] * (lbc_u[nk] - lbc_d[nk]) / size;
+                    div[t] += rhoref[k] * dx_or_dy * dz[k] * (lbc_u[nk] - lbc_d[nk]);
                 }
-            div[t] /= (ktot*ntot);
         }
     }
 }
@@ -860,14 +860,16 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, name);
 
-        // Calculate domain total horizontal divergence.
+        // Calculate domain total mass imbalance in kg s-1.
         if (name == "u")
             calc_div_h(
                     div_u.data(),
                     lbc_e_full.data(),
                     lbc_w_full.data(),
                     fields.rhoref.data(),
-                    gd.xsize, ntime,
+                    gd.dz.data(),
+                    gd.dy,
+                    ntime,
                     gd.jtot, gd.ktot);
         else if (name == "v")
             calc_div_h(
@@ -875,7 +877,9 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     lbc_n_full.data(),
                     lbc_s_full.data(),
                     fields.rhoref.data(),
-                    gd.xsize, ntime,
+                    gd.dz.data(),
+                    gd.dx,
+                    ntime,
                     gd.itot, gd.ktot);
 
         //if (!sw_timedep)
@@ -920,7 +924,8 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     {
         for (int t=0; t<ntime; ++t)
         {
-            w_top_in[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
+            // w_top is the total mass in/outflow at the top divided by the total area and the local density.
+            w_top_in[t] = -(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend]*gd.xsize*gd.ysize);
 
             std::string message = "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
             master.print_message(message);
