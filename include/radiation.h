@@ -25,6 +25,7 @@
 #include <vector>
 #include "field3d_operators.h"
 #include "aerosol.h"
+#include "background_profs.h"
 
 class Master;
 class Input;
@@ -54,7 +55,7 @@ class Radiation
         virtual void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
-        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&) = 0;
+        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;

@@ -50,7 +50,7 @@ class Radiation_prescribed : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         std::vector<TF>& get_surface_radiation(const std::string&);

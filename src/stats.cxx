@@ -784,6 +784,18 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
             m.soil_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
         }
 
+        for (auto& p : m.background_profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + sgd.kstart,
+                    p.second.data.begin() + sgd.kstart + ksize);
+
+            m.background_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+        }
+
         for (auto& ts : m.tseries)
             m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
 
@@ -1039,7 +1051,7 @@ void Stats<TF>::add_prof(
         return;
 
     Level_type level;
-    if ((zloc == "z") || (zloc == "zs"))
+    if ((zloc == "z") || (zloc == "zs") || (zloc == "era_levels"))
         level = Level_type::Full;
     else
         level = Level_type::Half;
@@ -1064,7 +1076,7 @@ void Stats<TF>::add_prof(
             m.profs.at(name).ncvar.add_attribute("units", unit);
             m.profs.at(name).ncvar.add_attribute("long_name", longname);
         }
-        else
+        else if (zloc == "zs")
         {
             Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(sgd.kcells), level};
 
@@ -1073,14 +1085,26 @@ void Stats<TF>::add_prof(
             m.soil_profs.at(name).ncvar.add_attribute("units", unit);
             m.soil_profs.at(name).ncvar.add_attribute("long_name", longname);
         }
+        else if ((zloc == "era_levels") || (zloc == "era_layers"))
+        {
+            const TF n_era_levels = 137;
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_era_levels), level};
+
+            m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+
+            m.background_profs.at(name).ncvar.add_attribute("units", unit);
+            m.background_profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
 
         m.data_file->sync();
     }
 
     if ((zloc == "z") || (zloc == "zh"))
         varlist.push_back(name);
-    else
+    else if (zloc == "zs")
         varlist_soil.push_back(name);
+    else if ((zloc == "era_levels") || (zloc == "era_layers"))
+        varlist_background.push_back(name);
 }
 
 template<typename TF>
@@ -1288,6 +1312,19 @@ void Stats<TF>::set_prof(const std::string& varname, const std::vector<TF>& prof
     {
         for (auto& it : masks)
             it.second.profs.at(varname).data = prof;
+    }
+}
+
+template<typename TF>
+void Stats<TF>::set_prof_background(const std::string& varname, const std::vector<TF>& prof)
+{
+    auto it = std::find(varlist_background.begin(), varlist_background.end(), varname);
+    if (it == varlist_background.end())
+        throw std::runtime_error("Set_prof: Variable " + varname + " does not exist");
+    else
+    {
+        for (auto& it : masks)
+        it.second.background_profs.at(varname).data = prof;
     }
 }
 

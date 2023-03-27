@@ -55,6 +55,7 @@
 #include "model.h"
 #include "source.h"
 #include "aerosol.h"
+#include "background_profs.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -135,6 +136,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -194,6 +196,7 @@ void Model<TF>::init()
     budget->init();
     source->init();
     aerosol->init();
+    background->init();
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -252,6 +255,7 @@ void Model<TF>::load()
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
     aerosol->create(*input, *input_nc, *stats);
+    background->create(*input, *input_nc, *stats);
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
@@ -340,6 +344,7 @@ void Model<TF>::exec()
                 force    ->update_time_dependent(*timeloop);
                 radiation->update_time_dependent(*timeloop);
                 aerosol  ->update_time_dependent(*timeloop);
+                background  ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -371,7 +376,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol, *background);
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
@@ -612,6 +617,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         aerosol  ->exec_stats(*stats);
+        background ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);

@@ -47,6 +47,7 @@ template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
 template<typename TF> class Aerosol;
+template<typename TF> class Background;
 
 using Aerosol_concs = Gas_concs;
 using Aerosol_concs_gpu = Gas_concs_gpu;
@@ -65,7 +66,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         void update_time_dependent(Timeloop<TF>&) {};
@@ -194,6 +195,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
+        bool sw_update_background;
         bool sw_aerosol;
 
         double dt_rad;
