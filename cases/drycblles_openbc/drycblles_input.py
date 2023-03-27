@@ -98,11 +98,11 @@ lbc.th_east[:] = th[None, :, None]
 
 u_west = 2.1
 u_east = 0.
-
 v_south = 0.
 v_north = 2.
 
-rnd_amp = 0.01
+
+rnd_amp = 0 #0.01
 
 def make_rand(n0, n1, n2):
     rnd = np.random.rand(n0, n1, n2)

@@ -351,7 +351,7 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells();
 
                 // Set open boundary conditions.
-                lbc->set_ghost_cells();
+                lbc->set_ghost_cells(*timeloop);
 
                 // Calculate the field means, in case needed.
                 fields->exec();

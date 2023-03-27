@@ -772,6 +772,72 @@ namespace
 
         master.print_message(message);
     }
+
+
+    template<typename TF, Lbc_location location>
+    void perturb_boundary_kernel(
+            TF* const restrict tend,
+            const TF amplitude, const TF dt,
+            const int width, const int block_size,
+            const int mpiidx, const int npx,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int n_blocks = width / block_size;
+
+        const TF rand_max_i = TF(1) / RAND_MAX;
+        const TF dt_i = TF(1) / dt;
+
+        if (location == Lbc_location::West || location == Lbc_location::East)
+        {
+            const int i0 = (location == Lbc_location::West) ? istart : iend-width;
+            const int n_blocks_ew = (jend-jstart)  / block_size;
+
+            for (int k=kstart; k<kend; ++k)
+                for (int bj=0; bj<n_blocks_ew; ++bj)
+                    for (int bi=0; bi<n_blocks; ++bi)
+                    {
+                        const TF tend_value = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude * dt_i;
+
+                        for (int dj=0; dj<block_size; ++dj)
+                            for (int di=0; di<block_size; ++di)
+                            {
+                                const int i = i0 + bi*block_size + di;
+                                const int j = jstart + bj*block_size + dj;
+                                const int ijk = i + j*icells + k*ijcells;
+
+                                tend[ijk] += tend_value;
+                            }
+                    }
+        }
+
+        if (location == Lbc_location::South || location == Lbc_location::North)
+        {
+            const int j0 = (location == Lbc_location::South) ? jstart : jend-width;
+            const int istart_loc = (mpiidx == 0) ? istart + width : istart;
+            const int iend_loc = (mpiidx == npx-1) ? iend - width : iend;
+            const int n_blocks_ns = (iend_loc-istart_loc)  / block_size;
+
+            for (int k=kstart; k<kend; ++k)
+                for (int bj=0; bj<n_blocks; ++bj)
+                    for (int bi=0; bi<n_blocks_ns; ++bi)
+                    {
+                        const TF tend_value = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude * dt_i;
+
+                        for (int dj=0; dj<block_size; ++dj)
+                            for (int di=0; di<block_size; ++di)
+                            {
+                                const int i = istart_loc + bi*block_size + di;
+                                const int j = j0 + bj*block_size + dj;
+                                const int ijk = i + j*icells + k*ijcells;
+
+                                tend[ijk] += tend_value;
+                            }
+                    }
+        }
+    }
 }
 
 
@@ -790,11 +856,30 @@ Boundary_lateral<TF>::Boundary_lateral(
         sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
+        // Lateral sponge / diffusion layer.
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
-        n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
+        if (sw_sponge)
+        {
+            n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
+            tau_nudge = inputin.get_item<TF>("boundary", "tau_sponge", "", 60);
+            w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
+        }
 
-        tau_nudge = inputin.get_item<TF>("boundary", "tau_sponge", "", 60);
-        w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
+        // Inflow perturbations
+        sw_perturb = inputin.get_item<bool>("boundary", "sw_perturb", "", false);
+        if (sw_perturb)
+        {
+            perturb_list = inputin.get_list<std::string>("boundary", "perturb_list", "", std::vector<std::string>());
+            perturb_width = inputin.get_item<int>("boundary", "perturb_width", "", 4);
+            perturb_block = inputin.get_item<int>("boundary", "perturb_block", "", 2);
+            perturb_seed = inputin.get_item<int>("boundary", "perturb_seed", "", 0);
+
+            for (auto& fld : perturb_list)
+            {
+                const TF ampl = inputin.get_item<TF>("boundary", "perturb_ampl", fld);
+                perturb_ampl.emplace(fld, ampl);
+            }
+        }
     }
 }
 
@@ -831,6 +916,13 @@ void Boundary_lateral<TF>::init()
 
     for (auto& fld : inoutflow_s)
         add_lbc(fld);
+
+    // Make sure every MPI task has different seed.
+    if (sw_perturb)
+    {
+        perturb_seed += master.get_mpiid();
+        std::srand(perturb_seed);
+    }
 }
 
 template <typename TF>
@@ -995,7 +1087,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::set_ghost_cells()
+void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 {
     if (!sw_inoutflow)
         return;
@@ -1161,6 +1253,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 gd.kcells, gd.ijcells);
     };
 
+
     if (sw_inoutflow_u)
     {
         if (md.mpicoordy == 0)
@@ -1268,19 +1361,19 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 fields.mp.at("w")->fld[ijk] = w_top;
             }
 
-        check_div(
-            fields.mp.at("u")->fld.data(),
-            fields.mp.at("v")->fld.data(),
-            fields.mp.at("w")->fld.data(),
-            gd.dzi.data(),
-            fields.rhoref.data(),
-            fields.rhorefh.data(),
-            gd.dx, gd.dy,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells,
-            master);
+        //check_div(
+        //    fields.mp.at("u")->fld.data(),
+        //    fields.mp.at("v")->fld.data(),
+        //    fields.mp.at("w")->fld.data(),
+        //    gd.dzi.data(),
+        //    fields.rhoref.data(),
+        //    fields.rhorefh.data(),
+        //    gd.dx, gd.dy,
+        //    gd.istart, gd.iend,
+        //    gd.jstart, gd.jend,
+        //    gd.kstart, gd.kend,
+        //    gd.icells, gd.ijcells,
+        //    master);
     }
     // END
 
@@ -1338,6 +1431,35 @@ void Boundary_lateral<TF>::set_ghost_cells()
         }
 
         blend_corners_wrapper(fields.ap.at(fld)->fld, gd.kend);
+    }
+
+
+    auto perturb_boundary_wrapper = [&]<Lbc_location location>(
+            const std::string& fld)
+    {
+        perturb_boundary_kernel<TF, location>(
+                fields.at.at(fld)->fld.data(),
+                perturb_ampl.at(fld),
+                timeloop.get_sub_time_step(),
+                perturb_width, perturb_block,
+                md.mpicoordx, md.npx,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+    // Add random perturbation in a certain block size to the fields near the lateral boundaries.
+    for (auto& fld : perturb_list)
+    {
+        if (md.mpicoordx == 0)
+            perturb_boundary_wrapper.template operator()<Lbc_location::West>(fld);
+        if (md.mpicoordx == md.npx-1)
+            perturb_boundary_wrapper.template operator()<Lbc_location::East>(fld);
+        if (md.mpicoordy == 0)
+            perturb_boundary_wrapper.template operator()<Lbc_location::South>(fld);
+        if (md.mpicoordy == md.npy-1)
+            perturb_boundary_wrapper.template operator()<Lbc_location::North>(fld);
     }
 
     //dump_fld3d(fields.ap.at("th")->fld, "th0");

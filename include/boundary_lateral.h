@@ -44,7 +44,7 @@ class Boundary_lateral
 
         void init();
         void create(Input&, const std::string&);
-        void set_ghost_cells();
+        void set_ghost_cells(Timeloop<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
     private:
@@ -56,11 +56,22 @@ class Boundary_lateral
         bool sw_inoutflow_u;
         bool sw_inoutflow_v;
         bool sw_inoutflow_w;
-        bool sw_sponge;
         bool sw_timedep;
+
+        // Sponge/diffusion layer:
+        bool sw_sponge;
         int n_sponge;
         TF tau_nudge;
         TF w_diff;
+
+        // Boundary perturbations:
+        bool sw_perturb;
+        int perturb_width;
+        int perturb_block;
+        int perturb_seed;
+        std::vector<std::string> perturb_list;
+        std::map<std::string, TF> perturb_ampl;
+
         std::vector<std::string> inoutflow_s;
 
         // Current (time interpolated) boundary conditions:
