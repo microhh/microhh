@@ -714,6 +714,48 @@ namespace
                 }
         }
     }
+
+    template<typename TF>
+    TF check_div(
+        const TF* const restrict u,
+        const TF* const restrict v,
+        const TF* const restrict w,
+        const TF* const restrict dzi,
+        const TF* const restrict rhoref,
+        const TF* const restrict rhorefh,
+        const TF dx, const TF dy,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int icells, const int ijcells,
+        Master& master)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
+
+        TF divmax = 0.;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+
+                    const int ijk = i + j*jj + k*kk;
+                    const TF div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
+                          + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
+
+                    divmax = std::max(divmax, std::abs(div));
+                }
+
+        master.max(&divmax, 1);
+
+        return divmax;
+    }
 }
 
 
@@ -1209,6 +1251,24 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 const int ijk = i + j*gd.icells + k*gd.ijcells;
                 fields.mp.at("w")->fld[ijk] = w_top;
             }
+
+
+        const TF div_max = check_div(
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("w")->fld.data(),
+            gd.dzi.data(),
+            fields.rhoref.data(),
+            fields.rhorefh.data(),
+            gd.dx, gd.dy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
+
+        std::string message = "Max div. = " + std::to_string(div_max);
+        master.print_message(message);
     }
     // END
 
