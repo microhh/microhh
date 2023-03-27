@@ -698,7 +698,8 @@ namespace
             const TF* const restrict lbc_u,
             const TF* const restrict lbc_d,
             const TF* const restrict rhoref,
-            const TF size,
+            const TF* const restrict dz,
+            const TF dx_or_dy,
             const int ntime,
             const int ntot, const int ktot)
     {
@@ -708,11 +709,52 @@ namespace
             for (int k=0; k<ktot; ++k)
                 for (int n=0; n<ntot; ++n)
                 {
-                    const int nk = n + k*ntot;
-                    div[t] += rhoref[k] * (lbc_u[nk] - lbc_d[nk]) / size;
+                    const int nk = n + k*ntot + t*ntot*ktot;
+                    div[t] += rhoref[k] * dx_or_dy * dz[k] * (lbc_u[nk] - lbc_d[nk]);
                 }
-            div[t] /= (ktot*ntot);
         }
+    }
+
+    template<typename TF>
+    TF check_div(
+        const TF* const restrict u,
+        const TF* const restrict v,
+        const TF* const restrict w,
+        const TF* const restrict dzi,
+        const TF* const restrict rhoref,
+        const TF* const restrict rhorefh,
+        const TF dx, const TF dy,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int icells, const int ijcells,
+        Master& master)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const TF dxi = TF(1.)/dx;
+        const TF dyi = TF(1.)/dy;
+
+        TF divmax = 0.;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+
+                    const int ijk = i + j*jj + k*kk;
+                    const TF div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
+                          + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
+
+                    divmax = std::max(divmax, std::abs(div));
+                }
+
+        master.max(&divmax, 1);
+
+        return divmax;
     }
 }
 
@@ -860,23 +902,27 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.istart, gd.iend, gd.igc, gd.imax,
                     gd.itot, gd.icells, md.mpicoordx, name);
 
-        // Calculate domain total horizontal divergence.
+        // Calculate domain total mass imbalance in kg s-1.
         if (name == "u")
             calc_div_h(
                     div_u.data(),
                     lbc_e_full.data(),
                     lbc_w_full.data(),
                     fields.rhoref.data(),
-                    gd.xsize, ntime,
-                    gd.itot, gd.ktot);
+                    gd.dz.data(),
+                    gd.dy,
+                    ntime,
+                    gd.jtot, gd.ktot);
         else if (name == "v")
             calc_div_h(
                     div_v.data(),
                     lbc_n_full.data(),
                     lbc_s_full.data(),
                     fields.rhoref.data(),
-                    gd.xsize, ntime,
-                    gd.jtot, gd.ktot);
+                    gd.dz.data(),
+                    gd.dx,
+                    ntime,
+                    gd.itot, gd.ktot);
 
         //if (!sw_timedep)
         //{
@@ -920,7 +966,11 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     {
         for (int t=0; t<ntime; ++t)
         {
-            w_top_in[t] = -(div_u[t] + div_v[t]) * gd.zsize / fields.rhorefh[gd.kend];
+            // w_top is the total mass in/outflow at the top divided by the total area and the local density.
+            w_top_in[t] = -(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend]*gd.xsize*gd.ysize);
+
+            std::string message = "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+            master.print_message(message);
         }
 
         if (!sw_timedep)
@@ -1201,6 +1251,24 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 const int ijk = i + j*gd.icells + k*gd.ijcells;
                 fields.mp.at("w")->fld[ijk] = w_top;
             }
+
+
+        const TF div_max = check_div(
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("w")->fld.data(),
+            gd.dzi.data(),
+            fields.rhoref.data(),
+            fields.rhorefh.data(),
+            gd.dx, gd.dy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
+
+        std::string message = "Max div. = " + std::to_string(div_max);
+        master.print_message(message);
     }
     // END
 
