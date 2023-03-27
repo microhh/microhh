@@ -355,7 +355,7 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ice_g(TF* __restrict__ qc, TF* __restrict__ th, TF* __restrict__ qt,
+    void calc_ice_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
                              TF* __restrict__ exn, TF* __restrict__ p,
                              int istart, int jstart, int kstart,
                              int iend,   int jend,   int kend,
@@ -373,7 +373,7 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_condensate_g(TF* __restrict__ qi, TF* __restrict__ th, TF* __restrict__ qt,
+    void calc_condensate_g(TF* __restrict__ qc, TF* __restrict__ th, TF* __restrict__ qt,
                            TF* __restrict__ exn, TF* __restrict__ p,
                            int istart, int jstart, int kstart,
                            int iend,   int jend,   int kend,
