@@ -701,7 +701,8 @@ namespace
             const TF* const restrict dz,
             const TF dx_or_dy,
             const int ntime,
-            const int ntot, const int ktot)
+            const int ntot, const int ktot,
+            const int kgc)
     {
         for (int t=0; t<ntime; ++t)
         {
@@ -710,13 +711,14 @@ namespace
                 for (int n=0; n<ntot; ++n)
                 {
                     const int nk = n + k*ntot + t*ntot*ktot;
-                    div[t] += rhoref[k] * dx_or_dy * dz[k] * (lbc_u[nk] - lbc_d[nk]);
+
+                    div[t] += rhoref[k+kgc] * dx_or_dy * dz[k+kgc] * (lbc_u[nk] - lbc_d[nk]);
                 }
         }
     }
 
     template<typename TF>
-    TF check_div(
+    void check_div(
         const TF* const restrict u,
         const TF* const restrict v,
         const TF* const restrict w,
@@ -738,6 +740,9 @@ namespace
         const TF dyi = TF(1.)/dy;
 
         TF divmax = 0.;
+        int imax = 0;
+        int jmax = 0;
+        int kmax = 0;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -749,12 +754,23 @@ namespace
                     const TF div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
                           + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
 
-                    divmax = std::max(divmax, std::abs(div));
+                    if (div > divmax)
+                    {
+                        divmax = div;
+                        imax = i;
+                        jmax = j;
+                        kmax = k;
+                    }
                 }
 
         master.max(&divmax, 1);
 
-        return divmax;
+        std::string message = "Max div. = " + std::to_string(divmax) + " @ i,j,k = "
+                + std::to_string(imax) + ", "
+                + std::to_string(jmax) + ", "
+                + std::to_string(kmax);
+
+        master.print_message(message);
     }
 }
 
@@ -912,7 +928,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.dz.data(),
                     gd.dy,
                     ntime,
-                    gd.jtot, gd.ktot);
+                    gd.jtot, gd.ktot, gd.kgc);
         else if (name == "v")
             calc_div_h(
                     div_v.data(),
@@ -922,7 +938,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
                     gd.dz.data(),
                     gd.dx,
                     ntime,
-                    gd.itot, gd.ktot);
+                    gd.itot, gd.ktot, gd.kgc);
 
         //if (!sw_timedep)
         //{
@@ -1252,8 +1268,7 @@ void Boundary_lateral<TF>::set_ghost_cells()
                 fields.mp.at("w")->fld[ijk] = w_top;
             }
 
-
-        const TF div_max = check_div(
+        check_div(
             fields.mp.at("u")->fld.data(),
             fields.mp.at("v")->fld.data(),
             fields.mp.at("w")->fld.data(),
@@ -1266,9 +1281,6 @@ void Boundary_lateral<TF>::set_ghost_cells()
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells,
             master);
-
-        std::string message = "Max div. = " + std::to_string(div_max);
-        master.print_message(message);
     }
     // END
 
