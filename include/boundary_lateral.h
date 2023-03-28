@@ -69,6 +69,7 @@ class Boundary_lateral
         int perturb_width;
         int perturb_block;
         int perturb_seed;
+        int perturb_kend;
         std::vector<std::string> perturb_list;
         std::map<std::string, TF> perturb_ampl;
 

@@ -1089,6 +1089,18 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
         if (!sw_timedep)
             w_top = w_top_in[0];
     }
+
+    if (sw_perturb)
+    {
+        const TF perturb_zmax = inputin.get_item<TF>("boundary", "perturb_zmax", "");
+
+        for (int k=gd.kstart; k<gd.kend; ++k)
+            if (gd.z[k] < perturb_zmax && gd.z[k+1] >= perturb_zmax)
+            {
+                perturb_kend = k+1;
+                break;
+            }
+    }
 }
 
 template <typename TF>
@@ -1455,7 +1467,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                     md.mpicoordx, md.npx,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, perturb_kend,
                     gd.icells, gd.jcells,
                     gd.ijcells);
         };
