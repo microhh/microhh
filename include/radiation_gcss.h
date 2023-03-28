@@ -68,7 +68,8 @@ class Radiation_gcss : public Radiation<TF>
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&)
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&)
             { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
 
         #ifdef USECUDA

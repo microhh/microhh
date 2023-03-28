@@ -66,7 +66,8 @@ class Radiation_prescribed : public Radiation<TF>
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&) {};
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&) {};
 
         #ifdef USECUDA
         TF* get_surface_radiation_g(const std::string&);

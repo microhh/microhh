@@ -1158,6 +1158,15 @@ void Radiation_rrtmgp<TF>::create_column(
                            "W m-2", "era_levels", group_name);
 //            std::cout << "add prof succesful" << std::endl;
         }
+        if (sw_update_background)
+        {
+            stats.add_prof("lw_flux_up_ref",
+                           "Longwave upwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+            stats.add_prof("lw_flux_dn_ref",
+                           "Longwave downwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+        }
     }
 
     // 3. Read background profiles on pressure levels
@@ -1241,7 +1250,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
             n_lay_col);
 
     // Save the reference profile fluxes in the stats.
-    if (stats.get_switch())
+    if (stats.get_switch() && !sw_update_background)
     {
         const std::string group_name = "radiation";
 
@@ -1468,6 +1477,34 @@ void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
+void Radiation_rrtmgp<TF>::set_background_column_longwave(const TF p_top)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Read the boundary conditions.
+    // Set the surface temperature and emissivity.
+    Array<Float,1> t_sfc({1});
+    t_sfc({1}) = t_lev_col({1,1});
+
+    const int n_bnd = kdist_lw->get_nband();
+    Array<Float,2> emis_sfc({n_bnd, 1});
+    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+        emis_sfc({ibnd, 1}) = this->emis_sfc;
+
+    solve_longwave_column(optical_props_lw,
+                          lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
+                          lw_flux_dn_inc, p_top,
+                          gas_concs_col,
+                          kdist_lw,
+                          sources_lw,
+                          col_dry,
+                          p_lay_col, p_lev_col,
+                          t_lay_col, t_lev_col,
+                          t_sfc, emis_sfc,
+                          n_lay_col);
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
 {
     auto& gd = grid.get_grid_data();
@@ -1548,48 +1585,7 @@ void Radiation_rrtmgp<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        std::vector<Float> aermr01(gd.ktot);
-        std::vector<Float> aermr02(gd.ktot);
-        std::vector<Float> aermr03(gd.ktot);
-        std::vector<Float> aermr04(gd.ktot);
-        std::vector<Float> aermr05(gd.ktot);
-        std::vector<Float> aermr06(gd.ktot);
-        std::vector<Float> aermr07(gd.ktot);
-        std::vector<Float> aermr08(gd.ktot);
-        std::vector<Float> aermr09(gd.ktot);
-        std::vector<Float> aermr10(gd.ktot);
-        std::vector<Float> aermr11(gd.ktot);
-
-        if (sw_aerosol)
-        {
-            aerosol.get_radiation_fields(aermr01, aermr02, aermr03, aermr04, aermr05, aermr06, aermr07,
-                                         aermr08, aermr09, aermr10, aermr11);
-        }
-
-        Array<Float,2> aermr01_a(aermr01, {1, gd.ktot});
-        Array<Float,2> aermr02_a(aermr02, {1, gd.ktot});
-        Array<Float,2> aermr03_a(aermr03, {1, gd.ktot});
-        Array<Float,2> aermr04_a(aermr04, {1, gd.ktot});
-        Array<Float,2> aermr05_a(aermr05, {1, gd.ktot});
-        Array<Float,2> aermr06_a(aermr06, {1, gd.ktot});
-        Array<Float,2> aermr07_a(aermr07, {1, gd.ktot});
-        Array<Float,2> aermr08_a(aermr08, {1, gd.ktot});
-        Array<Float,2> aermr09_a(aermr09, {1, gd.ktot});
-        Array<Float,2> aermr10_a(aermr10, {1, gd.ktot});
-        Array<Float,2> aermr11_a(aermr11, {1, gd.ktot});
-
-        aerosol_concs.set_vmr("aermr01", aermr01_a);
-        aerosol_concs.set_vmr("aermr02", aermr02_a);
-        aerosol_concs.set_vmr("aermr03", aermr03_a);
-        aerosol_concs.set_vmr("aermr04", aermr04_a);
-        aerosol_concs.set_vmr("aermr05", aermr05_a);
-        aerosol_concs.set_vmr("aermr06", aermr06_a);
-        aerosol_concs.set_vmr("aermr07", aermr07_a);
-        aerosol_concs.set_vmr("aermr08", aermr08_a);
-        aerosol_concs.set_vmr("aermr09", aermr09_a);
-        aerosol_concs.set_vmr("aermr10", aermr10_a);
-        aerosol_concs.set_vmr("aermr11", aermr11_a);
-
+        aerosol.get_radiation_fields(aerosol_concs);
 
         try
         {
@@ -1658,64 +1654,32 @@ void Radiation_rrtmgp<TF>::exec(
                     // Update the solar zenith angle and sun-earth distance.
                     set_sun_location(timeloop);
                 }
-                else if (sw_update_background)
-                {
-                    std::vector<Float> h2o_bg(int(background.n_era_layers));
-                    std::vector<Float> o3_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr01_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr02_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr03_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr04_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr05_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr06_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr07_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr08_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr09_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr10_bg(int(background.n_era_layers));
-                    std::vector<Float> aermr11_bg(int(background.n_era_layers));
-                    
-                    background.get_radiation_fields(h2o_bg, o3_bg,
-                                                    aermr01_bg, aermr02_bg , aermr03_bg, aermr04_bg, 
-                                                    aermr05_bg, aermr06_bg, aermr07_bg, aermr08_bg, 
-                                                    aermr09_bg, aermr10_bg, aermr11_bg);
 
-                    Array<Float,2> h2o_bg_a(h2o_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> o3_bg_a(o3_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr01_bg_a(aermr01_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr02_bg_a(aermr02_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr03_bg_a(aermr03_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr04_bg_a(aermr04_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr05_bg_a(aermr05_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr06_bg_a(aermr06_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr07_bg_a(aermr07_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr08_bg_a(aermr08_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr09_bg_a(aermr09_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr10_bg_a(aermr10_bg, {1, int(background.n_era_layers)});
-                    Array<Float,2> aermr11_bg_a(aermr11_bg, {1, int(background.n_era_layers)});
-                    
-                    gas_concs_col.set_vmr("h2o", h2o_bg_a);
-                    gas_concs_col.set_vmr("o3", o3_bg_a);
-                    aerosol_concs_col.set_vmr("aermr01", aermr01_bg_a);
-                    aerosol_concs_col.set_vmr("aermr02", aermr02_bg_a);
-                    aerosol_concs_col.set_vmr("aermr03", aermr03_bg_a);
-                    aerosol_concs_col.set_vmr("aermr04", aermr04_bg_a);
-                    aerosol_concs_col.set_vmr("aermr05", aermr05_bg_a);
-                    aerosol_concs_col.set_vmr("aermr06", aermr06_bg_a);
-                    aerosol_concs_col.set_vmr("aermr07", aermr07_bg_a);
-                    aerosol_concs_col.set_vmr("aermr08", aermr08_bg_a);
-                    aerosol_concs_col.set_vmr("aermr09", aermr09_bg_a);
-                    aerosol_concs_col.set_vmr("aermr10", aermr10_bg_a);
-                    aerosol_concs_col.set_vmr("aermr11", aermr11_bg_a);
+                if (sw_update_background)
+                {
+                    // Temperature and pressure
+                    background.get_tp(t_lev_col, t_lay_col, p_lay_col, p_lev_col);
+                    // gasses
+                    background.get_gasses(gas_concs_col);
+                    // aerosols
+                    background.get_aerosols(aerosol_concs_col);
                 }
 
                 if (!sw_fixed_sza || sw_update_background)
                 {
-                // Calculate new background column.
+                // Calculate new background column for the shortwave.
                     if (is_day(this->mu0))
                     {
                         const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
                         set_background_column_shortwave(p_top);
                     }
+                }
+
+                if (sw_update_background)
+                {
+                    // Calculate new background column for the longwave.
+                    const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
+                    set_background_column_longwave(p_top);
                 }
 
                 Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
@@ -1925,6 +1889,12 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
                 save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
             }
+
+            if (sw_update_background)
+            {
+                stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
+                stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
+            }
         }
 
         if (sw_shortwave)
@@ -1986,7 +1956,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>& aerosol)
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();
 
@@ -2104,14 +2075,38 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             {
                 // Update the solar zenith angle and sun-earth distance.
                 set_sun_location(timeloop);
+            }
 
-                // Calculate new background column.
+
+            if (sw_update_background)
+            {
+                // Temperature and pressure
+                background.get_tp(t_lev_col, t_lay_col, p_lay_col, p_lev_col);
+                // gasses
+                background.get_gasses(gas_concs_col);
+                // aerosols
+                background.get_aerosols(aerosol_concs_col);
+            }
+
+            if (!sw_fixed_sza || sw_update_background)
+            {
+                // Calculate new background column for the shortwave.
                 if (is_day(this->mu0))
                 {
                     const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
                     set_background_column_shortwave(p_top);
                 }
             }
+
+            if (sw_update_background)
+            {
+                // Calculate new background column for the longwave.
+                const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
+                set_background_column_longwave(p_top);
+            }
+
+
+
 
             if (!is_day(this->mu0))
             {

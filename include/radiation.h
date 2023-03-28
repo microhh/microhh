@@ -72,7 +72,8 @@ class Radiation
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) = 0;
-        virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&) = 0;
+        virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&) = 0;
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
 
         #ifdef USECUDA

@@ -33,6 +33,10 @@
 #include "thermo.h"
 #include "fields.h"
 #include "timedep.h"
+#include "Gas_concs.h"
+#include "Array.h"
+
+using Aerosol_concs = Gas_concs;
 
 namespace
 {
@@ -77,32 +81,6 @@ void Aerosol<TF>::init()
     aermr10.resize(gd.kcells);
     aermr11.resize(gd.kcells);
 
-//    od_wl10.resize(gd.kcells);
-//    ssa_wl10.resize(gd.kcells);
-//    g_wl10.resize(gd.kcells);
-//
-//    const std::string& coef_file{"aerosol_optics.nc"};
-//    Netcdf_file opt_prop_nc(master, coef_file, Netcdf_mode::Read);
-//
-//    nwavelengths = opt_prop_nc.get_dimension_size("band_sw");
-//    nspecies_phobic = opt_prop_nc.get_dimension_size("hydrophobic");
-//    nspecies_philic = opt_prop_nc.get_dimension_size("hydrophilic");
-//    nrh = opt_prop_nc.get_dimension_size("relative_humidity");
-//
-//    mext_phobic.resize(nspecies_phobic*nwavelengths);
-//    ssa_phobic.resize(nspecies_phobic*nwavelengths);
-//    g_phobic.resize(nspecies_phobic*nwavelengths);
-//    mext_philic.resize(nspecies_philic*nrh*nwavelengths);
-//    ssa_philic.resize(nspecies_philic*nrh*nwavelengths);
-//    g_philic.resize(nspecies_philic*nrh*nwavelengths);
-//    rh_classes.resize(nrh);
-//
-//    mmr.resize(gd.kcells);
-//
-//    aod_ml.resize(gd.ncells*nwavelengths);
-//    ssa_ml.resize(gd.ncells*nwavelengths);
-//    g_ml.resize(gd.ncells*nwavelengths);
-
 }
 
 template <typename TF>
@@ -115,19 +93,6 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
     auto& gd = grid.get_grid_data();
 
     std::cout << "create() aerosols" << std::endl;
-
-//    // Read aerosol optical properties from lookup table
-//    // Open file
-//    const std::string& coef_file{"aerosol_optics.nc"};
-//    Netcdf_file opt_prop_nc(master, coef_file, Netcdf_mode::Read);
-//    // Load properties
-//    rh_classes = opt_prop_nc.get_variable<TF>("relative_humidity2", {nrh});
-//    mext_phobic = opt_prop_nc.get_variable<TF>("mass_ext_sw_hydrophobic", {nspecies_phobic, nwavelengths});
-//    ssa_phobic = opt_prop_nc.get_variable<TF>("ssa_sw_hydrophobic", {nspecies_phobic, nwavelengths});
-//    g_phobic = opt_prop_nc.get_variable<TF>("asymmetry_sw_hydrophobic", {nspecies_phobic, nwavelengths});
-//    mext_philic = opt_prop_nc.get_variable<TF>("mass_ext_sw_hydrophilic", {nspecies_philic, nrh, nwavelengths});
-//    ssa_philic = opt_prop_nc.get_variable<TF>("ssa_sw_hydrophilic", {nspecies_philic, nrh, nwavelengths});
-//    g_philic = opt_prop_nc.get_variable<TF>("asymmetry_sw_hydrophilic", {nspecies_philic, nrh, nwavelengths});
 
     if (sw_timedep)
     {
@@ -216,10 +181,6 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
         stats.add_fixed_prof("aermr10", "Black carbon (hydrophobic) mixing ratio", "kg Kg-1", "z", group_name, aermr10);
         stats.add_fixed_prof("aermr11", "Sulfates mixing ratio", "kg Kg-1", "z", group_name, aermr11);
     }
-
-//    stats.add_prof("od_wl10", "Optical depth for wavelength band 10", "-", "z", group_name);
-//    stats.add_prof("ssa_wl10", "single scattering albedo for wavelength band 10", "-", "z", group_name);
-//    stats.add_prof("g_wl10", "asymmetry for wavelength band 10", "-", "z", group_name);
 }
 
 #ifndef USECUDA
@@ -230,67 +191,6 @@ void Aerosol<TF>::exec(Thermo<TF>& thermo)
         return;
 
     auto& gd = grid.get_grid_data();
-
-//    // get pressure and relative humidity from thermo
-//    std::vector<TF> ph_thermo = thermo.get_basestate_vector("ph");
-//    auto rh = fields.get_tmp();
-//    thermo.get_thermo_field(*rh, "rh", false, false);
-//
-//    std::vector<TF> local_od;
-//    std::vector<TF> od_ext_ml;
-//    std::vector<TF> od_scat_ml;
-//    std::vector<TF> scatg_ml;
-//
-//    local_od.resize(gd.kcells*nwavelengths*gd.ijcells);
-//    od_ext_ml.resize(gd.kcells*nwavelengths*gd.ijcells);
-//    od_scat_ml.resize(gd.kcells*nwavelengths*gd.ijcells);
-//    scatg_ml.resize(gd.kcells*nwavelengths*gd.ijcells);
-//
-//    // Loop over all aerosol types
-//    std::string list_aerosol_types[]{"SS1", "SS2", "SS3", "DU1", "DU2", "DU3", "OM1", "OM2", "BC1", "BC2", "SU"};
-//    for (auto &&aerosol_class : list_aerosol_types)
-//        // loop over all wavelengths
-//        for (int n=0; n<nwavelengths; ++n)
-//            // loop over all heights
-//            for (int k=gd.kstart; k<gd.kend; ++k)
-//                // loop over all y
-//                for (int j=gd.jstart; j<gd.jend; ++j)
-//                    // loop over all x
-//                    for (int i=gd.istart; i<gd.iend; ++i)
-//                    {
-//                        int ijk = i + j*gd.icells + k*gd.ijcells;
-//                        int ijkn = i + j*gd.icells + k*gd.ijcells + n*gd.ncells;
-//
-//                        // determine the relative humidity category
-//                        rh_class(rh->fld.data()[ijk], rh_classes);
-//
-//                        // get the aerosol properties for the combination of aerosol type, wavelength and rh.
-//                        // This is done in a separate function, because
-//                        // 1. the indexing depends on whether the aerosol type is hydrophilic or hydrophobic
-//                        // 2. each type of aerosols has its own set of properties in the lookup tables
-//                        set_aerosol_properties(aerosol_class, n, ihum);
-//
-//                        // calculate the pressure difference divided by g
-//                        float dp_g = (ph_thermo[k]-ph_thermo[k+1])/Constants::grav<TF>;
-//
-//                        // calculate the optical thicknesses and add to the total
-//                        local_od[ijkn] = mmr[k] * dp_g * mext;
-//                        od_ext_ml[ijkn] += local_od[ijkn];
-//                        od_scat_ml[ijkn] += local_od[ijkn] * ssa;
-//                        scatg_ml[ijkn] += local_od[ijkn] * ssa * g;
-//                    }
-//
-//    fields.release_tmp(rh);
-//
-//    // loop over the od values to compute aod, g, and ssa
-//    for (int idx = 0; idx<nwavelengths*gd.ncells; ++idx)
-//    {
-//        aod_ml[idx] = od_ext_ml[idx];
-//        ssa_ml[idx] = od_scat_ml[idx] / od_ext_ml[idx];
-//        g_ml[idx] = scatg_ml[idx] / od_scat_ml[idx];
-//    }
-//
-//    std::cout << "exec() aerosols" << std::endl;
 }
 
 template <typename TF>
@@ -312,9 +212,6 @@ void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_aermr09 ->update_time_dependent_prof(aermr09, timeloop);
         tdep_aermr10 ->update_time_dependent_prof(aermr10, timeloop);
         tdep_aermr11 ->update_time_dependent_prof(aermr11, timeloop);
-
-//        std::cout << "update_time_dependent() aerosols" << std::endl;
-//        throw std::runtime_error("Time dependent aerosols are not (yet) supported!\n");
     }
 }
 #endif
@@ -326,22 +223,6 @@ void Aerosol<TF>::exec_stats(Stats<TF>& stats)
         return;
 
     auto& gd = grid.get_grid_data();
-
-//    // determine the optical depth at one wavelength, one xy, all heights to write to output
-//    int n = 9;
-//    int j = gd.jstart + gd.jtot/2;
-//    int i = gd.istart + gd.itot/2;
-//    for (int k=gd.kstart; k<gd.kend; ++k)
-//    {
-//        int ijkn = i + j * gd.icells + k * gd.ijcells + n * gd.ncells;
-//        od_wl10[k] = aod_ml[ijkn];
-//        ssa_wl10[k] = ssa_ml[ijkn];
-//        g_wl10[k] = g_ml[ijkn];
-//    }
-//
-//    stats.set_prof("od_wl10", od_wl10);
-//    stats.set_prof("ssa_wl10", ssa_wl10);
-//    stats.set_prof("g_wl10", g_wl10);
 
     if (sw_timedep)
     {
@@ -356,124 +237,54 @@ void Aerosol<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof("aermr09", aermr09);
         stats.set_prof("aermr10", aermr10);
         stats.set_prof("aermr11", aermr11);
-
-        // std::cout << "exec_stats() aerosols" << std::endl;
     }
 }
 
-//template<typename TF>
-//void Aerosol<TF>::set_aerosol_properties(const std::string& aerosol_class, int wavelength, int humidity)
-//{
-//    if (aerosol_class == "DU1")
-//    {
-//        set_hydrophobic(0, wavelength);
-//        mmr = aermr04;
-//    }
-//    else if (aerosol_class == "DU2")
-//    {
-//        set_hydrophobic(7, wavelength);
-//        mmr = aermr05;
-//    }
-//    else if (aerosol_class == "DU3")
-//    {
-//        set_hydrophobic(5, wavelength);
-//        mmr = aermr06;
-//    }
-//    else if (aerosol_class == "BC1")
-//    {
-//        set_hydrophobic(10, wavelength);
-//        mmr = aermr09;
-//    }
-//    else if (aerosol_class == "BC2")
-//    {
-//        set_hydrophobic(10, wavelength);
-//        mmr = aermr10;
-//    }
-//    else if (aerosol_class == "SS1")
-//    {
-//        set_hydrophilic(0, humidity, wavelength);
-//        mmr = aermr01;
-//    }
-//    else if (aerosol_class == "SS2")
-//    {
-//        set_hydrophilic(1, humidity, wavelength);
-//        mmr = aermr02;
-//    }
-//    else if (aerosol_class == "SS3")
-//    {
-//        set_hydrophilic(2, humidity, wavelength);
-//        mmr = aermr03;
-//    }
-//    else if (aerosol_class == "SU")
-//    {
-//        set_hydrophilic(4, humidity, wavelength);
-//        mmr = aermr11;
-//    }
-//    else if (aerosol_class == "OM1")
-//    {
-//        set_hydrophobic(9, wavelength);
-//        mmr = aermr08;
-//    }
-//    else if (aerosol_class == "OM2")
-//    {
-//        set_hydrophilic(3, humidity, wavelength);
-//        mmr = aermr07;
-//    }
-//}
-//
-//template<typename TF>
-//void Aerosol<TF>::set_hydrophobic(int i, int wavelength)
-//{
-//    mext = mext_phobic[i*nwavelengths+wavelength];
-//    ssa = ssa_phobic[i*nwavelengths+wavelength];
-//    g = g_phobic[i*nwavelengths+wavelength];
-//}
-//
-//template<typename TF>
-//void Aerosol<TF>::set_hydrophilic(int i, int humidity, int wavelength)
-//{
-//    mext = mext_philic[i*nwavelengths*nrh+humidity*nwavelengths+wavelength];
-//    ssa = ssa_philic[i*nwavelengths*nrh+humidity*nwavelengths+wavelength];
-//    g = g_philic[i*nwavelengths*nrh+humidity*nwavelengths+wavelength];
-//}
-//
-//template<typename TF>
-//void Aerosol<TF>::rh_class(float rel_hum, std::vector<TF> rh2)
-//{
-//    {
-//        ihum = 0;
-//        float rh_class = rh2[ihum];
-//        while (rh_class < rel_hum)
-//        {
-//            ihum += 1;
-//            rh_class = rh2[ihum];
-//        }
-//    }
-//}
-
 template<typename TF>
-void Aerosol<TF>::get_radiation_fields(std::vector<TF>& mr01, std::vector<TF>& mr02, std::vector<TF>& mr03, std::vector<TF>& mr04,
-                                       std::vector<TF>& mr05, std::vector<TF>& mr06, std::vector<TF>& mr07, std::vector<TF>& mr08,
-                                       std::vector<TF>& mr09, std::vector<TF>& mr10, std::vector<TF>& mr11)
+void Aerosol<TF>::get_radiation_fields(Aerosol_concs aerosol_concs)
 {
     auto& gd = grid.get_grid_data();
 
-    for (int k=gd.kstart; k<gd.kend; ++k)
-            {
-                const int k_nogc = k-gd.kgc;
+    Array<Float,2> aermr01_a({1, gd.ktot});
+    Array<Float,2> aermr02_a({1, gd.ktot});
+    Array<Float,2> aermr03_a({1, gd.ktot});
+    Array<Float,2> aermr04_a({1, gd.ktot});
+    Array<Float,2> aermr05_a({1, gd.ktot});
+    Array<Float,2> aermr06_a({1, gd.ktot});
+    Array<Float,2> aermr07_a({1, gd.ktot});
+    Array<Float,2> aermr08_a({1, gd.ktot});
+    Array<Float,2> aermr09_a({1, gd.ktot});
+    Array<Float,2> aermr10_a({1, gd.ktot});
+    Array<Float,2> aermr11_a({1, gd.ktot});
 
-                mr01[k_nogc] = aermr01[k];
-                mr02[k_nogc] = aermr02[k];
-                mr03[k_nogc] = aermr03[k];
-                mr04[k_nogc] = aermr04[k];
-                mr05[k_nogc] = aermr05[k];
-                mr06[k_nogc] = aermr06[k];
-                mr07[k_nogc] = aermr07[k];
-                mr08[k_nogc] = aermr08[k];
-                mr09[k_nogc] = aermr09[k];
-                mr10[k_nogc] = aermr10[k];
-                mr11[k_nogc] = aermr11[k];
-            }
+    for (int k=gd.kstart; k<gd.kend; ++k)
+    {
+        const int k_nogc = k-gd.kgc;
+
+        aermr01_a({1, k_nogc}) = aermr01[k];
+        aermr02_a({1, k_nogc}) = aermr02[k];
+        aermr03_a({1, k_nogc}) = aermr03[k];
+        aermr04_a({1, k_nogc}) = aermr04[k];
+        aermr05_a({1, k_nogc}) = aermr05[k];
+        aermr06_a({1, k_nogc}) = aermr06[k];
+        aermr07_a({1, k_nogc}) = aermr07[k];
+        aermr08_a({1, k_nogc}) = aermr08[k];
+        aermr09_a({1, k_nogc}) = aermr09[k];
+        aermr10_a({1, k_nogc}) = aermr10[k];
+        aermr11_a({1, k_nogc}) = aermr11[k];
+    }
+
+    aerosol_concs.set_vmr("aermr01", aermr01_a);
+    aerosol_concs.set_vmr("aermr02", aermr02_a);
+    aerosol_concs.set_vmr("aermr03", aermr03_a);
+    aerosol_concs.set_vmr("aermr04", aermr04_a);
+    aerosol_concs.set_vmr("aermr05", aermr05_a);
+    aerosol_concs.set_vmr("aermr06", aermr06_a);
+    aerosol_concs.set_vmr("aermr07", aermr07_a);
+    aerosol_concs.set_vmr("aermr08", aermr08_a);
+    aerosol_concs.set_vmr("aermr09", aermr09_a);
+    aerosol_concs.set_vmr("aermr10", aermr10_a);
+    aerosol_concs.set_vmr("aermr11", aermr11_a);
 }
 
 template class Aerosol<double>;

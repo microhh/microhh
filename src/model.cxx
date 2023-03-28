@@ -443,7 +443,7 @@ void Model<TF>::exec()
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
                     if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
                     {
-                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats, *aerosol);
+                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats, *aerosol, *background);
                     }
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))

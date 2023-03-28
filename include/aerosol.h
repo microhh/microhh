@@ -28,6 +28,9 @@
 #include <map>
 #include <algorithm>
 #include <memory>
+#include "Gas_concs.h"
+
+using Aerosol_concs = Gas_concs;
 
 class Master;
 class Input;
@@ -54,9 +57,7 @@ class Aerosol
         void exec_stats(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
-        void get_radiation_fields(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                                  std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                                  std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
+        void get_radiation_fields(Aerosol_concs aerosol_concs);
 
     private:
         Master& master;
@@ -66,12 +67,6 @@ class Aerosol
         // Case switches
         bool sw_aerosol;
         bool sw_timedep;
-
-//        void set_aerosol_properties(const std::string&, int, int);
-//        void set_hydrophobic(int, int);
-//        void set_hydrophilic(int, int, int);
-//        void rh_class(float, std::vector<TF>);
-
 
         // Arrays
         // to fill with input values
@@ -86,38 +81,6 @@ class Aerosol
         std::vector<TF> aermr09;
         std::vector<TF> aermr10;
         std::vector<TF> aermr11;
-//        std::vector<TF> f;
-//        std::vector<TF> rh_const;
-
-//        // to fill with values from the optical properties' lookup table
-//        std::vector<TF> mext_phobic ;
-//        std::vector<TF> ssa_phobic ;
-//        std::vector<TF> g_phobic;
-//        std::vector<TF> mext_philic;
-//        std::vector<TF> ssa_philic;
-//        std::vector<TF> g_philic;
-//        std::vector<TF> rh_classes;
-//
-//        // needed in the calculation / containing the results
-//        std::vector<TF> mmr;
-//
-//        std::vector<TF> aod_ml;
-//        std::vector<TF> ssa_ml;
-//        std::vector<TF> g_ml;
-//
-//        int nwavelengths;
-//        int nrh;
-//        int nspecies_phobic;
-//        int nspecies_philic;
-//        int ihum;
-//        float mext;
-//        float ssa;
-//        float g;
-//
-//        // needed to write the result to the stats
-//        std::vector<TF> od_wl10;
-//        std::vector<TF> ssa_wl10;
-//        std::vector<TF> g_wl10;
 
         std::unique_ptr<Timedep<TF>> tdep_aermr01;
         std::unique_ptr<Timedep<TF>> tdep_aermr02;

@@ -78,7 +78,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&);
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
@@ -186,8 +187,8 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
+        void set_background_column_longwave(const TF);
         void set_background_column_shortwave(const TF);
-
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
 

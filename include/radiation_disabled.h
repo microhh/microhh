@@ -67,7 +67,7 @@ class Radiation_disabled : public Radiation<TF>
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) {};
         void exec_individual_column_stats(
-                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&) {};
+                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&) {};
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
