@@ -861,7 +861,7 @@ Boundary_lateral<TF>::Boundary_lateral(
         if (sw_sponge)
         {
             n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
-            tau_nudge = inputin.get_item<TF>("boundary", "tau_sponge", "", 60);
+            tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
             w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
         }
 
