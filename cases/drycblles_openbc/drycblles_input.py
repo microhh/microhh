@@ -101,6 +101,10 @@ u_east = 0.
 v_south = 0.
 v_north = 2.
 
+#u_west = 0
+#u_east = 0.
+#v_south = 0.
+#v_north = 0.
 
 rnd_amp = 0 #0.01
 

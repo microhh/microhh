@@ -777,13 +777,16 @@ namespace
     template<typename TF, Lbc_location location>
     void perturb_boundary_kernel(
             TF* const restrict tend,
+            const TF* const restrict fld,
+            const TF* const restrict lbc,
             const TF amplitude, const TF dt,
             const int width, const int block_size,
             const int mpiidx, const int npx,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int ijcells)
+            const int icells, const int jcells,
+            const int ijcells)
     {
         const int n_blocks = width / block_size;
 
@@ -799,7 +802,7 @@ namespace
                 for (int bj=0; bj<n_blocks_ew; ++bj)
                     for (int bi=0; bi<n_blocks; ++bi)
                     {
-                        const TF tend_value = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude * dt_i;
+                        const TF pert = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude;
 
                         for (int dj=0; dj<block_size; ++dj)
                             for (int di=0; di<block_size; ++di)
@@ -807,8 +810,9 @@ namespace
                                 const int i = i0 + bi*block_size + di;
                                 const int j = jstart + bj*block_size + dj;
                                 const int ijk = i + j*icells + k*ijcells;
+                                const int jk = j + k*jcells;
 
-                                tend[ijk] += tend_value;
+                                tend[ijk] -= ((fld[ijk] - (lbc[jk] + pert)) * dt_i + tend[ijk]);
                             }
                     }
         }
@@ -824,7 +828,7 @@ namespace
                 for (int bj=0; bj<n_blocks; ++bj)
                     for (int bi=0; bi<n_blocks_ns; ++bi)
                     {
-                        const TF tend_value = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude * dt_i;
+                        const TF pert = (TF(std::rand()) * rand_max_i - TF(0.5)) * amplitude;
 
                         for (int dj=0; dj<block_size; ++dj)
                             for (int di=0; di<block_size; ++di)
@@ -832,8 +836,9 @@ namespace
                                 const int i = istart_loc + bi*block_size + di;
                                 const int j = j0 + bj*block_size + dj;
                                 const int ijk = i + j*icells + k*ijcells;
+                                const int ik = i + k*icells;
 
-                                tend[ijk] += tend_value;
+                                tend[ijk] -= ((fld[ijk] - (lbc[ik] + pert)) * dt_i + tend[ijk]);
                             }
                     }
         }
@@ -1437,10 +1442,13 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     if (sw_perturb)
     {
         auto perturb_boundary_wrapper = [&]<Lbc_location location>(
+                std::map<std::string, std::vector<TF>>& lbc_map,
                 const std::string& fld)
         {
             perturb_boundary_kernel<TF, location>(
                     fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    lbc_map.at(fld).data(),
                     perturb_ampl.at(fld),
                     timeloop.get_sub_time_step(),
                     perturb_width, perturb_block,
@@ -1448,20 +1456,21 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    gd.icells, gd.jcells,
+                    gd.ijcells);
         };
 
         // Add random perturbation in a certain block size to the fields near the lateral boundaries.
         for (auto& fld : perturb_list)
         {
             if (md.mpicoordx == 0)
-                perturb_boundary_wrapper.template operator()<Lbc_location::West>(fld);
+                perturb_boundary_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
             if (md.mpicoordx == md.npx-1)
-                perturb_boundary_wrapper.template operator()<Lbc_location::East>(fld);
+                perturb_boundary_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
             if (md.mpicoordy == 0)
-                perturb_boundary_wrapper.template operator()<Lbc_location::South>(fld);
+                perturb_boundary_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
             if (md.mpicoordy == md.npy-1)
-                perturb_boundary_wrapper.template operator()<Lbc_location::North>(fld);
+                perturb_boundary_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
         }
     }
 
