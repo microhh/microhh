@@ -1434,32 +1434,35 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     }
 
 
-    auto perturb_boundary_wrapper = [&]<Lbc_location location>(
-            const std::string& fld)
+    if (sw_perturb)
     {
-        perturb_boundary_kernel<TF, location>(
-                fields.at.at(fld)->fld.data(),
-                perturb_ampl.at(fld),
-                timeloop.get_sub_time_step(),
-                perturb_width, perturb_block,
-                md.mpicoordx, md.npx,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    };
+        auto perturb_boundary_wrapper = [&]<Lbc_location location>(
+                const std::string& fld)
+        {
+            perturb_boundary_kernel<TF, location>(
+                    fields.at.at(fld)->fld.data(),
+                    perturb_ampl.at(fld),
+                    timeloop.get_sub_time_step(),
+                    perturb_width, perturb_block,
+                    md.mpicoordx, md.npx,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        };
 
-    // Add random perturbation in a certain block size to the fields near the lateral boundaries.
-    for (auto& fld : perturb_list)
-    {
-        if (md.mpicoordx == 0)
-            perturb_boundary_wrapper.template operator()<Lbc_location::West>(fld);
-        if (md.mpicoordx == md.npx-1)
-            perturb_boundary_wrapper.template operator()<Lbc_location::East>(fld);
-        if (md.mpicoordy == 0)
-            perturb_boundary_wrapper.template operator()<Lbc_location::South>(fld);
-        if (md.mpicoordy == md.npy-1)
-            perturb_boundary_wrapper.template operator()<Lbc_location::North>(fld);
+        // Add random perturbation in a certain block size to the fields near the lateral boundaries.
+        for (auto& fld : perturb_list)
+        {
+            if (md.mpicoordx == 0)
+                perturb_boundary_wrapper.template operator()<Lbc_location::West>(fld);
+            if (md.mpicoordx == md.npx-1)
+                perturb_boundary_wrapper.template operator()<Lbc_location::East>(fld);
+            if (md.mpicoordy == 0)
+                perturb_boundary_wrapper.template operator()<Lbc_location::South>(fld);
+            if (md.mpicoordy == md.npy-1)
+                perturb_boundary_wrapper.template operator()<Lbc_location::North>(fld);
+        }
     }
 
     //dump_fld3d(fields.ap.at("th")->fld, "th0");
