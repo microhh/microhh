@@ -198,6 +198,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_fixed_sza;
         bool sw_update_background;
         bool sw_aerosol;
+        bool sw_delta_cloud;
+        bool sw_delta_aer;
 
         double dt_rad;
         unsigned long idt_rad;

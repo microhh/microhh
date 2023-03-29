@@ -664,6 +664,8 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
+    sw_delta_cloud = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
+    sw_delta_aer = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
@@ -999,7 +1001,8 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
                 p_lev,
                 *aerosol_props);
 
-//        optical_props_aerosols->delta_scale();
+        if (sw_delta_aer)
+            aerosol_props->delta_scale();
 
         add_to(
                 dynamic_cast<Optical_props_2str&>(*optical_props),
@@ -1327,23 +1330,26 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         // Save the reference profile fluxes in the stats.
         if (stats.get_switch())
         {
-            const std::string group_name = "radiation";
+            if (!sw_update_background)
+            {
+                const std::string group_name = "radiation";
 
-            stats.add_fixed_prof_raw(
-                    "sw_flux_up_ref",
-                    "Shortwave upwelling flux of reference column",
-                    "W m-2", "p_rad", group_name,
-                    sw_flux_up_col.v());
-            stats.add_fixed_prof_raw(
-                    "sw_flux_dn_ref",
-                    "Shortwave downwelling flux of reference column",
-                    "W m-2", "p_rad", group_name,
-                    sw_flux_dn_col.v());
-            stats.add_fixed_prof_raw(
-                    "sw_flux_dn_dir_ref",
-                    "Shortwave direct downwelling flux of reference column",
-                    "W m-2", "p_rad", group_name,
-                    sw_flux_dn_dir_col.v());
+                stats.add_fixed_prof_raw(
+                        "sw_flux_up_ref",
+                        "Shortwave upwelling flux of reference column",
+                        "W m-2", "p_rad", group_name,
+                        sw_flux_up_col.v());
+                stats.add_fixed_prof_raw(
+                        "sw_flux_dn_ref",
+                        "Shortwave downwelling flux of reference column",
+                        "W m-2", "p_rad", group_name,
+                        sw_flux_dn_col.v());
+                stats.add_fixed_prof_raw(
+                        "sw_flux_dn_dir_ref",
+                        "Shortwave direct downwelling flux of reference column",
+                        "W m-2", "p_rad", group_name,
+                        sw_flux_dn_dir_col.v());
+            }
         }
     }
 }
@@ -1929,7 +1935,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 std::cout << mean_aod << std::endl;
                 stats.set_time_series("AOD550", mean_aod);
             }
-            if (sw_update_background)
+            if (sw_update_background || !sw_fixed_sza)
             {
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
@@ -2525,7 +2531,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rel, rei,
                     *cloud_optical_props_in);
 
-            cloud_optical_props_in->delta_scale();
+            if (sw_delta_cloud)
+                cloud_optical_props_in->delta_scale();
 
             // Add the cloud optical props to the gas optical properties.
             add_to(
@@ -2544,7 +2551,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                         p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
                         *aerosol_optical_props_in);
 
-//                    aerosol_optical_props_in->delta_scale();
+                if (sw_delta_aer)
+                    aerosol_optical_props_in->delta_scale();
 
                 // Add the cloud optical props to the gas optical properties.
                 add_to(
