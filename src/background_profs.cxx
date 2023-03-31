@@ -34,6 +34,7 @@ Background<TF>::Background(
     // Read `.ini` settings.
     sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
+    dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 }
 
 template <typename TF>
@@ -42,11 +43,17 @@ Background<TF>::~Background()
 }
 
 template <typename TF>
-void Background<TF>::init()
+void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
     // Allocate (`.resize`) arrays.
     if (!sw_update_background)
         return;
+
+    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+
+    Netcdf_handle& rad_nc = input_nc.get_group("radiation");
+    n_era_layers = rad_nc.get_dimension_size("lay");
+    n_era_levels = rad_nc.get_dimension_size("lev");
 
     std::cout << "init() timedepent background profiles" << std::endl;
 
@@ -86,46 +93,46 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     std::string timedep_dim_ls = "time_ls";
 
     // temperature and pressure
-    tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", sw_update_background);
     tdep_t_lay->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
-    tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", sw_update_background);
     tdep_t_lev->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
-    tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", sw_update_background);
     tdep_p_lay->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
-    tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", sw_update_background);
     tdep_p_lev->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
 
     // gasses
-    tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o", sw_update_background);
     tdep_h2o->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
-    tdep_o3 = std::make_unique<Timedep<TF>>(master, grid, "o3", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+    tdep_o3 = std::make_unique<Timedep<TF>>(master, grid, "o3", sw_update_background);
     tdep_o3->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
 
     //aerosols
     if (sw_aerosol)
     {
         std::string timedep_dim = "time_aerosols";
-        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", sw_update_background);
         tdep_aermr01->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", sw_update_background);
         tdep_aermr02->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", sw_update_background);
         tdep_aermr03->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", sw_update_background);
         tdep_aermr04->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", sw_update_background);
         tdep_aermr05->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", sw_update_background);
         tdep_aermr06->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", sw_update_background);
         tdep_aermr07->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", sw_update_background);
         tdep_aermr08->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", sw_update_background);
         tdep_aermr09->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", sw_update_background);
         tdep_aermr10->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
-        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", inputin.get_item<bool>("radiation", "swupdatecolumn", "", false));
+        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", sw_update_background);
         tdep_aermr11->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
     }
 
@@ -178,30 +185,37 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (!sw_update_background)
         return;
 
-    // temperature and pressure
-    tdep_t_lay   ->update_time_dependent_background_prof(t_lay, timeloop, n_era_layers);
-    tdep_t_lev   ->update_time_dependent_background_prof(t_lev, timeloop, n_era_levels);
-    tdep_p_lay   ->update_time_dependent_background_prof(p_lay, timeloop, n_era_layers);
-    tdep_p_lev   ->update_time_dependent_background_prof(p_lev, timeloop, n_era_levels);
+    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
 
-    // gasses
-    tdep_h2o     ->update_time_dependent_background_prof(h2o, timeloop, n_era_layers);
-    tdep_o3      ->update_time_dependent_background_prof(o3, timeloop, n_era_layers);
-
-    // aerosols
-    if (sw_aerosol)
+    if (do_radiation)
     {
-        tdep_aermr01 ->update_time_dependent_background_prof(aermr01, timeloop, n_era_layers);
-        tdep_aermr02 ->update_time_dependent_background_prof(aermr02, timeloop, n_era_layers);
-        tdep_aermr03 ->update_time_dependent_background_prof(aermr03, timeloop, n_era_layers);
-        tdep_aermr04 ->update_time_dependent_background_prof(aermr04, timeloop, n_era_layers);
-        tdep_aermr05 ->update_time_dependent_background_prof(aermr05, timeloop, n_era_layers);
-        tdep_aermr06 ->update_time_dependent_background_prof(aermr06, timeloop, n_era_layers);
-        tdep_aermr07 ->update_time_dependent_background_prof(aermr07, timeloop, n_era_layers);
-        tdep_aermr08 ->update_time_dependent_background_prof(aermr08, timeloop, n_era_layers);
-        tdep_aermr09 ->update_time_dependent_background_prof(aermr09, timeloop, n_era_layers);
-        tdep_aermr10 ->update_time_dependent_background_prof(aermr10, timeloop, n_era_layers);
-        tdep_aermr11 ->update_time_dependent_background_prof(aermr11, timeloop, n_era_layers);
+        // temperature and pressure
+        tdep_t_lay   ->update_time_dependent_background_prof(t_lay, timeloop, n_era_layers);
+        tdep_t_lev   ->update_time_dependent_background_prof(t_lev, timeloop, n_era_levels);
+        tdep_p_lay   ->update_time_dependent_background_prof(p_lay, timeloop, n_era_layers);
+        tdep_p_lev   ->update_time_dependent_background_prof(p_lev, timeloop, n_era_levels);
+
+        // gasses
+        tdep_h2o     ->update_time_dependent_background_prof(h2o, timeloop, n_era_layers);
+        tdep_o3      ->update_time_dependent_background_prof(o3, timeloop, n_era_layers);
+
+        // aerosols
+        if (sw_aerosol)
+        {
+            tdep_aermr01 ->update_time_dependent_background_prof(aermr01, timeloop, n_era_layers);
+            tdep_aermr02 ->update_time_dependent_background_prof(aermr02, timeloop, n_era_layers);
+            tdep_aermr03 ->update_time_dependent_background_prof(aermr03, timeloop, n_era_layers);
+            tdep_aermr04 ->update_time_dependent_background_prof(aermr04, timeloop, n_era_layers);
+            tdep_aermr05 ->update_time_dependent_background_prof(aermr05, timeloop, n_era_layers);
+            tdep_aermr06 ->update_time_dependent_background_prof(aermr06, timeloop, n_era_layers);
+            tdep_aermr07 ->update_time_dependent_background_prof(aermr07, timeloop, n_era_layers);
+            tdep_aermr08 ->update_time_dependent_background_prof(aermr08, timeloop, n_era_layers);
+            tdep_aermr09 ->update_time_dependent_background_prof(aermr09, timeloop, n_era_layers);
+            tdep_aermr10 ->update_time_dependent_background_prof(aermr10, timeloop, n_era_layers);
+            tdep_aermr11 ->update_time_dependent_background_prof(aermr11, timeloop, n_era_layers);
+        }
+
+//        std::cout << "update() timedependent background profiles" << std::endl;
     }
 
 }

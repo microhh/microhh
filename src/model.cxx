@@ -196,7 +196,7 @@ void Model<TF>::init()
     budget->init();
     source->init();
     aerosol->init();
-    background->init();
+    background->init(*input_nc, *timeloop);
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());

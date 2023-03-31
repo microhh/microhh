@@ -35,7 +35,7 @@ public:
     Background(Master&, Grid<TF>&, Fields<TF>&, Input&);
     ~Background();
 
-    void init();
+    void init(Netcdf_handle&, Timeloop<TF>&);
     void create(Input&, Netcdf_handle&, Stats<TF>&);
     void exec(Thermo<TF>&);
     void exec_stats(Stats<TF>&);
@@ -53,9 +53,13 @@ private:
     // Case switches
     bool sw_update_background;
     bool sw_aerosol;
+    double dt_rad;
+    unsigned long idt_rad;
 
-    const TF n_era_layers = 136;
-    const TF n_era_levels = 137;
+//    const TF n_era_layers = 136;
+//    const TF n_era_levels = 137;
+    TF n_era_layers;
+    TF n_era_levels;
 
     // Arrays
     // to fill with input values

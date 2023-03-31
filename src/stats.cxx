@@ -789,11 +789,7 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
             const int ksize = p.second.ncvar.get_dim_sizes()[1];
             std::vector<int> time_height_size  = {1, ksize};
 
-            std::vector<TF> prof_nogc(
-                    p.second.data.begin() + sgd.kstart,
-                    p.second.data.begin() + sgd.kstart + ksize);
-
-            m.background_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+            m.background_profs.at(p.first).ncvar.insert(p.second.data, time_height_index, time_height_size);
         }
 
         for (auto& ts : m.tseries)

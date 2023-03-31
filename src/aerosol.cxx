@@ -259,7 +259,7 @@ void Aerosol<TF>::get_radiation_fields(Aerosol_concs aerosol_concs)
 
     for (int k=gd.kstart; k<gd.kend; ++k)
     {
-        const int k_nogc = k-gd.kgc;
+        const int k_nogc = k-gd.kgc+1;
 
         aermr01_a({1, k_nogc}) = aermr01[k];
         aermr02_a({1, k_nogc}) = aermr02[k];
