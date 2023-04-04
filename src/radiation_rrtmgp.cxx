@@ -52,7 +52,7 @@
 #include "Source_functions.h"
 #include "Cloud_optics.h"
 #include "Aerosol_optics.h"
-
+#include "timedep.h"
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
@@ -664,6 +664,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
+    sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     sw_delta_cloud = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
 
@@ -702,6 +703,26 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         const int jgc = 3;  // for now..
         const int kgc = 0;
         grid.set_minimum_ghost_cells(igc, jgc, kgc);
+    }
+
+    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());
+
+    const std::vector<std::string> possible_gases = {
+            "h2o", "co2" ,"o3", "n2o", "co", "ch4", "o2", "n2",
+            "ccl4", "cfc11", "cfc12", "cfc22",
+            "hfc143a", "hfc125", "hfc23", "hfc32", "hfc134a",
+            "cf4", "no2" };
+
+    for (auto& it : gaslist)
+    {
+        if (std::find(possible_gases.begin(), possible_gases.end(), it) != possible_gases.end())
+        {
+            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it, sw_update_background));
+        }
+        else
+        {
+            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_bg" << std::endl;
+        }
     }
 
     auto& gd = grid.get_grid_data();
@@ -757,6 +778,11 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
         filter_kernel_y.resize(2*ngc+1);
     }
 
+    // initialize timedependent gasses
+    for (auto& it : gaslist)
+        gasprofs[it] = std::vector<TF>(gd.ktot);
+
+    // initialize aod
     aod550.set_dims({gd.imax*gd.jmax});
 }
 
@@ -783,6 +809,14 @@ void Radiation_rrtmgp<TF>::create(
 
     // Setup spatial filtering diffuse surace radiation (if enabled..)
     create_diffuse_filter();
+
+    // Setup timedependent gasses
+    auto& gd = grid.get_grid_data();
+    const TF offset = 0;
+    std::string timedep_dim_ls = "time_ls";
+
+    for (auto& it : tdep_gases)
+        it.second->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
 
     // Initialize the tendency if the radiation is used.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))
@@ -1548,6 +1582,24 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
             n_lay_col);
 }
 
+template<typename TF>
+void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+    for (auto& it : tdep_gases)
+    {
+        it.second->update_time_dependent_background_prof(gasprofs.at(it.first), timeloop, gd.ktot);
+
+        Array<Float,2> tmp_array({1, int(gd.ktot)});
+        for (int k=1; k<gd.ktot; ++k)
+        {
+            tmp_array({1, k}) = gasprofs.at(it.first)[k];
+        }
+        gas_concs.set_vmr(it.first, tmp_array);
+    }
+}
+
+
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
@@ -1591,18 +1643,22 @@ void Radiation_rrtmgp<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        aerosol.get_radiation_fields(aerosol_concs);
+        if (sw_aerosol && sw_aerosol_timedep)
+            aerosol.get_radiation_fields(aerosol_concs);
 
         try
         {
             if (sw_update_background)
             {
-                // Temperature and pressure
-                background.get_tp(t_lev_col, t_lay_col, p_lay_col, p_lev_col);
+                // Temperature, pressure and moisture
+                background.get_tpm(t_lev_col, t_lay_col, p_lay_col, p_lev_col, gas_concs_col);
                 // gasses
                 background.get_gasses(gas_concs_col);
                 // aerosols
-                background.get_aerosols(aerosol_concs_col);
+                if (sw_aerosol && sw_aerosol_timedep)
+                {
+                    background.get_aerosols(aerosol_concs_col);
+                }
             }
 
             if (sw_longwave)
@@ -2052,7 +2108,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         if (sw_update_background)
         {
             // Temperature and pressure
-            background.get_tp(t_lev_col, t_lay_col, p_lay_col, p_lev_col);
+            background.get_tpm(t_lev_col, t_lay_col, p_lay_col, p_lev_col,  gas_concs_col);
             // gasses
             background.get_gasses(gas_concs_col);
             // aerosols
@@ -2415,15 +2471,22 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             std::make_unique<Optical_props_2str>(n_col_block, n_lay, *kdist_sw);
     std::unique_ptr<Optical_props_2str> cloud_optical_props_subset =
             std::make_unique<Optical_props_2str>(n_col_block, n_lay, *cloud_sw);
-    std::unique_ptr<Optical_props_2str> aerosol_optical_props_subset =
-            std::make_unique<Optical_props_2str>(n_col_block, n_lay, *aerosol_sw);
+    std::unique_ptr<Optical_props_2str> aerosol_optical_props_subset;
+    if (sw_aerosol)
+    {
+        aerosol_optical_props_subset = std::make_unique<Optical_props_2str>(n_col_block, n_lay, *aerosol_sw);
+    }
+
 
     std::unique_ptr<Optical_props_arry> optical_props_left =
             std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *kdist_sw);
     std::unique_ptr<Optical_props_2str> cloud_optical_props_left =
             std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *cloud_sw);
-    std::unique_ptr<Optical_props_2str> aerosol_optical_props_left =
-            std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *aerosol_sw);
+    std::unique_ptr<Optical_props_2str> aerosol_optical_props_left;
+    if (sw_aerosol)
+    {
+        aerosol_optical_props_left = std::make_unique<Optical_props_2str>(n_col_block_left, n_lay, *aerosol_sw);
+    }
 
     // Define the arrays that contain the subsets.
     std::vector<Float> p  = thermo.get_basestate_vector("p");

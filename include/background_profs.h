@@ -41,7 +41,7 @@ public:
     void exec_stats(Stats<TF>&);
     void update_time_dependent(Timeloop<TF>&);
 
-    void get_tp(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&);
+    void get_tpm(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Gas_concs gas_concs_col);
     void get_gasses(Gas_concs gas_concs_col);
     void get_aerosols(Aerosol_concs aerosol_concs_col);
 
@@ -53,6 +53,7 @@ private:
     // Case switches
     bool sw_update_background;
     bool sw_aerosol;
+    bool sw_aerosol_timedep;
     double dt_rad;
     unsigned long idt_rad;
 
@@ -61,16 +62,18 @@ private:
     TF n_era_layers;
     TF n_era_levels;
 
+    std::map<std::string, Timedep<TF>*> tdep_gases;
+    std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
+    std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
+
     // Arrays
     // to fill with input values
-    // temperature and pressure
+    // temperature, pressure and moisture
     std::vector<TF> t_lay;
     std::vector<TF> t_lev;
     std::vector<TF> p_lay;
     std::vector<TF> p_lev;
-    //gasses
     std::vector<TF> h2o;
-    std::vector<TF> o3;
     //aerosols
     std::vector<TF> aermr01;
     std::vector<TF> aermr02;

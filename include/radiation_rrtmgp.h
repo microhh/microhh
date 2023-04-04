@@ -69,7 +69,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
 
         unsigned long get_time_limit(unsigned long);
-        void update_time_dependent(Timeloop<TF>&) {};
+        void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
@@ -198,6 +198,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_fixed_sza;
         bool sw_update_background;
         bool sw_aerosol;
+        bool sw_aerosol_timedep;
         bool sw_delta_cloud;
         bool sw_delta_aer;
 
@@ -308,7 +309,13 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<Float> filter_kernel_x;
         std::vector<Float> filter_kernel_y;
 
-        #ifdef USECUDA
+        // timedependent gases
+        std::map<std::string, Timedep<TF>*> tdep_gases;
+        std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
+        std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
+
+
+#ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
