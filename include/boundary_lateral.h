@@ -32,6 +32,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Timeloop;
+template<typename> class Field3d_io;
 
 enum class Lbc_location {West, East, South, North};
 
@@ -43,7 +44,7 @@ class Boundary_lateral
         ~Boundary_lateral();
 
         void init();
-        void create(Input&, const std::string&);
+        void create(Input&, Timeloop<TF>&, const std::string&);
         void set_ghost_cells(Timeloop<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
@@ -51,12 +52,17 @@ class Boundary_lateral
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_io<TF> field3d_io;
+
+        void read_xy_slice(
+                std::vector<TF>&, const std::string&, const int);
 
         bool sw_inoutflow;
         bool sw_inoutflow_u;
         bool sw_inoutflow_v;
         bool sw_inoutflow_w;
         bool sw_timedep;
+        bool sw_wtop_2d;
 
         // Sponge/diffusion layer:
         bool sw_sponge;
@@ -90,8 +96,14 @@ class Boundary_lateral
 
         std::vector<TF> div_u;
         std::vector<TF> div_v;
-
         std::vector<TF> w_top_in;
-        TF w_top;
+        std::vector<TF> w_top;
+
+        unsigned int wtop_2d_loadtime;
+        unsigned long itime_w_top_prev;
+        unsigned long itime_w_top_next;
+
+        std::vector<TF> w_top_prev;
+        std::vector<TF> w_top_next;
 };
 #endif

@@ -256,7 +256,7 @@ void Model<TF>::load()
     thermo->load(timeloop->get_iotime());
 
     // Keep this after `thermo`; requires basestate to be known..
-    lbc->create(*input, sim_name);
+    lbc->create(*input, *timeloop, sim_name);
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 

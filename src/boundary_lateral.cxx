@@ -849,7 +849,7 @@ namespace
 template<typename TF>
 Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-        master(masterin), grid(gridin), fields(fieldsin)
+        master(masterin), grid(gridin), fields(fieldsin), field3d_io(masterin, gridin)
 {
     sw_inoutflow = inputin.get_item<bool>("boundary", "sw_inoutflow", "", false);
 
@@ -859,7 +859,11 @@ Boundary_lateral<TF>::Boundary_lateral(
         sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
         sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
         sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
+        sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
+
+        if (sw_wtop_2d && sw_timedep)
+            wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
 
         // Lateral sponge / diffusion layer.
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
@@ -931,7 +935,10 @@ void Boundary_lateral<TF>::init()
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
+void Boundary_lateral<TF>::create(
+        Input& inputin,
+        Timeloop<TF>& timeloop,
+        const std::string& sim_name)
 {
     if (!sw_inoutflow)
         return;
@@ -952,7 +959,7 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     {
         div_u.resize(ntime);
         div_v.resize(ntime);
-        w_top_in.resize(ntime);
+        w_top.resize(gd.ijcells);
     }
 
     auto copy_boundary = [&](
@@ -1077,17 +1084,52 @@ void Boundary_lateral<TF>::create(Input& inputin, const std::string& sim_name)
     // Calculate domain mean vertical velocity.
     if (sw_inoutflow_u && sw_inoutflow_v)
     {
-        for (int t=0; t<ntime; ++t)
+        if (sw_wtop_2d)
         {
-            // w_top is the total mass in/outflow at the top divided by the total area and the local density.
-            w_top_in[t] = -(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend]*gd.xsize*gd.ysize);
+            // Read constant or time varying w_top fields.
+            if (sw_timedep)
+            {
+                // Find previous and next times.
+                const double time = timeloop.get_time();
+                const double ifactor = timeloop.get_ifactor();
+                unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
-            std::string message = "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
-            master.print_message(message);
+                // Read first two input times
+                itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
+                itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+
+                // IO time accounting for iotimeprec
+                const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
+                const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
+
+                w_top_prev.resize(gd.ijcells);
+                w_top_next.resize(gd.ijcells);
+
+                // Read the first two w_top fields.
+                read_xy_slice(w_top_prev, "w_top", iotime0);
+                read_xy_slice(w_top_next, "w_top", iotime1);
+            }
+            else
+                read_xy_slice(w_top, "w_top", 0);
         }
+        else
+        {
+            // Calculate domain mean `w_top`.
+            w_top_in.resize(ntime);
 
-        if (!sw_timedep)
-            w_top = w_top_in[0];
+            for (int t=0; t<ntime; ++t)
+            {
+                // w_top is the total mass in/outflow at the top divided by the total area and the local density.
+                w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+
+                std::string message=
+                        "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+                master.print_message(message);
+            }
+
+            if (!sw_timedep)
+                std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
+        }
     }
 
     if (sw_perturb)
@@ -1375,7 +1417,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             for (int i=gd.istart; i<gd.iend; ++i)
             {
                 const int ijk = i + j*gd.icells + k*gd.ijcells;
-                fields.mp.at("w")->fld[ijk] = w_top;
+                const int ij = i + j*gd.icells;
+                fields.mp.at("w")->fld[ijk] = w_top[ij];
             }
     }
     // END
@@ -1472,19 +1515,19 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         }
     }
 
-    //check_div(
-    //    fields.mp.at("u")->fld.data(),
-    //    fields.mp.at("v")->fld.data(),
-    //    fields.mp.at("w")->fld.data(),
-    //    gd.dzi.data(),
-    //    fields.rhoref.data(),
-    //    fields.rhorefh.data(),
-    //    gd.dx, gd.dy,
-    //    gd.istart, gd.iend,
-    //    gd.jstart, gd.jend,
-    //    gd.kstart, gd.kend,
-    //    gd.icells, gd.ijcells,
-    //    master);
+    check_div(
+        fields.mp.at("u")->fld.data(),
+        fields.mp.at("v")->fld.data(),
+        fields.mp.at("w")->fld.data(),
+        gd.dzi.data(),
+        fields.rhoref.data(),
+        fields.rhorefh.data(),
+        gd.dx, gd.dy,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells,
+        master);
 
     //dump_fld3d(fields.ap.at("th")->fld, "th0");
     //dump_fld3d(fields.mp.at("u")->fld, "u0");
@@ -1495,7 +1538,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
 
 template <typename TF>
-void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Boundary_lateral<TF>::update_time_dependent(
+        Timeloop<TF>& timeloop)
 {
     if (!sw_inoutflow || !sw_timedep)
         return;
@@ -1516,9 +1560,39 @@ void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     // Interpolation factor.
     const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+    const TF f1 = TF(1) - f0;
 
     // Interpolate mean domain top velocity
-    w_top = f0 * w_top_in[t0] + (TF(1) - f0) * w_top_in[t0+1];
+    if (sw_wtop_2d)
+    {
+        unsigned long itime = timeloop.get_itime();
+
+        if (itime > itime_w_top_next)
+        {
+            // Read new w_top field
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+            itime_w_top_prev = itime_w_top_next;
+            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+            const int iotime1 = int(itime_w_top_next / iiotimeprec);
+
+            // Copy of data from next to prev. time
+            w_top_prev = w_top_next;
+
+            // Read new w_top slice.
+            read_xy_slice(w_top_next, "w_top", iotime1);
+        }
+
+        // Interpolate `w_top` field in time.
+        for (int n=0; n<gd.ijcells; ++n)
+            w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
+    }
+    else
+    {
+        const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
+        std::fill(w_top.begin(), w_top.end(), w_top_int);
+    }
 
     // Interpolate boundaries in time.
     if (md.mpicoordx == 0)
@@ -1560,6 +1634,27 @@ void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                     gd.kcells*gd.icells,
                     t0, f0);
     }
+}
+
+
+template <typename TF>
+void Boundary_lateral<TF>::read_xy_slice(
+        std::vector<TF>& field,
+        const std::string& name,
+        const int time)
+{
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", name.c_str(), time);
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    auto tmp  = fields.get_tmp();
+
+    if (field3d_io.load_xy_slice(field.data(), tmp->fld.data(), filename))
+        master.print_message("FAILED\n");
+    else
+        master.print_message("OK\n");
+
+    fields.release_tmp(tmp);
 }
 
 template class Boundary_lateral<double>;
