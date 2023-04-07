@@ -247,8 +247,6 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
-    lbc->create(*input, sim_name);
-
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
@@ -256,6 +254,9 @@ void Model<TF>::load()
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
     thermo->load(timeloop->get_iotime());
+
+    // Keep this after `thermo`; requires basestate to be known..
+    lbc->create(*input, sim_name);
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
