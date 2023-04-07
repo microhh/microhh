@@ -75,7 +75,8 @@ z = np.arange(dz/2, zsize , dz)
 
 u = np.fromfile('u.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
 v = np.fromfile('v.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
-w = np.fromfile('w.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+#w = np.fromfile('w.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
+w = np.zeros((ktot+1, jtot, itot), dtype=np.float64)
 
 rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
 rhoref = rhoref_raw[:ktot]
@@ -102,11 +103,11 @@ calc_w_from_uv(
         v_north,
         rhoref, rhorefh, dz,
         1/dx, 1/dy,
-        itot, jtot, ktot-1)
+        itot, jtot, ktot)
 
 u.tofile('u.0000000')
 v.tofile('v.0000000')
-w.tofile('w.0000000')
+w[:-1,:,:].tofile('w.0000000')
 
 print('<w_top> = ', w[-1,:,:].mean())
 
