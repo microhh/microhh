@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <sstream>
 
 #include "boundary_lateral.h"
 #include "netcdf_interface.h"
@@ -765,7 +766,11 @@ namespace
 
         master.max(&divmax, 1);
 
-        std::string message = "Max div. = " + std::to_string(divmax) + " @ i,j,k = "
+        std::ostringstream div_str;
+        div_str << divmax;
+
+        std::string message = "Max div. = "
+                + div_str.str() + " @ i,j,k = "
                 + std::to_string(imax) + ", "
                 + std::to_string(jmax) + ", "
                 + std::to_string(kmax);
@@ -1515,19 +1520,19 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         }
     }
 
-    //check_div(
-    //    fields.mp.at("u")->fld.data(),
-    //    fields.mp.at("v")->fld.data(),
-    //    fields.mp.at("w")->fld.data(),
-    //    gd.dzi.data(),
-    //    fields.rhoref.data(),
-    //    fields.rhorefh.data(),
-    //    gd.dx, gd.dy,
-    //    gd.istart, gd.iend,
-    //    gd.jstart, gd.jend,
-    //    gd.kstart, gd.kend,
-    //    gd.icells, gd.ijcells,
-    //    master);
+    check_div(
+        fields.mp.at("u")->fld.data(),
+        fields.mp.at("v")->fld.data(),
+        fields.mp.at("w")->fld.data(),
+        gd.dzi.data(),
+        fields.rhoref.data(),
+        fields.rhorefh.data(),
+        gd.dx, gd.dy,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells,
+        master);
 
     //dump_fld3d(fields.ap.at("th")->fld, "th0");
     //dump_fld3d(fields.mp.at("u")->fld, "u0");
