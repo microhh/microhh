@@ -286,21 +286,21 @@ void Background<TF>::get_tpm(Array<Float,2>& t_lay_col, Array<Float,2>& t_lev_co
                             Array<Float,2>& p_lay_col, Array<Float,2>& p_lev_col,
                              Gas_concs gas_concs_col)
 {
-    for (int k=1; k<n_era_layers; ++k)
+    for (int k=0; k<n_era_layers; ++k)
     {
-        t_lay_col({1, k}) = t_lay[k];
-        p_lay_col({1, k}) = p_lay[k];
+        t_lay_col({1, k+1}) = t_lay[k];
+        p_lay_col({1, k+1}) = p_lay[k];
     }
-    for (int k=1; k<n_era_levels; ++k)
+    for (int k=0; k<n_era_levels; ++k)
     {
-        t_lev_col({1, k}) = t_lev[k];
-        p_lev_col({1, k}) = p_lev[k];
+        t_lev_col({1, k+1}) = t_lev[k];
+        p_lev_col({1, k+1}) = p_lev[k];
     }
 
     Array<Float,2> h2o_bg_a({1, int(n_era_layers)});
-    for (int k=1; k<n_era_layers; ++k)
+    for (int k=0; k<n_era_layers; ++k)
     {
-        h2o_bg_a({1, k}) = h2o[k];
+        h2o_bg_a({1, k+1}) = h2o[k];
     }
     gas_concs_col.set_vmr("h2o", h2o_bg_a);
 }
@@ -325,9 +325,9 @@ void Background<TF>::get_gasses(Gas_concs gas_concs_col)
     for (auto& it : tdep_gases)
     {
         Array<Float,2> tmp_array({1, int(n_era_layers)});
-        for (int k=1; k<n_era_layers; ++k)
+        for (int k=0; k<n_era_layers; ++k)
         {
-            tmp_array({1, k}) = gasprofs.at(it.first)[k];
+            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
         }
         gas_concs_col.set_vmr(it.first, tmp_array);
     }
@@ -349,19 +349,19 @@ void Background<TF>::get_aerosols(Aerosol_concs aerosol_concs_col)
     Array<Float,2> aermr10_bg_a({1, int(n_era_layers)});
     Array<Float,2> aermr11_bg_a({1, int(n_era_layers)});
 
-    for (int k=1; k<n_era_layers; ++k)
+    for (int k=0; k<n_era_layers; ++k)
     {
-        aermr01_bg_a({1, k}) = aermr01[k];
-        aermr02_bg_a({1, k}) = aermr02[k];
-        aermr03_bg_a({1, k}) = aermr03[k];
-        aermr04_bg_a({1, k}) = aermr04[k];
-        aermr05_bg_a({1, k}) = aermr05[k];
-        aermr06_bg_a({1, k}) = aermr06[k];
-        aermr07_bg_a({1, k}) = aermr07[k];
-        aermr08_bg_a({1, k}) = aermr08[k];
-        aermr09_bg_a({1, k}) = aermr09[k];
-        aermr10_bg_a({1, k}) = aermr10[k];
-        aermr11_bg_a({1, k}) = aermr11[k];
+        aermr01_bg_a({1, k+1}) = aermr01[k];
+        aermr02_bg_a({1, k+1}) = aermr02[k];
+        aermr03_bg_a({1, k+1}) = aermr03[k];
+        aermr04_bg_a({1, k+1}) = aermr04[k];
+        aermr05_bg_a({1, k+1}) = aermr05[k];
+        aermr06_bg_a({1, k+1}) = aermr06[k];
+        aermr07_bg_a({1, k+1}) = aermr07[k];
+        aermr08_bg_a({1, k+1}) = aermr08[k];
+        aermr09_bg_a({1, k+1}) = aermr09[k];
+        aermr10_bg_a({1, k+1}) = aermr10[k];
+        aermr11_bg_a({1, k+1}) = aermr11[k];
     }
 
     aerosol_concs_col.set_vmr("aermr01", aermr01_bg_a);
