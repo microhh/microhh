@@ -1591,9 +1591,9 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         it.second->update_time_dependent_background_prof(gasprofs.at(it.first), timeloop, gd.ktot);
 
         Array<Float,2> tmp_array({1, int(gd.ktot)});
-        for (int k=1; k<gd.ktot; ++k)
+        for (int k=0; k<gd.ktot; ++k)
         {
-            tmp_array({1, k}) = gasprofs.at(it.first)[k];
+            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
         }
         gas_concs.set_vmr(it.first, tmp_array);
     }
