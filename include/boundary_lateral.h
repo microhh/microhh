@@ -45,7 +45,7 @@ class Boundary_lateral
         void init();
         void create(Input&, const std::string&);
         void set_ghost_cells(Timeloop<TF>&);
-        void update_time_dependent(Timeloop<TF>&);
+        void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
 
     private:
         Master& master;

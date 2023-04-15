@@ -413,6 +413,10 @@ void Model<TF>::exec()
                 ib->exec_momentum();
 
                 // Solve the poisson equation for pressure.
+                const bool pres_fix = true;
+                lbc->update_time_dependent(*timeloop, pres_fix);
+                lbc->set_ghost_cells(*timeloop);
+
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);

@@ -1495,7 +1495,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
 
 template <typename TF>
-void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop, const bool pres_fix)
 {
     if (!sw_inoutflow || !sw_timedep)
         return;
@@ -1504,7 +1504,13 @@ void Boundary_lateral<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     auto& md = master.get_MPI_data();
 
     // Find index in time array.
-    const double time = timeloop.get_time();
+    double time = timeloop.get_time();
+
+    // CvH: this is an UGLY hack, because it only works for RK4.
+    // We need to know from the time whether we are in the last iter.
+    // Also, it will fail miserably if we perturb the velocities at the walls
+    if (pres_fix && timeloop.get_substep() == 4)
+        time += timeloop.get_dt();
 
     int t0;
     for (int i=0; i<time_in.size()-1; ++i)
