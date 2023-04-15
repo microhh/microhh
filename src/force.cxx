@@ -321,7 +321,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
 
     if (swwls_in == "1" || swwls_in == "mean" || swwls_in == "local")
-        bool swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
+        swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
 
     // Checks on input:
     if (swwls_in == "1")
