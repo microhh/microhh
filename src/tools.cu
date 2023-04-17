@@ -52,12 +52,48 @@ namespace Tools_g
         /* Once we get to the last 32 values (1 thread warp), the __syncthreads() is no longer necessary */
         if (tid < 32)
         {
-            if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<TF, function>(as[tid],as[tid + 32]); }}
-            if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<TF, function>(as[tid],as[tid + 16]); }}
-            if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<TF, function>(as[tid],as[tid +  8]); }}
-            if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<TF, function>(as[tid],as[tid +  4]); }}
-            if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<TF, function>(as[tid],as[tid +  2]); }}
-            if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<TF, function>(as[tid],as[tid +  1]); }}
+            if (blockSize >=  64) { if (tid < 32) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 32]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  32) { if (tid < 16) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 16]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  16) { if (tid < 8) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 8]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  8) { if (tid < 4) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 4]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  4) { if (tid < 2) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 2]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  2) { if (tid < 1) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 1]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            //if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<TF, function>(as[tid],as[tid + 32]); }}
+            //if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<TF, function>(as[tid],as[tid + 16]); }}
+            //if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<TF, function>(as[tid],as[tid +  8]); }}
+            //if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<TF, function>(as[tid],as[tid +  4]); }}
+            //if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<TF, function>(as[tid],as[tid +  2]); }}
+            //if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<TF, function>(as[tid],as[tid +  1]); }}
         }
     }
 

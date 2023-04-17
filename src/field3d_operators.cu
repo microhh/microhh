@@ -109,9 +109,9 @@ void Field3d_operators<TF>::calc_mean_profile_g(TF* const restrict prof, const T
     */
 
     // Optimized reduction method. This gives slightly different results compared to the CPU...
+    // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     auto tmp = fields.get_tmp_g();
 
-    // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     reduce_interior<TF>(
         fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot,
         gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
@@ -181,6 +181,7 @@ TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
     cuda_safe_call(cudaMemcpy(&mean_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
 
     fields.release_tmp_g(tmp);
+
     return mean_value;
 }
 
