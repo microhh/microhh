@@ -735,6 +735,8 @@ void Thermo_moist<TF>::clear_device()
     cuda_safe_call(cudaFree(bs.prefh_g  ));
     cuda_safe_call(cudaFree(bs.exnref_g ));
     cuda_safe_call(cudaFree(bs.exnrefh_g));
+    cuda_safe_call(cudaFree(bs.rhoref_g ));
+    cuda_safe_call(cudaFree(bs.rhorefh_g));
     tdep_pbot->clear_device();
 }
 
