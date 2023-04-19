@@ -241,7 +241,7 @@ void Aerosol<TF>::exec_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Aerosol<TF>::get_radiation_fields(Aerosol_concs aerosol_concs)
+void Aerosol<TF>::get_radiation_fields(Aerosol_concs& aerosol_concs)
 {
     auto& gd = grid.get_grid_data();
 

@@ -2601,39 +2601,39 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         //2a. Solve the aerosol optical properties.
 
-            if (sw_aerosol)
-            {
-                Aerosol_concs aerosol_concs_subset(aerosol_concs, col_s_in, n_col_in);
-                aerosol_sw->aerosol_optics(
-                        aerosol_concs_subset,
-                        rh.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
-                        p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
-                        *aerosol_optical_props_in);
+        if (sw_aerosol)
+        {
+            Aerosol_concs aerosol_concs_subset(aerosol_concs, col_s_in, n_col_in);
+            aerosol_sw->aerosol_optics(
+                    aerosol_concs_subset,
+                    rh.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                    p_lev.subset({{ {col_s_in, col_e_in}, {1, n_lev} }}),
+                    *aerosol_optical_props_in);
 
-                if (sw_delta_aer)
-                    aerosol_optical_props_in->delta_scale();
+            if (sw_delta_aer)
+                aerosol_optical_props_in->delta_scale();
 
-                // Add the aerosol optical props to the gas optical properties.
-                add_to(
-                        dynamic_cast<Optical_props_2str&>(*optical_props_subset_in),
-                        dynamic_cast<Optical_props_2str&>(*aerosol_optical_props_in));
+            // Add the aerosol optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str&>(*aerosol_optical_props_in));
 
-                // calculate AOD at the band that contains 550nm
-                int ibnd = 11;
-                for (int ilay = 1; ilay <= n_lay; ++ilay)
-                    for (int icol = 1; icol <= n_col_in; ++icol)
+            // calculate AOD at the band that contains 550nm
+            int ibnd = 11;
+            for (int ilay = 1; ilay <= n_lay; ++ilay)
+                for (int icol = 1; icol <= n_col_in; ++icol)
+                {
+                    if (ilay == 1)
                     {
-                        if (ilay == 1)
-                        {
-                            const Float tau = aerosol_optical_props_in->get_tau()({icol, ilay, ibnd});
-                            aod550({col_s_in+icol-1}) = tau;
-                        }
-                        else
-                        {
-                            const Float tau = aerosol_optical_props_in->get_tau()({icol, ilay, ibnd});
-                            aod550({col_s_in+icol-1}) += tau;
-                        }
+                        const Float tau = aerosol_optical_props_in->get_tau()({icol, ilay, ibnd});
+                        aod550({col_s_in+icol-1}) = tau;
                     }
+                    else
+                    {
+                        const Float tau = aerosol_optical_props_in->get_tau()({icol, ilay, ibnd});
+                        aod550({col_s_in+icol-1}) += tau;
+                    }
+                }
             }
 
         // 3. Solve the fluxes.

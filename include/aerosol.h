@@ -57,7 +57,7 @@ class Aerosol
         void exec_stats(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
-        void get_radiation_fields(Aerosol_concs aerosol_concs);
+        void get_radiation_fields(Aerosol_concs&);
 
     private:
         Master& master;

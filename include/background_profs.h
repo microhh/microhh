@@ -41,9 +41,9 @@ public:
     void exec_stats(Stats<TF>&);
     void update_time_dependent(Timeloop<TF>&);
 
-    void get_tpm(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Gas_concs gas_concs_col);
-    void get_gasses(Gas_concs gas_concs_col);
-    void get_aerosols(Aerosol_concs aerosol_concs_col);
+    void get_tpm(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Gas_concs&);
+    void get_gasses(Gas_concs&);
+    void get_aerosols(Aerosol_concs&);
 
 private:
     Master& master;
