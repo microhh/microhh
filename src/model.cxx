@@ -581,6 +581,7 @@ void Model<TF>::clear_gpu()
     fields   ->clear_device();
     thermo   ->clear_device();
     boundary ->clear_device();
+    diff     ->clear_device();
     force    ->clear_device();
     ib       ->clear_device();
     microphys->clear_device();
