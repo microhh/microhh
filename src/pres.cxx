@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include <fftw3.h>
 #include "master.h"
 #include "input.h"
@@ -41,6 +43,8 @@ Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>
     field3d_operators(master, grid, fields)
 {
     #ifdef USECUDA
+    force_FFT_per_slice = inputin.get_item<bool>("pres", "sw_fft_per_slice", "", false);
+
     iplanf = 0;
     jplanf = 0;
     iplanb = 0;
