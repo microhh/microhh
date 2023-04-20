@@ -717,7 +717,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     {
         if (std::find(possible_gases.begin(), possible_gases.end(), it) != possible_gases.end())
         {
-            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it, sw_update_background));
+            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it, !gaslist.empty()));
         }
         else
         {
@@ -2112,7 +2112,10 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             // gasses
             background.get_gasses(gas_concs_col);
             // aerosols
-            background.get_aerosols(aerosol_concs_col);
+            if (sw_aerosol && sw_aerosol_timedep)
+            {
+                background.get_aerosols(aerosol_concs_col);
+            }
         }
 
         // Calculate long wave radiation.
