@@ -240,6 +240,11 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
+    // Keep the thermo create/load as early as possible, to make
+    // sure that the basestate density is known.
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->load(timeloop->get_iotime());
+
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
@@ -248,9 +253,6 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
-
-    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
-    thermo->load(timeloop->get_iotime());
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
