@@ -395,8 +395,8 @@ void Boundary<TF>::process_time_dependent(
 
         for (auto& fld : sbot_2d_list)
         {
-            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot", iotime0);
-            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot", iotime1);
+            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot_in", iotime0);
+            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot_in", iotime1);
         }
 
         master.sum(&nerror, 1);
@@ -503,7 +503,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
                 // Read new time step
                 char filename[256];
-                std::string name = fld + "_bot";
+                std::string name = fld + "_bot_in";
                 std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
                 master.print_message("Loading \"%s\" ... ", filename);
 
@@ -630,7 +630,7 @@ void Boundary<TF>::set_values()
         else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
             // Load 2D fields for bottom boundary from disk.
-            std::string filename = it.first + "_bot.0000000";
+            std::string filename = it.first + "_bot_in.0000000";
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();
