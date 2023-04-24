@@ -83,7 +83,7 @@ class Diff_deardorff : public Diff<TF>
         TF cn;
 
         bool sw_buoy;
-        bool swmason;  ///< Switch for use of Mason's wall correction
+        bool sw_mason;  ///< Switch for use of Mason's wall correction
 
         const std::string tend_name = "diff";
         const std::string tend_longname = "Diffusion";
