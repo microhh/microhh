@@ -388,8 +388,29 @@ void Thermo_dry<TF>::init()
     bs.exnrefh.resize(gd.kcells);
 }
 
+
 template<typename TF>
 void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+{
+    create_basestate(inputin, input_nc);
+
+    // Init the toolbox classes.
+    boundary_cyclic.init();
+
+    // Process the time dependent surface pressure
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
+
+    // Set up output classes
+    create_stats(stats);
+    create_column(column);
+    create_dump(dump);
+    create_cross(cross);
+}
+
+
+template<typename TF>
+void Thermo_dry<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 {
     auto& gd = grid.get_grid_data();
     fields.set_calc_mean_profs(true);
@@ -437,19 +458,6 @@ void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
                 gd.dz.data(), gd.dzh.data(), gd.dzhi.data(),
                 bs.pbot, gd.kstart, gd.kend, gd.kcells);
     }
-
-    // Init the toolbox classes.
-    boundary_cyclic.init();
-
-    // Process the time dependent surface pressure
-    std::string timedep_dim = "time_surface";
-    tdep_pbot->create_timedep(input_nc, timedep_dim);
-
-    // Set up output classes
-    create_stats(stats);
-    create_column(column);
-    create_dump(dump);
-    create_cross(cross);
 }
 
 #ifndef USECUDA
