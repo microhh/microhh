@@ -129,6 +129,7 @@ void Boundary_surface_bulk<TF>::create(
     const std::string group_name = "default";
 
     Boundary<TF>::process_time_dependent(input, input_nc, timeloop);
+    Boundary<TF>::update_time_dependent(timeloop);
 
     // add variables to the statistics
     if (stats.get_switch())

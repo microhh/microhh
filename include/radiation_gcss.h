@@ -51,7 +51,7 @@ class Radiation_gcss : public Radiation<TF>
         void init(Timeloop<TF>&);
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
-                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         unsigned long get_time_limit(unsigned long);

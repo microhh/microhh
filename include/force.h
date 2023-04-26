@@ -58,7 +58,7 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Timeloop<TF>&);   ///< Read the profiles of the forces from the input.
         void exec(double, Thermo<TF>&, Stats<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.

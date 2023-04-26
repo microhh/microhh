@@ -455,7 +455,7 @@ void Force<TF>::init()
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     Netcdf_group& group_nc = input_nc.get_group("init");
@@ -573,6 +573,8 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
                 stats.add_tendency(*fields.mt.at("w"), "zh", tend_name_subs, tend_longname_subs);
         }
     }
+
+    update_time_dependent(timeloop);
 }
 
 #ifndef USECUDA
