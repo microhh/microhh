@@ -72,7 +72,7 @@ void Radiation_prescribed<TF>::init(Timeloop<TF>& timeloop)
 template<typename TF>
 void Radiation_prescribed<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     if (swtimedep_prescribed)
     {
@@ -89,8 +89,6 @@ void Radiation_prescribed<TF>::create(
         stats.add_time_series("sw_flux_up", "Surface shortwave upwelling flux", "W m-2", group_name);
         stats.add_time_series("lw_flux_dn", "Surface longwave downwelling flux", "W m-2", group_name);
         stats.add_time_series("lw_flux_up", "Surface longwave upwelling flux", "W m-2", group_name);
-
-        update_time_dependent(timeloop);
     }
     else
     {

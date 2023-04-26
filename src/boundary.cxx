@@ -334,7 +334,6 @@ void Boundary<TF>::process_time_dependent(
                 tdep_bc.emplace(it.first, new Timedep<TF>(master, grid, name, true));
                 tdep_bc.at(it.first)->create_timedep(input_nc, timedep_dim);
 
-
                 // Remove the item from the tmplist.
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
                 if (ittmp != tmplist.end())

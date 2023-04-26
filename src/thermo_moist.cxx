@@ -1253,7 +1253,7 @@ void Thermo_moist<TF>::create(
     // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
-    update_time_dependent(timeloop);
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
     create_basestate(inputin, input_nc);
 

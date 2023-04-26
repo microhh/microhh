@@ -49,8 +49,8 @@ class Radiation_disabled : public Radiation<TF>
         bool check_field_exists(const std::string& name);
         void init(Timeloop<TF>&) {};
         void create(
-                Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&,
-                Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&) {};
+                Input&, Netcdf_handle&, Thermo<TF>&,
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) {};
 
         unsigned long get_time_limit(unsigned long);

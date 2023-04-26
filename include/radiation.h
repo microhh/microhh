@@ -52,7 +52,7 @@ class Radiation
         virtual void init(Timeloop<TF>&) = 0;
         virtual void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
-                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&) = 0;
+                Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
         virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;

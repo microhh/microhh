@@ -689,7 +689,7 @@ unsigned long Radiation_rrtmgp<TF>::get_time_limit(unsigned long itime)
 template<typename TF>
 void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
-        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
+        Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != "moist")
