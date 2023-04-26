@@ -51,7 +51,7 @@ class Thermo_buoy : public Thermo<TF>
         virtual ~Thermo_buoy(); ///< Destructor of the dry thermodynamics class.
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);

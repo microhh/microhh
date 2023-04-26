@@ -244,7 +244,7 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
-    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
     thermo->load(timeloop->get_iotime());
 
     ib->create();

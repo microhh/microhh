@@ -389,7 +389,9 @@ void Thermo_dry<TF>::init()
 }
 
 template<typename TF>
-void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_dry<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
+        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     fields.set_calc_mean_profs(true);
