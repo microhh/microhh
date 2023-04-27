@@ -1106,7 +1106,7 @@ Diff_deardorff<TF>::Diff_deardorff(
     sw_buoy = (sw_thermo == "0") ? false : true;
 
     // Set the switch for use of Mason's wall correction
-    sw_mason = inputin.get_item<bool>("diff", "sw_mason", "", true);
+    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true); //SvdL, 26-04-2023: changed input name to swmason for consistency 
 
     // Initialize field of SGS TKE
     fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
