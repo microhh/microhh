@@ -33,6 +33,7 @@ class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Field3d_operators;
+template<typename> class Boundary_cyclic;
 template<typename> class Timedep;
 template<typename> class Stats;
 template<typename> class Thermo;
@@ -45,7 +46,7 @@ template<typename> class Thermo;
  * assigned to all scalars.
  */
 
-enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind, Pressure_gradient};
+enum class Large_scale_pressure_type {Disabled, Fixed_flux, Geo_wind, Geo_wind_3d, Pressure_gradient};
 enum class Large_scale_tendency_type {Disabled, Enabled};
 enum class Large_scale_subsidence_type {Disabled, Mean_field, Local_field};
 enum class Nudging_type {Disabled, Enabled};
@@ -87,6 +88,7 @@ class Force
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         // Internal switches for various forcings
         Large_scale_pressure_type swlspres;
@@ -101,6 +103,10 @@ class Force
 
         std::vector<TF> ug;  ///< Pointer to array u-component geostrophic wind.
         std::vector<TF> vg;  ///< Pointer to array v-component geostrophic wind.
+
+        std::vector<TF> ug_next;
+        std::vector<TF> vg_next;
+
         std::vector<TF> wls; ///< Pointer to array large-scale vertical velocity.
 
         std::vector<TF> nudge_factor;  ///< Height varying nudging factor (1/s)

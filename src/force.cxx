@@ -150,6 +150,49 @@ namespace
     }
 
     template<typename TF>
+    void calc_coriolis_ls(
+            TF* const restrict ut, TF* const restrict vt,
+            const TF* const restrict u, const TF* const restrict v,
+            const TF* const restrict ug, const TF* const restrict vg,
+            const TF* const rhoref,
+            const TF fc,
+            const TF ugrid, const TF vgrid,
+            const TF dxi, const TF dyi,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF rhorefi = TF(1.) / rhoref[k];
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[ijk]);
+                }
+        }
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            const TF rhorefi = TF(1.) / rhoref[k];
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    vt[ijk] += - fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[ijk]);
+                }
+        }
+    }
+
+    template<typename TF>
     void calc_large_scale_source(
             TF* const restrict st, const TF* const restrict sls,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -313,7 +356,7 @@ namespace
 
 template<typename TF>
 Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(masterin, gridin, fieldsin), boundary_cyclic(masterin, gridin)
 {
     std::string swlspres_in = inputin.get_item<std::string>("force", "swlspres", "", "0");
     std::string swwls_in    = inputin.get_item<std::string>("force", "swwls"   , "", "0");
@@ -353,6 +396,12 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
+    else if (swlspres_in == "geo3d")
+    {
+        master.print_message("CvH: reading settings for large-scale pressure force\n");
+        fc = inputin.get_item<TF>("force", "fc", "");
+        swlspres = Large_scale_pressure_type::Geo_wind_3d;
+    }
     else
     {
         throw std::runtime_error("Invalid option for \"swlspres\"");
@@ -383,7 +432,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swwls = Large_scale_subsidence_type::Disabled;
     else if (swwls_in == "mean")
     {
-
         swwls = Large_scale_subsidence_type::Mean_field;
         fields.set_calc_mean_profs(true);
     }
@@ -436,6 +484,13 @@ void Force<TF>::init()
         ug.resize(gd.kcells);
         vg.resize(gd.kcells);
     }
+    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
+    {
+        master.print_message("CvH: allocating arrays for large-scale pressure force\n");
+
+        ug.resize(gd.ncells);
+        vg.resize(gd.ncells);
+    }
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
@@ -452,6 +507,8 @@ void Force<TF>::init()
             nudgeprofs[it] = std::vector<TF>(gd.kcells);
 
     }
+
+    boundary_cyclic.init();
 }
 
 template <typename TF>
@@ -479,6 +536,65 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
 
+    }
+    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
+    {
+        master.print_message("CvH: creating input for large-scale pressure force\n");
+
+        constexpr int n = 0;
+        constexpr TF no_offset = TF(0);
+
+        char filename[256];
+        std::sprintf(filename, "ug.%07d", n);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        auto tmp1 = fields.get_tmp();
+        auto tmp2 = fields.get_tmp();
+
+        // CvH: for now assume full 3D size.
+        Field3d_io field3d_io(master, grid);
+
+        int nerror = 0;
+
+        // Load the ug geowind.
+        if (field3d_io.load_field3d(
+                    ug.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master.print_message("OK\n");
+        }
+
+        // Load the vg geowind.
+        std::sprintf(filename, "vg.%07d", n);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_field3d(
+                    vg.data(),
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    gd.kstart, gd.kend))
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master.print_message("OK\n");
+        }
+
+
+        fields.release_tmp(tmp1);
+        fields.release_tmp(tmp2);
+
+        boundary_cyclic.exec(ug.data());
+        boundary_cyclic.exec(vg.data());
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -624,6 +740,25 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         stats.calc_tend(*fields.mt.at("v"), tend_name_cor);
 
     }
+    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
+    {
+        if (grid.get_spatial_order() == Grid_order::Second)
+        {
+            master.print_message("CvH: executing large-scale 3d pressure force\n");
+            calc_coriolis_ls<TF>(
+                    fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
+                    fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                    ug.data(), vg.data(),
+                    fields.rhoref.data(), 
+                    fc,
+                    grid.utrans, grid.vtrans,
+                    gd.dxi, gd.dyi,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        }
+        else
+            throw std::runtime_error("3D geowind and pressure force not implemented for 4th-order grids");
+    }
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
@@ -744,6 +879,10 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     {
         tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
         tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
+    }
+    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
+    {
+        master.print_message("CvH: updating timedep for large-scale pressure force\n");
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
