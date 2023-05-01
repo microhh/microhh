@@ -59,7 +59,7 @@ class Force
         ~Force();                                       ///< Destructor of the force class.
 
         void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Netcdf_handle&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Timeloop<TF>&);   ///< Read the profiles of the forces from the input.
         void exec(double, Thermo<TF>&, Stats<TF>&);     ///< Add the tendencies belonging to the large-scale processes.
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
@@ -96,6 +96,7 @@ class Force
         Large_scale_subsidence_type swwls;
         Nudging_type swnudge;
         bool swwls_mom;
+        bool swtimedep_geo;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF dpdx;  ///< Large-scale pressure gradient
@@ -104,6 +105,10 @@ class Force
         std::vector<TF> ug;  ///< Pointer to array u-component geostrophic wind.
         std::vector<TF> vg;  ///< Pointer to array v-component geostrophic wind.
 
+        // Timedep geo variables
+        unsigned int ugeo_loadtime;
+        unsigned long itime_ugeo_prev;
+        unsigned long itime_ugeo_next;
         std::vector<TF> ug_next;
         std::vector<TF> vg_next;
 

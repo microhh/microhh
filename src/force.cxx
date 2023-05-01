@@ -393,14 +393,20 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
-        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        swtimedep_geo = inputin.get_item<TF>("force", "swtimedep_geo", "", false);
+
+        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", swtimedep_geo));
+        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", swtimedep_geo));
     }
     else if (swlspres_in == "geo3d")
     {
-        master.print_message("CvH: reading settings for large-scale pressure force\n");
-        fc = inputin.get_item<TF>("force", "fc", "");
         swlspres = Large_scale_pressure_type::Geo_wind_3d;
+
+        fc = inputin.get_item<TF>("force", "fc", "");
+        swtimedep_geo = inputin.get_item<TF>("force", "swtimedep_geo", "", false);
+
+        if (swtimedep_geo)
+            ugeo_loadtime = inputin.get_item<int>("force", "ugeo_loadtime", "");
     }
     else
     {
@@ -486,8 +492,6 @@ void Force<TF>::init()
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
     {
-        master.print_message("CvH: allocating arrays for large-scale pressure force\n");
-
         ug.resize(gd.ncells);
         vg.resize(gd.ncells);
     }
@@ -512,7 +516,7 @@ void Force<TF>::init()
 }
 
 template <typename TF>
-void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     Netcdf_group& group_nc = input_nc.get_group("init");
@@ -539,62 +543,73 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
     {
-        master.print_message("CvH: creating input for large-scale pressure force\n");
-
-        constexpr int n = 0;
         constexpr TF no_offset = TF(0);
 
-        char filename[256];
-        std::sprintf(filename, "ug.%07d", n);
-        master.print_message("Loading \"%s\" ... ", filename);
-
+        constexpr int n = 0;
         auto tmp1 = fields.get_tmp();
         auto tmp2 = fields.get_tmp();
 
         // CvH: for now assume full 3D size.
         Field3d_io field3d_io(master, grid);
-
         int nerror = 0;
 
-        // Load the ug geowind.
-        if (field3d_io.load_field3d(
-                    ug.data(),
-                    tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset,
-                    gd.kstart, gd.kend))
+        auto read_3d_binary = [&](const std::string& name, TF* fld, int iotime)
         {
-            master.print_message("FAILED\n");
-            ++nerror;
+            char filename[256];
+            std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            // Load the ug geowind.
+            if (field3d_io.load_field3d(
+                        fld,
+                        tmp1->fld.data(), tmp2->fld.data(),
+                        filename, no_offset,
+                        gd.kstart, gd.kend))
+            {
+                master.print_message("FAILED\n");
+                ++nerror;
+            }
+            else
+                master.print_message("OK\n");
+        };
+
+        if (swtimedep_geo)
+        {
+            // Find previous and next times.
+            const double time = timeloop.get_time();
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+            // Read first two input times
+            itime_ugeo_prev = ifactor * int(time/ugeo_loadtime) * ugeo_loadtime;
+            itime_ugeo_next = itime_ugeo_prev + ugeo_loadtime*ifactor;
+
+            // IO time accounting for iotimeprec
+            const unsigned long iotime_prev = int(itime_ugeo_prev / iiotimeprec);
+            const unsigned long iotime_next = int(itime_ugeo_next / iiotimeprec);
+
+            ug_next.resize(gd.ncells);
+            vg_next.resize(gd.ncells);
+
+            // Read the first two w_top fields.
+            read_3d_binary("ug", ug.data(), iotime_prev);
+            read_3d_binary("vg", vg.data(), iotime_prev);
+            read_3d_binary("ug", ug_next.data(), iotime_next);
+            read_3d_binary("vg", vg_next.data(), iotime_next);
         }
         else
         {
-            master.print_message("OK\n");
+            read_3d_binary("ug", ug.data(), n);
+            read_3d_binary("vg", vg.data(), n);
         }
-
-        // Load the vg geowind.
-        std::sprintf(filename, "vg.%07d", n);
-        master.print_message("Loading \"%s\" ... ", filename);
-
-        if (field3d_io.load_field3d(
-                    vg.data(),
-                    tmp1->fld.data(), tmp2->fld.data(),
-                    filename, no_offset,
-                    gd.kstart, gd.kend))
-        {
-            master.print_message("FAILED\n");
-            ++nerror;
-        }
-        else
-        {
-            master.print_message("OK\n");
-        }
-
 
         fields.release_tmp(tmp1);
         fields.release_tmp(tmp2);
 
-        boundary_cyclic.exec(ug.data());
-        boundary_cyclic.exec(vg.data());
+        master.sum(&nerror, 1);
+    
+        if (nerror)
+            throw std::runtime_error("Error in reading time dependent geowind.");
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -744,7 +759,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (grid.get_spatial_order() == Grid_order::Second)
         {
-            master.print_message("CvH: executing large-scale 3d pressure force\n");
             calc_coriolis_ls<TF>(
                     fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
@@ -880,9 +894,67 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_geo.at("u_geo")->update_time_dependent_prof(ug, timeloop);
         tdep_geo.at("v_geo")->update_time_dependent_prof(vg, timeloop);
     }
-    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d)
+    else if (swlspres == Large_scale_pressure_type::Geo_wind_3d && swtimedep_geo)
     {
-        master.print_message("CvH: updating timedep for large-scale pressure force\n");
+        auto& gd = grid.get_grid_data();
+
+        constexpr int n = 0;
+        constexpr TF no_offset = TF(0);
+
+        unsigned long itime = timeloop.get_itime();
+
+        if (itime > itime_ugeo_next)
+        {
+            // Read new w_top field
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+            itime_ugeo_prev = itime_ugeo_next;
+            itime_ugeo_next = itime_ugeo_prev + ugeo_loadtime*ifactor;
+
+            const int iotime1 = int(itime_ugeo_next / iiotimeprec);
+
+            // Copy of data from next to prev. time
+            ug = ug_next;
+            vg = vg_next;
+
+            Field3d_io field3d_io(master, grid);
+            int nerror = 0;
+
+            auto tmp1 = fields.get_tmp();
+            auto tmp2 = fields.get_tmp();
+
+            auto read_3d_binary = [&](const std::string& name, TF* fld)
+            {
+                char filename[256];
+                std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                // Load the ug geowind.
+                if (field3d_io.load_field3d(
+                            fld,
+                            tmp1->fld.data(), tmp2->fld.data(),
+                            filename, no_offset,
+                            gd.kstart, gd.kend))
+                {
+                    master.print_message("FAILED\n");
+                    ++nerror;
+                }
+                else
+                    master.print_message("OK\n");
+            };
+
+            read_3d_binary("ug", ug_next.data());
+            read_3d_binary("vg", vg_next.data());
+
+            master.sum(&nerror, 1);
+    
+            if (nerror)
+                throw std::runtime_error("Error in reading time dependent geowind.");
+
+            fields.release_tmp(tmp1);
+            fields.release_tmp(tmp2);
+        }
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )

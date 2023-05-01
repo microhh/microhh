@@ -249,7 +249,7 @@ void Model<TF>::load()
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);
-    force->create(*input, *input_nc, *stats);
+    force->create(*input, *input_nc, *stats, *timeloop);
     source->create(*input, *input_nc);
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
