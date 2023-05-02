@@ -502,7 +502,7 @@ namespace
 
 
     template<typename TF>
-    void blend_corners_kernel(
+    void set_corner_ghost_cell_kernel(
             TF* const restrict fld,
             const int mpiidx, const int mpiidy,
             const int npx, const int npy,
@@ -716,66 +716,6 @@ namespace
                     div[t] += rhoref[k+kgc] * dx_or_dy * dz[k+kgc] * (lbc_u[nk] - lbc_d[nk]);
                 }
         }
-    }
-
-    template<typename TF>
-    void check_div(
-        const TF* const restrict u,
-        const TF* const restrict v,
-        const TF* const restrict w,
-        const TF* const restrict dzi,
-        const TF* const restrict rhoref,
-        const TF* const restrict rhorefh,
-        const TF dx, const TF dy,
-        const int istart, const int iend,
-        const int jstart, const int jend,
-        const int kstart, const int kend,
-        const int icells, const int ijcells,
-        Master& master)
-    {
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const TF dxi = TF(1.)/dx;
-        const TF dyi = TF(1.)/dy;
-
-        TF divmax = 0.;
-        int imax = 0;
-        int jmax = 0;
-        int kmax = 0;
-
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-
-                    const int ijk = i + j*jj + k*kk;
-                    const TF div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
-                          + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
-
-                    if (div > divmax)
-                    {
-                        divmax = div;
-                        imax = i;
-                        jmax = j;
-                        kmax = k;
-                    }
-                }
-
-        master.max(&divmax, 1);
-
-        std::ostringstream div_str;
-        div_str << divmax;
-
-        std::string message = "Max div. = "
-                + div_str.str() + " @ i,j,k = "
-                + std::to_string(imax) + ", "
-                + std::to_string(jmax) + ", "
-                + std::to_string(kmax);
-
-        master.print_message(message);
     }
 
 
@@ -1302,11 +1242,11 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 gd.ijcells);
     };
 
-    auto blend_corners_wrapper = [&](
+    auto set_corner_ghost_cell_wrapper = [&](
             std::vector<TF>& fld,
             const int kend)
     {
-        blend_corners_kernel(
+        set_corner_ghost_cell_kernel(
                 fld.data(),
                 md.mpicoordx, md.mpicoordy,
                 md.npx, md.npy,
@@ -1341,7 +1281,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
         }
 
-        blend_corners_wrapper(fields.mp.at("u")->fld, gd.kend);
+        set_corner_ghost_cell_wrapper(fields.mp.at("u")->fld, gd.kend);
     }
 
     if (sw_inoutflow_v)
@@ -1367,56 +1307,11 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
 
-        blend_corners_wrapper(fields.mp.at("v")->fld, gd.kend);
+        set_corner_ghost_cell_wrapper(fields.mp.at("v")->fld, gd.kend);
     }
 
     if (sw_inoutflow_u || sw_inoutflow_v)
     {
-        //const int jstride = gd.icells;
-        //const int kstride = gd.icells*gd.jcells;
-
-        //// Correct the vertical velocity top BC for the lateral BCs to ensure divergence free field.
-        //// CvH THIS IS A FIRST ATTEMPT THAT ASSUMES UNIFORM W.
-        //TF w_top = TF(0);
-
-        //for (int k=gd.kstart; k<gd.kend; ++k)
-        //{
-        //    const TF hor_div = fields.rhoref[k]*(TF(0.) - TF(2.)) / gd.xsize  // * gd.z[k]/gd.zsize
-        //                     + fields.rhoref[k]*(TF(2.) - TF(0.)) / gd.ysize; // * gd.z[k]/gd.zsize;
-
-        //    w_top = (fields.rhorefh[k]*w_top - gd.dz[k]*hor_div) / fields.rhorefh[k+1];
-        //}
-
-        //for (int j=gd.jstart; j<gd.jend; ++j)
-        //    for (int i=gd.istart; i<gd.iend; ++i)
-        //    {
-        //        const int ijk = i + j*jstride + gd.kend*kstride;
-        //        fields.mp.at("w")->fld[ijk] = w_top;
-        //    }
-
-
-        //const int ii = 1;
-        //const int jj = gd.icells;
-        //const int kk = gd.ijcells;
-
-        //TF* u = fields.mp.at("u")->fld.data();
-        //TF* v = fields.mp.at("v")->fld.data();
-        //TF* w = fields.mp.at("w")->fld.data();
-
-        //TF* rho  = fields.rhoref.data();
-        //TF* rhoh = fields.rhorefh.data();
-
-        //const TF dxi = TF(1)/gd.dx;
-        //const TF dyi = TF(1)/gd.dy;
-
-        //const int k = gd.kend-1;
-        //for (int j=gd.jstart; j<gd.jend; ++j)
-        //    for (int i=gd.istart; i<gd.iend; ++i)
-        //    {
-        //        const int ijk = i + j*jj + k*kk;
-        //        w[ijk+kk] = -(rho[k] * ((u[ijk+ii] - u[ijk]) * dxi + (v[ijk+jj] - v[ijk]) * dyi) * gd.dz[k] - rhoh[k] * w[ijk]) / rhoh[k+1];
-        //    }
-
         const int k = gd.kend;
         for (int j=gd.jstart; j<gd.jend; ++j)
             for (int i=gd.istart; i<gd.iend; ++i)
@@ -1425,22 +1320,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 const int ij = i + j*gd.icells;
                 fields.mp.at("w")->fld[ijk] = w_top[ij];
             }
-
-        //check_div(
-        //    fields.mp.at("u")->fld.data(),
-        //    fields.mp.at("v")->fld.data(),
-        //    fields.mp.at("w")->fld.data(),
-        //    gd.dzi.data(),
-        //    fields.rhoref.data(),
-        //    fields.rhorefh.data(),
-        //    gd.dx, gd.dy,
-        //    gd.istart, gd.iend,
-        //    gd.jstart, gd.jend,
-        //    gd.kstart, gd.kend,
-        //    gd.icells, gd.ijcells,
-        //    master);
     }
-    // END
 
     // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
     // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
@@ -1469,7 +1349,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
 
-        blend_corners_wrapper(fields.mp.at("w")->fld, gd.kend+1);
+        set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
     }
 
     for (auto& fld : inoutflow_s)
@@ -1495,7 +1375,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
         }
 
-        blend_corners_wrapper(fields.ap.at(fld)->fld, gd.kend);
+        set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
 
 
@@ -1533,26 +1413,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 perturb_boundary_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
         }
     }
-
-    //check_div(
-    //    fields.mp.at("u")->fld.data(),
-    //    fields.mp.at("v")->fld.data(),
-    //    fields.mp.at("w")->fld.data(),
-    //    gd.dzi.data(),
-    //    fields.rhoref.data(),
-    //    fields.rhorefh.data(),
-    //    gd.dx, gd.dy,
-    //    gd.istart, gd.iend,
-    //    gd.jstart, gd.jend,
-    //    gd.kstart, gd.kend,
-    //    gd.icells, gd.ijcells,
-    //    master);
-
-    //dump_fld3d(fields.ap.at("th")->fld, "th0");
-    //dump_fld3d(fields.mp.at("u")->fld, "u0");
-    //dump_fld3d(fields.mp.at("v")->fld, "v0");
-    //dump_fld3d(fields.mp.at("w")->fld, "w0");
-    //throw 1;
 }
 
 
