@@ -2191,10 +2191,12 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
             else
             {
+                Array<Float,1> aod550_column_stats;
+                aod550_column_stats.set_dims({n_col});
                 exec_shortwave(
                         thermo, timeloop, stats,
                         flux_up, flux_dn, flux_dn_dir, flux_net,
-                        aod550,
+                        aod550_column_stats,
                         t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                         compute_clouds, n_cols);
 
@@ -2207,7 +2209,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
                     exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
-                            aod550,
+                            aod550_column_stats,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                             !compute_clouds, n_cols);
 
