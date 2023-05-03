@@ -101,6 +101,7 @@ class Force
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF dpdx;  ///< Large-scale pressure gradient
         TF fc;    ///< Coriolis parameter.
+        std::vector<TF> fc_2d;  ///< Pointer to array u-component geostrophic wind.
 
         std::vector<TF> ug;  ///< Pointer to array u-component geostrophic wind.
         std::vector<TF> vg;  ///< Pointer to array v-component geostrophic wind.

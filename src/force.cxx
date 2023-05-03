@@ -153,9 +153,8 @@ namespace
     void calc_coriolis_ls(
             TF* const restrict ut, TF* const restrict vt,
             const TF* const restrict u, const TF* const restrict v,
-            const TF* const restrict ug, const TF* const restrict vg,
+            const TF* const restrict ug, const TF* const restrict vg, const TF* const restrict fc_2d,
             const TF* const rhoref,
-            const TF fc,
             const TF ugrid, const TF vgrid,
             const TF dxi, const TF dyi,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -173,7 +172,9 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
+                    const int ij = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
+                    const TF fc = TF(0.5)*(fc_2d[ij-ii] + fc_2d[ij]);
                     ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[ijk]);
                 }
         }
@@ -186,7 +187,9 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
+                    const int ij = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
+                    const TF fc = TF(0.5)*(fc_2d[ij-jj] + fc_2d[ij]);
                     vt[ijk] += - fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[ijk]);
                 }
         }
@@ -402,7 +405,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::Geo_wind_3d;
 
-        fc = inputin.get_item<TF>("force", "fc", "");
+        fc = inputin.get_item<TF>("force", "fc", ""); // CvH I still load the mean fc, maybe this is asking for trouble?
         swtimedep_geo = inputin.get_item<TF>("force", "swtimedep_geo", "", false);
 
         if (swtimedep_geo)
@@ -494,6 +497,7 @@ void Force<TF>::init()
     {
         ug.resize(gd.ncells);
         vg.resize(gd.ncells);
+        fc_2d.resize(gd.ijcells);
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -553,6 +557,19 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         Field3d_io field3d_io(master, grid);
         int nerror = 0;
 
+        // Load the coriolis parameter.
+        char filename[256];
+        std::sprintf(filename, "fc.%07d", n);
+        master.print_message("Loading \"%s\" ... ", filename);
+        if (field3d_io.load_xy_slice(fc_2d.data(), tmp1->fld.data(), filename))
+            master.print_message("FAILED\n");
+        else
+            master.print_message("OK\n");
+
+        // I do here a cyclic BC, but that is (slightly) incorrect at the edges, but those tendencies we do not need with open BCs.
+        boundary_cyclic.exec_2d(fc_2d.data());
+
+        // Read the geowind 3d files.
         auto read_3d_binary = [&](const std::string& name, TF* fld, int iotime)
         {
             char filename[256];
@@ -762,9 +779,8 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             calc_coriolis_ls<TF>(
                     fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
-                    ug.data(), vg.data(),
+                    ug.data(), vg.data(), fc_2d.data(),
                     fields.rhoref.data(), 
-                    fc,
                     grid.utrans, grid.vtrans,
                     gd.dxi, gd.dyi,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
