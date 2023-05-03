@@ -64,6 +64,8 @@ class Boundary_lateral
         bool sw_timedep;
         bool sw_wtop_2d;
 
+        std::vector<std::string> inoutflow_s;
+
         // Sponge/diffusion layer:
         bool sw_sponge;
         int n_sponge;
@@ -78,8 +80,6 @@ class Boundary_lateral
         int perturb_kend;
         std::vector<std::string> perturb_list;
         std::map<std::string, TF> perturb_ampl;
-
-        std::vector<std::string> inoutflow_s;
 
         // Current (time interpolated) boundary conditions:
         std::map<std::string, std::vector<TF>> lbc_w;
