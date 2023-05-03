@@ -1325,18 +1325,16 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_u)
     {
-        const bool sw_recycle = in_list<std::string>("u", recycle_list);
-
-        //if (md.mpicoordy == 0)
-        //{
-        //    set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
-        //    sponge_layer_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
-        //}
-        //if (md.mpicoordy == md.npy-1)
-        //{
-        //    set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
-        //    sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
-        //}
+        if (md.mpicoordy == 0)
+        {
+            set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
+            sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
+            sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
+        }
         if (md.mpicoordx == 0)
         {
             set_ghost_cell_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
@@ -1353,34 +1351,26 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_v)
     {
-        const bool sw_recycle = in_list<std::string>("v", recycle_list);
-
         if (md.mpicoordx == 0)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, "v");
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
+            sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
         }
         if (md.mpicoordx == md.npx-1)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, "v");
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
+            sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
         }
-        //if (md.mpicoordy == 0)
-        //{
-        //    set_ghost_cell_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        //    sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        //}
-        //if (md.mpicoordy == md.npy-1)
-        //{
-        //    set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        //    sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        //}
+        if (md.mpicoordy == 0)
+        {
+            set_ghost_cell_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+            sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+        }
 
         set_corner_ghost_cell_wrapper(fields.mp.at("v")->fld, gd.kend);
     }
@@ -1413,16 +1403,16 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             set_ghost_cell_w_wrapper.template operator()<Lbc_location::East>();
             // sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
         }
-        //if (md.mpicoordy == 0)
-        //{
-        //    set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
-        //    // sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        //}
-        //if (md.mpicoordy == md.npy-1)
-        //{
-        //    set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
-        //    // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        //}
+        if (md.mpicoordy == 0)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
+            // sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
+            // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+        }
 
         set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
     }
@@ -1447,16 +1437,22 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, fld);
         }
-        //if (md.mpicoordy == 0)
-        //{
-        //    set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
-        //    sponge_layer_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
-        //}
-        //if (md.mpicoordy == md.npy-1)
-        //{
-        //    set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
-        //    sponge_layer_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
-        //}
+        if (md.mpicoordy == 0)
+        {
+            set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::South, true>(lbc_s, fld);
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, fld);
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::North, true>(lbc_n, fld);
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, fld);
+        }
 
         set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
