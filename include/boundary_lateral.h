@@ -81,6 +81,11 @@ class Boundary_lateral
         std::vector<std::string> perturb_list;
         std::map<std::string, TF> perturb_ampl;
 
+        // Turbulence recycling.
+        std::vector<std::string> recycle_list;
+        TF tau_recycle;
+        int recycle_offset;
+
         // Current (time interpolated) boundary conditions:
         std::map<std::string, std::vector<TF>> lbc_w;
         std::map<std::string, std::vector<TF>> lbc_s;

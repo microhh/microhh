@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "boundary_lateral.h"
 #include "netcdf_interface.h"
@@ -34,6 +35,16 @@
 
 namespace
 {
+    template<typename TF>
+    bool in_list(const TF value, const std::vector<TF>& list)
+    {
+        if(std::find(list.begin(), list.end(), value) != list.end())
+            return true;
+        else
+            return false;
+    }
+
+
     template<typename TF, Lbc_location location>
     void set_ghost_cell_kernel_u(
             TF* const restrict u,
@@ -392,7 +403,7 @@ namespace
             }
     }
 
-    template<typename TF, Lbc_location location>
+    template<typename TF, Lbc_location location, bool sw_recycle>
     void lateral_sponge_kernel_s(
             TF* const restrict at,
             const TF* const restrict a,
@@ -400,6 +411,8 @@ namespace
             const TF tau_nudge,
             const TF w_diff,
             const int N_sponge,
+            const TF tau_recycle,
+            const TF recycle_offset,
             const int npx, const int npy,
             const int mpiidx, const int mpiidy,
             const int istart, const int iend,
@@ -413,7 +426,7 @@ namespace
         const int kk = ijcells;
 
         const TF w_dt = TF(1) / tau_nudge;
-        const TF tau_recycle = TF(1./10.);
+        const TF r_dt = TF(1) / tau_recycle;
 
         if (location == Lbc_location::West || location == Lbc_location::East)
         {
@@ -459,13 +472,13 @@ namespace
                         at[ijk] -= w_diff*a_diff;
 
                         // Turbulence recycling.
-                        if (location == Lbc_location::West)
+                        if (sw_recycle)
                         {
                             // Recycle strength; 0 at boundary, 1 at edge nudging zone.
                             const TF f_recycle = TF(1) - f_sponge;
 
                             // Source of recycling.
-                            const int offset = 50;
+                            const int offset = (location == Lbc_location::West) ? recycle_offset : -recycle_offset;
                             const int ijko = (i+offset) + j*icells + k*ijcells;
 
                             TF a_mean = 0;
@@ -474,7 +487,7 @@ namespace
                                     a_mean += a[ijko + ic + jc*icells];
                             a_mean /= TF(49.);
 
-                            at[ijk] += f_recycle * tau_recycle * ((a[ijko] - a_mean) - (a[ijk] - lbc[jk]));
+                            at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[jk]));
                         }
                     }
                 }
@@ -514,10 +527,29 @@ namespace
                                 a, ijkc, icells, ijcells);
 
                         // Nudge coefficient.
-                        const TF w1 = w_dt * (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
+                        const TF f_sponge = (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
+                        const TF w1 = w_dt * f_sponge;
 
                         at[ijk] += w1*(lbc[ik]-a[ijk]);
                         at[ijk] -= w_diff*a_diff;
+
+                        if (sw_recycle)
+                        {
+                            // Recycle strength; 0 at boundary, 1 at edge nudging zone.
+                            const TF f_recycle = TF(1) - f_sponge;
+
+                            // Source of recycling.
+                            const int offset = (location == Lbc_location::South) ? recycle_offset : -recycle_offset;
+                            const int ijko = i + (j+offset)*icells + k*ijcells;
+
+                            TF a_mean = 0;
+                            for (int jc=-3; jc<4; ++jc)
+                                for (int ic=-3; ic<4; ++ic)
+                                    a_mean += a[ijko + ic + jc*icells];
+                            a_mean /= TF(49.);
+
+                            at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[ik]));
+                        }
                     }
                 }
         }
@@ -857,6 +889,14 @@ Boundary_lateral<TF>::Boundary_lateral(
                 perturb_ampl.emplace(fld, ampl);
             }
         }
+
+        // Turbulence recycling.
+        recycle_list = inputin.get_list<std::string>("boundary", "recycle_list", "", std::vector<std::string>());
+        if (recycle_list.size() > 0)
+        {
+            tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
+            recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
+        }
     }
 }
 
@@ -1161,20 +1201,22 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 gd.ijcells);
     };
 
-    auto sponge_layer_wrapper = [&]<Lbc_location location>(
+    auto sponge_layer_wrapper = [&]<Lbc_location location, bool sw_recycle>(
             std::map<std::string, std::vector<TF>>& lbc_map,
             const std::string& name)
     {
         if (!sw_sponge)
             return;
 
-        lateral_sponge_kernel_s<TF, location>(
+        lateral_sponge_kernel_s<TF, location, sw_recycle>(
                 fields.at.at(name)->fld.data(),
                 fields.ap.at(name)->fld.data(),
                 lbc_map.at(name).data(),
                 tau_nudge,
                 w_diff,
                 n_sponge,
+                tau_recycle,
+                recycle_offset,
                 md.npx, md.npy,
                 md.mpicoordx, md.mpicoordy,
                 gd.istart, gd.iend,
@@ -1283,6 +1325,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_u)
     {
+        const bool sw_recycle = in_list<std::string>("u", recycle_list);
+
         //if (md.mpicoordy == 0)
         //{
         //    set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
@@ -1309,15 +1353,23 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_v)
     {
+        const bool sw_recycle = in_list<std::string>("v", recycle_list);
+
         if (md.mpicoordx == 0)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
-            sponge_layer_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, "v");
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
         }
         if (md.mpicoordx == md.npx-1)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
-            sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, "v");
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
         }
         //if (md.mpicoordy == 0)
         //{
@@ -1377,15 +1429,23 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     for (auto& fld : inoutflow_s)
     {
+        const bool sw_recycle = in_list<std::string>(fld, recycle_list);
+
         if (md.mpicoordx == 0)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
-            sponge_layer_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, fld);
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, fld);
         }
         if (md.mpicoordx == md.npx-1)
         {
             set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
-            sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
+            if (sw_recycle)
+                sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, fld);
+            else
+                sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, fld);
         }
         //if (md.mpicoordy == 0)
         //{
