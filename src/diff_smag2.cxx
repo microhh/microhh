@@ -62,11 +62,14 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool sw_mason, ///< SvdL, 04-05-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
 
+        TF mlen; // SvdL, 04-05-2023: declare mixing length here
+        
         // Wall damping constant.
         constexpr TF n_mason = TF(1.);
         constexpr TF A_vandriest = TF(26.);
@@ -129,9 +132,11 @@ namespace
                         const int ij  = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
-                        // Mason mixing length
-                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) +
-                                    TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if (sw_mason) // Apply Mason's wall correction
+                            mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        else
+                            mlen = mlen0;
 
                         evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]);
                     }
@@ -159,10 +164,13 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool sw_mason, ///< SvdL, 04-05-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
+
+        TF mlen; // SvdL, 04-05-2023: declare mixing length here
 
         if (surface_model == Surface_model::Disabled)
         {
@@ -203,7 +211,7 @@ namespace
         else
         {
             // Variables for the wall damping.
-            const TF n = 2.;
+            const TF n_mason = 2.;
 
             // Bottom boundary, here strain is fully parametrized using MO.
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
@@ -222,8 +230,11 @@ namespace
                     TF RitPrratio = bgradbot[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                    // Mason mixing length
-                    const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n))), TF(1.)/n);
+                    if (sw_mason) // Apply Mason's wall correction
+                        mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    else
+                        mlen = mlen0;
 
                     evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                 }
@@ -245,8 +256,11 @@ namespace
                         TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
                         RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                        // Mason mixing length
-                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n))), TF(1.)/n);
+                        if (sw_mason) // Apply Mason's wall correction
+                            mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        else
+                            mlen = mlen0;
 
                         evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                     }
@@ -745,6 +759,9 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     tPr   = inputin.get_item<TF>("diff", "tPr"  , "", 1./3.);
 
     const std::string group_name = "default";
+
+    // Set the switch for use of Mason's wall correction
+    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true); // SvdL, 04-05-2023: added switch
 
     fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
 

@@ -74,6 +74,8 @@ class Diff_smag2 : public Diff<TF>
 
         double cs;
 
+        bool sw_mason;  ///< Switch for use of Mason's wall correction
+
         const std::string tend_name = "diff";
         const std::string tend_longname = "Diffusion";
 };

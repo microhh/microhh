@@ -386,15 +386,6 @@ void Model<TF>::exec()
                 // Calculate the diffusion tendency.
                 diff->exec(*stats);
 
-                // Calculate the thermodynamics and the buoyancy tendency.
-                thermo->exec(timeloop->get_sub_time_step(), *stats);
-
-                // Calculate the microphysics.
-                microphys->exec(*thermo, timeloop->get_dt(), *stats);
-
-                // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
-
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
 
