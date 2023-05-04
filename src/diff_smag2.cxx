@@ -69,7 +69,7 @@ namespace
         const int kk = ijcells;
 
         TF mlen; // SvdL, 04-05-2023: declare mixing length here
-        
+
         // Wall damping constant.
         constexpr TF n_mason = TF(1.);
         constexpr TF A_vandriest = TF(26.);
@@ -1015,6 +1015,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
 
@@ -1034,6 +1035,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
     }
