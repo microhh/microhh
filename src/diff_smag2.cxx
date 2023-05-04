@@ -1068,6 +1068,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
         else
@@ -1086,6 +1087,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
 
