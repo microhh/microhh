@@ -358,7 +358,6 @@ void Deposition<TF>::init(Input& inputin)
     // Change diff_scl to diff_scl^(2/3) for use in rb calculation
     for (int i=0; i<7; i++) diff_scl[i] = pow(diff_scl[i], (TF)2.0/(TF)3.0);
 
-
     for (auto& tile : deposition_tiles)
     {
         std::fill(tile.second.vdo3.begin(),tile.second.vdo3.end(), vd_o3);
@@ -528,6 +527,9 @@ void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 const TF Deposition<TF>::get_vd(const std::string& name) const
 {
+    if (!sw_deposition)
+        return TF(0);
+
     if (name == "o3")
         return vd_o3;
     else if (name == "no")

@@ -584,7 +584,7 @@ void Chemistry<TF>::init(Input& inputin)
 
     auto& gd = grid.get_grid_data();
 
-    switch_dt = inputin.get_item<TF>("chemistry", "switch_dt","", (TF)1e5);
+    switch_dt = inputin.get_item<TF>("chemistry", "switch_dt", "", (TF)1e5);
     statistics_counter = 0;
 
     // initialize 2D deposition arrays:
