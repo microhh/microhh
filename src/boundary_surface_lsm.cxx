@@ -1328,11 +1328,11 @@ void Boundary_surface_lsm<TF>::create_stats(
     if (cross.get_switch())
     {
         const std::vector<std::string> allowed_crossvars = {
-		"ustar", "obuk", "wl",
-                "fraction_wet", "fraction_soil", "fraction_veg",
-                "rs_veg", "rs_soil",
-                "ra_veg", "ra_soil", "ra_wet"
-                "ustar_wet","ustar_soil", "ustar_veg"};
+            "ustar", "obuk", "wl",
+            "fraction_wet", "fraction_soil", "fraction_veg",
+            "rs_veg", "rs_soil",
+            "ra_veg", "ra_soil", "ra_wet"
+            "ustar_wet","ustar_soil", "ustar_veg" };
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
