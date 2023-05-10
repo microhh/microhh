@@ -69,15 +69,15 @@ class Deposition
         ~Deposition();                                       ///< Destructor  of the chemistry class.
 
         void init(Input&);                 ///< Initialize the arrays that contain the profiles.
-        void create(Stats<TF>&, Cross<TF>&); 
+        void create(Stats<TF>&, Cross<TF>&);
         void update_time_dependent(Timeloop<TF>&, Boundary<TF>&,
-			 TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
+             TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
         void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
-	void update_vd_water(TF*, std::string, const TF*, const TF*, const int*, const TF*, const TF*);
+    void update_vd_water(TF*, std::string, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
-	void spatial_avg_vd(TF*);							//MAQ_AV_21042022+ added spatial_avg_vd
+    void spatial_avg_vd(TF*);                           //MAQ_AV_21042022+ added spatial_avg_vd
 
     protected:
         std::vector<std::string> cross_list;         // List of active cross variables
@@ -85,37 +85,37 @@ class Deposition
     private:
         Master& master;
         Grid<TF>& grid;
-	Fields<TF>& fields;
-	std::shared_ptr<Boundary_surface_lsm<TF>> boundary_surface_lsm;
-		
-	// internal variable
-	struct Deposition_var
-	{
-	     Deposition_type type;
-	};
+    Fields<TF>& fields;
+    std::shared_ptr<Boundary_surface_lsm<TF>> boundary_surface_lsm;
+
+    // internal variable
+    struct Deposition_var
+    {
+         Deposition_type type;
+    };
 
         typedef std::map<std::string, Deposition_var> Deposition_map;
 
         Deposition_map cmap;
 
-	TF deposition_var;   // here put the local vars
-	TF henry_so2;
-	TF rsoil_so2;
-	TF rwat_so2;
-	TF rws_so2;
-	//TF lai; 
-	std::vector<TF> rmes;
-	std::vector<TF> rsoil;
-	std::vector<TF> rcut;
-	std::vector<TF> rws;
-	std::vector<TF> rwat;
-	std::vector<TF> diff;
-	std::vector<TF> diff_scl;
-	std::vector<TF> henry;
-	std::vector<TF> f0;
-	
+    TF deposition_var;   // here put the local vars
+    TF henry_so2;
+    TF rsoil_so2;
+    TF rwat_so2;
+    TF rws_so2;
+    //TF lai;
+    std::vector<TF> rmes;
+    std::vector<TF> rsoil;
+    std::vector<TF> rcut;
+    std::vector<TF> rws;
+    std::vector<TF> rwat;
+    std::vector<TF> diff;
+    std::vector<TF> diff_scl;
+    std::vector<TF> henry;
+    std::vector<TF> f0;
 
-	TF vd_o3,vd_no,vd_no2,vd_hno3,vd_h2o2,vd_rooh,vd_hcho;
+
+    TF vd_o3,vd_no,vd_no2,vd_hno3,vd_h2o2,vd_rooh,vd_hcho;
 
         std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
         Deposition_tile_map<TF> deposition_tiles;
