@@ -501,7 +501,6 @@ template<typename TF>
 Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
 
@@ -527,12 +526,6 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     auto& gd = grid.get_grid_data();
-
-    for (auto& it : fields.st)
-    {
-        if(cmap[it.first].type == Chemistry_type::disabled)
-            return;
-    }
 
     if (iteration != 0)   // this does not make sense for first step = t=0.
     {
@@ -591,31 +584,6 @@ void Chemistry<TF>::init(Input& inputin)
 
     auto& gd = grid.get_grid_data();
 
-    for (auto& it : fields.st)
-    {
-        const std::string type = inputin.get_item<std::string>("chemistry", "swchemistry", it.first, "0");
-
-        if (type == "0")
-        {
-            // Cycle to avoid reading unneeded namelist options.
-            continue;
-        }
-        else if (type == "enabled")
-        {
-            cmap[it.first].type = Chemistry_type::enabled;
-        }
-        else if (type == "disabled")
-        {
-            cmap[it.first].type = Chemistry_type::disabled;
-        }
-        else if (type == "simple")
-        {
-            cmap[it.first].type = Chemistry_type::simple;
-        }
-        else
-            throw std::runtime_error("Invalid option for \"Chemistry type\"");
-    }
-
     switch_dt = inputin.get_item<TF>("chemistry", "switch_dt","", (TF)1e5);
     statistics_counter = 0;
 
@@ -643,7 +611,6 @@ void Chemistry<TF>::init(Input& inputin)
     std::fill(vdhcho.begin(), vdhcho.end(), deposition-> get_vd("hcho"));
 
     master.print_message("Deposition arrays initialized, e.g. with vdo3 = %13.5e m/s \n", deposition-> get_vd("o3"));
-
 }
 
 template <typename TF>
@@ -654,12 +621,6 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
 
     auto& gd = grid.get_grid_data();
     int iotime = timeloop.get_iotime();
-
-    for (auto& it : fields.st)
-    {
-        if( cmap[it.first].type == Chemistry_type::disabled)
-            return;
-    }
 
     Netcdf_group& group_nc = input_nc.get_group("timedep_chem");
     int time_dim_length;
@@ -853,12 +814,6 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
     if (!sw_chemistry)
         return;
 
-    for (auto& it : fields.st)
-    {
-        if( cmap[it.first].type == Chemistry_type::disabled)
-            return;
-    }
-
     Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
     jval[0] = ifac.fac0 * jo31d[ifac.index0] + ifac.fac1 * jo31d[ifac.index1];
@@ -891,12 +846,6 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 {
     if (!sw_chemistry)
         return;
-
-    for (auto& it : fields.st)
-    {
-        if(cmap[it.first].type == Chemistry_type::disabled)
-            return;
-    }
 
     auto& gd = grid.get_grid_data();
 

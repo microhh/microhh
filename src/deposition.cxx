@@ -42,10 +42,8 @@
 #include "cross.h"
 
 
-
 namespace
 {
-
     template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld,
@@ -283,10 +281,10 @@ template<typename TF>
 Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
+    sw_deposition = inputin.get_item<bool>("deposition", "swdeposition", "", false);
 
-    const std::string group_name = "default";
-    auto& gd = grid.get_grid_data();
-
+    if (!sw_deposition)
+        return;
 }
 
 template <typename TF>
@@ -297,34 +295,8 @@ Deposition<TF>::~Deposition()
 template <typename TF>
 void Deposition<TF>::init(Input& inputin)
 {
-    for (auto& it : fields.st)
-    {
-        const std::string type = inputin.get_item<std::string>("deposition", "swdeposition", it.first, "0");
-        if (type == "0")
-        {
-            // Cycle to avoid reading unneeded namelist options.
-            continue;
-        }
-        else if (type == "enabled")
-        {
-            cmap[it.first].type = Deposition_type::enabled;
-        }
-        else if (type == "simple")
-        {
-            cmap[it.first].type = Deposition_type::simple;
-    }
-        else if (type == "disabled")
-        {
-            cmap[it.first].type = Deposition_type::disabled;
-        }
-    //MAQ_AV_21042022+ added option average
-    else if (type == "average")
-    {
-        cmap[it.first].type = Deposition_type::average;
-    }
-        else
-            throw std::runtime_error("Invalid option for \"Deposition_type\"");
-    }
+    if (!sw_deposition)
+        return;
 
     auto& gd = grid.get_grid_data();
 
@@ -398,8 +370,8 @@ void Deposition<TF>::init(Input& inputin)
 template <typename TF>
 void Deposition<TF>::create(Stats<TF>& stats, Cross<TF>& cross)
 {
-    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::disabled) return;
-    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::simple) return;
+    if (!sw_deposition)
+        return;
 
     // add cross-sections
     if (cross.get_switch())
@@ -424,8 +396,9 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
         TF* restrict vdhcho
         )
 {
-    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::disabled) return;
-    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::simple) return;
+    if (!sw_deposition)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // get information from lsm:
@@ -474,9 +447,6 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
     update_vd_water(vdrooh,"rooh",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
     update_vd_water(vdhcho,"hcho",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
 
-    //MAQ_AV_21042022+ added call to spatial_avg_vd if Deposition_type != enabled
-    for (auto& it : fields.st) if( cmap[it.first].type == Deposition_type::enabled) return;
-
     spatial_avg_vd(vdo3);
     spatial_avg_vd(vdno);
     spatial_avg_vd(vdno2);
@@ -490,6 +460,9 @@ void Deposition<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>&
 template<typename TF>
 void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    if (!sw_deposition)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     for (auto& it : cross_list)

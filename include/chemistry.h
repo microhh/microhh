@@ -71,15 +71,6 @@ class Chemistry
 
         std::shared_ptr<Deposition<TF>> deposition;
 
-        // internal variable
-        struct Chemistry_var
-        {
-             Chemistry_type type;
-        };
-
-        typedef std::map<std::string, Chemistry_var> Chemistry_map;
-        Chemistry_map cmap;
-
         Mask<TF> m;     // borrow from Stats to gather statistics chemistry
         int statistics_counter;
         TF switch_dt;   // to switch between complicated and detailed solver
