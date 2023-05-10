@@ -30,7 +30,6 @@
 #include "boundary.h"
 #include "stats.h"
 
-
 class Master;
 class Input;
 template<typename> class Grid;
@@ -56,7 +55,7 @@ class Chemistry
         void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&, Cross<TF>&);   ///< Read the profiles of the forces from the input.
         void update_time_dependent(Timeloop<TF>&,Boundary<TF>&); ///< Update the time dependent parameters.
         void exec(Thermo<TF>&,double,double);     ///< Add the tendencies belonging to the chemistry processes.
-	void exec_stats(const int, const double, Stats<TF>&);   /// calculate statistics
+        void exec_stats(const int, const double, Stats<TF>&);   /// calculate statistics
         void exec_cross(Cross<TF>&, unsigned long);
 
     protected:
@@ -67,39 +66,43 @@ class Chemistry
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+
+        bool sw_chemistry;
+
         std::shared_ptr<Deposition<TF>> deposition;
 
-	// internal variable
-	struct Chemistry_var
-	{
-	     Chemistry_type type;
-	};
+        // internal variable
+        struct Chemistry_var
+        {
+             Chemistry_type type;
+        };
 
         typedef std::map<std::string, Chemistry_var> Chemistry_map;
         Chemistry_map cmap;
 
-	Mask<TF> m;     // borrow from Stats to gather statistics chemistry
+        Mask<TF> m;     // borrow from Stats to gather statistics chemistry
         int statistics_counter;
-	TF switch_dt;   // to switch between complicated and detailed solver
-	std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
-	std::vector<std::string> ename={"emi_isop","emi_no"};
+        TF switch_dt;   // to switch between complicated and detailed solver
+        std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
+        std::vector<std::string> ename={"emi_isop","emi_no"};
         TF jval[8];   // time-interpolated value to pass to the chemistry routine
         TF emval[2];
-	std::vector<TF> time;
-	std::vector<TF> jo31d;
-	std::vector<TF> jh2o2;
-	std::vector<TF> jno2;
-	std::vector<TF> jno3;
-	std::vector<TF> jn2o5;
-	std::vector<TF> jch2or;
-	std::vector<TF> jch2om;
-	std::vector<TF> jch3o2h;
-	std::vector<TF> emi_isop;
-	std::vector<TF> emi_no;
-	std::vector<TF> rfa;
-	std::vector<TF> rka;
-	TF trfa;
-	// vectors to contain calculated deposition velocities (m/s)
+        std::vector<TF> time;
+        std::vector<TF> jo31d;
+        std::vector<TF> jh2o2;
+        std::vector<TF> jno2;
+        std::vector<TF> jno3;
+        std::vector<TF> jn2o5;
+        std::vector<TF> jch2or;
+        std::vector<TF> jch2om;
+        std::vector<TF> jch3o2h;
+        std::vector<TF> emi_isop;
+        std::vector<TF> emi_no;
+        std::vector<TF> rfa;
+        std::vector<TF> rka;
+        TF trfa;
+
+        // vectors to contain calculated deposition velocities (m/s)
         std::vector<TF> vdo3;
         std::vector<TF> vdno;
         std::vector<TF> vdno2;

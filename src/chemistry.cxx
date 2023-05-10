@@ -491,6 +491,12 @@ Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 	
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
+
+    sw_chemistry = inputin.get_item<bool>("chemistry", "swchemistry", "", false);
+
+    if (!sw_chemistry)
+        return;
+
     deposition = std::make_shared<Deposition <TF>>(masterin, gridin, fieldsin, inputin);
 }
 
@@ -502,6 +508,9 @@ Chemistry<TF>::~Chemistry()
 template<typename TF>
 void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>& stats)
 {
+    if (!sw_chemistry)
+        return;
+
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
     auto& gd = grid.get_grid_data();
@@ -559,6 +568,9 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 template <typename TF>
 void Chemistry<TF>::init(Input& inputin)
 {
+    if (!sw_chemistry)
+        return;
+
     auto& gd = grid.get_grid_data();
     for (auto& it : fields.st)
     {
@@ -611,6 +623,9 @@ void Chemistry<TF>::init(Input& inputin)
 template <typename TF>
 void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats,Cross<TF>& cross)
 {
+    if (!sw_chemistry)
+        return;
+
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
 
     Netcdf_group& group_nc = input_nc.get_group("timedep_chem");
@@ -770,6 +785,9 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
 template<typename TF>
 void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    if (!sw_chemistry)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     for (auto& it : cross_list)
@@ -796,6 +814,9 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template <typename TF>
 void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)
 {
+    if (!sw_chemistry)
+        return;
+
     for (auto& it : fields.st) if( cmap[it.first].type == Chemistry_type::disabled) return;
 
     Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
@@ -824,6 +845,9 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
 template <typename TF>
 void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 {
+    if (!sw_chemistry)
+        return;
+
     for (auto& it : fields.st)
         if( cmap[it.first].type == Chemistry_type::disabled) return;
     auto& gd = grid.get_grid_data();

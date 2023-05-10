@@ -38,7 +38,7 @@ with open('jaenschwalde.ini') as f:
             ysize = float(line.split('=')[1])
 
 # Enable resolved plume rise:
-sw_plume_rise = True
+sw_plume_rise = False
 
 # Vertical grid LES
 dz = zsize / kmax
