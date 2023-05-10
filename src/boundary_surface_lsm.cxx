@@ -474,10 +474,6 @@ void Boundary_surface_lsm<TF>::exec(
         // from previous time step (= old method, similar to DALES).
         // 2) Calculate new thl_bot such that SEB closes.
         //
-        thermo.get_buoyancy_surf(
-                buoy->fld_bot,
-                tile.second.thl_bot,
-                tile.second.qt_bot);
 
         // Calculate Obuk, ustar, and ra.
         if (sw_constant_z0)
@@ -628,8 +624,6 @@ void Boundary_surface_lsm<TF>::exec(
 
     boundary_cyclic.exec_2d(ustar.data());
     boundary_cyclic.exec_2d(obuk.data());
-
-
 
     // Redistribute ustar over `uw` and `vw`.
     set_bcs_momentum(
@@ -1333,7 +1327,12 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
+        const std::vector<std::string> allowed_crossvars = {
+		"ustar", "obuk", "wl",
+                "fraction_wet", "fraction_soil", "fraction_veg",
+                "rs_veg", "rs_soil",
+                "ra_veg", "ra_soil", "ra_wet"
+                "ustar_wet","ustar_soil", "ustar_veg"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1556,14 +1555,36 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
     auto& gd = grid.get_grid_data();
     auto tmp1 = fields.get_tmp();
 
-    for (auto& it : cross_list)
+    for (auto& name : cross_list)
     {
-        if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
-        else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
-        else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), "wl", iotime);
+        if (name == "ustar")
+            cross.cross_plane(ustar.data(), name, iotime);
+        else if (name == "obuk")
+            cross.cross_plane(obuk.data(), name, iotime);
+        else if (name == "wl")
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), name, iotime);
+        else if (name == "fraction_wet")
+            cross.cross_plane(tiles.at("wet").fraction.data(), name , iotime);
+        else if (name == "fraction_soil")
+            cross.cross_plane(tiles.at("soil").fraction.data(), name , iotime);
+        else if (name == "fraction_veg")
+            cross.cross_plane(tiles.at("veg").fraction.data(), name, iotime);
+        else if (name == "rs_veg")
+            cross.cross_plane(tiles.at("veg").rs.data(), name, iotime);
+        else if (name == "rs_soil")
+            cross.cross_plane(tiles.at("soil").rs.data(), name, iotime);
+        else if (name == "ustar_soil")
+            cross.cross_plane(tiles.at("soil").ustar.data(), name, iotime);
+        else if (name == "ustar_wet")
+            cross.cross_plane(tiles.at("wet").ustar.data(), name, iotime);
+        else if (name == "ustar_veg")
+            cross.cross_plane(tiles.at("veg").ustar.data(), name, iotime);
+        else if (name == "ra_soil")
+            cross.cross_plane(tiles.at("soil").ra.data(), name, iotime);
+        else if (name == "ra_wet")
+            cross.cross_plane(tiles.at("wet").ra.data(), name, iotime);
+        else if (name == "ra_veg")
+            cross.cross_plane(tiles.at("veg").ra.data(), name, iotime);
     }
 
     fields.release_tmp(tmp1);

@@ -46,6 +46,7 @@
 #include "radiation.h"
 #include "microphys.h"
 #include "decay.h"
+#include "chemistry.h"
 #include "limiter.h"
 #include "stats.h"
 #include "budget.h"
@@ -132,7 +133,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
-        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        source    = std::make_shared<Source <TF>> (master, *grid, *fields, *input);
+        chemistry = std::make_shared<Chemistry<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -189,6 +191,7 @@ void Model<TF>::init()
     microphys->init();
     radiation->init(*timeloop);
     decay->init(*input);
+    chemistry-> init(*input);
     budget->init();
     source->init();
 
@@ -257,6 +260,7 @@ void Model<TF>::load()
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
     decay->create(*input, *stats);
+    chemistry->create(*timeloop, sim_name, *input_nc, *stats, *cross);
     limiter->create(*stats);
 
     // Cross and dump both need to be called at/near the
@@ -322,7 +326,6 @@ void Model<TF>::exec()
         #endif
     #endif
 
-
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -335,6 +338,7 @@ void Model<TF>::exec()
                 thermo   ->update_time_dependent(*timeloop);
                 force    ->update_time_dependent(*timeloop);
                 radiation->update_time_dependent(*timeloop);
+                chemistry->update_time_dependent(*timeloop, *boundary);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -391,8 +395,9 @@ void Model<TF>::exec()
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
-                // Add point and line sources of scalars.
+                // Add sources and apply chemistry
                 source->exec(*timeloop);
+                chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -609,6 +614,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
+        chemistry->exec_stats(iteration, time, *stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -619,6 +625,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
+        chemistry->exec_cross(*cross, iotime);
     }
 
     // Save the 3d dumps to disk.

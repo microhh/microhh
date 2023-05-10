@@ -50,6 +50,7 @@ template<typename> class Radiation;
 template<typename> class Land_surface;
 
 template<typename> class Decay;
+template<typename> class Chemistry;
 template<typename> class Limiter;
 template<typename> class Source;
 
@@ -100,6 +101,7 @@ class Model
         std::shared_ptr<Land_surface<TF>> lsm;
 
         std::shared_ptr<Decay<TF>> decay;
+        std::shared_ptr<Chemistry<TF>> chemistry;
         std::shared_ptr<Limiter<TF>> limiter;
         std::shared_ptr<Source<TF>> source;
 

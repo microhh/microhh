@@ -548,3 +548,4 @@ TF Source<TF>::calc_norm(
 
 template class Source<double>;
 template class Source<float>;
+
