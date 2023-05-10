@@ -29,6 +29,7 @@
 #include <math.h>
 #include <iomanip>
 #include <utility>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -42,18 +43,17 @@
 #include "boundary.h"
 #include "cross.h"
 
-
 namespace 
 {
-#include "../cases/jaenschwalde/include/mhh_Parameters.h"
-#include "../cases/jaenschwalde/include/mhh_Global.h"
-#include "../cases/jaenschwalde/include/mhh_Sparse.h"
-#include "../cases/jaenschwalde/include/mhh_Integrator.c"      /* needs to be modified */
-#include "../cases/jaenschwalde/include/mhh_Function.c"        /* needs to be modified */
-#include "../cases/jaenschwalde/include/mhh_LinearAlgebra.c"
-#include "../cases/jaenschwalde/include/mhh_JacobianSP.c"
-#include "../cases/jaenschwalde/include/mhh_Jacobian.c"
-	
+// From microhh_root/kpp:
+#include "mhh_Parameters.h"
+#include "mhh_Global.h"
+#include "mhh_Sparse.h"
+#include "mhh_Integrator.c"      /* needs to be modified */
+#include "mhh_Function.c"        /* needs to be modified */
+#include "mhh_LinearAlgebra.c"
+#include "mhh_JacobianSP.c"
+#include "mhh_Jacobian.c"
 
 double C[NSPEC];                         /* Concentration of all species */
 double * VAR = & C[0];
