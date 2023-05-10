@@ -103,14 +103,12 @@ namespace
            const TF A3, const TF C3, const TF mmult, const TF ch2o,
            const TF TEMP)
     {
-        TF K1, K2, K3, EPR_p;
+        const TF K1 = A1 * exp(C1/TEMP);
+        const TF K2 = A2 * exp(C2/TEMP) * mmult;
+        const TF K3 = A3 * exp(C3/TEMP) * ch2o;
+        const TF EPR_p = (K1 + K2) * (TF(1.0) + K3);
 
-        K1 = (TF)A1 * exp(C1/TEMP);
-        K2 = (TF)A2 * exp(C2/TEMP) * mmult;
-        K3 = (TF)A3 * exp(C3/TEMP) * ch2o;
-        EPR_p = (K1 + K2) * (1.0 + K3);
-
-        return (TF)EPR_p;
+        return EPR_p;
     }
 
     template<typename TF>
@@ -124,12 +122,10 @@ namespace
             const TF kzero, const TF mzero, const TF kinf,
             const TF fmulti, const TF MN2, const TF TEMP)
     {
-        TF k0T, kinfT, znn;
-        k0T  = (kzero * pow(((TF)300./TEMP), mzero)) * MN2;
-        kinfT = kinf;
-        znn = (TF)0.75 - ((TF)1.27 * log10((TF)0.41));
-        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti,
-           (log10((TF)0.41) / ((TF)1. + pow((log10(k0T/kinfT))/znn, 2))));
+        const TF k0T  = (kzero * pow((TF(300)/TEMP), mzero)) * MN2;
+        const TF kinfT = kinf;
+        const TF znn = TF(0.75) - (TF(1.27) * log10(TF(0.41)));
+        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti, (log10(TF(0.41)) / (TF(1) + pow((log10(k0T/kinfT))/znn, 2))));
     }
 
     template<typename TF>
@@ -138,15 +134,12 @@ namespace
             const TF minf, const TF k3, const TF c3, const TF k4,
             const TF c4, const TF fmulti, const TF MN2, const TF TEMP)
     {
-        TF k0T, kinfT, kval3, kval4, kcooh;
-        k0T  = (kzero * pow(((TF)300./TEMP), mzero)) * MN2;
-        kinfT = kinf * pow(((TF)300./TEMP), minf);
-        kval3 = k3 * pow(((TF)300./TEMP), c3);
-        kval4 = (k4 * pow(((TF)300./TEMP), c4)) / MN2;
-        kcooh = k0T / ((TF)1. + k0T / kinfT) * pow(fmulti,
-          (TF)1. / ((TF)1. + pow(log10(k0T/kinfT), 2)));
-        return kcooh + (kval3 / ((TF)1. + kval3 / kval4) * pow(fmulti,
-           (TF)1. / ((TF)1. + pow(log10(kval3/kval4), 2))));
+        const TF k0T  = (kzero * pow((TF(300)/TEMP), mzero)) * MN2;
+        const TF kinfT = kinf * pow((TF(300)/TEMP), minf);
+        const TF kval3 = k3 * pow((TF(300)/TEMP), c3);
+        const TF kval4 = (k4 * pow((TF(300)/TEMP), c4)) / MN2;
+        const TF kcooh = k0T / (TF(1) + k0T / kinfT) * pow(fmulti, TF(1) / (TF(1) + pow(log10(k0T/kinfT), 2)));
+        return kcooh + (kval3 / (TF(1) + kval3 / kval4) * pow(fmulti, TF(1) / (TF(1) + pow(log10(kval3/kval4), 2))));
     }
 
     template<typename TF>
@@ -154,12 +147,10 @@ namespace
             const TF kzero, const TF mzero, const TF kinf,
             const TF minf, const TF fmulti, const TF MN2, const TF TEMP)
     {
-        TF k0T, kinfT, znn_b;
-        k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2;
-        kinfT = kinf * pow((TEMP/(TF)300.), minf);
-        znn_b = (TF)0.75 - ((TF)1.27 * log10((TF)0.35));
-        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti,
-           log10((TF)0.35) / ((TF)1. + pow(log10(k0T/kinfT)/znn_b, 2)));
+        const TF k0T  = (kzero * pow((TEMP/TF(300)), mzero)) * MN2;
+        const TF kinfT = kinf * pow((TEMP/TF(300)), minf);
+        const TF znn_b = TF(0.75) - (TF(1.27) * log10(TF(0.35)));
+        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti, log10(TF(0.35)) / (TF(1) + pow(log10(k0T/kinfT)/znn_b, 2)));
     }
 
     template<typename TF>
@@ -168,62 +159,58 @@ namespace
             const TF minf, const TF fmulti, const TF MN2, const TF c1,
             const TF c2, const TF TEMP)
     {
-        TF k0T, kinfT, znn_b;
-        k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2 * exp(c1 / TEMP);
-        kinfT = kinf * pow((TEMP/(TF)300.), minf) * exp(c2 / TEMP);
-        znn_b = (TF)0.75 - ((TF)1.27 * log10((TF)0.35));
-        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti,
-           log10((TF)0.35) / ((TF)1. + pow(log10(k0T/kinfT)/znn_b, 2)));
+        const TF k0T  = (kzero * pow((TEMP/TF(300)), mzero)) * MN2 * exp(c1 / TEMP);
+        const TF kinfT = kinf * pow((TEMP/TF(300)), minf) * exp(c2 / TEMP);
+        const TF znn_b = TF(0.75) - (TF(1.27) * log10(TF(0.35)));
+        return (k0T * kinfT) / (k0T + kinfT) * pow(fmulti, log10(TF(0.35)) / (TF(1) + pow(log10(k0T/kinfT)/znn_b, 2)));
     }
 
     template<typename TF>
-    TF k3rd_iupac(TF kzero, TF mzero, TF kinf, TF minf, TF fmulti, TF MN2, TF NM, TF TEMP)
+    TF k3rd_iupac(
+            const TF kzero, const TF mzero, const TF kinf,
+            const TF minf, const TF fmulti, const TF MN2,
+            const TF NM, const TF TEMP)
     {
-        TF k0T;
-        TF kinfT;
-        k0T  = (kzero * pow((TEMP/(TF)300.), mzero)) * MN2;
-        kinfT = kinf * pow((TEMP/(TF)300.), minf);
-        return (k0T / ((TF)1. + (k0T/kinfT))) *
-            pow( fmulti, (TF)1./ ((TF)1. + pow((log10(k0T/kinfT)/NM), 2) ) );
+        const TF k0T  = (kzero * pow((TEMP/TF(300)), mzero)) * MN2;
+        const TF kinfT = kinf * pow((TEMP/TF(300)), minf);
+        return (k0T / (TF(1) + (k0T/kinfT))) * pow( fmulti, TF(1)/ (TF(1) + pow((log10(k0T/kinfT)/NM), 2)));
     }
 
     template<typename TF>
     TF usr_O3_hv_H2O(const TF TEMP, const TF C_M, const TF C_H2O, const TF J_O1D)
     {
-        TF KH2O;
-        TF KN2;
-        TF KO2;
-        KH2O = ((TF)1.63e-10 *C_H2O * exp((TF)60.0/TEMP)  )  ;
-        KN2  = ((TF)2.15e-11 * exp((TF)110.0/TEMP) *(TF)0.79*C_M) ;
-        KO2  = ((TF)3.30e-11 * exp((TF)55.0 /TEMP) *(TF)0.21*C_M) ;
+        const TF KH2O = (TF(1.63e-10) * C_H2O * exp(TF(60)/TEMP)  )  ;
+        const TF KN2  = (TF(2.15e-11) * exp(TF(110.0)/TEMP) * TF(0.79)*C_M) ;
+        const TF KO2  = (TF(3.30e-11) * exp(TF(55.0) /TEMP) * TF(0.21)*C_M) ;
         return (KH2O *J_O1D) / (KH2O + KN2 + KO2);
     }
 
     template<typename TF>
     TF RK28(
-            TF k0a, TF k0ea, TF k2a,
-            TF k2ea, TF k3a, TF k3ea,
-            TF MN2, TF TEMP)
+            const TF k0a, const TF k0ea, const TF k2a,
+            const TF k2ea, const TF k3a, const TF k3ea,
+            const TF MN2, const TF TEMP)
     {
-        TF k0, k2, k3;
-        k0 = k0a * exp(k0ea/TEMP);
-        k2 = (k2a * exp(k2ea/TEMP)) * MN2;
-        k3 = k3a * exp(k3ea/TEMP);
+        const TF k0 = k0a * exp(k0ea/TEMP);
+        const TF k2 = (k2a * exp(k2ea/TEMP)) * MN2;
+        const TF k3 = k3a * exp(k3ea/TEMP);
         return k0 + k3 * k2 / (k3 + k2);
     }
 
     template<typename TF>
-    TF EPR_ev(TF A1, TF C1, TF A2, TF C2, TF mmult, TF TEMP)
+    TF EPR_ev(
+            const TF A1, const TF C1,
+            const TF A2, const TF C2,
+            const TF mmult, const TF TEMP)
     {
-        TF K1, K2, EPR_p;
-        K1 = A1 * exp(C1/TEMP);
-        K2 = A2 * exp(C2/TEMP) * mmult;
-        EPR_p = (K1 + K2);
+        const TF K1 = A1 * exp(C1/TEMP);
+        const TF K2 = A2 * exp(C2/TEMP) * mmult;
+        const TF EPR_p = (K1 + K2);
         return EPR_p;
     }
 
     template<typename TF>
-    TF kohch4(TF A, TF b, TF C, TF TEMP)
+    TF kohch4(const TF A, const TF b, const TF C, const TF TEMP)
     {
         return A * pow(TEMP, b) * exp(C/TEMP);
     }
@@ -301,8 +288,8 @@ namespace
         TF C_M = 2.55e19;  // because of scop KPP generated routines
         // TF tscale[NVAR] ;
         TF VAR0[NVAR] ;
-            TF erh    = TF(0.0);
-            TF eno    = TF(0.0);
+        TF erh = TF(0.0);
+        TF eno = TF(0.0);
 
         for(int i=0; i<NVAR; i++)
         {
