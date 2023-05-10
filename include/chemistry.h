@@ -28,6 +28,7 @@
 #include <map>
 #include "timeloop.h"
 #include "boundary.h"
+#include "stats.h"
 
 
 class Master;
