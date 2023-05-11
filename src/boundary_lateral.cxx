@@ -914,6 +914,18 @@ void Boundary_lateral<TF>::init()
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
+    // Checks!
+    if (recycle_list.size() > 0)
+    {
+        if (!sw_sponge)
+            throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
+
+        if (n_sponge+recycle_offset > gd.imax+gd.igc)
+            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
+        if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
+            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
+    }
+
     auto add_lbc = [&](const std::string& name)
     {
         if (md.mpicoordx == 0)
