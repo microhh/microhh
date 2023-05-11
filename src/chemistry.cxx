@@ -583,8 +583,6 @@ void Chemistry<TF>::init(Input& inputin)
     vdrooh.resize(gd.ijcells);
     vdhcho.resize(gd.ijcells);
 
-    master.print_message("Deposition arrays created \n");
-
     // initialize deposition routine:
     deposition-> init(inputin);
 
@@ -597,7 +595,7 @@ void Chemistry<TF>::init(Input& inputin)
     std::fill(vdrooh.begin(), vdrooh.end(), deposition-> get_vd("rooh"));
     std::fill(vdhcho.begin(), vdhcho.end(), deposition-> get_vd("hcho"));
 
-    master.print_message("Deposition arrays initialized, e.g. with vdo3 = %13.5e m/s \n", deposition-> get_vd("o3"));
+    //master.print_message("Deposition arrays initialized, e.g. with vdo3 = %13.5e m/s \n", deposition-> get_vd("o3"));
 }
 
 template <typename TF>

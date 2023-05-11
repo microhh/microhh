@@ -47,7 +47,7 @@ namespace
     template<typename TF>
     void calc_tiled_mean(
             TF* const restrict fld,
-            const TF* const restrict f_veg,         // MAQ_AV_20220311: modified c_veg to f_veg to avoid confusion with c_veg from LSM
+            const TF* const restrict f_veg,
             const TF* const restrict f_soil,
             const TF* const restrict f_wet,
             const TF* const restrict fld_veg,
@@ -295,6 +295,16 @@ Deposition<TF>::~Deposition()
 template <typename TF>
 void Deposition<TF>::init(Input& inputin)
 {
+    // Always read the default deposition velocities. They are needed by 
+    // chemistry, even if deposition is disabled.
+    vd_o3   = inputin.get_item<TF>("deposition", "vdo3", "", (TF)0.005);
+    vd_no   = inputin.get_item<TF>("deposition", "vdno", "", (TF)0.002);
+    vd_no2  = inputin.get_item<TF>("deposition", "vdno2", "", (TF)0.005);
+    vd_hno3 = inputin.get_item<TF>("deposition", "vdhno3", "", (TF)0.040);
+    vd_h2o2 = inputin.get_item<TF>("deposition", "vdh2o2", "", (TF)0.018);
+    vd_rooh = inputin.get_item<TF>("deposition", "vdrooh", "", (TF)0.008);
+    vd_hcho = inputin.get_item<TF>("deposition", "vdhcho", "", (TF)0.0033);
+
     if (!sw_deposition)
         return;
 
@@ -320,14 +330,6 @@ void Deposition<TF>::init(Input& inputin)
     deposition_tiles.at("soil").long_name = "bare soil";
     deposition_tiles.at("wet" ).long_name = "wet skin";
     deposition_var = inputin.get_item<TF>("deposition", "deposition_var","", (TF)1e5);
-
-    vd_o3   = inputin.get_item<TF>("deposition", "vdo3", "", (TF)0.005);
-    vd_no   = inputin.get_item<TF>("deposition", "vdno", "", (TF)0.002);
-    vd_no2  = inputin.get_item<TF>("deposition", "vdno2", "", (TF)0.005);
-    vd_hno3 = inputin.get_item<TF>("deposition", "vdhno3", "", (TF)0.040);
-    vd_h2o2 = inputin.get_item<TF>("deposition", "vdh2o2", "", (TF)0.018);
-    vd_rooh = inputin.get_item<TF>("deposition", "vdrooh", "", (TF)0.008);
-    vd_hcho = inputin.get_item<TF>("deposition", "vdhcho", "", (TF)0.0033);
 
     henry_so2 = inputin.get_item<TF>("deposition", "henry_so2", "", (TF)1e5);
     rsoil_so2 = inputin.get_item<TF>("deposition", "rsoil_so2", "", (TF)250.0);
@@ -527,9 +529,6 @@ void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 template<typename TF>
 const TF Deposition<TF>::get_vd(const std::string& name) const
 {
-    if (!sw_deposition)
-        return TF(0);
-
     if (name == "o3")
         return vd_o3;
     else if (name == "no")
