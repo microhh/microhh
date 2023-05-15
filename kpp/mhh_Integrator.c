@@ -160,8 +160,10 @@ void INTEGRATE( double TIN, double TOUT )
 
 
    if (IERR < 0)
-     printf("\n Rosenbrock: Unsucessful step at T=%g: IERR=%d\n",
-         TIN,IERR);
+   {
+     printf("\n Rosenbrock: Unsucessful step at T=%g: IERR=%d\n", TIN, IERR);
+     throw 1;
+   }
    
    TIN = RPAR[10];      /* Exit time */
    STEPMIN = RPAR[11];  /* Last step */

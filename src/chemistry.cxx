@@ -315,6 +315,7 @@ namespace
             // from ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
             const TF CFACTOR = C_M ;
             const TF C_H2 = (TF)500.0e-9*CFACTOR ; // 500 ppb --> #/cm3
+
             if (k==kstart)
             {
                 // emission/deposition fluxes:
@@ -507,7 +508,7 @@ Chemistry<TF>::~Chemistry()
 template<typename TF>
 void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>& stats)
 {
-    if (!sw_chemistry)
+    if (!sw_chemistry or stats.get_switch())
         return;
 
     const TF no_offset = 0.;
@@ -599,7 +600,9 @@ void Chemistry<TF>::init(Input& inputin)
 }
 
 template <typename TF>
-void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc, Stats<TF>& stats,Cross<TF>& cross)
+void Chemistry<TF>::create(
+        const Timeloop<TF>& timeloop, std::string sim_name, Netcdf_handle& input_nc,
+        Stats<TF>& stats, Cross<TF>& cross)
 {
     if (!sw_chemistry)
         return;
@@ -652,96 +655,90 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     group_nc.get_variable(emi_isop, ename[0],  {0}, {time_dim_length});
     group_nc.get_variable(emi_no,   ename[1],  {0}, {time_dim_length});
 
-    // Stats:
-    const std::string group_name = "default";
-    const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux", "path"};
-    const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
-    const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
-
-    // Add the profiles to te statistics
-    /* if (stats.get_switch())
-    {
-        stats.add_profs(*fields.sd.at("oh"), "z", stat_op_w, group_name);
-    } */
-
-    //  store output of averaging
+    // Store output of averaging.
     rfa.resize(NREACT*gd.ktot);
     for (int l=0;l<NREACT*gd.ktot;++l)
         rfa[l] = 0.0;
     trfa = (TF)0.0;
 
-    std::stringstream filename;
-    filename << sim_name << "." << "chemistry" << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
-
-    // Create new NetCDF file in Mask<TF> m
-    m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
-
-    // Create dimensions.
-    m.data_file->add_dimension("z", gd.kmax);
-    m.data_file->add_dimension("zh", gd.kmax+1);
-    m.data_file->add_dimension("rfaz", NREACT*gd.ktot);
-    m.data_file->add_dimension("ijcells",gd.ijcells);
-    m.data_file->add_dimension("time");
-
-    // Create variables belonging to dimensions.
-    Netcdf_handle& iter_handle =
-            m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
-
-    m.iter_var = std::make_unique<Netcdf_variable<int>>(iter_handle.add_variable<int>("iter", {"time"}));
-    m.iter_var->add_attribute("units", "-");
-    m.iter_var->add_attribute("long_name", "Iteration number");
-
-    m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
-    if (timeloop.has_utc_time())
-        m.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
-    else
-        m.time_var->add_attribute("units", "seconds since start");
-    m.time_var->add_attribute("long_name", "Time");
-
-    Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
-    z_var.add_attribute("units", "m");
-    z_var.add_attribute("long_name", "Full level height");
-
-    Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
-    zh_var.add_attribute("units", "m");
-    zh_var.add_attribute("long_name", "Half level height");
-
-    std::string name = "chem_budget";
-    std::string longname = "chemistry budget per layer";
-    std::string unit = "molecules cm-3 s-1";
-    Netcdf_variable<TF> rfaz_var = m.data_file->template add_variable<TF>("rfaz", {"rfaz"});
-    rfaz_var.add_attribute("units", unit);
-    rfaz_var.add_attribute("long_name", longname);
-
-    // add a profile of reaction rates x z
-    Level_type level =  Level_type::Full;
-
-    Netcdf_handle& handle =
-            m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
-    Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", "rfaz"}), std::vector<TF>(gd.ktot*NREACT), level};
-    m.profs.emplace(
-            std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
-
-    m.profs.at(name).ncvar.add_attribute("units", unit);
-    m.profs.at(name).ncvar.add_attribute("long_name", longname);
-
-    // Save the grid variables.
-    std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
-    std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
-    z_var .insert( z_nogc, {0});
-    zh_var.insert(zh_nogc, {0});
-
-    // Synchronize the NetCDF file.
-    m.data_file->sync();
-
-    m.nmask. resize(gd.kcells);
-    m.nmaskh.resize(gd.kcells);
-
-    // add the deposition-velocity timeseries in deposition group statistics
-    const std::string group_named = "deposition";
-
     if (stats.get_switch())
     {
+        // Stats:
+        const std::string group_name = "default";
+        const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux", "path"};
+        const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
+        const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
+
+        std::stringstream filename;
+        filename << sim_name << "." << "chemistry" << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
+
+        // Create new NetCDF file in Mask<TF> m
+        m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
+
+        // Create dimensions.
+        m.data_file->add_dimension("z", gd.kmax);
+        m.data_file->add_dimension("zh", gd.kmax+1);
+        m.data_file->add_dimension("rfaz", NREACT*gd.ktot);
+        m.data_file->add_dimension("ijcells",gd.ijcells);
+        m.data_file->add_dimension("time");
+
+        // Create variables belonging to dimensions.
+        Netcdf_handle& iter_handle =
+                m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
+
+        m.iter_var = std::make_unique<Netcdf_variable<int>>(iter_handle.add_variable<int>("iter", {"time"}));
+        m.iter_var->add_attribute("units", "-");
+        m.iter_var->add_attribute("long_name", "Iteration number");
+
+        m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
+        if (timeloop.has_utc_time())
+            m.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
+        else
+            m.time_var->add_attribute("units", "seconds since start");
+        m.time_var->add_attribute("long_name", "Time");
+
+        Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
+        z_var.add_attribute("units", "m");
+        z_var.add_attribute("long_name", "Full level height");
+
+        Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
+        zh_var.add_attribute("units", "m");
+        zh_var.add_attribute("long_name", "Half level height");
+
+        std::string name = "chem_budget";
+        std::string longname = "chemistry budget per layer";
+        std::string unit = "molecules cm-3 s-1";
+        Netcdf_variable<TF> rfaz_var = m.data_file->template add_variable<TF>("rfaz", {"rfaz"});
+        rfaz_var.add_attribute("units", unit);
+        rfaz_var.add_attribute("long_name", longname);
+
+        // add a profile of reaction rates x z
+        Level_type level =  Level_type::Full;
+
+        Netcdf_handle& handle =
+                m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
+        Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", "rfaz"}), std::vector<TF>(gd.ktot*NREACT), level};
+        m.profs.emplace(
+                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+
+        m.profs.at(name).ncvar.add_attribute("units", unit);
+        m.profs.at(name).ncvar.add_attribute("long_name", longname);
+
+        // Save the grid variables.
+        std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
+        std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
+        z_var .insert( z_nogc, {0});
+        zh_var.insert(zh_nogc, {0});
+
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
+
+        m.nmask. resize(gd.kcells);
+        m.nmaskh.resize(gd.kcells);
+
+        // add the deposition-velocity timeseries in deposition group statistics
+        const std::string group_named = "deposition";
+
         // used in chemistry:
         stats.add_time_series("vdo3", "O3 deposition velocity", "m s-1", group_named);
         stats.add_time_series("vdno", "NO deposition velocity", "m s-1", group_named);
@@ -750,9 +747,6 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
         stats.add_time_series("vdh2o2", "H2O2 deposition velocity", "m s-1", group_named);
         stats.add_time_series("vdrooh", "ROOH deposition velocity", "m s-1", group_named);
         stats.add_time_series("vdhcho", "HCHO deposition velocity", "m s-1", group_named);
-
-        // check if tile info has to be added:
-        deposition->create(stats, cross);
     }
 
     // add cross-sections
@@ -760,6 +754,9 @@ void Chemistry<TF>::create(const Timeloop<TF>& timeloop, std::string sim_name, N
     {
         std::vector<std::string> allowed_crossvars = {"vdo3", "vdno", "vdno2", "vdhno3", "vdh2o2", "vdrooh", "vdhcho"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
+
+        // `deposition->create()` only creates cross-sections.
+        deposition->create(stats, cross);
     }
 }
 
