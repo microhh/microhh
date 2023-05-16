@@ -474,6 +474,10 @@ void Boundary_surface_lsm<TF>::exec(
         // from previous time step (= old method, similar to DALES).
         // 2) Calculate new thl_bot such that SEB closes.
         //
+        thermo.get_buoyancy_surf(
+                buoy->fld_bot,
+                tile.second.thl_bot,
+                tile.second.qt_bot);
 
         // Calculate Obuk, ustar, and ra.
         if (sw_constant_z0)
