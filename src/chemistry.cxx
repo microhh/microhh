@@ -268,7 +268,7 @@ namespace
             const TF* const restrict vdhcho,
             const TF* restrict qt,
             const TF* restrict temp,
-            const TF* const restrict dz,
+            const TF* const restrict dzi,
             const TF* const restrict rhoref,
             TF* restrict rfa,
             TF& trfa,
@@ -290,11 +290,14 @@ namespace
         const int Pj_ch3o2h = 7;
 
         const TF RTOLS = 1e-3;
-        const TF xmh2o = 18.015265;
-        const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
-        const TF Na    = 6.02214086e23; // Avogadros number [molecules mol-1]
 
-        TF C_M = 2.55e19;  // because of scop KPP generated routines
+        const TF xmh2o = 18.015265;
+        const TF xmh2o_i = TF(1) / xmh2o;
+        const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
+        const TF xmair_i = TF(1) / xmair;
+        const TF Na = 6.02214086e23; // Avogadros number [molecules mol-1]
+
+        TF C_M = 2.55e19;  // because of scope KPP generated routines
         TF VAR0[NVAR] ;
         TF erh = TF(0.0);
         TF eno = TF(0.0);
@@ -317,19 +320,20 @@ namespace
 
         for (int k=kstart; k<kend; ++k)
         {
-            C_M = TF(1e-3) * rhoref[k] * Na / xmair;   // molecules/cm3 for chmistry!
+            C_M = TF(1e-3) * rhoref[k] * Na * xmair_i;   // molecules/cm3 for chmistry!
 
             // From ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
             const TF CFACTOR = C_M;
             const TF C_H2 = TF(500e-9) * CFACTOR ; // 500 ppb --> #/cm3
+            const TF sdt_cfac_i = TF(1) / (sdt * CFACTOR);
 
             if (k==kstart)
             {
                 // Emission/deposition fluxes:
                 //erh      = (TF)0.1*CFACTOR/dz[k];
                 //eno      = (TF)0.1*CFACTOR/dz[k];
-                erh = TF(0) * CFACTOR / dz[k];
-                eno = TF(0) * CFACTOR / dz[k];
+                erh = TF(0) * CFACTOR * dzi[k];
+                eno = TF(0) * CFACTOR * dzi[k];
             }
             else
             {
@@ -345,7 +349,7 @@ namespace
                     const int ij = i + j*jstride;
 
                     // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
-                    const TF C_H2O = std::max(qt[ijk] * xmair * C_M / xmh2o, TF(1));
+                    const TF C_H2O = std::max(qt[ijk] * xmair * C_M * xmh2o_i, TF(1));
                     const TF TEMP = temp[ijk];
 
                     // Convert to molecules per cm3 and add tendenccies of other processes.
@@ -406,13 +410,13 @@ namespace
 
                     if (k==kstart)
                     {
-                        RCONST[39] = vdo3[ij] / dz[k];
-                        RCONST[40] = vdno[ij] / dz[k];
-                        RCONST[41] = vdno2[ij] / dz[k];
-                        RCONST[42] = vdhno3[ij] / dz[k];
-                        RCONST[43] = vdh2o2[ij] / dz[k];
-                        RCONST[44] = vdhcho[ij] / dz[k];
-                        RCONST[45] = vdrooh[ij] / dz[k];
+                        RCONST[39] = vdo3[ij]   * dzi[k];
+                        RCONST[40] = vdno[ij]   * dzi[k];
+                        RCONST[41] = vdno2[ij]  * dzi[k];
+                        RCONST[42] = vdhno3[ij] * dzi[k];
+                        RCONST[43] = vdh2o2[ij] * dzi[k];
+                        RCONST[44] = vdhcho[ij] * dzi[k];
+                        RCONST[45] = vdrooh[ij] * dzi[k];
                     }
                     else
                     {
@@ -441,20 +445,20 @@ namespace
                     WCOPY(NVAR, VAR, 1, VAR0, 1);
                     INTEGRATE(TF(0), sdt);  //brings VAR0 --> VAR, with timestep sdt
 
-                    thno3[ijk] += (VAR[ind_HNO3] - VAR0[ind_HNO3]) / (sdt * CFACTOR);
-                    tn2o5[ijk] += (VAR[ind_N2O5] - VAR0[ind_N2O5]) / (sdt * CFACTOR);
-                    th2o2[ijk] += (VAR[ind_H2O2] - VAR0[ind_H2O2]) / (sdt * CFACTOR);
-                    tco[ijk] +=   (VAR[ind_CO  ] - VAR0[ind_CO  ]) / (sdt * CFACTOR);
-                    thcho[ijk] += (VAR[ind_HCHO] - VAR0[ind_HCHO]) / (sdt * CFACTOR);
-                    trooh[ijk] += (VAR[ind_ROOH] - VAR0[ind_ROOH]) / (sdt * CFACTOR);
-                    tc3h6[ijk] += (VAR[ind_RH  ] - VAR0[ind_RH  ]) / (sdt * CFACTOR);
-                    tro2[ijk] +=  (VAR[ind_RO2 ] - VAR0[ind_RO2 ]) / (sdt * CFACTOR);
-                    tho2[ijk] +=  (VAR[ind_HO2 ] - VAR0[ind_HO2 ]) / (sdt * CFACTOR);
-                    to3[ijk] +=   (VAR[ind_O3  ] - VAR0[ind_O3  ]) / (sdt * CFACTOR);
-                    tno[ijk] +=   (VAR[ind_NO  ] - VAR0[ind_NO  ]) / (sdt * CFACTOR);
-                    tno3[ijk] +=  (VAR[ind_NO3 ] - VAR0[ind_NO3 ]) / (sdt * CFACTOR);
-                    tno2[ijk] +=  (VAR[ind_NO2 ] - VAR0[ind_NO2 ]) / (sdt * CFACTOR);
-                    toh[ijk] +=   (VAR[ind_OH  ] - VAR0[ind_OH  ]) / (sdt * CFACTOR);
+                    thno3[ijk] += (VAR[ind_HNO3] - VAR0[ind_HNO3]) * sdt_cfac_i;
+                    tn2o5[ijk] += (VAR[ind_N2O5] - VAR0[ind_N2O5]) * sdt_cfac_i;
+                    th2o2[ijk] += (VAR[ind_H2O2] - VAR0[ind_H2O2]) * sdt_cfac_i;
+                    tco[ijk] +=   (VAR[ind_CO  ] - VAR0[ind_CO  ]) * sdt_cfac_i;
+                    thcho[ijk] += (VAR[ind_HCHO] - VAR0[ind_HCHO]) * sdt_cfac_i;
+                    trooh[ijk] += (VAR[ind_ROOH] - VAR0[ind_ROOH]) * sdt_cfac_i;
+                    tc3h6[ijk] += (VAR[ind_RH  ] - VAR0[ind_RH  ]) * sdt_cfac_i;
+                    tro2[ijk] +=  (VAR[ind_RO2 ] - VAR0[ind_RO2 ]) * sdt_cfac_i;
+                    tho2[ijk] +=  (VAR[ind_HO2 ] - VAR0[ind_HO2 ]) * sdt_cfac_i;
+                    to3[ijk] +=   (VAR[ind_O3  ] - VAR0[ind_O3  ]) * sdt_cfac_i;
+                    tno[ijk] +=   (VAR[ind_NO  ] - VAR0[ind_NO  ]) * sdt_cfac_i;
+                    tno3[ijk] +=  (VAR[ind_NO3 ] - VAR0[ind_NO3 ]) * sdt_cfac_i;
+                    tno2[ijk] +=  (VAR[ind_NO2 ] - VAR0[ind_NO2 ]) * sdt_cfac_i;
+                    toh[ijk] +=   (VAR[ind_OH  ] - VAR0[ind_OH  ]) * sdt_cfac_i;
 
                     // tscale[0] = std::min(tscale[0],ABS(h2o2[ijk])/ABS(th2o2[ijk]));
                     // tscale[1] = std::min(tscale[1],ABS(ch4[ijk])/ABS(tch4[ijk]));
@@ -854,7 +858,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
         vdhcho.data(),
         fields.sp.at("qt")->fld.data(),
         tmp->fld.data(),
-        gd.dz.data(),
+        gd.dzi.data(),
         fields.rhoref.data(),
         rfa.data(),
         trfa,
