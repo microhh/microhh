@@ -266,11 +266,19 @@ namespace
             const TF* const restrict vdh2o2,
             const TF* const restrict vdrooh,
             const TF* const restrict vdhcho,
-            TF* restrict rfa, TF& trfa,
             const TF* restrict qt,
-            const TF* restrict Temp, const TF dt, const TF sdt, const TF switch_dt,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int jj, const int kk, const TF* const restrict dz, TF* const restrict rhoref)
+            const TF* restrict temp,
+            const TF* const restrict dz,
+            const TF* const restrict rhoref,
+            TF* restrict rfa,
+            TF& trfa,
+            const TF dt,
+            const TF sdt,
+            const TF switch_dt,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
     {
         const int Pj_o31d = 0;
         const int Pj_h2o2 = 1;
@@ -280,13 +288,13 @@ namespace
         const int Pj_ch2or = 5;
         const int Pj_ch2om = 6;
         const int Pj_ch3o2h = 7;
+
         const TF RTOLS = 1e-3;
         const TF xmh2o = 18.015265;
         const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
         const TF Na    = 6.02214086e23; // Avogadros number [molecules mol-1]
 
         TF C_M = 2.55e19;  // because of scop KPP generated routines
-        // TF tscale[NVAR] ;
         TF VAR0[NVAR] ;
         TF erh = TF(0.0);
         TF eno = TF(0.0);
@@ -303,114 +311,108 @@ namespace
 
         VAR = &C[0];
         FIX = &C[14];
-        int nkpp = 0;
-        int nderiv = 0;
 
         // Update the time integration of the reaction fluxes with the full timestep on first RK3 step
         if (abs(sdt/dt - 1./3.) < 1e-5) trfa += dt;
 
         for (int k=kstart; k<kend; ++k)
         {
-            C_M = (TF)1e-3*rhoref[k]*Na/xmair;   // molecules/cm3 for chmistry!
-            // from ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
-            const TF CFACTOR = C_M ;
-            const TF C_H2 = (TF)500.0e-9*CFACTOR ; // 500 ppb --> #/cm3
+            C_M = TF(1e-3) * rhoref[k] * Na / xmair;   // molecules/cm3 for chmistry!
+
+            // From ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
+            const TF CFACTOR = C_M;
+            const TF C_H2 = TF(500e-9) * CFACTOR ; // 500 ppb --> #/cm3
 
             if (k==kstart)
             {
-                // emission/deposition fluxes:
+                // Emission/deposition fluxes:
                 //erh      = (TF)0.1*CFACTOR/dz[k];
                 //eno      = (TF)0.1*CFACTOR/dz[k];
-                erh = (TF)0.0*CFACTOR/dz[k];
-                eno = (TF)0.0*CFACTOR/dz[k];
+                erh = TF(0) * CFACTOR / dz[k];
+                eno = TF(0) * CFACTOR / dz[k];
             }
             else
             {
-                erh = TF(0.0);
-                eno = TF(0.0);
+                erh = TF(0);
+                eno = TF(0);
             }
-            //TF coh = 0.0;
-            //int noh = 0;
 
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij = i + j*jj;
-                    const TF C_H2O = std::max(qt[ijk]*xmair*C_M/xmh2o,(TF)1.0);                   // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
-                    const TF TEMP = Temp[ijk];
-                    // convert to molecules per cm3 and add tendenccies of other processes.
-                    VAR[ind_HNO3] = std::max((hno3[ijk]  +thno3[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_N2O5] = std::max((n2o5[ijk]  +tn2o5[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_H2O2] = std::max((h2o2[ijk]  +th2o2[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_CO  ] = std::max((co[ijk]    +tco[ijk]   *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_HCHO] = std::max((hcho[ijk]  +thcho[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_ROOH] = std::max((rooh[ijk]  +trooh[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_RH]   = std::max((c3h6[ijk]  +tc3h6[ijk] *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_RO2]  = std::max((ro2[ijk]   +tro2[ijk]  *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_HO2]  = std::max((ho2[ijk]   +tho2[ijk]  *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_O3]   = std::max((o3[ijk]    +to3[ijk]   *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO]   = std::max((no[ijk]    +tno[ijk]   *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO3]  = std::max((no3[ijk]   +tno3[ijk]  *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_NO2]  = std::max((no2[ijk]   +tno2[ijk]  *sdt)*CFACTOR,(TF)0.0);
-                    VAR[ind_OH]   = std::max((oh[ijk]    +toh[ijk]   *sdt)*CFACTOR,(TF)0.0);
+                    const int ijk = i + j*jstride + k*kstride;
+                    const int ij = i + j*jstride;
 
-                    //coh += oh[ijk];
-                    //noh += 1;
-                    RCONST[0] = (ARR3((TF)1.7E-12,(TF)-940.,TEMP));
-                    RCONST[1] = (ARR3((TF)1.E-14,(TF)-490.,TEMP));
-                    RCONST[2] = (ARR3((TF)4.8E-11,(TF)250.,TEMP));
-                    RCONST[3] = (EPR((TF)3.E-13,(TF)460.,(TF)2.1E-33,(TF)920.,(TF)1.4E-21,(TF)2200.,C_M,C_H2O, TEMP));
-                    RCONST[4] = (ARR3((TF)2.9E-12,(TF)-160.,TEMP));
-                    RCONST[5] = (ARR3((TF)2.8E-12,(TF)-1800.,TEMP)*C_H2);
-                    RCONST[6] = (ARR3((TF)3.E-12,(TF)-1500.,TEMP));
-                    RCONST[7] = (ARR3((TF)1.4E-13,(TF)-2470.,TEMP));
-                    RCONST[8] = (ARR3((TF)1.8E-11,(TF)110.,TEMP));
-                    RCONST[9] = (TROE_ifs((TF)3.6E-30,(TF)4.1,(TF)1.9E-12,(TF)-0.2,(TF)10.,C_M,TEMP));
-                    RCONST[10] = (TROE_ifs2((TF)1.3E-3,(TF)-3.5,(TF)9.7E14,(TF)0.1,(TF)10.,C_M,(TF)-11000.,
-                                (TF)-11080.,TEMP));
-                    RCONST[11] = (ARR3((TF)3.3E-12,(TF)270.,TEMP));
-                    RCONST[12] = (TROE_no2oh((TF)3.2E-30,(TF)4.5,(TF)3.E-11,(TF)10.,C_M,TEMP));
-                    RCONST[13] = 4e-12;
-                    RCONST[14] = (RK28((TF)2.4E-14,(TF)460.,(TF)6.51E-34,(TF)1335.,(TF)2.69E-17,(TF)2199.,C_M, TEMP));
-                    RCONST[15] = 0.0004;
-                    RCONST[16] = (ARR3((TF)2.45E-12,(TF)-1775.,TEMP));
-                    RCONST[17] = (ARR3((TF)3.8E-13,(TF)780.,TEMP)*((TF)1.-((TF)1./((TF)1.+ARR3((TF)498.,(TF)-1160.,
-                                TEMP)))));
-                    RCONST[18] = (ARR3((TF)3.8E-13,(TF)780.,TEMP)*((TF)1./((TF)1.+ARR3((TF)498.,(TF)-1160.,
-                                TEMP))));
-                    RCONST[19] = (ARR3((TF)2.8E-12,(TF)300.,TEMP));
-                    RCONST[20] = 1.2e-12;
-                    RCONST[21] = (ARR3((TF)3.8E-12,(TF)200.,TEMP));
-                    RCONST[22] = (ARR3((TF)5.5E-12,(TF)125.,TEMP));
-                    RCONST[23] = 5.8e-16;
-                    RCONST[24] = (TROE_cooh((TF)5.9E-33,(TF)1.4,(TF)1.1E-12,(TF)-1.3,(TF)1.5E-13,(TF)-0.6,(TF)2.1E9,
-                                (TF)-6.1,(TF)0.6,C_M,TEMP));
-                    RCONST[25] = (ARR3((TF)9.5E-14,(TF)390.,TEMP));
-                    RCONST[26] = (ARR3((TF)5.5E-15,(TF)-1880.0,TEMP));
-                    RCONST[27] = (k3rd_iupac((TF)8.6E-27,(TF)3.5,(TF)3.E-11,(TF)1.,(TF)0.6,C_M,(TF)0.5,TEMP));
-                    RCONST[28] = (ARR3((TF)4.6E-13,(TF)-1155.,TEMP));
-                    RCONST[29] = (usr_O3_hv_H2O(TEMP,C_M,C_H2O,jval[Pj_o31d]));
-                    RCONST[30] = (jval[Pj_no2]);
-                    RCONST[31] = (jval[Pj_n2o5]);
-                    RCONST[32] = (jval[Pj_no3]);
-                    RCONST[33] = (jval[Pj_ch3o2h]);
-                    RCONST[34] = (jval[Pj_ch2om]);
-                    RCONST[35] = (jval[Pj_ch2or]);
-                    RCONST[36] = (jval[Pj_h2o2]);
-                    RCONST[37] = (eno);
-                    RCONST[38] = (erh);
+                    // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
+                    const TF C_H2O = std::max(qt[ijk] * xmair * C_M / xmh2o, TF(1));
+                    const TF TEMP = temp[ijk];
+
+                    // Convert to molecules per cm3 and add tendenccies of other processes.
+                    VAR[ind_HNO3] = std::max((hno3[ijk] + thno3[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_N2O5] = std::max((n2o5[ijk] + tn2o5[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_H2O2] = std::max((h2o2[ijk] + th2o2[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_CO  ] = std::max((co[ijk]   + tco[ijk]   * sdt) * CFACTOR, TF(0));
+                    VAR[ind_HCHO] = std::max((hcho[ijk] + thcho[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_ROOH] = std::max((rooh[ijk] + trooh[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_RH]   = std::max((c3h6[ijk] + tc3h6[ijk] * sdt) * CFACTOR, TF(0));
+                    VAR[ind_RO2]  = std::max((ro2[ijk]  + tro2[ijk]  * sdt) * CFACTOR, TF(0));
+                    VAR[ind_HO2]  = std::max((ho2[ijk]  + tho2[ijk]  * sdt) * CFACTOR, TF(0));
+                    VAR[ind_O3]   = std::max((o3[ijk]   + to3[ijk]   * sdt) * CFACTOR, TF(0));
+                    VAR[ind_NO]   = std::max((no[ijk]   + tno[ijk]   * sdt) * CFACTOR, TF(0));
+                    VAR[ind_NO3]  = std::max((no3[ijk]  + tno3[ijk]  * sdt) * CFACTOR, TF(0));
+                    VAR[ind_NO2]  = std::max((no2[ijk]  + tno2[ijk]  * sdt) * CFACTOR, TF(0));
+                    VAR[ind_OH]   = std::max((oh[ijk]   + toh[ijk]   * sdt) * CFACTOR, TF(0));
+
+                    RCONST[0 ] = ARR3(TF(1.7E-12), TF(-940), TEMP);
+                    RCONST[1 ] = ARR3(TF(1.E-14), TF(-490), TEMP);
+                    RCONST[2 ] = ARR3(TF(4.8E-11), TF(250), TEMP);
+                    RCONST[3 ] = EPR(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
+                    RCONST[4 ] = ARR3(TF(2.9E-12), TF(-160), TEMP);
+                    RCONST[5 ] = ARR3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
+                    RCONST[6 ] = ARR3(TF(3.E-12), TF(-1500), TEMP);
+                    RCONST[7 ] = ARR3(TF(1.4E-13), TF(-2470), TEMP);
+                    RCONST[8 ] = ARR3(TF(1.8E-11), TF(110), TEMP);
+                    RCONST[9 ] = TROE_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
+                    RCONST[10] = TROE_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
+                    RCONST[11] = ARR3(TF(3.3E-12), TF(270), TEMP);
+                    RCONST[12] = TROE_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
+                    RCONST[13] = TF(4e-12);
+                    RCONST[14] = RK28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
+                    RCONST[15] = TF(0.0004);
+                    RCONST[16] = ARR3(TF(2.45E-12), TF(-1775), TEMP);
+                    RCONST[17] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + ARR3(TF(498), TF(-1160), TEMP))));
+                    RCONST[18] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + ARR3(TF(498.), TF(-1160), TEMP)));
+                    RCONST[19] = ARR3(TF(2.8E-12), TF(300), TEMP);
+                    RCONST[20] = TF(1.2e-12);
+                    RCONST[21] = ARR3(TF(3.8E-12), TF(200), TEMP);
+                    RCONST[22] = ARR3(TF(5.5E-12), TF(125), TEMP);
+                    RCONST[23] = TF(5.8e-16);
+                    RCONST[24] = TROE_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
+                    RCONST[25] = ARR3(TF(9.5E-14), TF(390), TEMP);
+                    RCONST[26] = ARR3(TF(5.5E-15), TF(-1880), TEMP);
+                    RCONST[27] = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), C_M, TF(0.5), TEMP);
+                    RCONST[28] = ARR3(TF(4.6E-13), TF(-1155), TEMP);
+                    RCONST[29] = usr_O3_hv_H2O(TEMP, C_M, C_H2O, jval[Pj_o31d]);
+                    RCONST[30] = jval[Pj_no2];
+                    RCONST[31] = jval[Pj_n2o5];
+                    RCONST[32] = jval[Pj_no3];
+                    RCONST[33] = jval[Pj_ch3o2h];
+                    RCONST[34] = jval[Pj_ch2om];
+                    RCONST[35] = jval[Pj_ch2or];
+                    RCONST[36] = jval[Pj_h2o2];
+                    RCONST[37] = eno;
+                    RCONST[38] = erh;
 
                     if (k==kstart)
                     {
-                        RCONST[39] = vdo3[ij]/dz[k];
-                        RCONST[40] = vdno[ij]/dz[k];
-                        RCONST[41] = vdno2[ij]/dz[k];
-                        RCONST[42] = vdhno3[ij]/dz[k];
-                        RCONST[43] = vdh2o2[ij]/dz[k];
-                        RCONST[44] = vdhcho[ij]/dz[k];
-                        RCONST[45] = vdrooh[ij]/dz[k];
+                        RCONST[39] = vdo3[ij] / dz[k];
+                        RCONST[40] = vdno[ij] / dz[k];
+                        RCONST[41] = vdno2[ij] / dz[k];
+                        RCONST[42] = vdhno3[ij] / dz[k];
+                        RCONST[43] = vdh2o2[ij] / dz[k];
+                        RCONST[44] = vdhcho[ij] / dz[k];
+                        RCONST[45] = vdrooh[ij] / dz[k];
                     }
                     else
                     {
@@ -423,41 +425,36 @@ namespace
                         RCONST[45] = TF(0.0);
                     }
 
-                    FIX[0] = (TF)1800.0e-9*CFACTOR;  // methane concentation
+                    FIX[0] = TF(1800e-9) * CFACTOR;  // methane concentation
                     FIX[1] = C_M;                    // air density
-                    FIX[2] = (TF)1.0;                // species added to emit
+                    FIX[2] = TF(1);                  // species added to emit
 
-                    // for (int ispec =0 ; ispec <14; ++ispec)
-                    //    printf("%4i %13.3e ",ispec ,VAR[ispec]);
-                    //printf("\n");
+                    Fun(VAR, FIX, RCONST, Vdot, RF);
 
-                    Fun(VAR,FIX,RCONST,Vdot,RF);
-
-                    // get statitics for reacion fluxes:
+                    // Get statistics for reaction fluxes:
                     if (abs(sdt/dt - 1./3.) < 1e-5)
                     {
-                        for (int l=0;l<NREACT;++l)
+                        for (int l=0; l<NREACT; ++l)
                             rfa[(k-kstart)*NREACT+l] +=  RF[l]*dt;    // take the first evaluation in the RK3 steps, but with full time step.
                     }
 
-                    nkpp += 1;
+                    WCOPY(NVAR, VAR, 1, VAR0, 1);
+                    INTEGRATE(TF(0), sdt);  //brings VAR0 --> VAR, with timestep sdt
 
-                    WCOPY(NVAR,VAR,1,VAR0,1);
-                    INTEGRATE(  (TF)0.0 , sdt );  //brings VAR0 --> VAR, with timestep sdt
-                    thno3[ijk] += (VAR[ind_HNO3]-VAR0[ind_HNO3])/(sdt*CFACTOR);
-                    tn2o5[ijk] += (VAR[ind_N2O5]-VAR0[ind_N2O5])/(sdt*CFACTOR);
-                    th2o2[ijk] += (VAR[ind_H2O2]-VAR0[ind_H2O2])/(sdt*CFACTOR);
-                    tco[ijk] +=   (VAR[ind_CO]-VAR0[ind_CO])/(sdt*CFACTOR);
-                    thcho[ijk] += (VAR[ind_HCHO]-VAR0[ind_HCHO])/(sdt*CFACTOR);
-                    trooh[ijk] += (VAR[ind_ROOH]-VAR0[ind_ROOH])/(sdt*CFACTOR);
-                    tc3h6[ijk] += (VAR[ind_RH]-VAR0[ind_RH])/(sdt*CFACTOR);
-                    tro2[ijk] +=  (VAR[ind_RO2]-VAR0[ind_RO2])/(sdt*CFACTOR);
-                    tho2[ijk] +=  (VAR[ind_HO2]-VAR0[ind_HO2])/(sdt*CFACTOR);
-                    to3[ijk] +=   (VAR[ind_O3]-VAR0[ind_O3])/(sdt*CFACTOR);
-                    tno[ijk] +=   (VAR[ind_NO]-VAR0[ind_NO])/(sdt*CFACTOR);
-                    tno3[ijk] +=  (VAR[ind_NO3]-VAR0[ind_NO3])/(sdt*CFACTOR);
-                    tno2[ijk] +=  (VAR[ind_NO2]-VAR0[ind_NO2])/(sdt*CFACTOR);
-                    toh[ijk] +=   (VAR[ind_OH]-VAR0[ind_OH])/(sdt*CFACTOR);
+                    thno3[ijk] += (VAR[ind_HNO3] - VAR0[ind_HNO3]) / (sdt * CFACTOR);
+                    tn2o5[ijk] += (VAR[ind_N2O5] - VAR0[ind_N2O5]) / (sdt * CFACTOR);
+                    th2o2[ijk] += (VAR[ind_H2O2] - VAR0[ind_H2O2]) / (sdt * CFACTOR);
+                    tco[ijk] +=   (VAR[ind_CO  ] - VAR0[ind_CO  ]) / (sdt * CFACTOR);
+                    thcho[ijk] += (VAR[ind_HCHO] - VAR0[ind_HCHO]) / (sdt * CFACTOR);
+                    trooh[ijk] += (VAR[ind_ROOH] - VAR0[ind_ROOH]) / (sdt * CFACTOR);
+                    tc3h6[ijk] += (VAR[ind_RH  ] - VAR0[ind_RH  ]) / (sdt * CFACTOR);
+                    tro2[ijk] +=  (VAR[ind_RO2 ] - VAR0[ind_RO2 ]) / (sdt * CFACTOR);
+                    tho2[ijk] +=  (VAR[ind_HO2 ] - VAR0[ind_HO2 ]) / (sdt * CFACTOR);
+                    to3[ijk] +=   (VAR[ind_O3  ] - VAR0[ind_O3  ]) / (sdt * CFACTOR);
+                    tno[ijk] +=   (VAR[ind_NO  ] - VAR0[ind_NO  ]) / (sdt * CFACTOR);
+                    tno3[ijk] +=  (VAR[ind_NO3 ] - VAR0[ind_NO3 ]) / (sdt * CFACTOR);
+                    tno2[ijk] +=  (VAR[ind_NO2 ] - VAR0[ind_NO2 ]) / (sdt * CFACTOR);
+                    toh[ijk] +=   (VAR[ind_OH  ] - VAR0[ind_OH  ]) / (sdt * CFACTOR);
 
                     // tscale[0] = std::min(tscale[0],ABS(h2o2[ijk])/ABS(th2o2[ijk]));
                     // tscale[1] = std::min(tscale[1],ABS(ch4[ijk])/ABS(tch4[ijk]));
@@ -479,9 +476,7 @@ namespace
                     // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
                     // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
                 } // i
-                //printf("%4i %13.3e %13.3e k, coh sdt \n",k,coh/noh,sdt);
         } // k
-    //printf("number of kpp integration %4i  number of simple derivatives %4i \n",nkpp,nderiv);
     }
 }
 
@@ -857,16 +852,17 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
         vdh2o2.data(),
         vdrooh.data(),
         vdhcho.data(),
-        rfa.data(),
-        trfa,
         fields.sp.at("qt")->fld.data(),
         tmp->fld.data(),
+        gd.dz.data(),
+        fields.rhoref.data(),
+        rfa.data(),
+        trfa,
         dt, sdt, switch_dt,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
         gd.kstart, gd.kend,
-        gd.icells, gd.ijcells,
-        gd.dz.data(), fields.rhoref.data());
+        gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
 
