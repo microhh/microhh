@@ -240,12 +240,12 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
+    thermo->load(timeloop->get_iotime());
+
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
-
-    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
-    thermo->load(timeloop->get_iotime());
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);

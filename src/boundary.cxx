@@ -627,6 +627,11 @@ void Boundary<TF>::set_values()
             // The time dependent 2D bc's are set in `update_time_dependent()`.
             continue;
         }
+        else if (swboundary == "surface_lsm" && (it.first == "thl" || it.first == "qt"))
+        {
+            // Temperature/moisture are prognostic (well, not really, but they are read in from restart files...)
+            continue;
+        }
         else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
             // Load 2D fields for bottom boundary from disk.
