@@ -466,11 +466,6 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     // Switch between heterogeneous and homogeneous z0's
     sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
 
-    #ifdef USECUDA
-    if (!sw_constant_z0)
-        throw std::runtime_error("\"boundary_surface\" with heterogeneous z0s is not (yet) supported");
-    #endif
-
     // Switch for z0 as function of u* (Charnock relation)
     sw_charnock = inputin.get_item<bool>("boundary", "swcharnock", "", false);
 

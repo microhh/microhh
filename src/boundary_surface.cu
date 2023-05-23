@@ -46,7 +46,7 @@ namespace
 
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
-    template<typename TF> __global__
+    template<typename TF, bool sw_constant_z0> __global__
     void stability_g(
             TF* const __restrict__ ustar,
             TF* const __restrict__ obuk,
@@ -56,6 +56,7 @@ namespace
             const TF* const __restrict__ bfluxbot,
             const TF* const __restrict__ dutot,
             const TF* const __restrict__ z0m,
+            const TF* const __restrict__ z0h,
             const float* const __restrict__ zL_sl_g,
             const float* const __restrict__ f_sl_g,
             const TF db_ref,
@@ -81,14 +82,22 @@ namespace
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                if (sw_constant_z0)
+                    obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                else
+                    obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
-                obuk [ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                if (sw_constant_z0)
+                    obuk [ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                else
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative_g(obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }
@@ -405,16 +414,30 @@ void Boundary_surface<TF>::exec(
         const TF db_ref = thermo.get_db_ref();
 
         // Calculate ustar and Obukhov length, including ghost cells
-        stability_g<<<gridGPU2, blockGPU2>>>(
-            ustar_g, obuk_g, nobuk_g,
-            buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
-            dutot->fld_g, z0m_g,
-            zL_sl_g, f_sl_g,
-            db_ref, gd.z[gd.kstart],
-            gd.icells, gd.jcells,
-            gd.kstart, gd.icells,
-            gd.ijcells,
-            mbcbot, thermobc);
+        if (sw_constant_z0)
+            stability_g<TF, true><<<gridGPU2, blockGPU2>>>(
+                ustar_g, obuk_g, nobuk_g,
+                buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
+                dutot->fld_g,
+                z0m_g, z0h_g,
+                zL_sl_g, f_sl_g,
+                db_ref, gd.z[gd.kstart],
+                gd.icells, gd.jcells,
+                gd.kstart, gd.icells,
+                gd.ijcells,
+                mbcbot, thermobc);
+        else
+            stability_g<TF, false><<<gridGPU2, blockGPU2>>>(
+                ustar_g, obuk_g, nobuk_g,
+                buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
+                dutot->fld_g,
+                z0m_g, z0h_g,
+                zL_sl_g, f_sl_g,
+                db_ref, gd.z[gd.kstart],
+                gd.icells, gd.jcells,
+                gd.kstart, gd.icells,
+                gd.ijcells,
+                mbcbot, thermobc);
         cuda_check_error();
 
         fields.release_tmp_g(buoy);
