@@ -46,54 +46,6 @@ namespace
 
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
-    template<typename TF> __device__
-    TF find_obuk_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int &n,
-            const TF Ri,
-            const TF zsl)
-    {
-        // Determine search direction.
-        if ((f[n]-Ri) > 0.f)
-            while ( (f[n-1]-Ri) > 0.f && n > 0) { --n; }
-        else
-            while ( (f[n]-Ri) < 0.f && n < (nzL-1) ) { ++n; }
-
-        const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-
-        return zsl/zL0;
-    }
-
-
-    template<typename TF> __device__
-    TF calc_obuk_noslip_flux_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int& n,
-            const TF du,
-            const TF bfluxbot,
-            const TF zsl)
-    {
-        // Calculate the appropriate Richardson number.
-        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
-        return find_obuk_g(zL, f, n, Ri, zsl);
-    }
-
-    template<typename TF> __device__
-    TF calc_obuk_noslip_dirichlet_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int& n,
-            const TF du,
-            const TF db,
-            const TF zsl)
-    {
-        // Calculate the appropriate Richardson number.
-        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return find_obuk_g(zL, f, n, Ri, zsl);
-    }
-
     template<typename TF> __global__
     void stability_g(
             TF* const __restrict__ ustar,
@@ -129,14 +81,14 @@ namespace
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk [ij] = calc_obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
-                obuk [ij] = calc_obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                obuk [ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }

@@ -171,6 +171,22 @@ namespace Boundary_surface_kernels_g
         return zsl/zL;
     }
 
+
+    template<typename TF> __device__
+    TF calc_obuk_noslip_flux_lookup_g(
+            const float* const __restrict__ zL_lut,
+            const float* const __restrict__ f_lut,
+            int& n,
+            const TF du,
+            const TF bfluxbot,
+            const TF zsl)
+    {
+        // Calculate the appropriate Richardson number.
+        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
+        const TF zL = find_zL_g(zL_lut, f_lut, n, Ri, zsl);
+        return zsl/zL;
+    }
+
     template<typename TF> __device__
     TF calc_obuk_noslip_dirichlet_iterative_g(
             TF L, const TF du, TF db, const TF zsl, const TF z0m, const TF z0h)
