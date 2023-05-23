@@ -294,7 +294,7 @@ namespace Boundary_surface_kernels
         int m = 0;
         int nlim = 10;
 
-        const TF Lmax = 1.e20;
+        const TF Lmax = 1.e16;
 
         // Limiter max z/L stable conditions:
         const TF L_min_stable = zsl/Constants::zL_max<TF>;
@@ -310,7 +310,7 @@ namespace Boundary_surface_kernels
         {
             // If L and bfluxbot are of the same sign, or the last calculation did not converge,
             // the stability has changed and the procedure needs to be reset
-            if (L*bfluxbot >= 0.)
+            if (m == 1 || L*bfluxbot >= 0.)
             {
                 nlim = 200;
                 if (bfluxbot >= 0.)
@@ -336,7 +336,11 @@ namespace Boundary_surface_kernels
                 fxdif  = ( (zsl/Lend   + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, Lend  )))
                          - (zsl/Lstart + Constants::kappa<TF>*zsl*bfluxbot / fm::pow3(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
-                L      = L - fx/fxdif;
+
+                if (std::abs(fxdif) < TF(1e-16))
+                    break;
+
+                L = L - fx/fxdif;
 
                 // Limit L for stable conditions (similar to the limits of the lookup table)
                 if (L >= TF(0) && L < L_min_stable)
@@ -345,23 +349,24 @@ namespace Boundary_surface_kernels
             }
 
             if (n < nlim && std::abs(L) < Lmax)
-                // Convergence has been reached
-                break;
+                break; // Convergence has been reached
             else
             {
                 // Convergence has not been reached, procedure restarted once
-                if (bfluxbot >= 0.)
-                    L = -Constants::dsmall;
-                else
-                    L = L_min_stable;
-
                 ++m;
                 nlim = 200;
             }
         }
 
         if (m > 1)
-            std::cout << "ERROR: convergence has not been reached in Obukhov length calculation" << std::endl;
+        {
+            if (std::abs(L) > Lmax)
+                L = -copysign(TF(1), bfluxbot) * Lmax;  // Non-converged in neutral regime; return Lmax with correct sign.
+            else
+                L = L_min_stable;  // Non-converged in stable regime.
+
+            std::cout << "ERROR: no convergence Rib->L: du=" << du << ", B0=" << bfluxbot << ", z0m=" << z0m << " | returning L=" << L <<  std::endl;
+        }
 
         return zsl/std::min(std::max(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
     }

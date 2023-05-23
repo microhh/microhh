@@ -83,9 +83,9 @@ namespace
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
                 if (sw_constant_z0)
-                    obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                    obuk[ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
                 else
-                    obuk [ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                    obuk[ij] = bsk::calc_obuk_noslip_flux_iterative_g(obuk[ij], dutot[ij], bfluxbot[ij], zsl, z0m[ij]);
 
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
@@ -94,7 +94,7 @@ namespace
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
                 if (sw_constant_z0)
-                    obuk [ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
                 else
                     obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative_g(obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
 
