@@ -219,7 +219,7 @@ namespace Boundary_surface_kernels_g
         {
             // If L and db are of different sign, or the last calculation did not converge,
             // the stability has changed and the procedure needs to be reset
-            if (L*db <= 0.)
+            if (m == 1 || L*db <= 0.)
             {
                 nlim = 200;
                 if(db >= 0.)
@@ -246,10 +246,10 @@ namespace Boundary_surface_kernels_g
                          - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
 
-                if (abs(fxdif) < TF(1e-20))
+                if (abs(fxdif) < TF(1e-16))
                     break;
 
-                L      = L - fx/fxdif;
+                L = L - fx/fxdif;
 
                 if (L >= TF(0) && L < L_min_stable)
                     L = L_min_stable;
@@ -263,25 +263,23 @@ namespace Boundary_surface_kernels_g
             else
             {
                 // Convergence has not been reached, procedure restarted once
-                if (db >= TF(0))
-                    L = L_min_stable;
-                else
-                    L = -Constants::dsmall;
-
                 ++m;
                 nlim = 200;
             }
         }
 
         if (m > 1)
-            printf("ERROR: no convergence obukhov iteration!\n");
+        {
+            if (abs(L) > Lmax)
+                L = copysign(TF(1), db) * Lmax; // Non-converged in neutral regime; return Lmax with correct sign.
+            else
+                L = L_min_stable; // Non-converged in stable regime.
 
-        // Limit tails:
-        TF L_lim = zsl/fmin(fmax(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
-        // Limit large values of L (~in line with LUT)
-        //L_lim = std::min(std::max(L_lim, TF(-1e6)), TF(1e6));
+            printf("ERROR: no convergence Rib->L: du=%f, db=%f, z0m=%f, z0h=%f | returning L=%f\n", du, db, z0m, z0h, L);
+        }
 
-        return L_lim;
+        // Limits same as LUT solver:
+        return zsl/fmin(fmax(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
     }
 }
 #endif

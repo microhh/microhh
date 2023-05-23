@@ -398,7 +398,7 @@ namespace Boundary_surface_kernels
         {
             // If L and db are of different sign, or the last calculation did not converge,
             // the stability has changed and the procedure needs to be reset
-            if (L*db <= 0.)
+            if (m==1 || L*db <= 0.)
             {
                 nlim = 200;
                 if(db >= 0.)
@@ -425,10 +425,10 @@ namespace Boundary_surface_kernels
                          - (zsl/Lstart - Constants::kappa<TF>*zsl*db*most::fh(zsl, z0h, Lstart) / fm::pow2(du * most::fm(zsl, z0m, Lstart))) )
                        / (Lend - Lstart);
 
-                if (std::abs(fxdif) < TF(1e-20))
+                if (std::abs(fxdif) < TF(1e-16))
                     break;
 
-                L      = L - fx/fxdif;
+                L = L - fx/fxdif;
 
                 if (L >= TF(0) && L < L_min_stable)
                     L = L_min_stable;
@@ -442,11 +442,6 @@ namespace Boundary_surface_kernels
             else
             {
                 // Convergence has not been reached, procedure restarted once
-                if (db >= TF(0))
-                    L = L_min_stable;
-                else
-                    L = -Constants::dsmall;
-
                 ++m;
                 nlim = 200;
             }
@@ -454,16 +449,16 @@ namespace Boundary_surface_kernels
 
         if (m > 1)
         {
-            std::cout << "ERROR: no convergence obukhov iteration!" << std::endl;
-            std::cout << "INPUT: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << ", OUTPUT: L=" << L <<  std::endl;
+            if (std::abs(L) > Lmax)
+                L = copysign(TF(1), db) * Lmax; // Non-converged in neutral regime; return Lmax with correct sign.
+            else
+                L = L_min_stable; // Non-converged in stable regime.
+
+            std::cout << "ERROR: no convergence Rib->L: du=" << du << ", db=" << db << ", z0m=" << z0m << ", z0h=" << z0h << " | returning L=" << L <<  std::endl;
         }
 
-        // Limit tails:
-        TF L_lim = zsl/std::min(std::max(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
-        // Limit large values of L (~in line with LUT)
-        //L_lim = std::min(std::max(L_lim, TF(-1e6)), TF(1e6));
-
-        return L_lim;
+        // Limits same as LUT solver:
+        return zsl/std::min(std::max(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
     }
 
     template<typename TF>
