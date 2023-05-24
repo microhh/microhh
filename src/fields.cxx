@@ -1148,7 +1148,7 @@ void Fields<TF>::load(int n)
     for (auto& mask : xymasks)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", mask.first.c_str(), n);
+        std::sprintf(filename, "%s.%07d", mask.first.c_str(), 0);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
