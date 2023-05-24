@@ -326,8 +326,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     // Checks on input:
     if (swwls_in == "1")
     {
-        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=mean\"\n");
-        swwls_in = "mean";
+        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=local\"\n");
+        swwls_in = "local";
     }
 
     // Set the internal switches and read other required input
