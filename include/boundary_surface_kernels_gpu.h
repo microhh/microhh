@@ -270,7 +270,9 @@ namespace Boundary_surface_kernels_g
             else
                 L = L_min_stable;  // Non-converged in stable regime.
 
+            #ifdef PRINT_RIB_L_ERRORS
             printf("ERROR: no convergence Rib->L: du=%f, B0=%f, z0m=%f | returning L=%f\n", du, bfluxbot, z0m, L);
+            #endif
         }
 
         return zsl/fmin(fmax(zsl/L, Constants::zL_min<TF>), Constants::zL_max<TF>);
@@ -365,7 +367,9 @@ namespace Boundary_surface_kernels_g
             else
                 L = L_min_stable; // Non-converged in stable regime.
 
+            #ifdef PRINT_RIB_L_ERRORS
             printf("ERROR: no convergence Rib->L: du=%f, db=%f, z0m=%f, z0h=%f | returning L=%f\n", du, db, z0m, z0h, L);
+            #endif
         }
 
         // Limits same as LUT solver:
