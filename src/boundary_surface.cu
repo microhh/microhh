@@ -338,6 +338,8 @@ void Boundary_surface<TF>::backward_device()
 template<typename TF>
 void Boundary_surface<TF>::clear_device()
 {
+    Boundary<TF>::clear_device();
+
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
     cuda_safe_call(cudaFree(z0m_g));
