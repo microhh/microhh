@@ -951,7 +951,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     {
         calc_ice_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
-            bs.exnrefh_g, bs.prefh_g,
+            bs.exnref_g, bs.pref_g,
             gd.istart,  gd.jstart,  gd.kstart,
             gd.iend,    gd.jend,    gd.kend,
             gd.icells, gd.ijcells);
@@ -963,7 +963,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
             fld.fld_g,
             fields.sp.at("thl")->fld_g,
             fields.sp.at("qt")->fld_g,
-            bs.exnrefh_g, bs.prefh_g,
+            bs.exnref_g, bs.pref_g,
             gd.istart,  gd.jstart,  gd.kstart,
             gd.iend,    gd.jend,    gd.kend,
             gd.icells, gd.ijcells);
@@ -972,7 +972,8 @@ void Thermo_moist<TF>::get_thermo_field_g(
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
-            fld.fld_g, fields.sp.at("thl")->fld_g, bs.thvref_g, gd.dzi_g,
+            fld.fld_g, fields.sp.at("thl")->fld_g,
+            bs.thvref_g, gd.dzi_g,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
