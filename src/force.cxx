@@ -22,7 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
-// #include <math.h>
+#include <math.h>
 #include <iostream>
 #include "master.h"
 #include "grid.h"
@@ -30,6 +30,7 @@
 #include "field3d_operators.h"
 #include "timedep.h"
 #include "force.h"
+#include "constants.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "timeloop.h"
@@ -349,7 +350,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
-        fc = inputin.get_item<TF>("force", "fc", "");
+        fc = inputin.get_item<TF>("force", "fc", "", 2. * Constants::e_rot<TF> * std::sin(grid.lat * TF(M_PI) / 180.));
+        std::cout << "Coriolis parameter: " << fc << std::endl;
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
