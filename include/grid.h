@@ -143,6 +143,9 @@ class Grid
         TF utrans; // Galilean transformation velocity in x-direction.
         TF vtrans; // Galilean transformation velocity in y-direction.
 
+        TF lat; // Latitude of the domain.
+        TF lon; // Longitude of the domain.
+
         const Grid_data<TF>& get_grid_data();
         Grid_order get_spatial_order() const { return spatial_order; }
 

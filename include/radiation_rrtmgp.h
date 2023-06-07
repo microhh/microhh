@@ -203,9 +203,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         Float mu0;         // Cosine of solar zenith angle.
         Float Nc0;         // Total droplet number concentration.
 
-        Float lat; // Latitude (degrees)
-        Float lon; // Longitude (degrees)
-
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;
         Array<Float,2> sw_flux_dn_dir_inc;
