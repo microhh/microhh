@@ -57,8 +57,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     utrans = input.get_item<TF>("grid", "utrans", "", 0.);
     vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    lat = input.get_item<TF>("grid", "lat", "", 0.);
-    lon = input.get_item<TF>("grid", "lon", "", 0.);
+    lat = input.get_item<TF>("grid", "lat", "",  input.get_item<TF>("radiation", "lat", "", 0.)); //As a legacy option, the latitude can be read from the radiation section
+    lon = input.get_item<TF>("grid", "lon", "",  input.get_item<TF>("radiation", "lon", "", 0.)); //As a legacy option, the longitude can be read from the radiation section
 
     std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
