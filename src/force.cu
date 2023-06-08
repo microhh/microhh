@@ -372,6 +372,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(grid.lat * TF(M_PI) / 180.);            
+        
+
         if (grid.get_spatial_order() == Grid_order::Second)
         {
             coriolis_2nd_g<<<gridGPU, blockGPU>>>(

@@ -350,8 +350,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
-        fc = inputin.get_item<TF>("force", "fc", "", 2. * Constants::e_rot<TF> * std::sin(grid.lat * TF(M_PI) / 180.));
-        std::cout << "Coriolis parameter: " << fc << std::endl;
+        fc = inputin.get_item<TF>("force", "fc", "", -1.);
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
@@ -607,17 +606,21 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
 
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
-    {
+    {   
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(grid.lat * TF(M_PI) / 180.);            
+        
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
             grid.utrans, grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
         else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
             grid.utrans, grid.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
