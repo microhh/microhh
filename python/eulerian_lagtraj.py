@@ -8,10 +8,9 @@ import lagtraj
 import os
 import math
 import numpy as np
-
+import inspect
+import yaml as yaml
 import sys
-sys.path.append('/usr/local/lib/python3.8/dist-packages/metpy')
-sys.path.append('/home/girish/microhh_develop/microhh/python')
 import netCDF4 as nc
 import xarray as xr
 import metpy.calc as mpcalc
@@ -20,89 +19,83 @@ import math
 import os
 import microhh_tools as mht
 import sched, time
+import argparse
+
 
 float_type = 'f8'
+#TODO:
+#Pass dictionairies to functions straight out of yaml files
 
-
-def create_domain(domain_name,lat_min,lat_max,lon_min,lon_max): 
+def create_domain(dict): 
+    subset = ['source', 'version', 'lat_min', 'lat_max', 'lon_min', 'lon_max', 'lat_samp', 'lon_samp']
+    dict_out = {k:dict[k] for k in subset if k in dict}
     print(f'Default lagtraj root path is: {DEFAULT_ROOT_DATA_PATH}')
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/domains/' + domain_name + ".yaml"
-    #f = open(filen,"a")
-    f = open(filen,"w+")
-    f.write(f"source    : era5\nversion   : 1.0.0\nlat_min   : {lat_min}\nlat_max   : {lat_max}\nlon_min   : {lon_min}\nlon_max   : {lon_max}\nlat_samp   : 0.1\nlon_samp   : 0.1")
-    f.close()
+    print(dict['domain'])
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/domains/' + dict['domain'] + ".yaml"
+    if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/domains/'):
+        os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/domains/')
+    with open(filen, 'w') as f:
+        yaml.dump(dict_out, f)
     
-def download_domain(domain_name,mm1,dd1,yyyy1,mm2,dd2,yyyy2):
-    start_date=datetime(yyyy1,mm1,dd1)
-    end_date=datetime(yyyy2,mm2,dd2)
-    domain_download.download_named_domain(data_path=DEFAULT_ROOT_DATA_PATH,name=domain_name,start_date=start_date,end_date=end_date)
-    args=[domain_name,f'{start_date}',f'{end_date}',"--data-path",f'{DEFAULT_ROOT_DATA_PATH}',"--retry-rate",'1']
+def download_domain(dict):
+    start_date=datetime(dict['start_date'])
+    end_date=datetime(dict['end_date'])
+    domain_download.download_named_domain(data_path=DEFAULT_ROOT_DATA_PATH,name=dict['domain'],start_date=dict['start_date'],end_date=dict['end_date'])
+    args=[dict['domain'],f'{dict["start_date"]}',f'{dict["end_date"]}',"--data-path",f'{DEFAULT_ROOT_DATA_PATH}',"--retry-rate",'1']
     domain_download.cli(args=args)
 
-def create_trajectory(domain_name,trajectory_name,lat,lon,mm,dd,yyyy,hrs_before,hrs_after,lagrangian): #start datetime "YYYY-MM-DDThh:ss"
+#start datetime "YYYY-MM-DDThh:ss"
+def create_trajectory(dict): 
+    subset = ['trajectory_type', 'velocity_method', 'velocity_method_height', 'domain', 'version', 'lat_origin', 'lon_origin', 'datetime_origin', 'backward_duration', 'forward_duration', 'timestep']
+
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/' + dict['domain'] + ".yaml"
+    if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/'):
+        os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/')
+    with open(filen, 'w') as f:
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        yaml.dump(dict_out, f)
+
+
+    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+dict['domain']+'.nc'):
+        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+dict['domain']+'.nc')
+    trajectory_create.main(data_path=DEFAULT_ROOT_DATA_PATH,trajectory_name=dict['domain'])
+
+
+def create_forcing(dict):
     
-    startdate_time=f"{yyyy}-{format(int(mm),'02d')}-{format(int(dd),'02d')}T00:00"
-    print(startdate_time)
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/' + trajectory_name + ".yaml"
+    subset = ['trajectory', 'version', 'domain', 'gradient_method', 'advection_velocity_sampling_method', 'sampling_mask', 'averaging_width', 'levels_method', 'levels_number', 'levels_dzmin', 'levels_ztop', 'gradient_method']
 
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' + dict['trajectory']+ ".yaml"
+    if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/'):
+        os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/')
+    with open(filen, 'w') as f:
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        yaml.dump(dict_out, f)
 
-    f = open(filen,"w+")
-    if lagrangian:
-        f.write(f"trajectory_type : lagrangian\nvelocity_method : single_height_level\nvelocity_method_height : 500.\ndomain          : {domain_name}\n\
-            version         : 1.0.1\nlat_origin      : {lat}\nlon_origin      : {lon}\ndatetime_origin : {startdate_time}\n\
-backward_duration : PT{hrs_before}H\nforward_duration : PT{hrs_after}H\ntimestep        : domain_data")
-    else:
-        f.write(f"trajectory_type : eulerian\ndomain          : {domain_name}\nversion         : 1.0.1\nlat_origin      : {lat}\nlon_origin      : {lon}\ndatetime_origin : {startdate_time}\n\
-backward_duration : PT{hrs_before}H\nforward_duration : PT{hrs_after}H\ntimestep        : domain_data")
-    f.close()
-
-
-    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+trajectory_name+'.nc'):
-        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+trajectory_name+'.nc')
-    trajectory_create.main(data_path=DEFAULT_ROOT_DATA_PATH,trajectory_name=trajectory_name)
-
-
-def create_forcing(domain_name,trajectory_name,conversion_type, runtime, surface_type, averaging_width):
-    if surface_type=='ocean':
-        gradient_method='regression'
-        #averaging_width=2.0
-    elif surface_type=='land':
-        gradient_method='boundary'
-        #averaging_width=1.0
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' + domain_name+ ".yaml"
-    #f = open(filen,"a")
-    f = open(filen,"w+")
-    f.write(f"trajectory      : {trajectory_name}\nversion         : 1.0.1\ndomain          : {domain_name}\ngradient_method : {gradient_method}\n\
-advection_velocity_sampling_method : domain_mean\nsampling_mask   : {surface_type}_only\naveraging_width : {averaging_width}\nlevels_method   : exponential\n\
-levels_number   : 250\nlevels_dzmin    : 20.0\nlevels_ztop     : 72000.0")
-    f.close()
     
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' + trajectory_name+ ".kpt.yaml"
-    #f = open(filen,"a")
-    f = open(filen,"w+")
-    f.write(f"levels_method   : copy\nversion         : 1.0.0\nexport_format   : kpt\ncomment         : Forcing and initial conditions for Lagrangian case\n\
-campaign        : EUREC4A\nsource_domain   : n/a\nreference       : n/a\nauthor          : s.j. boeing\nmodifications   : First version\ncase            : n/a\n\
-adv_temp        : 1\nadv_theta       : 1\nadv_thetal      : 1\nadv_qv          : 1\nadv_qt          : 1\nadv_rv          : 1\nadv_rt          : 1\n\
-rad_temp        : 0\nrad_theta       : 0\nrad_thetal      : 0\nforc_omega      : 0\nforc_w          : 1\nforc_geo        : 1\nnudging_u       : 0\nnudging_v       : 0\n\
-nudging_temp    : 0\nnudging_theta   : 0\nnudging_thetal  : 0\nnudging_qv      : 0\nnudging_qt      : 0\nnudging_rv      : 0\nnudging_rt      : 0\nsurfaceType     : {surface_type}\n\
-surfaceForcing  : ts\nsurfaceForcingWind               : z0_traj")
-    f.close()
-    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+domain_name+'.nc'):
-        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+domain_name+'.nc')
-    forcing_defn=forcing_load.load_definition(DEFAULT_ROOT_DATA_PATH,forcing_name=domain_name)
-    print(forcing_defn.name)
-    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+domain_name+'.kpt.nc'):
-        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+domain_name+'.kpt.nc')
-    forcing_create.main(data_path=DEFAULT_ROOT_DATA_PATH,forcing_defn=forcing_defn,conversion_name=conversion_type)
-    create_microhhforcing(domain_name,tstart=runtime)
+    subset = ['levels_method', 'version', 'export_format', 'comment', 'campaign', 'source_domain', 'reference', 'author', 'modifications', 'case', 'adv_temp', 'adv_theta', 'adv_thetal', 'adv_qv', 'adv_qt', 'adv_rv', 'adv_rt', 'rad_temp', 'rad_theta', 'rad_thetal', 'forc_omega', 'forc_w', 'forc_geo', 'nudging_u', 'nudging_v', 'nudging_temp', 'nudging_theta', 'nudging_thetal', 'nudging_qv', 'nudging_qt', 'nudging_rv', 'nudging_rt', 'surfaceType', 'surfaceForcing', 'surfaceForcingWind']
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' +  dict['trajectory']+ ".kpt.yaml"
+    with open(filen, 'w') as f:
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        yaml.dump(dict_out, f)
 
-def create_microhhforcing(domain_name,tstart):
-    basename = str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+domain_name
-    netcdf_path = basename+".kpt.nc"
+
+    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.nc'):
+        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.nc')
+    forcing_defn=forcing_load.load_definition(DEFAULT_ROOT_DATA_PATH,forcing_name=dict['domain'])
+
+    if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.kpt.nc'):
+        os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.kpt.nc')
+    forcing_create.main(data_path=DEFAULT_ROOT_DATA_PATH,forcing_defn=forcing_defn,conversion_name=dict['conversion_type'])
+    create_microhhforcing(dict)
+
+def create_microhhforcing(dict):
+    basename = dict['folder']+dict['domain']
+    netcdf_path = str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+".kpt.nc"
     evergreen=0.7;
     all_data = xr.open_dataset(netcdf_path,decode_times=False)
     time = all_data['time'].values[0:];
-    select_arr=(time>=time[tstart])
+    select_arr=(time>=time[0])
     qadv_un=all_data['qadv'].values[select_arr,:];             qadv_un=np.flip(qadv_un, axis=1);
     tadv_un=all_data['tadv'].values[select_arr,:];             tadv_un=np.flip(tadv_un, axis=1);
     uadv_un=all_data['uadv'].values[select_arr,:];             uadv_un=np.flip(uadv_un, axis=1);
@@ -509,10 +502,10 @@ def create_microhhforcing(domain_name,tstart):
         root_frac = np.zeros(np.shape(h_soil))
         #root_frac = [0.244760790777786, 0.409283067913477, 0.307407403941806, 0.0385487373669315]
 
-        if domain_name=='SEUS':
+        if dict['domain']=='SEUS':
             a=6.706;
             b=2.175;
-        elif domain_name=='SGP':
+        elif dict['domain']=='SGP':
             a=5.558;
             b=2.614;
         root_frac=1-0.5*(np.exp(-a*h_soil)+np.exp(-b*h_soil))
@@ -520,6 +513,7 @@ def create_microhhforcing(domain_name,tstart):
             root_frac[n]=root_frac[n]-(root_frac[n-1])
 
         # link('/home/girish/microhh_develop/microhh/misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
+        # os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/misc/van_genuchten_parameters.nc'
         nc_group_soil = nc_file.createGroup("soil")
         nc_group_soil.createDimension('z', h_soil.size)
         index_soil = np.ones_like(h_soil)*int(type_soil-1)
@@ -536,7 +530,7 @@ def create_microhhforcing(domain_name,tstart):
         ini['land_surface']['swhomogeneous'] = True
         ini['boundary']['swconstantz0'] = True
         
-        if domain_name=='SEUS':
+        if dict['domain']=='SEUS':
             gD_hv=evergreen*0.0003+(1-evergreen)*0.0013;
             #rs_highveg=evergreen*500+(1-evergreen)*240;
             lai=high_veg_cover[0]*high_veg_lai[0]+low_veg_cover[0]*low_veg_lai[0]
@@ -547,7 +541,7 @@ def create_microhhforcing(domain_name,tstart):
             ini['land_surface']['c_veg'] = 0.99
             ini['radiation']['emis_sfc'] = 0.97
             ini['land_surface']['rs_veg_min'] = 180
-        elif domain_name=='SGP':
+        elif dict['domain']=='SGP':
             lai=high_veg_cover[0]*high_veg_lai[0]+low_veg_cover[0]*low_veg_lai[0]
             ini['land_surface']['lai'] = lai
             ini['land_surface']['gD'] = 0
@@ -568,77 +562,58 @@ def create_microhhforcing(domain_name,tstart):
     ini.save(basename+'.ini', allow_overwrite=True)
     nc_file.close()
 
+def generate_forcing(cliargs):
 
+#Read yaml file
+    if cliargs['folder'] == None:
+        folder = os.getcwd()
+    cliargs = {k: v for k, v in cliargs.items() if v is not None}
+    print(cliargs)
+    with(open(folder+'/config.yaml')) as file:
+        dict = yaml.safe_load(file)
+    print(dict)
+    dict.update(cliargs) #override yaml file if CLI options are provided
 
-# domain = input('Which domain is the forcing needed for? (SGP, SEUS, others): \n')
-# if domain!='SGP' and domain!='SEUS' and domain!='others':
-#     domain = input('Please enter one from the options --> (SGP, SEUS, others): \n')
-# if domain=='others':
-#     domain_name = input('Please provide the domain name: \n')
-#     create_new_domain = input('Do you want to create a new domain? (y,n):')
-#     if create_new_domain=='y':
-#         latd,lond = np.float64(input('Please enter the Latitude and Longitude of the domain: \n').split())
-#         create_domain(f'{domain_name}',lat_min=math.floor(latd-1),lat_max=math.ceil(latd),lon_min=math.floor(lond-1),lon_max=math.ceil(lond))
-# elif domain=='SGP' or domain=='SEUS':
-#     domain_name=domain
-
-# domaindown = input('Do you want to download domain data? (y,n):')
-# if domaindown=='y':
-#     start_date=input('Please enter the start date to download domain (YYYY,MM,DD): \n').split(",")
-#     end_date=input('Please enter the end date to download domain (YYYY,MM,DD): \n').split(",")
-#     download_domain(domain_name,mm1=int(start_date[1]),dd1=int(start_date[2]),yyyy1=int(start_date[0]),mm2=int(end_date[1]),dd2=int(end_date[2]),yyyy2=int(end_date[0]))   
-
-# forcingcreate = input('Do you want to create forcing? (y,n):')
-
-domain_name = 'BOMEX'
-latd = 11.5
-lond = -55.5
-start_date = ['1969','06','22']
-end_date = ['1969','06','23']
-hours_before = 0
-hours_after = 24
-surface_type='ocean'
-averaging_width=2.0
-
-
-
-
-islagrangian=False
-create_new_domain = False
-download_domain_data = False
-create_new_forcing = True
-
-domain_name='SEUS'
-start_date = ['2015','08','09']
-end_date = ['2015','08','13']
-hours_before = 0
-hours_after = 120
-averaging_width=1.0
-
-if create_new_domain:
-    create_domain(f'{domain_name}',lat_min=math.floor(latd-1),lat_max=math.ceil(latd),lon_min=math.floor(lond-1),lon_max=math.ceil(lond))
-
-if download_domain_data:
+#Edit dict where necessary
+    if dict['surface_type']=='ocean':
+        dict['gradient_method']='regression'
+        if "averaging_width" not in dict.keys():
+            dict['averaging_width']=1.0
+    elif dict['surface_type']=='land':
+        dict['gradient_method']='boundary'
+        if "averaging_width" not in dict.keys():
+            dict['averaging_width']=2.0
     
-    download_domain(domain_name,mm1=int(start_date[1]),dd1=int(start_date[2]),yyyy1=int(start_date[0]),\
-        mm2=int(end_date[1]),dd2=int(end_date[2]),yyyy2=int(end_date[0]))   
+    half_size = dict['averaging_width']/2.0
+    if 'lat_min' not in dict.keys():
+        dict['lat_min'] = np.floor(dict['lat_origin']-half_size)
+    if 'lat_max' not in dict.keys():
+        dict['lat_max'] = np.ceil(dict['lat_origin']+half_size)
+    if 'lon_min' not in dict.keys():
+        dict['lon_min'] = np.floor(dict['lon_origin']-half_size)
+    if 'lon_max' not in dict.keys():
+        dict['lon_max'] = np.ceil(dict['lon_origin']+half_size)
+
+    create_domain(dict)
+    download_domain(dict)
+    create_trajectory(dict)
+    create_forcing(dict)
 
 
-if create_new_forcing:
-    # start_date = input('Please enter the start date of the trajectory (YYYY,MM,DD): \n').split(",") 
-    # hours_after = int(input('Please enter the hours after start date till which trajctory is needed for: \n'))
 
-    
-    if domain_name=='SGP':
-        create_trajectory(domain_name,domain_name,lat=36.5,lon=-97.5, \
-        mm=int(start_date[1]),dd=int(start_date[2]),yyyy=int(start_date[0]),hrs_before=hours_before,hrs_after=hours_after, lagrangian=islagrangian)
-        create_forcing(domain_name,domain_name,conversion_type="kpt", runtime = 0, surface_type='land', averaging_width=averaging_width)
-    elif domain_name=='SEUS':
-        create_trajectory(domain_name,domain_name,lat=34.25,lon=-87.25, \
-        mm=int(start_date[1]),dd=int(start_date[2]),yyyy=int(start_date[0]),hrs_before=hours_before,hrs_after=hours_after, lagrangian=islagrangian)
-        create_forcing(domain_name,domain_name,conversion_type="kpt", runtime = 0, surface_type='land', averaging_width=averaging_width)
-    else:
-        create_trajectory(domain_name,domain_name,lat=latd,lon=lond, \
-        mm=int(start_date[1]),dd=int(start_date[2]),yyyy=int(start_date[0]),hrs_before=hours_before,hrs_after=hours_after, lagrangian=islagrangian)
-        create_forcing(domain_name,domain_name,conversion_type="kpt", runtime = 0, surface_type=surface_type, averaging_width=averaging_width)
-    
+if __name__ == '__main__':
+#CLI options: Folder (Default the current one)
+#            Start date (If not present, use the yaml date)
+#            End date (If not present, use the yaml date)
+#            Domain name (If not present, find the domain name from yaml file. If it is present, use Domainname.yaml as the yaml file)
+
+# Parse command line and namelist options
+    parser = argparse.ArgumentParser(
+        description='Convert MicroHH 3D binary to netCDF4 files.')
+    parser.add_argument('-f', '--folder', help='directory')
+    parser.add_argument('-d', '--domain', help='domain name')
+    parser.add_argument('-s', '--start_date', help='start date')
+    parser.add_argument('-e', '--end_date', help='end date')
+
+    cliargs = vars(parser.parse_args())
+    generate_forcing(cliargs)
