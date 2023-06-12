@@ -1,4 +1,3 @@
-from datetime import datetime
 from lagtraj import DEFAULT_ROOT_DATA_PATH
 from lagtraj.domain import download as domain_download
 from lagtraj.forcings import create as forcing_create
@@ -20,6 +19,16 @@ import os
 import microhh_tools as mht
 import sched, time
 import argparse
+import re
+from datetime import timedelta, datetime
+
+def parseTimeDelta(s):
+    d = re.match(
+            r'((?P<days>\d+)d)?(?P<hours>\d+)H'
+            ,
+            str(s)).groupdict(0)
+    return timedelta(**dict(( (key, int(value))
+                              for key, value in d.items() )))
 
 
 float_type = 'f8'
@@ -28,18 +37,18 @@ float_type = 'f8'
 
 def create_domain(dict): 
     subset = ['source', 'version', 'lat_min', 'lat_max', 'lon_min', 'lon_max', 'lat_samp', 'lon_samp']
-    dict_out = {k:dict[k] for k in subset if k in dict}
+    dict_out = {k:str(dict[k]) for k in subset if k in dict}
     print(f'Default lagtraj root path is: {DEFAULT_ROOT_DATA_PATH}')
     print(dict['domain'])
     filen= str(DEFAULT_ROOT_DATA_PATH) + '/domains/' + dict['domain'] + ".yaml"
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/domains/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/domains/')
     with open(filen, 'w') as f:
-        yaml.dump(dict_out, f)
+        yaml.dump(dict_out,f, default_flow_style = False, allow_unicode = True)
     
 def download_domain(dict):
-    start_date=datetime(dict['start_date'])
-    end_date=datetime(dict['end_date'])
+    # start_date=datetime(dict['start_date'])
+    # end_date=datetime(dict['end_date'])
     domain_download.download_named_domain(data_path=DEFAULT_ROOT_DATA_PATH,name=dict['domain'],start_date=dict['start_date'],end_date=dict['end_date'])
     args=[dict['domain'],f'{dict["start_date"]}',f'{dict["end_date"]}',"--data-path",f'{DEFAULT_ROOT_DATA_PATH}',"--retry-rate",'1']
     domain_download.cli(args=args)
@@ -52,7 +61,7 @@ def create_trajectory(dict):
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/')
     with open(filen, 'w') as f:
-        dict_out = {k:dict[k] for k in subset if k in dict}
+        dict_out = {k:str(dict[k]) for k in subset if k in dict}
         yaml.dump(dict_out, f)
 
 
@@ -69,14 +78,14 @@ def create_forcing(dict):
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/')
     with open(filen, 'w') as f:
-        dict_out = {k:dict[k] for k in subset if k in dict}
+        dict_out = {k:str(dict[k]) for k in subset if k in dict}
         yaml.dump(dict_out, f)
 
     
     subset = ['levels_method', 'version', 'export_format', 'comment', 'campaign', 'source_domain', 'reference', 'author', 'modifications', 'case', 'adv_temp', 'adv_theta', 'adv_thetal', 'adv_qv', 'adv_qt', 'adv_rv', 'adv_rt', 'rad_temp', 'rad_theta', 'rad_thetal', 'forc_omega', 'forc_w', 'forc_geo', 'nudging_u', 'nudging_v', 'nudging_temp', 'nudging_theta', 'nudging_thetal', 'nudging_qv', 'nudging_qt', 'nudging_rv', 'nudging_rt', 'surfaceType', 'surfaceForcing', 'surfaceForcingWind']
     filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' +  dict['trajectory']+ ".kpt.yaml"
     with open(filen, 'w') as f:
-        dict_out = {k:dict[k] for k in subset if k in dict}
+        dict_out = {k:str(dict[k]) for k in subset if k in dict}
         yaml.dump(dict_out, f)
 
 
@@ -568,10 +577,8 @@ def generate_forcing(cliargs):
     if cliargs['folder'] == None:
         folder = os.getcwd()
     cliargs = {k: v for k, v in cliargs.items() if v is not None}
-    print(cliargs)
     with(open(folder+'/config.yaml')) as file:
         dict = yaml.safe_load(file)
-    print(dict)
     dict.update(cliargs) #override yaml file if CLI options are provided
 
 #Edit dict where necessary
@@ -593,6 +600,27 @@ def generate_forcing(cliargs):
         dict['lon_min'] = np.floor(dict['lon_origin']-half_size)
     if 'lon_max' not in dict.keys():
         dict['lon_max'] = np.ceil(dict['lon_origin']+half_size)
+    
+    dict['datetime_origin'] = datetime.strptime(dict['datetime_origin'], '%Y-%m-%dT%H:%M')
+
+    if 'backward_duration' in dict.keys():
+        dict['backward_duration'] = parseTimeDelta(dict['backward_duration'])
+    else:
+        dict['backward_duration'] = datetime.timedelta(hours=0)
+    if 'forward_duration' in dict.keys():
+        dict['forward_duration'] = parseTimeDelta(dict['forward_duration'])
+    else:
+        dict['forward_duration'] = datetime.timedelta(hours=0)
+
+    if 'start_date' in dict.keys():
+        dict['start_date'] = datetime.strptime(dict['start_date'], '%Y-%m-%dT%H:%M')
+    else:
+        dict['start_date'] = dict['datetime_origin'] - dict['backward_duration']
+    
+    if 'end_date' in dict.keys():
+        dict['end_date'] = datetime.strptime(dict['end_date'], '%Y-%m-%dT%H:%M')
+    else:
+        dict['end_date'] = dict['datetime_origin'] + dict['forward_duration']
 
     create_domain(dict)
     download_domain(dict)
