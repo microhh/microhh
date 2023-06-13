@@ -39,12 +39,11 @@ def create_domain(dict):
     subset = ['source', 'version', 'lat_min', 'lat_max', 'lon_min', 'lon_max', 'lat_samp', 'lon_samp']
     dict_out = {k:str(dict[k]) for k in subset if k in dict}
     print(f'Default lagtraj root path is: {DEFAULT_ROOT_DATA_PATH}')
-    print(dict['domain'])
     filen= str(DEFAULT_ROOT_DATA_PATH) + '/domains/' + dict['domain'] + ".yaml"
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/domains/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/domains/')
     with open(filen, 'w') as f:
-        yaml.dump(dict_out,f, default_flow_style = False, allow_unicode = True)
+        yaml.dump(dict_out, f, default_flow_style=False)
     
 def download_domain(dict):
     # start_date=datetime(dict['start_date'])
@@ -61,12 +60,16 @@ def create_trajectory(dict):
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/trajectories/')
     with open(filen, 'w') as f:
-        dict_out = {k:str(dict[k]) for k in subset if k in dict}
-        yaml.dump(dict_out, f)
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        dict_out['datetime_origin'] = dict['datetime_origin'].strftime("%Y-%m-%dT%H:%M:%S")
+        dict_out['backward_duration'] = str('PT'+str(int(dict['backward_duration'].total_seconds()/3600))+'H')
+        dict_out['forward_duration'] = str('PT'+str(int(dict['forward_duration'].total_seconds()/3600))+'H')
+        yaml.dump(dict_out, f, default_flow_style=False)
 
 
     if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+dict['domain']+'.nc'):
         os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/trajectories/'+dict['domain']+'.nc')
+    print (dict['domain'])
     trajectory_create.main(data_path=DEFAULT_ROOT_DATA_PATH,trajectory_name=dict['domain'])
 
 
@@ -74,20 +77,20 @@ def create_forcing(dict):
     
     subset = ['trajectory', 'version', 'domain', 'gradient_method', 'advection_velocity_sampling_method', 'sampling_mask', 'averaging_width', 'levels_method', 'levels_number', 'levels_dzmin', 'levels_ztop', 'gradient_method']
 
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' + dict['trajectory']+ ".yaml"
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' + dict['domain']+ ".yaml"
     if not os.path.isdir(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/'):
         os.makedirs(str(DEFAULT_ROOT_DATA_PATH) + '/forcings/')
     with open(filen, 'w') as f:
-        dict_out = {k:str(dict[k]) for k in subset if k in dict}
-        yaml.dump(dict_out, f)
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        yaml.dump(dict_out, f, default_flow_style=False)
 
     
     subset = ['levels_method', 'version', 'export_format', 'comment', 'campaign', 'source_domain', 'reference', 'author', 'modifications', 'case', 'adv_temp', 'adv_theta', 'adv_thetal', 'adv_qv', 'adv_qt', 'adv_rv', 'adv_rt', 'rad_temp', 'rad_theta', 'rad_thetal', 'forc_omega', 'forc_w', 'forc_geo', 'nudging_u', 'nudging_v', 'nudging_temp', 'nudging_theta', 'nudging_thetal', 'nudging_qv', 'nudging_qt', 'nudging_rv', 'nudging_rt', 'surfaceType', 'surfaceForcing', 'surfaceForcingWind']
-    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' +  dict['trajectory']+ ".kpt.yaml"
+    filen= str(DEFAULT_ROOT_DATA_PATH) + '/forcings/' +  dict['domain']+ ".kpt.yaml"
     with open(filen, 'w') as f:
-        dict_out = {k:str(dict[k]) for k in subset if k in dict}
-        yaml.dump(dict_out, f)
-
+        dict_out = {k:dict[k] for k in subset if k in dict}
+        dict_out['levels_method'] = 'copy'
+        yaml.dump(dict_out, f, default_flow_style=False)
 
     if os.path.exists(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.nc'):
         os.remove(str(DEFAULT_ROOT_DATA_PATH)+'/forcings/'+dict['domain']+'.nc')
@@ -206,8 +209,6 @@ def create_microhhforcing(dict):
     z_rad  = np.arange(dz/2, z_top, dz)
     zh_rad = np.arange(   0, z_top-dz/2, dz)
     zh_rad = np.append(zh_rad, z_top)
-    print(mean_height, zun.shape)
-    #print(zun[0,:])
     if np.isnan(mean_height[0]):
         mean_height[0]=0.
     zun_rad=zun[0,:]-mean_height[0]
@@ -582,6 +583,10 @@ def generate_forcing(cliargs):
     dict.update(cliargs) #override yaml file if CLI options are provided
 
 #Edit dict where necessary
+    if 'trajectory' not in dict.keys():
+        dict['trajectory'] = dict['domain']
+    if 'conversion_type' not in dict.keys():
+        dict['conversion_type'] = 'kpt'
     if dict['surface_type']=='ocean':
         dict['gradient_method']='regression'
         if "averaging_width" not in dict.keys():
