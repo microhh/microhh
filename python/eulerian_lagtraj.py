@@ -523,7 +523,10 @@ def create_microhhforcing(dict):
             root_frac[n]=root_frac[n]-(root_frac[n-1])
 
         # link('/home/girish/microhh_develop/microhh/misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
-        # os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/misc/van_genuchten_parameters.nc'
+        
+        mht.copy_lsmfiles(destdir = dict['folder'])
+        mht.copy_radfiles(destdir = dict['folder'],gpt='128_112')
+
         nc_group_soil = nc_file.createGroup("soil")
         nc_group_soil.createDimension('z', h_soil.size)
         index_soil = np.ones_like(h_soil)*int(type_soil-1)
@@ -576,15 +579,17 @@ def generate_forcing(cliargs):
 
 #Read yaml file
     if cliargs['folder'] == None:
-        folder = os.getcwd()
+        cliargs['folder'] = os.getcwd()+'/'
     cliargs = {k: v for k, v in cliargs.items() if v is not None}
-    with(open(folder+'/config.yaml')) as file:
+    with(open(cliargs['folder']+'config.yaml')) as file:
         dict = yaml.safe_load(file)
     dict.update(cliargs) #override yaml file if CLI options are provided
 
 #Edit dict where necessary
     if 'trajectory' not in dict.keys():
         dict['trajectory'] = dict['domain']
+    if 'campaign' not in dict.keys():
+        dict['campaign'] = dict['domain']
     if 'conversion_type' not in dict.keys():
         dict['conversion_type'] = 'kpt'
     if dict['surface_type']=='ocean':
