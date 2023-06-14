@@ -647,7 +647,7 @@ if __name__ == '__main__':
 
 # Parse command line and namelist options
     parser = argparse.ArgumentParser(
-        description='Convert MicroHH 3D binary to netCDF4 files.')
+        description='Generate MicroHH input files based on ERA5 forcing')
     parser.add_argument('-f', '--folder', help='directory')
     parser.add_argument('-d', '--domain', help='domain name')
     parser.add_argument('-s', '--start_date', help='start date')

@@ -1042,7 +1042,6 @@ def run_restart(
             return 1
     return 0
 
-
 def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
     if srcdir is None:
         srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rte-rrtmgp/' 
