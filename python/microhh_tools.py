@@ -1054,6 +1054,8 @@ def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
     elif gpt == '256_224':
         shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-lw-g256-210809.nc', destdir+'/coefficients_lw.nc')
         shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-sw-g224-210809.nc', destdir+'/coefficients_sw.nc')
+    else:
+        raise ValueError('gpt should be in {\'128_112\', \'256_224\'}')
 
     shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', destdir+'/cloud_coefficients_lw.nc')
     shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', destdir+'/cloud_coefficients_sw.nc')
