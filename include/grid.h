@@ -32,10 +32,16 @@
 #include <array>
 #include "defines.h"
 #include "transpose.h"
+class Netcdf_handle;
+#include "timedep.h"
+
 
 class Master;
 class Input;
-class Netcdf_handle;
+template<typename> class Timeloop;
+template<typename> class Timedep;
+
+
 
 enum class Grid_order { Second, Fourth };
 
@@ -136,7 +142,7 @@ class Grid
         ~Grid();               // Destructor of the grid class.
 
         void init();              // Initialization of the grid arrays.
-        void create(Netcdf_handle&); // Creation of the grid data.
+        void create(Input&, Netcdf_handle&); // Creation of the grid data.
         void save();              // Saves grid data to file.
         void load();              // Loads grid data to file.
 
@@ -158,6 +164,8 @@ class Grid
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); // Second order interpolation
         void interpolate_4th(TF*, const TF*, const int[3], const int[3]); // Fourth order interpolation
+
+        void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
@@ -183,5 +191,8 @@ class Grid
         MPI_Datatype subi; // MPI datatype containing a subset of the entire x-axis.
         MPI_Datatype subj; // MPI datatype containing a subset of the entire y-axis.
         #endif
+
+        std::map<std::string, Timedep<TF>*> tdep_latlon;
+
 };
 #endif

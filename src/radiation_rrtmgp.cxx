@@ -1640,7 +1640,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(array.fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), no_offset, name, iotime, loc);
         }
 
         if (do_column)
@@ -1683,7 +1683,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             bool cross_diff = std::find(crosslist.begin(), crosslist.end(), "sw_flux_dn_diff_filtered") != crosslist.end();
             if (sw_diffuse_filter && do_cross && cross_diff)
             {
-                cross.cross_plane(sw_flux_dn_dif_f.data(), "sw_flux_dn_diff_filtered", iotime);
+                cross.cross_plane(sw_flux_dn_dif_f.data(), no_offset, "sw_flux_dn_diff_filtered", iotime);
             }
 
             stats.set_time_series("sza", std::acos(mu0));

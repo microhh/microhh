@@ -1220,24 +1220,50 @@ TF Fields<TF>::check_mass()
 template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    TF no_offset = 0.;
+    TF offset;
     for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
-
+    {
+        if (it == "u")
+            offset = grid.utrans;
+        else if (it == "v")
+            offset = grid.vtrans;
+        else
+            offset = no_offset;
+        
+        cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
+    }
     for (auto& it : cross_lngrad)
         cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
 
     for (auto& it : cross_fluxbot)
-        cross.cross_plane(a.at(it)->flux_bot.data(), a.at(it)->name+"fluxbot", iotime);
+        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"fluxbot", iotime);
 
     for (auto& it : cross_fluxtop)
-        cross.cross_plane(a.at(it)->flux_top.data(), a.at(it)->name+"fluxtop", iotime);
+        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"fluxtop", iotime);
 
     for (auto& it : cross_bot)
-        cross.cross_plane(a.at(it)->fld_bot.data(), a.at(it)->name+"bot", iotime);
+    {
+        if (it == "u")
+            offset = grid.utrans;
+        else if (it == "v")
+            offset = grid.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"bot", iotime);
+    }
 
     for (auto& it : cross_top)
-        cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
-
+    {
+        if (it == "u")
+            offset = grid.utrans;
+        else if (it == "v")
+            offset = grid.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"top", iotime);
+    }
+    
     for (auto& it : cross_path)
         cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
 }

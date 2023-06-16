@@ -549,12 +549,13 @@ void Radiation_gcss<TF>::exec_all_stats(
         auto& gd = grid.get_grid_data();
 
         auto tmp = fields.get_tmp();
+        const TF no_offset = 0.;
 
         for (auto& it : crosslist)
         {
             get_radiation_field(*tmp, it, thermo, timeloop);
             // All cross sections possible in this class are at the sloc located.
-            cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
+            cross.cross_simple(tmp->fld.data(), no_offset, it, iotime, gd.sloc);
         }
 
         fields.release_tmp(tmp);

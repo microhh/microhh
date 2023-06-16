@@ -50,9 +50,9 @@ class Cross
 
         bool do_cross(unsigned long);
 
-        int cross_simple(TF*, const std::string&, const int, const std::array<int,3>&);
+        int cross_simple(TF*, const TF, const std::string&, const int, const std::array<int,3>&);
         int cross_lngrad(TF*, std::string, int);
-        int cross_plane (TF*, std::string, int);
+        int cross_plane (TF*, const TF, std::string, int);
         int cross_path  (TF*, std::string, int);
         int cross_height_threshold(TF*, TF, Cross_direction, std::string, int);
         int cross_soil  (TF*, const std::string&, const int);

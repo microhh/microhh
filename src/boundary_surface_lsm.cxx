@@ -1487,7 +1487,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -1555,15 +1555,16 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
 {
     auto& gd = grid.get_grid_data();
     auto tmp1 = fields.get_tmp();
-
+    TF no_offset = 0.;
+    
     for (auto& it : cross_list)
     {
         if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
+            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
         else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
+            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
         else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), "wl", iotime);
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, "wl", iotime);
     }
 
     fields.release_tmp(tmp1);

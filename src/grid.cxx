@@ -33,6 +33,8 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
+#include "timedep.h"
+
 
 /**
  * This function constructs the grid class.
@@ -190,7 +192,7 @@ void Grid<TF>::init()
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-void Grid<TF>::create(Netcdf_handle& input_nc)
+void Grid<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 {
     // Get the grid coordinates from the input. This one is read from the global scope.
     input_nc.get_variable(gd.z, "z", {0}, {gd.ktot});
@@ -200,6 +202,17 @@ void Grid<TF>::create(Netcdf_handle& input_nc)
     {
         std::string msg = "Highest grid point is above prescribed zsize";
         throw std::runtime_error(msg);
+    }
+
+    bool swtimedep = inputin.get_item<bool>("grid", "swtimedep"  , "", false);
+    if (swtimedep)
+    {
+        std::string timedep_dim = "time_latlon";
+
+        tdep_latlon.emplace("lat", new Timedep<TF>(master, (*this), "lat", true));
+        tdep_latlon.at("lat")->create_timedep(input_nc, timedep_dim);
+        tdep_latlon.emplace("lon", new Timedep<TF>(master, (*this), "lon", true));
+        tdep_latlon.at("lon")->create_timedep(input_nc, timedep_dim);
     }
 
     // calculate the grid
@@ -361,6 +374,14 @@ void Grid<TF>::load()
 {
     load_grid();
 }
+
+template <typename TF>
+void Grid<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    tdep_latlon["lat"]->update_time_dependent(lat, timeloop);
+    tdep_latlon["lon"]->update_time_dependent(lon, timeloop);   
+}
+
 
 /**
  * This function checks whether the number of ghost cells does not exceed the slice thickness.

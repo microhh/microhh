@@ -1103,10 +1103,11 @@ void Thermo_moist<TF>::save(const int iotime)
         char filename[256];
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
-
+        TF no_offset = 0.;
+        
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -2072,6 +2073,7 @@ template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
+    TF no_offset = 0.;
 
     #ifndef USECUDA
     bs_stats = bs;
@@ -2088,13 +2090,13 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
+            cross.cross_simple(output->fld.data(), no_offset, "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
-            cross.cross_plane(output->fld_bot.data(), "bbot", iotime);
+            cross.cross_plane(output->fld_bot.data(), no_offset, "bbot", iotime);
         else if (it == "bfluxbot")
-            cross.cross_plane(output->flux_bot.data(), "bfluxbot", iotime);
+            cross.cross_plane(output->flux_bot.data(), no_offset, "bfluxbot", iotime);
     }
 
     if (swcross_ql)
@@ -2103,7 +2105,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "ql")
-            cross.cross_simple(output->fld.data(), "ql", iotime, gd.sloc);
+            cross.cross_simple(output->fld.data(), no_offset, "ql", iotime, gd.sloc);
         if (it == "qlpath")
             cross.cross_path(output->fld.data(), "qlpath", iotime);
         if (it == "qlbase")
@@ -2118,7 +2120,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "qi")
-            cross.cross_simple(output->fld.data(), "qi", iotime, gd.sloc);
+            cross.cross_simple(output->fld.data(), no_offset, "qi", iotime, gd.sloc);
         if (it == "qipath")
             cross.cross_path(output->fld.data(), "qipath", iotime);
     }
@@ -2154,7 +2156,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            cross.cross_plane(output->fld_bot.data(), "w500hpa", iotime);
+            cross.cross_plane(output->fld_bot.data(), no_offset, "w500hpa", iotime);
         }
     }
 
@@ -2182,7 +2184,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                cross.cross_plane(thv->fld_bot.data(), "qlqicore_max_thv_prime", iotime);
+                cross.cross_plane(thv->fld_bot.data(), no_offset, "qlqicore_max_thv_prime", iotime);
             }
         }
 
