@@ -225,7 +225,7 @@ template<typename TF>
 void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
-    grid->load();
+    grid->load(*input, *input_nc);
     fft->load();
     timeloop->load(timeloop->get_iotime());
 
@@ -239,6 +239,8 @@ void Model<TF>::load()
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
     fields->create_column(*column);
+
+    grid->create_stats(*stats);
 
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
     thermo->load(timeloop->get_iotime());
@@ -604,6 +606,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
+        grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
