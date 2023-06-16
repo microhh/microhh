@@ -49,7 +49,7 @@ def create_domain(dict):
 def download_domain(dict):
     # start_date=datetime(dict['start_date'])
     # end_date=datetime(dict['end_date'])
-    domain_download.download_named_domain(data_path=root_data_path,name=dict['domain'],start_date=dict['start_date'],end_date=dict['end_date'])
+    domain_download.download_named_domain(data_path=root_data_path,name=dict['domain'],start_date=dict['start_date'].date(),end_date=dict['end_date'].date())
     args=[dict['domain'],f'{dict["start_date"]}',f'{dict["end_date"]}',"--data-path",f'{root_data_path}',"--retry-rate",'1']
     domain_download.cli(args=args)
 
@@ -70,7 +70,6 @@ def create_trajectory(dict):
 
     if os.path.exists(str(root_data_path)+'/trajectories/'+dict['domain']+'.nc'):
         os.remove(str(root_data_path)+'/trajectories/'+dict['domain']+'.nc')
-    print (dict['domain'])
     trajectory_create.main(data_path=root_data_path,trajectory_name=dict['domain'])
 
 
@@ -520,7 +519,8 @@ def create_microhhforcing(dict):
     else:
         use_htessel = False
     
-    
+    mht.copy_radfiles(destdir = dict['folder'],gpt='128_112')
+
     if use_htessel:
         
         type_soil=3;
@@ -540,7 +540,6 @@ def create_microhhforcing(dict):
         # link('/home/girish/microhh_develop/microhh/misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
         
         mht.copy_lsmfiles(destdir = dict['folder'])
-        mht.copy_radfiles(destdir = dict['folder'],gpt='128_112')
 
         nc_group_soil = nc_file.createGroup("soil")
         nc_group_soil.createDimension('z', h_soil.size)
@@ -599,12 +598,10 @@ def generate_forcing(cliargs):
     with(open(cliargs['folder']+'config.yaml')) as file:
         dict = yaml.safe_load(file)
     dict.update(cliargs) #override yaml file if CLI options are provided
-    print(os.environ['lagtraj_data_path'])
     if 'lagtraj_data' in dict.keys():
         root_data_path = dict['lagtraj_data_path']
     elif 'lagtraj_data_path' in os.environ.keys():
         root_data_path = os.environ['lagtraj_data_path']
-        print(root_data_path, os.environ['lagtraj_data_path'])
     
 #Edit dict where necessary
     if 'trajectory' not in dict.keys():
