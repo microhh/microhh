@@ -639,7 +639,8 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
-
+    TF no_offset = 0;
+    
     auto save_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -649,7 +650,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -691,21 +692,22 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : cross_list)
     {
+        TF no_offset = 0;
         if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
+            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
         else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
+            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
         else if (it == "z0m")
-            cross.cross_plane(z0m.data(), "z0m", iotime);
+            cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
         else if (it == "z0h")
-            cross.cross_plane(z0h.data(), "z0h", iotime);
+            cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (it == "ra")
         {
             bsk::calc_ra(
                     tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
-            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+            cross.cross_plane(tmp1->flux_bot.data(), no_offset, "ra", iotime);
         }
     }
 

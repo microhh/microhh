@@ -950,6 +950,7 @@ template<typename TF>
 void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
+    TF no_offset = 0.;
 
     if (cross.get_switch())
     {
@@ -975,7 +976,7 @@ void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                cross.cross_plane(tmp->flux_bot.data(), scalar+"fluxbot_ib", iotime);
+                cross.cross_plane(tmp->flux_bot.data(), no_offset, scalar+"fluxbot_ib", iotime);
 
                 fields.release_tmp(tmp);
             }

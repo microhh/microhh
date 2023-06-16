@@ -277,7 +277,7 @@ template<typename TF>
 void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
-    grid->create(*input_nc);
+    grid->create(*input, *input_nc);
     fields->create(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
@@ -331,6 +331,7 @@ void Model<TF>::exec()
             while (true)
             {
                 // Update the time dependent parameters.
+                grid     ->update_time_dependent(*timeloop);
                 boundary ->update_time_dependent(*timeloop);
                 thermo   ->update_time_dependent(*timeloop);
                 force    ->update_time_dependent(*timeloop);
