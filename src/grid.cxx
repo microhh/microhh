@@ -34,6 +34,8 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "timedep.h"
+#include "stats.h"
+
 
 
 /**
@@ -203,22 +205,30 @@ void Grid<TF>::create(Input& inputin, Netcdf_handle& input_nc)
         std::string msg = "Highest grid point is above prescribed zsize";
         throw std::runtime_error(msg);
     }
-
-    bool swtimedep = inputin.get_item<bool>("grid", "swtimedep"  , "", false);
-    if (swtimedep)
-    {
-        std::string timedep_dim = "time_latlon";
-
-        tdep_latlon.emplace("lat", new Timedep<TF>(master, (*this), "lat", true));
-        tdep_latlon.at("lat")->create_timedep(input_nc, timedep_dim);
-        tdep_latlon.emplace("lon", new Timedep<TF>(master, (*this), "lon", true));
-        tdep_latlon.at("lon")->create_timedep(input_nc, timedep_dim);
-    }
-
     // calculate the grid
     calculate();
 }
 
+template<typename TF>
+void Grid<TF>::create_stats(Stats<TF>& stats)
+{
+    const std::string group_name = "default";
+
+    // Add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_time_series("lat", "Latitude", "degrees", group_name);
+        stats.add_time_series("lon", "Longitude", "degrees", group_name);
+    }
+}
+
+
+template<typename TF>
+void Grid<TF>::exec_stats(Stats<TF>& stats)
+{
+    stats.set_time_series("lat", lat);
+    stats.set_time_series("lon", lon);
+}
 /**
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
@@ -370,16 +380,25 @@ void Grid<TF>::save()
 }
 
 template<typename TF>
-void Grid<TF>::load()
+void Grid<TF>::load(Input& inputin, Netcdf_handle& input_nc)
 {
     load_grid();
+
+    std::string timedep_dim = "time_latlon";
+    swtimedep = inputin.get_item<bool>("grid", "swtimedep", "", false);
+    tdep_latlon.emplace("lat", new Timedep<TF>(master, (*this), "lat", swtimedep));
+    tdep_latlon.at("lat")->create_timedep(input_nc, timedep_dim);
+    tdep_latlon.emplace("lon", new Timedep<TF>(master, (*this), "lon", swtimedep));
+    tdep_latlon.at("lon")->create_timedep(input_nc, timedep_dim);
+
+
 }
 
 template <typename TF>
 void Grid<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    tdep_latlon["lat"]->update_time_dependent(lat, timeloop);
-    tdep_latlon["lon"]->update_time_dependent(lon, timeloop);   
+        tdep_latlon.at("lat")->update_time_dependent(lat, timeloop);
+        tdep_latlon.at("lon")->update_time_dependent(lon, timeloop);
 }
 
 

@@ -40,6 +40,7 @@ class Master;
 class Input;
 template<typename> class Timeloop;
 template<typename> class Timedep;
+template<typename> class Stats;
 
 
 
@@ -144,7 +145,10 @@ class Grid
         void init();              // Initialization of the grid arrays.
         void create(Input&, Netcdf_handle&); // Creation of the grid data.
         void save();              // Saves grid data to file.
-        void load();              // Loads grid data to file.
+        void load(Input&, Netcdf_handle&);              // Loads grid data to file.
+
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
+        void exec_stats(Stats<TF>&);
 
         TF utrans; // Galilean transformation velocity in x-direction.
         TF vtrans; // Galilean transformation velocity in y-direction.
@@ -192,6 +196,7 @@ class Grid
         MPI_Datatype subj; // MPI datatype containing a subset of the entire y-axis.
         #endif
 
+        bool swtimedep;
         std::map<std::string, Timedep<TF>*> tdep_latlon;
 
 };

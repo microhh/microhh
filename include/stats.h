@@ -32,6 +32,7 @@ class Netcdf_file;
 template<typename> class Grid;
 template<typename> class Soil_grid;
 template<typename> class Fields;
+template<typename> class Field3d;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Timeloop;
