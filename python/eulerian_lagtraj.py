@@ -613,11 +613,11 @@ def generate_forcing(cliargs):
         dict['campaign'] = dict['domain']
     if 'conversion_type' not in dict.keys():
         dict['conversion_type'] = 'kpt'
-    if dict['surface_type']=='ocean':
+    if dict['surfaceType']=='ocean':
         dict['gradient_method']='regression'
         if "averaging_width" not in dict.keys():
             dict['averaging_width']=1.0
-    elif dict['surface_type']=='land':
+    elif dict['surfaceType']=='land':
         dict['gradient_method']='boundary'
         if "averaging_width" not in dict.keys():
             dict['averaging_width']=2.0

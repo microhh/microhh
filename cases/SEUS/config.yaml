@@ -5,7 +5,6 @@ lon_samp   : 0.1
 trajectory_type : eulerian
 domain          : SEUS
 campaign        : SEUS
-surface_type    : land
 version         : 1.0.1
 lat_origin      : 34.25
 lon_origin      : -87.25
