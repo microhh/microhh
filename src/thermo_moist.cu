@@ -503,6 +503,67 @@ namespace
         }
     }
 
+    template<typename TF> __global__
+    void calc_radiation_fields_g(
+            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict rh,
+            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
+            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
+            const TF* restrict p, const TF* restrict ph,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int igc, const int jgc, const int kgc,
+            const int jj, const int kk,
+            const int jj_nogc, const int kk_nogc)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        // This routine strips off the ghost cells, because of the data handling in radiation.
+        using Finite_difference::O2::interp2;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const TF ex = exner(p[k]);
+            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+
+            const int ijk = i + j*jj + k*kk;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+            const Struct_sat_adjust<TF> ssa = sat_adjust_g(thl[ijk], qt[ijk], p[k], ex);
+
+            clwp[ijk_nogc] = ssa.ql * dpg;
+            ciwp[ijk_nogc] = ssa.qi * dpg;
+
+            const TF qv = qt[ijk] - ssa.ql - ssa.qi;
+            vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
+            rh[ijk_nogc] = min(qt[ijk] / ssa.qs, TF(1.));
+
+            T[ijk_nogc] = ssa.t;
+        }
+
+        if (i < iend && j < jend && k < kend+1)
+        {
+            const TF exnh = exner(ph[k]);
+            const int ijk = i + j*jj + k*kk;
+
+            const TF thlh = interp2(thl[ijk-kk], thl[ijk]);
+            const TF qth  = interp2(qt [ijk-kk], qt [ijk]);
+
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
+            T_h[ijk_nogc] = sat_adjust_g(thlh, qth, ph[k], exnh).t;
+        }
+
+        if (i < iend && j < jend && k == kstart)
+        {
+            // Calculate surface temperature (assuming no liquid water)
+            const TF exn_bot = exner(ph[kstart]);
+            const int ij = i + j*jj;
+            const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+            T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+        }
+    }
 
     template<typename TF> __global__
     void calc_radiation_columns_g(
@@ -1073,6 +1134,37 @@ void Thermo_moist<TF>::get_radiation_fields_g(
 
     calc_radiation_fields_g<<<gridGPU, blockGPU>>>(
             T.fld_g, T_h.fld_g, qv.fld_g,
+            clwp.fld_g, ciwp.fld_g, T_h.fld_bot_g,
+            fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+            fields.sp.at("thl")->fld_bot_g,
+            bs.pref_g, bs.prefh_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.igc, gd.jgc, gd.kgc,
+            gd.icells, gd.ijcells,
+            gd.imax, gd.imax*gd.jmax);
+    cuda_check_error();
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+void Thermo_moist<TF>::get_radiation_fields_g(
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& rh, Field3d<TF>& clwp, Field3d<TF>& ciwp) const
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU(gridi, gridj, gd.ktot+1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    calc_radiation_fields_g<<<gridGPU, blockGPU>>>(
+            T.fld_g, T_h.fld_g, qv.fld_g, rh.fld_g,
             clwp.fld_g, ciwp.fld_g, T_h.fld_bot_g,
             fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
             fields.sp.at("thl")->fld_bot_g,

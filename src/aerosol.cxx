@@ -184,14 +184,14 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
 }
 
 #ifndef USECUDA
-template <typename TF>
-void Aerosol<TF>::exec(Thermo<TF>& thermo)
-{
-    if (!sw_aerosol)
-        return;
-
-    auto& gd = grid.get_grid_data();
-}
+//template <typename TF>
+//void Aerosol<TF>::exec(Thermo<TF>& thermo)
+//{
+//    if (!sw_aerosol)
+//        return;
+//
+//    auto& gd = grid.get_grid_data();
+//}
 
 template <typename TF>
 void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)

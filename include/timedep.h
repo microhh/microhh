@@ -50,6 +50,7 @@ class Timedep
         #ifdef USECUDA
         TF* data_g;
         void update_time_dependent_prof_g(TF*, Timeloop<TF>&);
+        void update_time_dependent_background_prof_g(TF*, Timeloop<TF>&, const TF);
         void prepare_device();
         void clear_device();
         #endif

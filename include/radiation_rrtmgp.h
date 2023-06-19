@@ -50,7 +50,6 @@ template<typename TF> class Aerosol;
 template<typename TF> class Background;
 
 using Aerosol_concs = Gas_concs;
-using Aerosol_concs_gpu = Gas_concs_gpu;
 
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
@@ -180,8 +179,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array<Float, 1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
         #endif
 
@@ -317,10 +318,12 @@ class Radiation_rrtmgp : public Radiation<TF>
 
 #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
+        std::unique_ptr<Gas_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
+        std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

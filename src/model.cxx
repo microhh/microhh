@@ -370,7 +370,7 @@ void Model<TF>::exec()
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Set/calculate aerosol properties for microphysics and radiation
-                aerosol->exec(*thermo);
+                // aerosol->exec(*thermo);
 
                 // Calculate the microphysics.
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
@@ -581,6 +581,8 @@ void Model<TF>::prepare_gpu()
     microphys->prepare_device();
     radiation->prepare_device();
     column   ->prepare_device();
+    aerosol  ->prepare_device();
+    background ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -598,6 +600,9 @@ void Model<TF>::clear_gpu()
     microphys->clear_device();
     radiation->clear_device();
     column   ->clear_device();
+    aerosol  ->clear_device();
+    background ->clear_device();
+
     // Clear pressure last, for memory check
     pres     ->clear_device();
 }

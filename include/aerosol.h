@@ -53,9 +53,13 @@ class Aerosol
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&);
-        void exec(Thermo<TF>&);
+//        void exec(Thermo<TF>&);
         void exec_stats(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&);
+
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
 
         void get_radiation_fields(Aerosol_concs&);
 
@@ -93,5 +97,19 @@ class Aerosol
         std::unique_ptr<Timedep<TF>> tdep_aermr09;
         std::unique_ptr<Timedep<TF>> tdep_aermr10;
         std::unique_ptr<Timedep<TF>> tdep_aermr11;
+
+        // GPU functions and variables
+        TF* aermr01_g;  ///< Pointer to GPU array.
+        TF* aermr02_g;
+        TF* aermr03_g;
+        TF* aermr04_g;
+        TF* aermr05_g;
+        TF* aermr06_g;
+        TF* aermr07_g;
+        TF* aermr08_g;
+        TF* aermr09_g;
+        TF* aermr10_g;
+        TF* aermr11_g;
+
 };
 #endif
