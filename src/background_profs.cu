@@ -23,6 +23,13 @@ void Background<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(p_lev_g, p_lev.data(), nmemsize_lev, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(h2o_g, h2o.data(), nmemsize_lay, cudaMemcpyHostToDevice));
 
+    for (auto& it : gaslist)
+    {
+        gasprofs_g.emplace(it, nullptr);
+        cuda_safe_call(cudaMalloc(&gasprofs_g.at(it), nmemsize_lay));
+        cuda_safe_call(cudaMemcpy(gasprofs_g.at(it), gasprofs.at(it).data(), nmemsize_lay, cudaMemcpyHostToDevice));
+    }
+
     cuda_safe_call(cudaMalloc(&aermr01_g, nmemsize_lay));
     cuda_safe_call(cudaMalloc(&aermr02_g, nmemsize_lay));
     cuda_safe_call(cudaMalloc(&aermr03_g, nmemsize_lay));
@@ -64,6 +71,8 @@ void Background<TF>::clear_device()
     tdep_p_lev->clear_device();
     tdep_h2o->clear_device();
 
+    for (auto& it : gasprofs_g)
+        cuda_safe_call(cudaFree(it.second));
 
     cuda_safe_call(cudaFree(aermr01_g));
     cuda_safe_call(cudaFree(aermr02_g));
@@ -114,9 +123,12 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         cuda_safe_call(cudaMemcpy(p_lev.data(), p_lev_g, nmemsize_lev, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(h2o.data(), h2o_g, nmemsize_lay, cudaMemcpyDeviceToHost));
 
-//        // gasses
-//        for (auto& it : tdep_gases)
-//            it.second->update_time_dependent_background_prof_g(gasprofs.at(it.first), timeloop, n_era_layers);
+        // gasses
+        for (auto& it : tdep_gases)
+        {
+            it.second->update_time_dependent_background_prof_g(gasprofs_g.at(it.first), timeloop, n_era_layers);
+            cuda_safe_call(cudaMemcpy(gasprofs.at(it.first).data(), gasprofs_g.at(it.first), nmemsize_lay, cudaMemcpyDeviceToHost));
+        }
 
         // aerosols
         if (sw_aerosol && sw_aerosol_timedep)

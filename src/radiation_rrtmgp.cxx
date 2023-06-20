@@ -1582,6 +1582,7 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
             n_lay_col);
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
@@ -1598,7 +1599,7 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         gas_concs.set_vmr(it.first, tmp_array);
     }
 }
-
+#endif
 
 #ifndef USECUDA
 template<typename TF>

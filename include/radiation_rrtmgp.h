@@ -85,6 +85,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         TF* get_surface_radiation_g(const std::string&);
         void prepare_device();
         void clear_device();
+        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
         void forward_device() {};
         void backward_device() {};
         #endif

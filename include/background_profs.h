@@ -44,6 +44,7 @@ public:
     // GPU functions and variables
     void prepare_device();
     void clear_device();
+    std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
 
     void get_tpm(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Gas_concs&);
     void get_gasses(Gas_concs&);

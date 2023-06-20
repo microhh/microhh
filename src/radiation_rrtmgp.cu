@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
+#include "timedep.h"
 #include "thermo.h"
 #include "stats.h"
 #include "netcdf_interface.h"
@@ -547,6 +548,14 @@ void Radiation_rrtmgp<TF>::prepare_device()
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
     this->aerosol_concs_gpu = std::make_unique<Gas_concs_gpu>(aerosol_concs);
+
+    const int nlaysize  = gd.ktot*sizeof(TF);
+    for (auto& it : gaslist)
+    {
+        gasprofs_g.emplace(it, nullptr);
+        cuda_safe_call(cudaMalloc(&gasprofs_g.at(it), nlaysize));
+        cuda_safe_call(cudaMemcpy(gasprofs_g.at(it), gasprofs.at(it).data(), nlaysize, cudaMemcpyHostToDevice));
+    }
 
     if (sw_longwave)
     {
@@ -1117,8 +1126,37 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
         try
         {
+            if (sw_update_background)
+            {
+                // Temperature, pressure and moisture
+                background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
+                Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+                // gasses
+                background.get_gasses(gas_concs_col);
+                // aerosols
+                if (sw_aerosol && sw_aerosol_timedep)
+                {
+                    background.get_aerosols(aerosol_concs_col);
+                }
+            }
+
             if (sw_longwave)
             {
+                if (sw_update_background)
+                {
+                    // Calculate new background column (on the CPU).
+                    Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                    Float p_top;
+                    cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+                    set_background_column_longwave(p_top);
+
+                    // Copy TOD flux to GPU
+                    const int n_gpt = kdist_lw->get_ngpt();
+                    const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                    cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                }
+
                 const int n_col = gd.imax*gd.jmax;
                 exec_longwave(
                         thermo, timeloop, stats,
@@ -1189,6 +1227,10 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 {
                     // Update the solar zenith angle and sun-earth distance.
                     set_sun_location(timeloop);
+                }
+
+                if (!sw_fixed_sza || sw_update_background)
+                {
 
                     if (is_day(this->mu0))
                     {
@@ -1324,6 +1366,27 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 
+#ifdef USECUDA
+template <typename TF>
+void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& it : tdep_gases)
+    {
+        const int nlaysize  = gd.ktot*sizeof(TF);
+        it.second->update_time_dependent_background_prof_g(gasprofs_g.at(it.first), timeloop, gd.ktot);
+        cuda_safe_call(cudaMemcpy(gasprofs.at(it.first).data(), gasprofs_g.at(it.first), nlaysize, cudaMemcpyDeviceToHost));
+
+        Array<Float,2> tmp_array({1, int(gd.ktot)});
+        for (int k=0; k<gd.ktot; ++k)
+        {
+            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
+        }
+        gas_concs_gpu->set_vmr(it.first, tmp_array);
+    }
+}
+#endif
 
 template <typename TF>
 std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& name)
@@ -1358,12 +1421,16 @@ void Radiation_rrtmgp<TF>::clear_device()
     cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
+
+    for (auto& it : gasprofs_g)
+        cuda_safe_call(cudaFree(it.second));
 }
 
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&)
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1427,8 +1494,38 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         }
     };
 
+    if (sw_update_background)
+    {
+        // Temperature and pressure
+        background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col,  gas_concs_col);
+        Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+        // gasses
+        background.get_gasses(gas_concs_col);
+        // aerosols
+        if (sw_aerosol && sw_aerosol_timedep)
+        {
+            background.get_aerosols(aerosol_concs_col);
+        }
+    }
+
     if (sw_longwave)
     {
+        if (sw_update_background)
+        {
+            // Calculate new background column (on the CPU).
+            Float* ph_g = thermo.get_basestate_fld_g("prefh");
+            Float p_top;
+            cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+            set_background_column_longwave(p_top);
+
+            // Copy TOD flux to GPU
+            const int n_gpt = kdist_lw->get_ngpt();
+            const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+            cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+
+        }
+
         exec_longwave(
                 thermo, timeloop, stats,
                 flux_up, flux_dn, flux_net,
@@ -1458,11 +1555,12 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         aod550_column_stats.set_dims({n_col});
 
         // Single column solve of background profile for TOA conditions
-        if (!sw_fixed_sza)
-        {
+        if (!sw_fixed_sza) {
             // Update the solar zenith angle and sun-earth distance.
             set_sun_location(timeloop);
-
+        }
+        if (!sw_fixed_sza || sw_update_background)
+        {
             if (is_day(this->mu0))
             {
                 const int n_bnd = kdist_sw->get_nband();
