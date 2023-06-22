@@ -73,10 +73,10 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>& aerosol, Background<TF>& background);
 
         unsigned long get_time_limit(unsigned long);
-        void update_time_dependent(Timeloop<TF>&) {};
+        void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
@@ -91,6 +91,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         #ifdef USECUDA
         TF* get_surface_radiation_g(const std::string&);
         void prepare_device();
+        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
         void clear_device();
         void forward_device() {};
         void backward_device() {};
@@ -135,7 +136,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
-                const Gas_concs&, const Array<Float,2>&,
+                Aerosol_concs &,
                 const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Float,
@@ -201,6 +202,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
         void set_background_column_shortwave(Thermo<TF>&);
+        void set_background_column_longwave(Thermo<TF>&);
 
 
         const std::string tend_name = "rad";
@@ -210,7 +212,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
-        bool sw_aerosols;
+        bool sw_update_background;
+        bool sw_aerosol;
+        bool sw_aerosol_timedep;
         bool sw_delta_cloud;
         bool sw_delta_aer;
         bool sw_always_rt;
@@ -325,7 +329,12 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Float* sw_flux_tod_up_rt_g;
         Float* sw_flux_tod_dn_rt_g;
 
-        #ifdef USECUDA
+        // timedependent gases
+        std::map<std::string, Timedep<TF>*> tdep_gases;
+        std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
+        std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
+
+#ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;

@@ -36,6 +36,9 @@
 #include "column.h"
 #include "constants.h"
 #include "timeloop.h"
+#include "aerosol.h"
+#include "background_profs.h"
+#include "timedep.h"
 
 // RRTMGP headers.
 #include "Array.h"
@@ -47,6 +50,7 @@
 #include "Rte_sw.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Aerosol_optics.h"
 
 // RRTMGP RT headers.
 #include "Optical_props_rt.h"
@@ -56,6 +60,7 @@
 #include "Rte_sw_rt.h"
 #include "Source_functions_rt.h"
 #include "Cloud_optics_rt.h"
+#include "Aerosol_optics_rt.h"
 
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
@@ -137,7 +142,7 @@ namespace
     }
     
     void load_aerosol_concs(
-            Gas_concs& aerosol_concs, Netcdf_handle& input_nc, const std::string& dim_name)
+            Aerosol_concs& aerosol_concs, Netcdf_handle& input_nc, const std::string& dim_name)
     {
         const int n_lay = input_nc.get_dimension_size(dim_name);
 
@@ -485,7 +490,9 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_longwave      = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
-    sw_aerosols      = inputin.get_item<bool>("radiation", "swaerosols", "", true);
+    sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
+    sw_aerosol      = inputin.get_item<bool>("aerosol", "swaerosols", "", false);
+    sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
     sw_always_rt     = inputin.get_item<bool>("radiation", "swalwaysrt", "", false);
@@ -519,6 +526,26 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     {
         lat = inputin.get_item<Float>("radiation", "lat", "");
         lon = inputin.get_item<Float>("radiation", "lon", "");
+    }
+
+    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());
+
+    const std::vector<std::string> possible_gases = {
+            "h2o", "co2" ,"o3", "n2o", "co", "ch4", "o2", "n2",
+            "ccl4", "cfc11", "cfc12", "cfc22",
+            "hfc143a", "hfc125", "hfc23", "hfc32", "hfc134a",
+            "cf4", "no2" };
+
+    for (auto& it : gaslist)
+    {
+        if (std::find(possible_gases.begin(), possible_gases.end(), it) != possible_gases.end())
+        {
+            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it, !gaslist.empty()));
+        }
+        else
+        {
+            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_bg" << std::endl;
+        }
     }
 
     auto& gd = grid.get_grid_data();
@@ -573,6 +600,9 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
     sw_flux_tod_dn_rt.resize(gd.ijcells);
     sw_flux_tod_up_rt.resize(gd.ijcells);
 
+    // initialize timedependent gasses
+    for (auto& it : gaslist)
+        gasprofs[it] = std::vector<TF>(gd.ktot);
 }
 
 
@@ -595,6 +625,14 @@ void Radiation_rrtmgp_rt<TF>::create(
         const std::string error = "Radiation does not support thermo mode " + thermo.get_switch();
         throw std::runtime_error(error);
     }
+
+    // Setup timedependent gasses
+    auto& gd = grid.get_grid_data();
+    const TF offset = 0;
+    std::string timedep_dim_ls = "time_ls";
+
+    for (auto& it : tdep_gases)
+        it.second->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
 
     // Initialize the tendency if the radiation is used.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))
@@ -770,7 +808,7 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         const Array<Float,2>& col_dry,
         const Array<Float,2>& p_lay, const Array<Float,2>& p_lev,
         const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
-        const Gas_concs& aerosol_concs, const Array<Float,2>& rh,
+        Aerosol_concs& aerosol_concs,
         const Array<Float,1>& mu0,
         const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
         const Float tsi_scaling,
@@ -795,8 +833,22 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
             toa_src,
             col_dry);
 
-    if (sw_aerosols)
+    if (sw_aerosol)
     {
+        Array<Float, 2> rh({1, n_lay});
+
+        for (int ilay = 1; ilay <= n_lay; ++ilay)
+        {
+            Float h2o = gas_concs.get_vmr("h2o")({1, ilay});
+
+            const Float m_air = 28.97;
+            const Float m_h2o = 18.01528;
+            Float q = h2o * m_h2o / m_air;
+            Float esat = 6.11e2 * exp(17.269 * (t_lay({1, ilay}) -273.16) / (t_lay({1, ilay}) - 35.86));
+            Float h20_sat_liq = std::max(0.622 * esat / p_lay({1, ilay}), 1.0);
+            rh({1, ilay}) = q / h20_sat_liq;
+        }
+
         aerosol_sw->aerosol_optics(
                 aerosol_concs,
                 rh,
@@ -883,13 +935,9 @@ void Radiation_rrtmgp_rt<TF>::create_column(
 
     load_gas_concs(gas_concs_col, rad_nc, "lay");
     
-    if (sw_aerosols)    
+    if (sw_aerosol)    
     {
         load_aerosol_concs(aerosol_concs_col, rad_nc, "lay");
-        
-        const int n_lay = rad_nc.get_dimension_size("lay");
-        rh_col.set_dims({1, n_lay});
-        rh_col = std::move(rad_nc.get_variable<Float>("rh", {n_lay}));
     }
 
     // 3. Set the coordinate for the reference profiles in the stats, before calling the other creates.
@@ -993,7 +1041,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_longwave(
             n_lay_col);
 
     // Save the reference profile fluxes in the stats.
-    if (stats.get_switch())
+    if (stats.get_switch() && !sw_update_background)
     {
         const std::string group_name = "radiation";
 
@@ -1023,7 +1071,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
     const int n_bnd = kdist_sw->get_nband();
 
     optical_props_sw = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *kdist_sw);
-    if (sw_aerosols) 
+    if (sw_aerosol)
         aerosol_props_sw = std::make_unique<Optical_props_2str>(n_col, n_lay_col, *aerosol_sw);
 
     sw_flux_up_col    .set_dims({n_col, n_lev_col});
@@ -1060,7 +1108,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
                 col_dry,
                 p_lay_col, p_lev_col,
                 t_lay_col, t_lev_col,
-                aerosol_concs_col, rh_col,
+                aerosol_concs_col,
                 mu0,
                 sfc_alb_dir, sfc_alb_dif,
                 tsi_scaling,
@@ -1069,7 +1117,9 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
         // Save the reference profile fluxes in the stats.
         if (stats.get_switch())
         {
-            const std::string group_name = "radiation";
+            if (!sw_update_background)
+            {
+                const std::string group_name = "radiation";
 
             stats.add_fixed_prof_raw(
                     "sw_flux_up_ref",
@@ -1086,6 +1136,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
                     "Shortwave direct downwelling flux of reference column",
                     "W m-2", "p_rad", group_name,
                     sw_flux_dn_dir_col.v());
+		}
         }
     }
 }
@@ -1099,8 +1150,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver(
     // 1. Load the available gas concentrations from the group of the netcdf file.
     Netcdf_handle& rad_input_nc = input_nc.get_group("init");
     load_gas_concs(gas_concs, rad_input_nc, "z");
-    
-    if (sw_aerosols)
+
+    if (sw_aerosol)
         load_aerosol_concs(aerosol_concs, rad_input_nc, "z");
 
     // 2. Pass the gas concentrations to the solver initializers.
@@ -1168,8 +1219,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
 
     cloud_sw = std::make_unique<Cloud_optics>(
             load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
-    
-    if (sw_aerosols)
+
+    if (sw_aerosol)
         aerosol_sw = std::make_unique<Aerosol_optics>(
                 load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
 
@@ -1222,6 +1273,34 @@ void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
+void Radiation_rrtmgp_rt<TF>::set_background_column_longwave(Thermo<TF>& thermo)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Read the boundary conditions.
+    // Set the surface temperature and emissivity.
+    Array<Float,1> t_sfc({1});
+    t_sfc({1}) = t_lev_col({1,1});
+
+    const int n_bnd = kdist_lw->get_nband();
+    Array<Float,2> emis_sfc({n_bnd, 1});
+    for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+        emis_sfc({ibnd, 1}) = this->emis_sfc;
+
+    solve_longwave_column(optical_props_lw,
+                          lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
+                          lw_flux_dn_inc, thermo.get_basestate_vector("ph")[gd.kend],
+                          gas_concs_col,
+                          kdist_lw,
+                          sources_lw,
+                          col_dry,
+                          p_lay_col, p_lev_col,
+                          t_lay_col, t_lev_col,
+                          t_sfc, emis_sfc,
+                          n_lay_col);
+}
+
+template<typename TF>
 void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
@@ -1251,7 +1330,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
             col_dry,
             p_lay_col, p_lev_col,
             t_lay_col, t_lev_col,
-            aerosol_concs_col, rh_col,
+            aerosol_concs_col,
             mu0,
             sfc_alb_dir, sfc_alb_dif,
             tsi_scaling,
@@ -1260,8 +1339,29 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 
 #ifndef USECUDA
 template<typename TF>
+void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+    for (auto& it : tdep_gases)
+    {
+        it.second->update_time_dependent_background_prof(gasprofs.at(it.first), timeloop, gd.ktot);
+
+        Array<Float,2> tmp_array({1, int(gd.ktot)});
+        for (int k=0; k<gd.ktot; ++k)
+        {
+            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
+        }
+        gas_concs.set_vmr(it.first, tmp_array);
+    }
+}
+#endif
+
+
+#ifndef USECUDA
+template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background)
 {
     throw std::runtime_error("no raytracing in CPU mode, sorry!");
 }

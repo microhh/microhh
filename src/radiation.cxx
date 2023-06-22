@@ -34,7 +34,9 @@
 #include "radiation_disabled.h"
 #include "radiation_gcss.h"
 #include "radiation_rrtmgp.h"
+// #ifdef __CUDACC
 #include "radiation_rrtmgp_rt.h"
+// #endif
 #include "radiation_prescribed.h"
 
 #include "Optical_props.h"
@@ -66,7 +68,11 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
     else if (swradiation == "rrtmgp")
         return std::make_shared<Radiation_rrtmgp<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "rrtmgp_rt")
+	#ifdef __CUDACC
         return std::make_shared<Radiation_rrtmgp_rt<TF>>(masterin, gridin, fieldsin, inputin);
+        #else
+        throw std::runtime_error("No raytracing on the CPU");
+	#endif
     else if (swradiation == "gcss") // gcss - for Sc clouds.
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "prescribed")
