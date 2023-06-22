@@ -595,6 +595,7 @@ void Model<TF>::clear_gpu()
     soil_grid->clear_device();
     fields   ->clear_device();
     thermo   ->clear_device();
+    boundary ->clear_device();
     force    ->clear_device();
     ib       ->clear_device();
     microphys->clear_device();

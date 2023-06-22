@@ -28,6 +28,7 @@ def link(f1, f2):
     else:
         raise Exception('Source file {} does not exist!'.format(f1))
 
+
 def copy(f1, f2):
     """
     Copy `f1` to `f2`, if `f2` does not yet exist.
@@ -39,22 +40,18 @@ def copy(f1, f2):
     else:
         raise Exception('Source file {} does not exist!'.format(f1))
 
+copy_or_link = copy
 
-if __name__ == '__main__':
-    """
-    Case switches.
-    """
-    TF = np.float64              # Switch between double (float64) and single (float32) precision.
-    use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = True            # False = prescribed radiation from ERA5.
-    use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
-    use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
-
-    # Switch between the two default RRTMGP g-point sets.
-    gpt_set = '128_112' # or '256_224'
-
-    # Option to link or copy the LSM + RRTMGP lookup tables.
-    copy_or_link = copy
+def create_case_input(
+        use_htessel,
+        use_rrtmgp,
+        use_rt,
+        use_homogeneous_z0,
+        use_homogeneous_ls,
+        gpt_set,
+        itot, jtot, ktot,
+        xsize, ysize, zsize,
+        endtime, TF):
 
     # Link required files (if not present)
     if use_htessel:
@@ -75,8 +72,6 @@ if __name__ == '__main__':
     """
     Create vertical grid for LES
     """
-    zsize = 4000
-    ktot = 160
     dz = zsize/ktot
     z = np.arange(dz/2, zsize, dz)
 
@@ -111,11 +106,14 @@ if __name__ == '__main__':
     """
     ini = mht.Read_namelist('cabauw.ini.base')
 
-    itot = ini['grid']['itot']
-    jtot = ini['grid']['jtot']
-
+    ini['grid']['itot'] = itot
+    ini['grid']['jtot'] = jtot
     ini['grid']['ktot'] = ktot
+
+    ini['grid']['xsize'] = xsize
+    ini['grid']['ysize'] = ysize
     ini['grid']['zsize'] = zsize
+
     ini['buffer']['zstart'] = zsize*3/4.
 
     if use_htessel:
@@ -130,11 +128,19 @@ if __name__ == '__main__':
     ini['boundary']['swconstantz0'] = use_homogeneous_z0
     ini['land_surface']['swhomogeneous'] = use_homogeneous_ls
 
-    if use_rrtmgp:
+    if use_rrtmgp and not use_rt:
         ini['radiation']['swradiation'] = 'rrtmgp'
+    elif use_rrtmgp and use_rt:
+        ini['radiation']['swradiation'] = 'rrtmgp_rt'
+        ini['radiation']['rays_per_pixel'] = 256
+        ini['radiation']['kngrid_i'] = 64
+        ini['radiation']['kngrid_j'] = 64
+        ini['radiation']['kngrid_k'] = 32
     else:
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
+
+    ini['time']['endtime'] = endtime
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -320,3 +326,43 @@ if __name__ == '__main__':
         # Save binary input MicroHH, and NetCDF file for visual validation/plotting/etc.
         lsm_data.save_binaries(allow_overwrite=True)
         lsm_data.save_netcdf('lsm_input.nc', allow_overwrite=True)
+
+
+if __name__ == '__main__':
+    """
+    Case switches.
+    """
+    TF = np.float64              # Switch between double (float64) and single (float32) precision.
+    use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
+    use_rrtmgp = True            # False = prescribed radiation from ERA5.
+    use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
+    use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
+    use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
+
+    # Switch between the two default RRTMGP g-point sets.
+    gpt_set = '128_112' # or '256_224'
+
+    # Simple equidistant grid.
+    zsize = 4000
+    ktot = 160
+
+    itot = 512
+    jtot = 512
+
+    xsize = 25600
+    ysize = 25600
+
+    endtime = 43200
+
+    # Create input files.
+    create_case_input(
+            use_htessel,
+            use_rrtmgp,
+            use_rt,
+            use_homogeneous_z0,
+            use_homogeneous_ls,
+            gpt_set,
+            itot, jtot, ktot,
+            xsize, ysize, zsize,
+            endtime,
+            TF)

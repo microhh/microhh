@@ -40,6 +40,7 @@
 #include "boundary_cyclic.h"
 #include "aerosol.h"
 #include "background_profs.h"
+#include "timedep.h"
 
 // RRTMGP headers.
 #include "Array.h"
@@ -52,7 +53,7 @@
 #include "Source_functions.h"
 #include "Cloud_optics.h"
 #include "Aerosol_optics.h"
-#include "timedep.h"
+
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
@@ -429,7 +430,7 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
-
+    
     Aerosol_optics load_and_init_aerosol_optics(
             Master& master,
             const std::string& coef_file)
@@ -438,40 +439,36 @@ namespace
         Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
 
         // Read look-up table coefficient dimensions
-        int n_band = coef_nc.get_dimension_size("band_sw");
-        int nspecies_phobic = coef_nc.get_dimension_size("hydrophobic");
-        int nspecies_philic = coef_nc.get_dimension_size("hydrophilic");
+        int n_band     = coef_nc.get_dimension_size("band_sw");
         int n_hum      = coef_nc.get_dimension_size("relative_humidity");
+        int n_philic = coef_nc.get_dimension_size("hydrophilic");
+        int n_phobic = coef_nc.get_dimension_size("hydrophobic");
+
+        Array<Float,2> band_lims_wvn({2, n_band});
+
+        Array<Float,2> mext_phobic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> ssa_phobic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> g_phobic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+
+        Array<Float,3> mext_philic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> ssa_philic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> g_philic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
 
         Array<Float,1> rh_upper(
                 coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
-
-        std::vector band_lims_wvn_lower(coef_nc.get_variable<Float>("wavenumber1_sw", {n_band}));
-        std::vector band_lims_wvn_upper(coef_nc.get_variable<Float>("wavenumber2_sw", {n_band}));
-        band_lims_wvn_lower.insert(band_lims_wvn_lower.end(), band_lims_wvn_upper.begin(), band_lims_wvn_upper.end());
-
-        Array<Float,2> band_lims_wvn((band_lims_wvn_lower), {2, n_band});
-
-        // Read look-up table coefficients.
-        Array<Float,2> mext_phobic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
-        Array<Float,2> ssa_phobic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
-        Array<Float,2> g_phobic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {nspecies_phobic, n_band}), {n_band, nspecies_phobic});
-
-        Array<Float,3> mext_philic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {nspecies_philic, n_hum, n_band}), {n_band, n_hum, nspecies_philic});
-        Array<Float,3> ssa_philic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {nspecies_philic, n_hum, n_band}), {n_band, n_hum, nspecies_philic});
-        Array<Float,3> g_philic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {nspecies_philic, n_hum, n_band}), {n_band, n_hum, nspecies_philic});
 
         return Aerosol_optics(
                 band_lims_wvn, rh_upper,
                 mext_phobic, ssa_phobic, g_phobic,
                 mext_philic, ssa_philic, g_philic);
     }
+
 
     void calc_tendency(
             Float* restrict thlt_rad,
@@ -543,12 +540,12 @@ namespace
             Float* const restrict sw_flux_up_sfc,
             Float* const restrict sw_flux_dn_dif,
             Float* const restrict tmp_2d,
-            const double* const restrict sw_flux_dn,
-            const double* const restrict sw_flux_dn_dir,
+            const Float* const restrict sw_flux_dn,
+            const Float* const restrict sw_flux_dn_dir,
             const Float* const restrict kernel_x,
             const Float* const restrict kernel_y,
             const int n_steps,
-            const double alb_dir, const double alb_dif,
+            const Float alb_dir, const Float alb_dif,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int igc, const int jgc,
@@ -669,6 +666,10 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_delta_aer = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
+    sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
+    sw_homogenize_sfc_lw = inputin.get_item<bool>("radiation", "swhomogenizesfc_lw", "", false);
+    sw_homogenize_hr_sw = inputin.get_item<bool>("radiation", "swhomogenizehr_sw", "", false);
+    sw_homogenize_hr_lw = inputin.get_item<bool>("radiation", "swhomogenizehr_lw", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
@@ -991,8 +992,7 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
         const Array<Float,1>& mu0,
         const Array<Float,2>& sfc_alb_dir, const Array<Float,2>& sfc_alb_dif,
         const Float tsi_scaling,
-        const int n_lay
-        )
+        const int n_lay)
 {
     const int n_col = 1;
     const int n_lev = n_lay + 1;
@@ -1046,7 +1046,6 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
     if (tsi_scaling >= 0)
         for (int igpt=1; igpt<=n_gpt; ++igpt)
             toa_src({1, igpt}) *= tsi_scaling;
-
 
     std::unique_ptr<Fluxes_broadband> fluxes =
             std::make_unique<Fluxes_broadband>(n_col, n_lev);
@@ -1193,7 +1192,6 @@ void Radiation_rrtmgp<TF>::create_column(
             stats.add_prof("sw_flux_dn_dir_ref",
                            "Shortwave direct downwelling flux of reference column",
                            "W m-2", "era_levels", group_name);
-//            std::cout << "add prof succesful" << std::endl;
         }
         if (sw_update_background)
         {
@@ -1509,7 +1507,8 @@ void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
     const int day_of_year = int(timeloop.calc_day_of_year());
     const int year = timeloop.get_year();
     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-    this->mu0 = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+    Float azimuth_dummy;
+    std::tie(this->mu0, azimuth_dummy) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
 
     // Calculate correction factor for impact Sun's distance on the solar "constant"
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
@@ -1643,6 +1642,15 @@ void Radiation_rrtmgp<TF>::exec(
 
         const bool compute_clouds = true;
 
+        // Lambda function for homogenizing surface radiation fields.
+        // NOTE BvS: this function is not tested on the CPU, as this branch currently
+        //           does not compile without CUDA.
+        //auto homogenize = [&](std::vector<TF>& field)
+        //{
+        //    const TF mean_value = field3d_operators.calc_mean_2d(field.data());
+        //    std::fill(field.begin(), field.end(), mean_value);
+        //};
+
         // get aerosol mixing ratios
         if (sw_aerosol && sw_aerosol_timedep)
             aerosol.get_radiation_fields(aerosol_concs);
@@ -1697,6 +1705,12 @@ void Radiation_rrtmgp<TF>::exec(
                         gd.icells, gd.ijcells,
                         gd.imax);
 
+                //if (sw_homogenize_sfc_rad)
+                //{
+                //    homogenize(lw_flux_up_sfc);
+                //    homogenize(lw_flux_dn_sfc);
+                //}
+
                 if (do_radiation_stats)
                 {
                     // Make sure that the top boundary is taken into account in case of fluxes.
@@ -1749,7 +1763,7 @@ void Radiation_rrtmgp<TF>::exec(
                 Array<Float,2> flux_dn_dir({gd.imax*gd.jmax, gd.ktot+1});
                 if (is_day(this->mu0))
                 {
-                 exec_shortwave(
+                    exec_shortwave(
                             thermo, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             aod550,
@@ -1774,6 +1788,12 @@ void Radiation_rrtmgp<TF>::exec(
                             gd.igc, gd.jgc,
                             gd.icells, gd.ijcells,
                             gd.imax);
+
+                    //if (sw_homogenize_sfc_rad)
+                    //{
+                    //    homogenize(sw_flux_up_sfc);
+                    //    homogenize(sw_flux_dn_sfc);
+                    //}
 
                     if (sw_diffuse_filter)
                     {
@@ -2454,7 +2474,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         const Array<Float,2>& h2o, const Array<Float, 2>& rh,
         const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
         const bool compute_clouds, const int n_col)
-
 {
     // How many profiles are solved simultaneously?
     constexpr int n_col_block = 4;

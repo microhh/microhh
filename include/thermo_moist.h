@@ -77,7 +77,7 @@ class Thermo_moist : public Thermo<TF>
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_radiation_fields(
-            Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const;
         void get_land_surface_fields(
             std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);

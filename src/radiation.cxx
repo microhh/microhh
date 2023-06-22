@@ -34,6 +34,7 @@
 #include "radiation_disabled.h"
 #include "radiation_gcss.h"
 #include "radiation_rrtmgp.h"
+#include "radiation_rrtmgp_rt.h"
 #include "radiation_prescribed.h"
 
 #include "Optical_props.h"
@@ -64,6 +65,8 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
         return std::make_shared<Radiation_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "rrtmgp")
         return std::make_shared<Radiation_rrtmgp<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swradiation == "rrtmgp_rt")
+        return std::make_shared<Radiation_rrtmgp_rt<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "gcss") // gcss - for Sc clouds.
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "prescribed")

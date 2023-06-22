@@ -18,12 +18,11 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RADIATION_RRTMGP_H
-#define RADIATION_RRTMGP_H
+#ifndef RADIATION_RRTMGP_RT_H
+#define RADIATION_RRTMGP_RT_H
 
 #include "radiation.h"
 #include "field3d_operators.h"
-#include "boundary_cyclic.h"
 
 #include "Gas_concs.h"
 #include "Gas_optics_rrtmgp.h"
@@ -33,6 +32,17 @@
 #include "Rte_lw.h"
 #include "Rte_sw.h"
 #include "Types.h"
+
+#include "Gas_concs_rt.h"
+#include "Gas_optics_rrtmgp_rt.h"
+#include "Source_functions_rt.h"
+#include "Cloud_optics_rt.h"
+#include "Aerosol_optics_rt.h"
+#include "Rte_lw_rt.h"
+#include "Rte_sw_rt.h"
+#include "Raytracer.h"
+#include "raytracer_kernels.h"
+#include <curand_kernel.h>
 
 
 class Master;
@@ -44,19 +54,17 @@ template<typename> class Column;
 template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
+template<typename> class Fields;
 template<typename> class Thermo;
 template<typename> class Timeloop;
-template<typename TF> class Aerosol;
-template<typename TF> class Background;
 
-using Aerosol_concs = Gas_concs;
 
 template<typename TF>
-class Radiation_rrtmgp : public Radiation<TF>
+class Radiation_rrtmgp_rt : public Radiation<TF>
 {
 	public:
-		Radiation_rrtmgp(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        virtual ~Radiation_rrtmgp() {}
+		Radiation_rrtmgp_rt(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        virtual ~Radiation_rrtmgp_rt() {}
 
 		bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
@@ -65,10 +73,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
 
         unsigned long get_time_limit(unsigned long);
-        void update_time_dependent(Timeloop<TF>&);
+        void update_time_dependent(Timeloop<TF>&) {};
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
@@ -77,15 +85,13 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
-                Aerosol<TF>&, Background<TF>&);
+        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
         TF* get_surface_radiation_g(const std::string&);
         void prepare_device();
         void clear_device();
-        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
         void forward_device() {};
         void backward_device() {};
         #endif
@@ -96,8 +102,6 @@ class Radiation_rrtmgp : public Radiation<TF>
 		using Radiation<TF>::grid;
 		using Radiation<TF>::fields;
 		using Radiation<TF>::field3d_operators;
-
-        Boundary_cyclic<TF> boundary_cyclic;
 
         void create_column(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
@@ -119,26 +123,23 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create_solver_shortwave(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&, Column<TF>&,
                 const Gas_concs&);
-        void create_diffuse_filter();
 
-
-    void solve_shortwave_column(
-            std::unique_ptr<Optical_props_arry>&,
-            std::unique_ptr<Optical_props_2str>&,
-            Array<Float,2>&, Array<Float,2>&,
-            Array<Float,2>&, Array<Float,2>&,
-            Array<Float,2>&, Array<Float,2>&, Array<Float, 1>&, const Float,
-            const Gas_concs&,
-            const Gas_optics_rrtmgp&,
-            const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            Gas_concs&,
-            const Array<Float,1>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            const Float,
-            const int
-            );
+        void solve_shortwave_column(
+                std::unique_ptr<Optical_props_arry>&,
+                std::unique_ptr<Optical_props_2str>&,
+                Array<Float,2>&, Array<Float,2>&,
+                Array<Float,2>&, Array<Float,2>&,
+                Array<Float,2>&, Array<Float,2>&, const Float,
+                const Gas_concs&,
+                const Gas_optics_rrtmgp&,
+                const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Gas_concs&, const Array<Float,2>&,
+                const Array<Float,1>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Float,
+                const int);
 
         void solve_longwave_column(
                 std::unique_ptr<Optical_props_arry>&,
@@ -163,34 +164,44 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
-		        Array<Float,1>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         #ifdef USECUDA
+        Float calc_max_nogc(
+                const Float* const __restrict__ fld,
+                const int itot, const int jtot, const int ktot);
+
         void exec_longwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const bool, const int);
+                const bool);
 
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
-                Array<Float, 1>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const bool);
+
+        void exec_shortwave_rt(
+                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>& rt_flux_tod_dn, Array_gpu<Float,2>& rt_flux_tod_up, Array_gpu<Float,2>& rt_flux_sfc_dir, Array_gpu<Float,2>& rt_flux_sfc_dif,
+                Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const bool, const int);
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const bool, const bool);
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
-        void set_background_column_longwave(const TF);
-        void set_background_column_shortwave(const TF);
+        void set_background_column_shortwave(Thermo<TF>&);
+
 
         const std::string tend_name = "rad";
         const std::string tend_longname = "Radiation";
@@ -199,11 +210,10 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
-        bool sw_update_background;
-        bool sw_aerosol;
-        bool sw_aerosol_timedep;
+        bool sw_aerosols;
         bool sw_delta_cloud;
         bool sw_delta_aer;
+        bool sw_always_rt;
 
         bool sw_homogenize_sfc_sw;
         bool sw_homogenize_sfc_lw;
@@ -217,6 +227,12 @@ class Radiation_rrtmgp : public Radiation<TF>
         double dt_rad;
         unsigned long idt_rad;
 
+        Int rays_per_pixel;
+        int kngrid_i;
+        int kngrid_j;
+        int kngrid_k;
+        Int time_idx = 0;
+
         std::vector<std::string> crosslist;
 
         // RRTMGP related variables.
@@ -226,6 +242,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         Float sfc_alb_dir; // Surface albedo.
         Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
+        Float azimuth;     // Azimuth angle.
         Float Nc0;         // Total droplet number concentration.
 
         Float lat; // Latitude (degrees)
@@ -255,7 +272,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
-	Array<Float,1> aod550;
 
         Gas_concs gas_concs_col;
 
@@ -265,12 +281,12 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Source_func_lw> sources_lw;
         std::unique_ptr<Optical_props_arry> optical_props_lw;
         std::unique_ptr<Optical_props_arry> optical_props_sw;
+
         std::unique_ptr<Optical_props_2str> aerosol_props_sw;
 
         // The full solver.
         Gas_concs gas_concs;
         Gas_concs aerosol_concs;
-
         std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
@@ -278,7 +294,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Cloud_optics> cloud_sw;
 
         std::unique_ptr<Aerosol_optics> aerosol_sw;
-
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
         std::vector<Float> lw_flux_up_sfc;
@@ -297,25 +312,20 @@ class Radiation_rrtmgp : public Radiation<TF>
         Float* sw_flux_dn_dif_inc_g;
         Float* lw_flux_dn_inc_g;
 
-        // Surface diffuse radiation filtering
-        bool sw_diffuse_filter;
+        // raytracing fluxes for stats & cross sections
+        std::vector<Float> sw_flux_sfc_dir_rt;
+        std::vector<Float> sw_flux_sfc_dif_rt;
+        std::vector<Float> sw_flux_sfc_up_rt;
+        std::vector<Float> sw_flux_tod_up_rt;
+        std::vector<Float> sw_flux_tod_dn_rt;
 
-        Float sigma_filter;
-        Float sigma_filter_small;
-        int n_filter_iterations;
+        Float* sw_flux_sfc_dir_rt_g;
+        Float* sw_flux_sfc_dif_rt_g;
+        Float* sw_flux_sfc_up_rt_g;
+        Float* sw_flux_tod_up_rt_g;
+        Float* sw_flux_tod_dn_rt_g;
 
-        std::vector<Float> sw_flux_dn_dif_f;
-
-        std::vector<Float> filter_kernel_x;
-        std::vector<Float> filter_kernel_y;
-
-        // timedependent gases
-        std::map<std::string, Timedep<TF>*> tdep_gases;
-        std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
-        std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
-
-
-	#ifdef USECUDA
+        #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Gas_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
@@ -326,6 +336,18 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;
+
+        Raytracer raytracer;
+
+        //std::unique_ptr<Gas_concs_rt> gas_concs_rt;
+        //std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
+        //std::unique_ptr<Cloud_optics_rt> cloud_lw_rt;
+        std::unique_ptr<Gas_optics_rt> kdist_sw_rt;
+        std::unique_ptr<Cloud_optics_rt> cloud_sw_rt;
+        std::unique_ptr<Aerosol_optics_rt> aerosol_sw_rt;
+
+        Rte_lw_rt rte_lw_rt;
+        Rte_sw_rt rte_sw_rt;
         #endif
 };
 #endif

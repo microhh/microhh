@@ -50,13 +50,16 @@ namespace Radiation_rrtmgp_functions
 //        const TF th = thl + Lv<TF>*ql/(cp<TF>*exn) + Ls<TF>*qi/(cp<TF>*exn);
 //        return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi));
 //    }
-    inline Float calc_cos_zenith_angle(
+    inline std::pair<Float, Float> calc_cos_zenith_angle(
             const Float lat, const Float lon, const int day_of_year,
             const Float seconds_since_midnight, const int year)
     {
         /* Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
                      Radiative Processes in Meteorology and Climatology.
                      Elsevier, New York, 318 pp. */
+
+
+        // CvH: there is no necessity to do this computation in single precision as it single value cpu only.
 
         const Float pi = Float(M_PI);
 
@@ -92,10 +95,18 @@ namespace Radiation_rrtmgp_functions
         const Float hour_angle = (hour_solar_time-Float(12))*Float(15.0)*(pi/Float(180));
 
         // Cosine of solar zenith angle
-        const Float cos_zenith = std::sin(radlat) * std::sin(declination_angle) +
-                              std::cos(radlat) * std::cos(declination_angle) * std::cos(hour_angle);
+        const Float cos_zenith = std::sin(radlat) * std::sin(declination_angle)
+                               + std::cos(radlat) * std::cos(declination_angle) * std::cos(hour_angle);
 
-        return cos_zenith;
+        const Float cos_elevation = std::cos(Float(0.5)*pi - std::acos(cos_zenith));
+
+        const Float cos_azimuth = (
+              std::cos(radlat) * std::sin(declination_angle)
+            - std::sin(radlat) * std::cos(declination_angle) * std::cos(hour_angle) ) / cos_elevation;
+
+        const Float azimuth = (hour_angle <= Float(0.)) ? std::acos(cos_azimuth) : Float(2.)*pi - std::acos(cos_azimuth);
+
+        return std::pair<Float, Float>(cos_zenith, azimuth);
     }
 
 

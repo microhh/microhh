@@ -629,8 +629,6 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d(ustar.data());
     boundary_cyclic.exec_2d(obuk.data());
 
-
-
     // Redistribute ustar over `uw` and `vw`.
     set_bcs_momentum(
             fields.mp.at("u")->flux_bot.data(),
