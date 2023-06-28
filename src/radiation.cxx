@@ -68,11 +68,11 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
     else if (swradiation == "rrtmgp")
         return std::make_shared<Radiation_rrtmgp<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "rrtmgp_rt")
-	#ifdef __CUDACC
+//	#ifdef __CUDACC
         return std::make_shared<Radiation_rrtmgp_rt<TF>>(masterin, gridin, fieldsin, inputin);
-        #else
-        throw std::runtime_error("No raytracing on the CPU");
-	#endif
+//        #else
+//        throw std::runtime_error("No raytracing on the CPU");
+//	#endif
     else if (swradiation == "gcss") // gcss - for Sc clouds.
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "prescribed")

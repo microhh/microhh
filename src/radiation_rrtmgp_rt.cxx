@@ -491,7 +491,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
-    sw_aerosol      = inputin.get_item<bool>("aerosol", "swaerosols", "", false);
+    sw_aerosol      = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
     sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
@@ -1402,7 +1402,8 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
 
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background)
 {
     throw std::runtime_error("We are not running column output in raytracing mode!");
 }
