@@ -1782,11 +1782,16 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
             Float zenith_angle = std::acos(mu0({1}));
             Float azimuth_angle = this->azimuth;
 
+            Array_gpu<Float,2> mie_cdfs_sub;
+            Array_gpu<Float,3> mie_angs_sub;
+
             const Int qrng_offset = Int(igpt - 1) + this->time_idx * Int(n_gpt);
             raytracer.trace_rays(
                     qrng_offset,
                     this->rays_per_pixel,
                     grid_cells, grid_d, kn_grid,
+                    mie_cdfs_sub,
+                    mie_angs_sub,
                     dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
                     dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
                     dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_tau(),
@@ -1795,7 +1800,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_tau(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_ssa(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_g(),
-                    sfc_alb_dir, zenith_angle,
+                    rel, sfc_alb_dir, zenith_angle,
                     azimuth_angle,
                     sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
                     fluxes->get_flux_tod_dn(),
