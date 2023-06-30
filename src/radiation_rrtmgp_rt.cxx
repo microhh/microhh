@@ -1339,7 +1339,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 
 #ifndef USECUDA
 template<typename TF>
-void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+void Radiation_rrtmgp_rt<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     for (auto& it : tdep_gases)
