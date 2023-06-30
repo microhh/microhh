@@ -5,7 +5,8 @@
 # If using CUDA, also include cufft 
 #
 # Tested on the following systems:
-# ARM Cumulus with GCC
+# ARM Cumulus with GCC CUDA/MPICH (RedHat)
+# Cleveland State with GCC CUDA/MPICH (Ubuntu 22.04)
 
 # Switch between Intel and GCC:
 set(USEINTEL FALSE)
@@ -69,7 +70,7 @@ set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necess
 if(USECUDA)
     set(CMAKE_CUDA_ARCHITECTURES 80)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(LIBS ${LIBS} -rdynamic $ENV{CUDA_HOME}/lib64/libcufft.so)
+    set(LIBS ${LIBS} -rdynamic libcufft.so)
     set(USER_CUDA_NVCC_FLAGS "-std=c++17 --expt-relaxed-constexpr")
     set(USER_CUDA_NVCC_RELEASE_FLAGS "-O3 --use_fast_math")
     add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
