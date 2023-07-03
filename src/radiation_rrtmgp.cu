@@ -991,21 +991,21 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
 
-            int ibnd = 11;
-            for (int ilay = 1; ilay <= n_lay; ++ilay)
-                for (int icol = 1; icol <= n_col_in; ++icol)
-                {
-                    if (ilay == 1)
-                    {
-                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
-                        aod550({col_s_in+icol-1}) = tau;
-                    }
-                    else
-                    {
-                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
-                        aod550({col_s_in+icol-1}) += tau;
-                    }
-                }
+//            int ibnd = 11;
+//            for (int ilay = 1; ilay <= n_lay; ++ilay)
+//                for (int icol = 1; icol <= n_col_in; ++icol)
+//                {
+//                    if (ilay == 1)
+//                    {
+//                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
+//                        aod550({col_s_in+icol-1}) = tau;
+//                    }
+//                    else
+//                    {
+//                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
+//                        aod550({col_s_in+icol-1}) += tau;
+//                    }
+//                }
         }
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});

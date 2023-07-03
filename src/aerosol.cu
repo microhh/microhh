@@ -7,62 +7,66 @@
 template<typename TF>
 void Aerosol<TF>::prepare_device()
 {
-    auto& gd = grid.get_grid_data();
-    const int nmemsize  = gd.kcells*sizeof(TF);
+    if (sw_aerosol && sw_timedep)
+    {
+        auto &gd = grid.get_grid_data();
+        const int nmemsize = gd.kcells * sizeof(TF);
 
-    cuda_safe_call(cudaMalloc(&aermr01_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr02_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr03_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr04_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr05_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr06_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr07_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr08_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr09_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr10_g, nmemsize));
-    cuda_safe_call(cudaMalloc(&aermr11_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr01_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr02_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr03_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr04_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr05_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr06_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr07_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr08_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr09_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr10_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&aermr11_g, nmemsize));
 
-    cuda_safe_call(cudaMemcpy(aermr01_g, aermr01.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr02_g, aermr02.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr03_g, aermr03.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr04_g, aermr04.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr05_g, aermr05.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr06_g, aermr06.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr07_g, aermr07.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr08_g, aermr08.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr09_g, aermr09.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr10_g, aermr10.data(), nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(aermr11_g, aermr11.data(), nmemsize, cudaMemcpyHostToDevice));
-
+        cuda_safe_call(cudaMemcpy(aermr01_g, aermr01.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr02_g, aermr02.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr03_g, aermr03.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr04_g, aermr04.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr05_g, aermr05.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr06_g, aermr06.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr07_g, aermr07.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr08_g, aermr08.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr09_g, aermr09.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr10_g, aermr10.data(), nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(aermr11_g, aermr11.data(), nmemsize, cudaMemcpyHostToDevice));
+    }
 }
 
 template<typename TF>
 void Aerosol<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(aermr01_g));
-    cuda_safe_call(cudaFree(aermr02_g));
-    cuda_safe_call(cudaFree(aermr03_g));
-    cuda_safe_call(cudaFree(aermr04_g));
-    cuda_safe_call(cudaFree(aermr05_g));
-    cuda_safe_call(cudaFree(aermr06_g));
-    cuda_safe_call(cudaFree(aermr07_g));
-    cuda_safe_call(cudaFree(aermr08_g));
-    cuda_safe_call(cudaFree(aermr09_g));
-    cuda_safe_call(cudaFree(aermr10_g));
-    cuda_safe_call(cudaFree(aermr11_g));
+    if (sw_aerosol && sw_timedep)
+    {
+        cuda_safe_call(cudaFree(aermr01_g));
+        cuda_safe_call(cudaFree(aermr02_g));
+        cuda_safe_call(cudaFree(aermr03_g));
+        cuda_safe_call(cudaFree(aermr04_g));
+        cuda_safe_call(cudaFree(aermr05_g));
+        cuda_safe_call(cudaFree(aermr06_g));
+        cuda_safe_call(cudaFree(aermr07_g));
+        cuda_safe_call(cudaFree(aermr08_g));
+        cuda_safe_call(cudaFree(aermr09_g));
+        cuda_safe_call(cudaFree(aermr10_g));
+        cuda_safe_call(cudaFree(aermr11_g));
 
-    tdep_aermr01->clear_device();
-    tdep_aermr02->clear_device();
-    tdep_aermr03->clear_device();
-    tdep_aermr04->clear_device();
-    tdep_aermr05->clear_device();
-    tdep_aermr06->clear_device();
-    tdep_aermr07->clear_device();
-    tdep_aermr08->clear_device();
-    tdep_aermr09->clear_device();
-    tdep_aermr10->clear_device();
-    tdep_aermr11->clear_device();
-
+        tdep_aermr01->clear_device();
+        tdep_aermr02->clear_device();
+        tdep_aermr03->clear_device();
+        tdep_aermr04->clear_device();
+        tdep_aermr05->clear_device();
+        tdep_aermr06->clear_device();
+        tdep_aermr07->clear_device();
+        tdep_aermr08->clear_device();
+        tdep_aermr09->clear_device();
+        tdep_aermr10->clear_device();
+        tdep_aermr11->clear_device();
+    }
 }
 
 #ifdef USECUDA

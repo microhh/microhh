@@ -982,7 +982,7 @@ void Radiation_rrtmgp<TF>::solve_shortwave_column(
         std::unique_ptr<Optical_props_2str>& aerosol_props,
         Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
         Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
-        Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, Array<Float,1>& aod550, const Float p_top,
+        Array<Float,2>& flux_dn_dir_inc, Array<Float,2>& flux_dn_dif_inc, const Float p_top,
         const Gas_concs& gas_concs,
         const Gas_optics_rrtmgp& kdist_sw,
         const Array<Float,2>& col_dry,
@@ -1342,12 +1342,10 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         Array<Float,1> mu0({n_col});
         mu0({1}) = std::max(this->mu0, Constants::mu0_min<Float>);
 
-        Array<Float,1> aod550_col;
-        aod550_col.set_dims({n_col});
         solve_shortwave_column(
                 optical_props_sw, aerosol_props_sw,
                 sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, aod550_col, thermo.get_basestate_vector("ph")[gd.kend],
+                sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, thermo.get_basestate_vector("ph")[gd.kend],
                 gas_concs_col,
                 *kdist_sw,
                 col_dry,
@@ -1563,12 +1561,10 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
     Array<Float,1> mu0({n_col});
     mu0({1}) = this->mu0;
 
-	Array<Float, 1> aod550_col;
-    aod550_col.set_dims({n_col});
     solve_shortwave_column(
             optical_props_sw, aerosol_props_sw,
             sw_flux_up_col, sw_flux_dn_col, sw_flux_dn_dir_col, sw_flux_net_col,
-            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, aod550_col, p_top,
+            sw_flux_dn_dir_inc, sw_flux_dn_dif_inc, p_top,
             gas_concs_col,
             *kdist_sw,
             col_dry,
