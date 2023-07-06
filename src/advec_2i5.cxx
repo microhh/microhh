@@ -1045,7 +1045,8 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
 #endif
 
 template<typename TF>
-void Advec_2i5<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+void Advec_2i5<TF>::get_advec_flux(
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld, const Field3d<TF>& w)
 {
     auto& gd = grid.get_grid_data();
 
