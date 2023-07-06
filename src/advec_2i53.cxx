@@ -833,21 +833,21 @@ void Advec_2i53<TF>::get_advec_flux(
     if (fld.loc == gd.uloc)
     {
         advec_flux_u(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.vloc)
     {
         advec_flux_v(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.sloc)
     {
         advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
