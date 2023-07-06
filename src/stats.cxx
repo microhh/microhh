@@ -1424,6 +1424,8 @@ void Stats<TF>::calc_mask_stats(
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
+        master.sum(w_prime->fld_mean.data(), gd.kcells);
+
         // Subtract mean from `var` and `w` to get turbulent fluctuations.
         subtract_mean(
                 fld_prime->fld.data(),
@@ -1685,6 +1687,8 @@ void Stats<TF>::calc_stats(
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
+
+            master.sum(w_prime->fld_mean.data(), gd.kcells);
 
             // Subtract mean from `var` and `w` to get turbulent fluctuations.
             subtract_mean(
