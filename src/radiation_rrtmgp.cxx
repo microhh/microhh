@@ -1300,11 +1300,13 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
 template<typename TF>
 void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     // Update the solar zenith angle.
     const int day_of_year = int(timeloop.calc_day_of_year());
     const int year = timeloop.get_year();
     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-    this->mu0 = calc_cos_zenith_angle(grid.lat, grid.lon, day_of_year, seconds_after_midnight, year);
+    this->mu0 = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
 
     // Calculate correction factor for impact Sun's distance on the solar "constant"
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
@@ -1640,7 +1642,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(array.fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), no_offset, name, iotime, loc);
         }
 
         if (do_column)
@@ -1683,7 +1685,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             bool cross_diff = std::find(crosslist.begin(), crosslist.end(), "sw_flux_dn_diff_filtered") != crosslist.end();
             if (sw_diffuse_filter && do_cross && cross_diff)
             {
-                cross.cross_plane(sw_flux_dn_dif_f.data(), "sw_flux_dn_diff_filtered", iotime);
+                cross.cross_plane(sw_flux_dn_dif_f.data(), no_offset, "sw_flux_dn_diff_filtered", iotime);
             }
 
             stats.set_time_series("sza", std::acos(mu0));

@@ -353,7 +353,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         {
             calc_buoyancy_tend_u_2nd(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            calc_buoyancy_tend_b_2nd(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            calc_buoyancy_tend_b_2nd(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), bs.alpha, bs.n2, gd.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
         else
         {
@@ -373,7 +373,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         {
             calc_buoyancy_tend_u_4th(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            calc_buoyancy_tend_b_4th(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(),  bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            calc_buoyancy_tend_b_4th(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(),  bs.alpha, bs.n2, gd.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
         else
         {
