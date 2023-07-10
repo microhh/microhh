@@ -140,8 +140,8 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
             // In case of u and v, subtract the grid velocity.
             for (int k=gd.kstart; k<gd.kend; ++k)
             {
-                bufferprofs.at("u")[k] -= grid.utrans;
-                bufferprofs.at("v")[k] -= grid.vtrans;
+                bufferprofs.at("u")[k] -= gd.utrans;
+                bufferprofs.at("v")[k] -= gd.vtrans;
             }
 
             for (auto& it : fields.sp)

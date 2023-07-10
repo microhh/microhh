@@ -2826,7 +2826,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         calc_ke(ke->fld.data(), tke->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 umodel.data(), vmodel.data(), wmodel.data(),
-                grid.utrans, grid.vtrans,
+                gd.utrans, gd.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
