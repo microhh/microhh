@@ -105,6 +105,12 @@ struct Grid_data
     std::vector<TF> yh; // Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; // Grid coordinate of cell faces in x-direction.
 
+    TF lat; // Latitude of the domain.
+    TF lon; // Longitude of the domain.
+
+    TF utrans; // Galilean transformation velocity in x-direction.
+    TF vtrans; // Galilean transformation velocity in y-direction.
+
     // GPU fields and settings
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
@@ -149,12 +155,6 @@ class Grid
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void exec_stats(Stats<TF>&);
-
-        TF utrans; // Galilean transformation velocity in x-direction.
-        TF vtrans; // Galilean transformation velocity in y-direction.
-
-        TF lat; // Latitude of the domain.
-        TF lon; // Longitude of the domain.
 
         const Grid_data<TF>& get_grid_data();
         Grid_order get_spatial_order() const { return spatial_order; }

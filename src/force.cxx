@@ -530,9 +530,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
             // Account for the Galilean transformation
             if (it == "u")
-                add_offset(nudgeprofs[it].data(), -grid.utrans, gd.kstart, gd.kend);
+                add_offset(nudgeprofs[it].data(), -gd.utrans, gd.kstart, gd.kend);
             else if (it == "v")
-                add_offset(nudgeprofs[it].data(), -grid.vtrans, gd.kstart, gd.kend);
+                add_offset(nudgeprofs[it].data(), -gd.vtrans, gd.kstart, gd.kend);
         }
 
         // Process the time dependent data
@@ -541,9 +541,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             // Account for the Galilean transformation
             TF offset;
             if (it.first == "u")
-                offset = -grid.utrans;
+                offset = -gd.utrans;
             else if (it.first == "v")
-                offset = -grid.vtrans;
+                offset = -gd.vtrans;
             else
                 offset = 0;
 
@@ -588,7 +588,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
 
         enforce_fixed_flux<TF>(
-                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
+                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, gd.utrans, dt,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
         stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
@@ -609,19 +609,19 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {   
         TF fc_loc = fc;
         if (fc_loc < 0)
-            fc_loc = 2. * Constants::e_rot<TF> * std::sin(grid.lat * TF(M_PI) / 180.);            
-        
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
+                    
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
-            grid.utrans, grid.vtrans,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
         else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
-            grid.utrans, grid.vtrans,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 

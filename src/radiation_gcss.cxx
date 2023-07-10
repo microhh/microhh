@@ -360,7 +360,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF
 
     thermo.get_thermo_field(*ql, "ql", false, false);
 
-    TF mu = calc_zenith(grid.lat, grid.lon, timeloop.calc_day_of_year());
+    TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
 
     exec_gcss_rad<TF>(
             fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
@@ -391,9 +391,10 @@ bool Radiation_gcss<TF>::check_field_exists(const std::string& name)
 template<typename TF>
 void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string& name, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     if (name == "lflx")
     {
-        auto& gd = grid.get_grid_data();
         auto lwp = fields.get_tmp();
         auto ql  = fields.get_tmp();
         thermo.get_thermo_field(*ql, "ql", false, false);
@@ -411,9 +412,9 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(grid.lat, grid.lon, timeloop.calc_day_of_year());
 
-        auto& gd = grid.get_grid_data();
+        TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
+
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp();

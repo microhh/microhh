@@ -1685,7 +1685,7 @@ void Boundary_surface_lsm<TF>::set_values()
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             Boundary_type::Dirichlet_type, ubot,
-            fields.visc, grid.utrans,
+            fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
@@ -1693,7 +1693,7 @@ void Boundary_surface_lsm<TF>::set_values()
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
             Boundary_type::Dirichlet_type, vbot,
-            fields.visc, grid.vtrans,
+            fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     // Prepare the lookup table for the surface solver

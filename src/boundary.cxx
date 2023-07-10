@@ -605,17 +605,17 @@ void Boundary<TF>::set_values()
     const bool set_flux_grad = (swboundary == "default");
 
     set_bc<TF, true>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-           mbcbot, ubot, fields.visc, grid.utrans,
+           mbcbot, ubot, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-           mbcbot, vbot, fields.visc, grid.vtrans,
+           mbcbot, vbot, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     set_bc<TF, true>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
-           mbctop, utop, fields.visc, grid.utrans,
+           mbctop, utop, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
-           mbctop, vtop, fields.visc, grid.vtrans,
+           mbctop, vtop, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     const TF no_offset = 0.;

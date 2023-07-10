@@ -758,7 +758,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             Boundary_type::Dirichlet_type, ubot,
-            fields.visc, grid.utrans,
+            fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
@@ -766,7 +766,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
             Boundary_type::Dirichlet_type, vbot,
-            fields.visc, grid.vtrans,
+            fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     // in case the momentum has a fixed ustar, set the value to that of the input
@@ -788,14 +788,14 @@ void Boundary_surface<TF>::set_ustar()
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
-            mbcbot, ubot, fields.visc, grid.utrans,
+            mbcbot, ubot, fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
             fields.mp.at("v")->fld_bot.data(),
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
-            mbcbot, vbot, fields.visc, grid.vtrans,
+            mbcbot, vbot, fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     for (int j=0; j<gd.jcells; ++j)

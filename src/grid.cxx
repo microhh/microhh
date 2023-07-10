@@ -58,11 +58,11 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     gd.jtot = input.get_item<int>("grid", "jtot", "");
     gd.ktot = input.get_item<int>("grid", "ktot", "");
 
-    utrans = input.get_item<TF>("grid", "utrans", "", 0.);
-    vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
+    gd.utrans = input.get_item<TF>("grid", "utrans", "", 0.);
+    gd.vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    lat = input.get_item<TF>("grid", "lat", "",  input.get_item<TF>("radiation", "lat", "", 0.)); //As a legacy option, the latitude can be read from the radiation section
-    lon = input.get_item<TF>("grid", "lon", "",  input.get_item<TF>("radiation", "lon", "", 0.)); //As a legacy option, the longitude can be read from the radiation section
+    gd.lat = input.get_item<TF>("grid", "lat", "",  input.get_item<TF>("radiation", "lat", "", 0.)); //As a legacy option, the latitude can be read from the radiation section
+    gd.lon = input.get_item<TF>("grid", "lon", "",  input.get_item<TF>("radiation", "lon", "", 0.)); //As a legacy option, the longitude can be read from the radiation section
 
     std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
@@ -226,8 +226,8 @@ void Grid<TF>::create_stats(Stats<TF>& stats)
 template<typename TF>
 void Grid<TF>::exec_stats(Stats<TF>& stats)
 {
-    stats.set_time_series("lat", lat);
-    stats.set_time_series("lon", lon);
+    stats.set_time_series("lat", gd.lat);
+    stats.set_time_series("lon", gd.lon);
 }
 /**
  * This function calculates the scalars and arrays that contain the information
@@ -397,8 +397,8 @@ void Grid<TF>::load(Input& inputin, Netcdf_handle& input_nc)
 template <typename TF>
 void Grid<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-        tdep_latlon.at("lat")->update_time_dependent(lat, timeloop);
-        tdep_latlon.at("lon")->update_time_dependent(lon, timeloop);
+        tdep_latlon.at("lat")->update_time_dependent(gd.lat, timeloop);
+        tdep_latlon.at("lon")->update_time_dependent(gd.lon, timeloop);
 }
 
 
