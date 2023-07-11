@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_SMAG2_H
-#define DIFF_SMAG2_H
+#ifndef DIFF_DEARDORFF_H
+#define DIFF_DEARDORFF_H
 
 #include "diff.h"
 #include "boundary_cyclic.h"
@@ -31,11 +31,11 @@ template<typename> class Stats;
 
 
 template<typename TF>
-class Diff_smag2 : public Diff<TF>
+class Diff_deardorff : public Diff<TF>
 {
     public:
-        Diff_smag2(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
-        ~Diff_smag2();
+        Diff_deardorff(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
+        ~Diff_deardorff();
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
@@ -44,9 +44,9 @@ class Diff_smag2 : public Diff<TF>
         void create(Stats<TF>&);
         void init();
         void exec(Stats<TF>&);
-        void exec_viscosity(Stats<TF>&, Thermo<TF>&);
+        void exec_viscosity(Stats<TF>&, Thermo<TF>&); 
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
-        void exec_stats(Stats<TF>&, Thermo<TF>&);
+        void exec_stats(Stats<TF>&, Thermo<TF>&); // Pass Thermo<TF>& also in other diffusion classes
 
         #ifdef USECUDA
         void prepare_device(Boundary<TF>&);
@@ -63,7 +63,7 @@ class Diff_smag2 : public Diff<TF>
 
         using Diff<TF>::tPr;
 
-        const Diffusion_type swdiff = Diffusion_type::Diff_smag2;
+        const Diffusion_type swdiff = Diffusion_type::Diff_deardorff;
 
         void create_stats(Stats<TF>&);
 
@@ -72,11 +72,30 @@ class Diff_smag2 : public Diff<TF>
         double dnmax;
         double dnmul;
 
-        double cs;
+        TF cs;
+        TF ap;
+        TF cf;
+        TF ce1;
+        TF ce2;
+        TF cm;
+        TF ch1;
+        TF ch2;
+        TF cn;
 
+        bool sw_buoy;
         bool sw_mason;  ///< Switch for use of Mason's wall correction
 
         const std::string tend_name = "diff";
         const std::string tend_longname = "Diffusion";
+
+        // Specific tendency names for sgs tke-scheme
+        const std::string tend_name_shear = "shear";
+        const std::string tend_longname_shear = "SGS TKE Shear Term";
+
+        const std::string tend_name_buoy = "buoy";
+        const std::string tend_longname_buoy = "SGS TKE Buoyancy Term";
+
+        const std::string tend_name_diss = "diss";
+        const std::string tend_longname_diss = "SGS TKE Dissipation";
 };
 #endif
