@@ -36,123 +36,13 @@
 #include "fast_math.h"
 
 #include "diff_smag2.h"
+#include "diffusion_kernels.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
-
-    enum class Surface_model {Enabled, Disabled};
-
-    template <typename TF, Surface_model surface_model>
-    void calc_strain2(
-            TF* const restrict strain2,
-            const TF* const restrict u,
-            const TF* const restrict v,
-            const TF* const restrict w,
-            const TF* const restrict ugradbot,
-            const TF* const restrict vgradbot,
-            const TF* const restrict z,
-            const TF* const restrict dzi,
-            const TF* const restrict dzhi,
-            const TF dxi, const TF dyi,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int ii = 1;
-        const int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-
-        const TF zsl = z[kstart];
-
-        // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
-        if (surface_model == Surface_model::Enabled)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + kstart*kk;
-
-                    strain2[ijk] = TF(2.)*(
-                            // du/dx + du/dx
-                            + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
-
-                            // dv/dy + dv/dy
-                            + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
-
-                            // dw/dz + dw/dz
-                            + fm::pow2((w[ijk+kk]-w[ijk])*dzi[kstart])
-
-                            // du/dy + dv/dx
-                            + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                            + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
-
-                            // du/dz
-                            + TF(0.5) * fm::pow2(ugradbot[ij])
-
-                            // dw/dx
-                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-ii   ])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk+ii   ]-w[ijk      ])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                            + TF(0.125)*fm::pow2((w[ijk+ii+kk]-w[ijk   +kk])*dxi)
-
-                            // dv/dz
-                            + TF(0.5) * fm::pow2(vgradbot[ij])
-
-                            // dw/dy
-                            + TF(0.125)*fm::pow2((w[ijk      ]-w[ijk-jj   ])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk+jj   ]-w[ijk      ])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                            + TF(0.125)*fm::pow2((w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
-
-                    // add a small number to avoid zero divisions
-                    strain2[ijk] += Constants::dsmall;
-                }
-        }
-
-        for (int k=kstart+k_offset; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    strain2[ijk] = TF(2.)*(
-                                   // du/dx + du/dx
-                                   + fm::pow2((u[ijk+ii]-u[ijk])*dxi)
-
-                                   // dv/dy + dv/dy
-                                   + fm::pow2((v[ijk+jj]-v[ijk])*dyi)
-
-                                   // dw/dz + dw/dz
-                                   + fm::pow2((w[ijk+kk]-w[ijk])*dzi[k])
-
-                                   // du/dy + dv/dx
-                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi)
-
-                                   // du/dz + dw/dx
-                                   + TF(0.125)*fm::pow2((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi)
-                                   + TF(0.125)*fm::pow2((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi)
-
-                                   // dv/dz + dw/dy
-                                   + TF(0.125)*fm::pow2((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi)
-                                   + TF(0.125)*fm::pow2((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi)
-                                   + TF(0.125)*fm::pow2((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi)
-                                   + TF(0.125)*fm::pow2((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi) );
-
-                    // Add a small number to avoid zero divisions.
-                    strain2[ijk] += Constants::dsmall;
-                }
-    }
+    namespace dk = Diffusion_kernels;
 
     template <typename TF, Surface_model surface_model>
     void calc_evisc_neutral(
@@ -172,10 +62,13 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool sw_mason, ///< SvdL, 04-05-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
+
+        TF mlen; // SvdL, 04-05-2023: declare mixing length here
 
         // Wall damping constant.
         constexpr TF n_mason = TF(1.);
@@ -239,9 +132,11 @@ namespace
                         const int ij  = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
-                        // Mason mixing length
-                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) +
-                                    TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if (sw_mason) // Apply Mason's wall correction
+                            mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        else
+                            mlen = mlen0;
 
                         evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]);
                     }
@@ -269,10 +164,13 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
+            const bool sw_mason, ///< SvdL, 04-05-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
+
+        TF mlen; // SvdL, 04-05-2023: declare mixing length here
 
         if (surface_model == Surface_model::Disabled)
         {
@@ -313,7 +211,7 @@ namespace
         else
         {
             // Variables for the wall damping.
-            const TF n = 2.;
+            const TF n_mason = 2.;
 
             // Bottom boundary, here strain is fully parametrized using MO.
             // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason.
@@ -332,8 +230,11 @@ namespace
                     TF RitPrratio = bgradbot[ij] / evisc[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                    // Mason mixing length
-                    const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n))), TF(1.)/n);
+                    if (sw_mason) // Apply Mason's wall correction
+                        mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                    (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    else
+                        mlen = mlen0;
 
                     evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                 }
@@ -355,8 +256,11 @@ namespace
                         TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
                         RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                        // Mason mixing length
-                        const TF mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n) + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n))), TF(1.)/n);
+                        if (sw_mason) // Apply Mason's wall correction
+                            mlen = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        else
+                            mlen = mlen0;
 
                         evisc[ijk] = fm::pow2(mlen) * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
                     }
@@ -856,6 +760,9 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 
     const std::string group_name = "default";
 
+    // Set the switch for use of Mason's wall correction
+    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true); // SvdL, 04-05-2023: added switch
+
     fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
 
     if (grid.get_spatial_order() != Grid_order::Second)
@@ -1043,19 +950,17 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     if (boundary.get_switch() != "default")
     {
-        const std::vector<TF>& z0m = boundary.get_z0m();
-
         // Calculate strain rate using MO for velocity gradients lowest level.
         const std::vector<TF>& dudz = boundary.get_dudz();
         const std::vector<TF>& dvdz = boundary.get_dvdz();
 
-        calc_strain2<TF, Surface_model::Enabled>(
+        dk::calc_strain2<TF, Surface_model::Enabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
@@ -1073,7 +978,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
     }
     else
         // Calculate strain rate using resolved boundaries.
-        calc_strain2<TF, Surface_model::Disabled>(
+        dk::calc_strain2<TF, Surface_model::Disabled>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
@@ -1110,6 +1015,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
 
@@ -1129,6 +1035,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
     }
@@ -1161,6 +1068,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
         else
@@ -1179,6 +1087,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.jcells, gd.ijcells,
+                    sw_mason,
                     boundary_cyclic);
         }
 
@@ -1207,7 +1116,7 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_smag2<TF>::exec_stats(Stats<TF>& stats)
+void Diff_smag2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;

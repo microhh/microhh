@@ -131,7 +131,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
@@ -173,6 +173,7 @@ template<typename TF>
 void Model<TF>::init()
 {
     master.init(*input);
+
     grid->init();
     soil_grid->init();
     fields->init(*input, *dump, *cross, sim_mode);
@@ -234,6 +235,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
+
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -324,7 +326,6 @@ void Model<TF>::exec()
         #endif
     #endif
 
-
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -348,7 +349,7 @@ void Model<TF>::exec()
                 fields->exec();
 
                 // Get the viscosity to be used in diffusion.
-                diff->exec_viscosity(*thermo);
+                diff->exec_viscosity(*stats, *thermo);
 
                 // Determine the time step.
                 set_time_step();
@@ -610,7 +611,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats);
+        diff     ->exec_stats(*stats, *thermo);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
     }
