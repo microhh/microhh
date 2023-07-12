@@ -51,7 +51,7 @@
 #include "Cloud_optics.h"
 
 
-// IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_RRTMGP_SINGLE_PRECISION, which defines
+// IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
 // To avoid confusion, we limit the use of TF in the code to the class headers and use Float.
 using namespace Radiation_rrtmgp_functions;
@@ -2342,7 +2342,7 @@ bool Radiation_rrtmgp<TF>::is_day(const Float mu0)
 }
 
 
-#ifdef RTE_RRTMGP_SINGLE_PRECISION
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
 #else
 template class Radiation_rrtmgp<double>;
