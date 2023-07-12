@@ -79,6 +79,7 @@ else()
   project(microhhc C CXX Fortran)
 endif()
 
+
 # Display status messages for MPI set precompiler flags.
 if(USEMPI)
   message(STATUS "MPI: Enabled.")

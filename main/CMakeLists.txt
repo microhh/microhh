@@ -19,7 +19,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
-include_directories(${INCLUDE_DIRS} "../include")
 
 # retrieve the git hash from the current commit
 find_package(Git)
@@ -38,6 +37,8 @@ message(STATUS "Git hash " ${GITHASH})
 add_definitions(-DGITHASH="${GITHASH}")
 
 add_executable(microhh microhh.cxx)
+target_include_directories(microhh PUBLIC ${INCLUDE_DIRS} "../include")
+
 if(USECUDA)
     target_link_libraries(microhh microhhc rte_rrtmgp rte_rrtmgp_cuda rte_rrtmgp_kernels rte_rrtmgp_kernels_cuda ${LIBS} m)
 else()
