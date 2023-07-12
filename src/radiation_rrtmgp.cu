@@ -36,7 +36,7 @@
 
 #include "Array.h"
 #include "Fluxes.h"
-#include "subset_kernel_launcher_cuda.h"
+#include "subset_kernels_cuda.h"
 
 using namespace Radiation_rrtmgp_functions;
 
@@ -697,7 +697,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_net().ptr());
     };
@@ -901,7 +901,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
     };
