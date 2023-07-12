@@ -272,7 +272,7 @@ bool launch_kernel(
 
         kernel_launcher::default_registry()
                 .lookup(kernel)
-                .launch(stream, args);
+                .launch_args(stream, args);
         return true;
     } catch (const std::exception &e) {
         kl::log_warning() << "error occurred while compiling the following kernel: " <<

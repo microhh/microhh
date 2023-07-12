@@ -54,7 +54,7 @@ namespace kernel_launcher {
     template <typename T>
     struct IntoKernelArg<::cuda_span<T>> {
         static KernelArg convert(::cuda_span<T> s) {
-            return KernelArg::for_array(s.data(), s.size());
+            return KernelArg::from_array(s.data(), s.size());
         }
     };
 }
