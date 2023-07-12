@@ -172,7 +172,7 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
     dim3 gridGPU (gridi, gridj, gd.kmax);
     dim3 blockGPU(blocki, blockj, 1);
 
-    diff_c_g<<<gridGPU, blockGPU>>>(
+    diff_c_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
             gd.dzi4_g, gd.dzhi4_g,
             gd.dx, gd.dy, fields.visc,
@@ -181,7 +181,7 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
             gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
-    diff_c_g<<<gridGPU, blockGPU>>>(
+    diff_c_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
             gd.dzi4_g, gd.dzhi4_g,
             gd.dx, gd.dy, fields.visc,
@@ -190,7 +190,7 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
             gd.iend,   gd.jend,   gd.kend);
     cuda_check_error();
 
-    diff_w_g<<<gridGPU, blockGPU>>>(
+    diff_w_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
             gd.dzi4_g, gd.dzhi4_g,
             gd.dx, gd.dy, fields.visc,
@@ -200,7 +200,7 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     for (auto& it : fields.st)
-        diff_c_g<<<gridGPU, blockGPU>>>(
+        diff_c_g<TF><<<gridGPU, blockGPU>>>(
                 it.second->fld_g, fields.sp.at(it.first)->fld_g,
                 gd.dzi4_g, gd.dzhi4_g,
                 gd.dx, gd.dy, fields.sp.at(it.first)->visc,

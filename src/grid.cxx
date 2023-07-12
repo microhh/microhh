@@ -368,7 +368,7 @@ void Grid<TF>::calculate()
 }
 
 template<typename TF>
-const Grid_data<TF>& Grid<TF>::get_grid_data()
+const Grid_data<TF>& Grid<TF>::get_grid_data() const
 {
     return gd;
 }

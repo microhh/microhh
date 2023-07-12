@@ -43,7 +43,7 @@ namespace
     void pres_in_g(TF* __restrict__ p,
                    TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
                    TF* __restrict__ ut,  TF* __restrict__ vt,     TF* __restrict__ wt,
-                   TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
                    TF dxi, TF dyi, TF dti,
                    const int jj, const int kk,
                    const int jjp, const int kkp,
@@ -70,7 +70,7 @@ namespace
     template<typename TF> __global__
     void pres_out_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
                     TF* __restrict__ p,
-                    TF* __restrict__ dzhi, const TF dxi, const TF dyi,
+                    const TF* __restrict__ dzhi, const TF dxi, const TF dyi,
                     const int jj, const int kk,
                     const int istart, const int jstart, const int kstart,
                     const int iend, const int jend, const int kend)
@@ -116,7 +116,7 @@ namespace
     void solve_in_g(TF* __restrict__ p,
                     TF* __restrict__ work3d, TF* __restrict__ b,
                     TF* __restrict__ a, TF* __restrict__ c,
-                    TF* __restrict__ dz, TF* __restrict__ rhoref,
+                    const TF* __restrict__ dz, const TF* __restrict__ rhoref,
                     TF* __restrict__ bmati, TF* __restrict__ bmatj,
                     const int jj, const int kk,
                     const int imax, const int jmax, const int kmax,
@@ -192,8 +192,8 @@ namespace
 
     template<typename TF> __global__
     void calc_divergence_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                           TF* __restrict__ div, TF* __restrict__ dzi,
-                           TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+                           TF* __restrict__ div, const TF* __restrict__ dzi,
+                           const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
                            TF dxi, TF dyi,
                            int jj, int kk, int istart, int jstart, int kstart,
                            int iend, int jend, int kend)
@@ -353,7 +353,7 @@ TF Pres_2<TF>::check_divergence()
 
     auto divergence = fields.get_tmp_g();
 
-    calc_divergence_g<<<gridGPU, blockGPU>>>(
+    calc_divergence_g<TF><<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, divergence->fld_g,
         gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,

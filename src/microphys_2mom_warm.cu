@@ -351,11 +351,11 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     dim3 block2dGPU(blocki, blockj);
 
     // Remove negative values from the qr and nr fields
-    micro::remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("qr")->fld_g,
+    micro::remove_negative_values_g<TF><<<gridGPU, blockGPU>>>(fields.ap.at("qr")->fld_g,
         gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     cuda_check_error();
 
-    micro::remove_negative_values_g<<<gridGPU, blockGPU>>>(fields.ap.at("nr")->fld_g,
+    micro::remove_negative_values_g<TF><<<gridGPU, blockGPU>>>(fields.ap.at("nr")->fld_g,
         gd.istart, gd.jstart, gd.kstart, gd.iend, gd.jend, gd.kend, gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -372,7 +372,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // ---------------------------------
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets
-    micro::autoconversion_g<<<gridGPU, blockGPU>>>(
+    micro::autoconversion_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,
         fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner, Nc0<TF>,
@@ -382,7 +382,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // Accretion; growth of raindrops collecting cloud droplets
-    micro::accretion_g<<<gridGPU, blockGPU>>>(
+    micro::accretion_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner,
         gd.istart, gd.jstart, gd.kstart,
@@ -391,7 +391,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // Evaporation; evaporation of rain drops in unsaturated environment
-    micro::evaporation_g<<<gridGPU, blockGPU>>>(
+    micro::evaporation_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,  fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
         fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g,  ql->fld_g,
         fields.sp.at("qt")->fld_g, fields.sp.at("thl")->fld_g, fields.rhoref_g, exner, p,
@@ -403,7 +403,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     fields.release_tmp_g(ql);
 
     // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
-    micro::selfcollection_breakup_g<<<gridGPU, blockGPU>>>(
+    micro::selfcollection_breakup_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("nr")->fld_g, fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -416,7 +416,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     auto w_qr = fields.get_tmp_g();
     auto w_nr = fields.get_tmp_g();
 
-    sedimentation_2mom_warm::calc_velocity_g<<<gridGPU, blockGPU>>>(
+    sedimentation_2mom_warm::calc_velocity_g<TF><<<gridGPU, blockGPU>>>(
         w_qr->fld_g, w_nr->fld_g,
         fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -425,7 +425,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 2. Set the top and bottom velocity ghost cells
-    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<TF><<<grid2dGPU, block2dGPU>>>(
         w_qr->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -433,7 +433,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<TF><<<grid2dGPU, block2dGPU>>>(
         w_nr->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -445,7 +445,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 3. Calculate CFL numbers for qr and nr
     auto cfl_qr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         cfl_qr->fld_g, w_qr->fld_g, gd.dzi_g, TF(dt),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -458,7 +458,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 4. Calculate slopes
     auto slope_qr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_slope_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_slope_g<TF><<<gridGPU, blockGPU>>>(
         slope_qr->fld_g, fields.sp.at("qr")->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -469,7 +469,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 5. Calculate sedimentation fluxes
     auto flux_qr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_flux_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_g<TF><<<gridGPU, blockGPU>>>(
         flux_qr->fld_g, fields.sp.at("qr")->fld_g,
         slope_qr->fld_g, cfl_qr->fld_g,
         gd.dz_g, gd.dzi_g, fields.rhoref_g,
@@ -480,7 +480,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 6. Limit fluxes such that qr stays >= 0.
-    Micro_sedimentation_kernels::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::limit_flux_g<TF><<<grid2dGPU, block2dGPU>>>(
         flux_qr->fld_g, fields.sp.at("qr")->fld_g,
         gd.dz_g, fields.rhoref_g, TF(dt),
         gd.istart, gd.iend,
@@ -490,7 +490,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 7. Calculate flux divergence
-    Micro_sedimentation_kernels::calc_flux_div_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_div_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, flux_qr->fld_g,
         gd.dzi_g, fields.rhoref_g,
         gd.istart, gd.iend,
@@ -500,7 +500,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 8. Store the surface precipitation rate
-    Micro_sedimentation_kernels::copy_precip_rate_bot_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::copy_precip_rate_bot_g<TF><<<grid2dGPU, block2dGPU>>>(
         rr_bot_g, flux_qr->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -516,7 +516,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 3. Calculate CFL numbers for qr and nr
     auto cfl_nr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         cfl_nr->fld_g, w_nr->fld_g, gd.dzi_g, TF(dt),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -529,7 +529,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 4. Calculate slopes
     auto slope_nr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_slope_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_slope_g<TF><<<gridGPU, blockGPU>>>(
         slope_nr->fld_g, fields.sp.at("nr")->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -540,7 +540,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     // 5. Calculate sedimentation fluxes
     auto flux_nr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_flux_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_g<TF><<<gridGPU, blockGPU>>>(
         flux_nr->fld_g, fields.sp.at("nr")->fld_g,
         slope_nr->fld_g, cfl_nr->fld_g,
         gd.dz_g, gd.dzi_g, fields.rhoref_g,
@@ -551,7 +551,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 6. Limit fluxes such that nr stays >= 0.
-    Micro_sedimentation_kernels::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::limit_flux_g<TF><<<grid2dGPU, block2dGPU>>>(
         flux_nr->fld_g, fields.sp.at("nr")->fld_g,
         gd.dz_g, fields.rhoref_g, TF(dt),
         gd.istart, gd.iend,
@@ -561,7 +561,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     cuda_check_error();
 
     // 7. Calculate flux divergence
-    Micro_sedimentation_kernels::calc_flux_div_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_flux_div_g<TF><<<gridGPU, blockGPU>>>(
         fields.st.at("nr")->fld_g, flux_nr->fld_g,
         gd.dzi_g, fields.rhoref_g,
         gd.istart, gd.iend,
@@ -601,7 +601,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     // Calcuate sedimentation velocity qr, which is always higher than w_nr
     auto w_qr = fields.get_tmp_g();
 
-    sedimentation_2mom_warm::calc_velocity_g<<<gridGPU, blockGPU>>>(
+    sedimentation_2mom_warm::calc_velocity_g<TF><<<gridGPU, blockGPU>>>(
         w_qr->fld_g, fields.sp.at("qr")->fld_g, fields.sp.at("nr")->fld_g, fields.rhoref_g,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
@@ -609,7 +609,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     cuda_check_error();
 
     // Set the top and bottom velocity ghost cells
-    Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+    Micro_sedimentation_kernels::set_bc_g<TF><<<grid2dGPU, block2dGPU>>>(
         w_qr->fld_g,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -620,7 +620,7 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
     // Calculate CFL number
     auto cfl_qr = fields.get_tmp_g();
 
-    Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
+    Micro_sedimentation_kernels::calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         cfl_qr->fld_g, w_qr->fld_g, gd.dzi_g, TF(dt),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,

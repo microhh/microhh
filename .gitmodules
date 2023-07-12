@@ -1,3 +1,6 @@
 [submodule "rte-rrtmgp-cpp"]
 	path = rte-rrtmgp-cpp
 	url = https://github.com/microhh/rte-rrtmgp-cpp
+[submodule "external/kernel_launcher"]
+	path = external/kernel_launcher
+	url = https://github.com/KernelTuner/kernel_launcher
