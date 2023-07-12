@@ -40,19 +40,12 @@ unsigned long Advec_2i53<TF>::get_time_limit(unsigned long idt, double dt)
     throw std::runtime_error("Advec_2i53 is not (yet) implemented on the GPU");
 }
 
-
 template<typename TF>
 void Advec_2i53<TF>::exec(Stats<TF>& stats)
 {
     throw std::runtime_error("Advec_2i53 is not (yet) implemented on the GPU");
 }
 #endif
-
-template<typename TF>
-void Advec_2i53<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
-{
-    throw std::runtime_error("Advec_2i53 is not (yet) implemented on the GPU");
-}
 
 template class Advec_2i53<double>;
 template class Advec_2i53<float>;
