@@ -23,7 +23,6 @@
 #include <utility>
 #include "cuda_buffer.h"
 
-
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
 #include "tools.h"
@@ -84,7 +83,7 @@ void cuda_raw_buffer::reallocate(size_t size_in_bytes)
 #else
     if (size_in_bytes > 0)
     {
-        throw std::runtime_exception("CUDA is not enabled, allocating GPU memory is not possible");
+        throw std::runtime_error("CUDA is not enabled, allocating GPU memory is not possible");
     }
 #endif //USECUDA
 }
@@ -96,7 +95,7 @@ void cuda_raw_copy(const void* src, void* dst, size_t nbytes)
 #else
     if (nbytes > 0)
     {
-        throw std::runtime_exception("CUDA is not enabled, copying GPU memory is not possible");
+        throw std::runtime_error("CUDA is not enabled, copying GPU memory is not possible");
     }
 #endif //USECUDA
 }
