@@ -58,16 +58,16 @@ def create_case_input(
         copy_or_link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
     if use_rrtmgp:
         if gpt_set == '256_224':
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g256.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g224.nc', 'coefficients_sw.nc')
         elif gpt_set == '128_112':
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g128.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g112.nc', 'coefficients_sw.nc')
         else:
             raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
 
-        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
-        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc')
 
     """
     Create vertical grid for LES

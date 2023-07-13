@@ -31,7 +31,7 @@
 #include "Cloud_optics.h"
 #include "Rte_lw.h"
 #include "Rte_sw.h"
-#include "Types.h"
+#include "types.h"
 
 
 class Master;

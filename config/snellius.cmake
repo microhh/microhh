@@ -95,4 +95,4 @@ if(USECUDA)
     add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
 endif()
 
-add_definitions(-DRTE_RRTMGP_USE_CBOOL)
+add_definitions(-DRTE_USE_CBOOL)

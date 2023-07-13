@@ -79,4 +79,4 @@ endif()
 # Disable MPI-IO for cross-sections on GPFS file systems. This may or may not be necessary, depending on the system
 add_definitions(-DDISABLE_2D_MPIIO=1)
 
-add_definitions(-DRTE_RRTMGP_USE_CBOOL)
+add_definitions(-DRTE_USE_CBOOL)

@@ -27,4 +27,4 @@ set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
-add_definitions(-DRTE_RRTMGP_USE_CBOOL)
+add_definitions(-DRTE_USE_CBOOL)
