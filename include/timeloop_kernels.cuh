@@ -36,7 +36,7 @@ namespace timeloop
         CUDA_DEVICE
         void operator()(
                 Grid_layout g, const int i, const int j, const int k, const Level level,
-                TF* __restrict__ a, TF* __restrict__ at, const double dt)
+                TF* __restrict__ a, TF* __restrict__ at, const TF dt)
         {
             constexpr TF cA1 = -5./9.;
             constexpr TF cA2 = -153./128.;
@@ -74,7 +74,7 @@ namespace timeloop
         CUDA_DEVICE
         void operator()(
                 Grid_layout g, const int i, const int j, const int k, const Level level,
-                TF* __restrict__ a, TF* __restrict__ at, const double dt)
+                TF* __restrict__ a, TF* __restrict__ at, const TF dt)
         {
 
             constexpr TF cA1 = - 567301805773./1357537059087.;
@@ -110,7 +110,7 @@ namespace timeloop
                     break;
                 case 4:
                     a [ijk] = a[ijk] + cB4*dt*at[ijk];
-                    at[ijk] = 0;
+                    at[ijk] = TF(0);
                     break;
             }
         }

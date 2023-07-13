@@ -34,7 +34,7 @@
 namespace
 {
     template<typename TF, int substep> __global__
-    void rk3_g(TF* __restrict__ a, TF* __restrict__ at, double dt,
+    void rk3_g(TF* __restrict__ a, TF* __restrict__ at, const TF dt,
                const int jj, const int kk,
                const int istart, const int jstart, const int kstart,
                const int iend,   const int jend,   const int kend)
@@ -73,7 +73,7 @@ namespace
     }
 
     template<typename TF, int substep> __global__
-    void rk4_g(TF* __restrict__ a, TF* __restrict__ at, double dt,
+    void rk4_g(TF* __restrict__ a, TF* __restrict__ at, const TF dt,
                const int jj, const int kk,
                const int istart, const int jstart, const int kstart,
                const int iend,   const int jend,   const int kend)
@@ -154,19 +154,19 @@ void Timeloop<TF>::exec()
 
             if (substep == 0)
                 rk3_g<TF, 0><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 1)
                 rk3_g<TF, 1><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 2)
                 rk3_g<TF, 2><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
@@ -178,13 +178,13 @@ void Timeloop<TF>::exec()
         {
             if (substep == 0)
                 launch_grid_kernel<timeloop::rk3_g<TF, 0>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
                 launch_grid_kernel<timeloop::rk3_g<TF, 1>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
                 launch_grid_kernel<timeloop::rk3_g<TF, 2>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
         };
 
         // Atmospheric fields
@@ -224,31 +224,31 @@ void Timeloop<TF>::exec()
 
             if (substep == 0)
                 rk4_g<TF, 0><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 1)
                 rk4_g<TF, 1><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 2)
                 rk4_g<TF, 2><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 3)
                 rk4_g<TF, 3><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
             else if (substep == 4)
                 rk4_g<TF, 4><<<gridGPU, blockGPU>>>(
-                    fld, tend, dt,
+                    fld, tend, TF(dt),
                     gd.icells, gd.ijcells,
                     gd.istart,  gd.jstart, kstart,
                     gd.iend,    gd.jend,   kend);
@@ -260,19 +260,19 @@ void Timeloop<TF>::exec()
         {
             if (substep == 0)
                 launch_grid_kernel<timeloop::rk4_g<TF, 0>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
                 launch_grid_kernel<timeloop::rk4_g<TF, 1>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
                 launch_grid_kernel<timeloop::rk4_g<TF, 2>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 3)
                 launch_grid_kernel<timeloop::rk4_g<TF, 3>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
             else if (substep == 4)
                 launch_grid_kernel<timeloop::rk4_g<TF, 4>>(
-                        gd, fld.view(), tend.view(), dt);
+                        gd, fld.view(), tend.view(), TF(dt));
         };
 
         // Atmospheric fields
