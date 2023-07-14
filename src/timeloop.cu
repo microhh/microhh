@@ -22,7 +22,6 @@
 
 #include "timeloop.h"
 #include "timeloop_kernels.cuh"
-#include "cuda_launcher.h"
 #include "grid.h"
 #include "soil_grid.h"
 #include "master.h"
@@ -30,6 +29,8 @@
 #include "soil_field3d.h"
 #include "constants.h"
 #include "tools.h"
+#include "cuda_launcher.h"
+#include "cuda_tiling.h"
 
 namespace
 {

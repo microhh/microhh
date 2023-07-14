@@ -176,4 +176,16 @@ void launch_grid_kernel(
     );
 }
 
+template <typename F, typename TF, typename... Args>
+void launch_grid_kernel(
+        const Grid_layout &grid_layout,
+        Args&&... args
+)
+{
+    launch_grid_kernel<F>(
+            grid_layout,
+            std::forward<Args>(args)...
+    );
+}
+
 #endif //CUDA_COMPILER_H
