@@ -219,6 +219,8 @@ void Grid<TF>::create_stats(Stats<TF>& stats)
     {
         stats.add_time_series("lat", "Latitude", "degrees", group_name);
         stats.add_time_series("lon", "Longitude", "degrees", group_name);
+        stats.add_time_series("utrans", "Translation velocity in the East-West direction", "m s-1", group_name);
+        stats.add_time_series("vtrans", "Translation velocity in the North-South direction", "m s-1", group_name);
     }
 }
 
