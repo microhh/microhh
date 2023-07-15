@@ -510,7 +510,29 @@ namespace
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
+
+    template<typename TF>
+    void subtract_mean(
+            TF* const restrict fld_prime,
+            const TF* const restrict fld,
+            const TF* const restrict fld_mean,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    fld_prime[ijk] = fld[ijk] - fld_mean[k];
+                }
+    }
 }
+
 
 template<typename TF>
 Stats<TF>::Stats(
@@ -1372,8 +1394,16 @@ void Stats<TF>::calc_mask_stats(
     if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
     {
         set_flag(flag, nmask, m.second, fld.loc[2]);
-        calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+        calc_mean(
+                m.second.profs.at(varname).data.data(),
+                fld.fld.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
         master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
         // Add the offset.
@@ -1390,10 +1420,15 @@ void Stats<TF>::calc_mask_stats(
         if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
+
             calc_moment(
-                    m.second.profs.at(name).data.data(), fld.fld.data(),
-                    m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
-                    power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    fld.fld.data(),
+                    m.second.profs.at(varname).data.data(), offset,
+                    mfield.data(), flag, nmask, power,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1406,18 +1441,62 @@ void Stats<TF>::calc_mask_stats(
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         auto advec_flux = fields.get_tmp();
-        advec.get_advec_flux(*advec_flux, fld);
+        auto fld_prime = fields.get_tmp();
+        auto w_prime = fields.get_tmp();
+
+        // Set flag for `w` level, and calculate `w_mean` over mask in `w_prime->fld_mean`.
+        const int w_loc = 1;
+        set_flag(flag, nmask, m.second, w_loc);
+
+        calc_mean(
+                w_prime->fld_mean.data(),
+                fields.mp.at("w")->fld.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        master.sum(w_prime->fld_mean.data(), gd.kcells);
+
+        // Subtract mean from `var` and `w` to get turbulent fluctuations.
+        subtract_mean(
+                fld_prime->fld.data(),
+                fld.fld.data(),
+                m.second.profs.at(varname).data.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        subtract_mean(
+                w_prime->fld.data(),
+                fields.mp.at("w")->fld.data(),
+                w_prime->fld_mean.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend+1,
+                gd.icells, gd.ijcells);
+
+        advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
         set_flag(flag, nmask, m.second, !fld.loc[2]);
+
         calc_mean(
-                m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                m.second.profs.at(name).data.data(),
+                advec_flux->fld.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
         master.sum(m.second.profs.at(name).data.data(), gd.kcells);
         set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
 
         fields.release_tmp(advec_flux);
+        fields.release_tmp(fld_prime);
+        fields.release_tmp(w_prime);
     }
 
     // Calc Diffusive Flux
@@ -1428,9 +1507,14 @@ void Stats<TF>::calc_mask_stats(
         diff.diff_flux(*diff_flux, fld);
 
         set_flag(flag, nmask, m.second, !fld.loc[2]);
+
         calc_mean(
-                m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                m.second.profs.at(name).data.data(),
+                diff_flux->fld.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
         master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1445,9 +1529,13 @@ void Stats<TF>::calc_mask_stats(
     {
         // No sum is required in this routine as values all.
         set_flag(flag, nmask, m.second, !fld.loc[2]);
+
         add_fluxes(
-                m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
+                m.second.profs.at(name).data.data(),
+                m.second.profs.at(varname+"_w").data.data(),
+                m.second.profs.at(varname+"_diff").data.data(),
                 gd.kstart, gd.kend);
+
         set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
     }
 
@@ -1460,15 +1548,23 @@ void Stats<TF>::calc_mask_stats(
         if (grid.get_spatial_order() == Grid_order::Second)
         {
             calc_grad_2nd(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    fld.fld.data(), gd.dzhi.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
             calc_grad_4th(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    fld.fld.data(), gd.dzhi4.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
 
@@ -1483,9 +1579,12 @@ void Stats<TF>::calc_mask_stats(
         set_flag(flag, nmask, m.second, fld.loc[2]);
 
         std::pair<TF, int> path = calc_path(
-                fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
+                fld.fld.data(), gd.dz.data(),
+                fields.rhoref.data(),
                 mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
         master.sum(&path.first, 1);
@@ -1502,8 +1601,11 @@ void Stats<TF>::calc_mask_stats(
 
         // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
         std::pair<int, int> cover = calc_cover(
-                fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                fld.fld.data(), offset, threshold,
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
         master.sum(&cover.first, 1);
@@ -1521,9 +1623,13 @@ void Stats<TF>::calc_mask_stats(
         set_flag(flag, nmask, m.second, fld.loc[2]);
 
         calc_frac(
-                m.second.profs.at(name).data.data(), fld.fld.data(),
-                offset, threshold, mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                m.second.profs.at(name).data.data(),
+                fld.fld.data(),
+                offset, threshold,
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
         master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1547,8 +1653,15 @@ void Stats<TF>::calc_stats(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+            calc_mean(
+                    m.second.profs.at(varname).data.data(),
+                    fld.fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
             // Add the offset.
@@ -1568,10 +1681,15 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
+
                 calc_moment(
-                        m.second.profs.at(name).data.data(), fld.fld.data(),
-                        m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
-                        power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(),
+                        m.second.profs.at(varname).data.data(),
+                        offset, mfield.data(), flag, nmask, power,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1585,20 +1703,66 @@ void Stats<TF>::calc_stats(
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         auto advec_flux = fields.get_tmp();
-        advec.get_advec_flux(*advec_flux, fld);
+        auto fld_prime = fields.get_tmp();
+        auto w_prime = fields.get_tmp();
 
         for (auto& m : masks)
         {
-            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            // Set flag for `w` level, and calculate `w_mean` over mask in `w_prime->fld_mean`.
+            const int w_loc = 1;
+            set_flag(flag, nmask, m.second, w_loc);
+
             calc_mean(
-                    m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    w_prime->fld_mean.data(),
+                    fields.mp.at("w")->fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            master.sum(w_prime->fld_mean.data(), gd.kcells);
+
+            // Subtract mean from `var` and `w` to get turbulent fluctuations.
+            subtract_mean(
+                    fld_prime->fld.data(),
+                    fld.fld.data(),
+                    m.second.profs.at(varname).data.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            subtract_mean(
+                    w_prime->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    w_prime->fld_mean.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend+1,
+                    gd.icells, gd.ijcells);
+
+            advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
+
+            // Switch flag to flux location of `fld`.
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
+
+            calc_mean(
+                    m.second.profs.at(name).data.data(),
+                    advec_flux->fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
+
         fields.release_tmp(advec_flux);
+        fields.release_tmp(fld_prime);
+        fields.release_tmp(w_prime);
     }
 
     // Calc Diffusive Flux
@@ -1611,9 +1775,14 @@ void Stats<TF>::calc_stats(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, !fld.loc[2]);
+
             calc_mean(
-                    m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    diff_flux->fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1631,10 +1800,13 @@ void Stats<TF>::calc_stats(
         {
             // No sum is required in this routine as values all.
             set_flag(flag, nmask, m.second, !fld.loc[2]);
+
             add_fluxes(
-                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(),
+                    m.second.profs.at(name).data.data(),
+                    m.second.profs.at(varname+"_w").data.data(),
                     m.second.profs.at(varname+"_diff").data.data(),
                     gd.kstart, gd.kend);
+
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
@@ -1650,15 +1822,23 @@ void Stats<TF>::calc_stats(
             if (grid.get_spatial_order() == Grid_order::Second)
             {
                 calc_grad_2nd(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(), gd.dzhi.data(),
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
             }
             else if (grid.get_spatial_order() == Grid_order::Fourth)
             {
                 calc_grad_4th(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(), gd.dzhi4.data(),
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
             }
 
@@ -1676,9 +1856,12 @@ void Stats<TF>::calc_stats(
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
             std::pair<TF, int> path = calc_path(
-                    fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
+                    fld.fld.data(), gd.dz.data(),
+                    fields.rhoref.data(),
                     mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(&path.first, 1);
@@ -1698,8 +1881,12 @@ void Stats<TF>::calc_stats(
 
             // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
             std::pair<int, int> cover = calc_cover(
-                    fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    fld.fld.data(),
+                    offset, threshold,
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(&cover.first, 1);
@@ -1720,8 +1907,13 @@ void Stats<TF>::calc_stats(
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
             calc_frac(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    fld.fld.data(),
+                    offset, threshold,
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);

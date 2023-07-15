@@ -250,14 +250,18 @@ void Pres<TF>::make_cufft_plan()
     master.print_message("Memory margin=" + std::to_string(margin));
 
     int nerror = 0;
-    if (free_mem - margin < total_work_size)
+    if (force_FFT_per_slice || free_mem - margin < total_work_size)
     {
         FFT_per_slice = true;
         nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot));
         nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot));
         nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot));
         nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,     i_nj, i_jstride, i_jdist,     cufft_from_complex<TF>(), gd.itot));
-        master.print_message("cuFFT strategy: batched per 2D slice\n");
+
+        if (force_FFT_per_slice)
+            master.print_message("cuFFT strategy: batched per 2D slice (manually forced)\n");
+        else
+            master.print_message("cuFFT strategy: batched per 2D slice (memory limited)\n");
     }
     else
     {

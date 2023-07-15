@@ -1097,18 +1097,19 @@ void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    TF no_offset = 0.;
     if (cross.get_switch())
     {
         for (auto& it : crosslist)
         {
             if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+                cross.cross_plane(rr_bot.data(), no_offset, "rr_bot", iotime);
 
             if (it == "rs_bot")
-                cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
+                cross.cross_plane(rs_bot.data(), no_offset, "rs_bot", iotime);
 
             if (it == "rg_bot")
-                cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
+                cross.cross_plane(rg_bot.data(), no_offset, "rg_bot", iotime);
         }
     }
 }

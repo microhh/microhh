@@ -46,55 +46,7 @@ namespace
 
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 
-    template<typename TF> __device__
-    TF find_obuk_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int &n,
-            const TF Ri,
-            const TF zsl)
-    {
-        // Determine search direction.
-        if ((f[n]-Ri) > 0.f)
-            while ( (f[n-1]-Ri) > 0.f && n > 0) { --n; }
-        else
-            while ( (f[n]-Ri) < 0.f && n < (nzL-1) ) { ++n; }
-
-        const TF zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-
-        return zsl/zL0;
-    }
-
-
-    template<typename TF> __device__
-    TF calc_obuk_noslip_flux_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int& n,
-            const TF du,
-            const TF bfluxbot,
-            const TF zsl)
-    {
-        // Calculate the appropriate Richardson number.
-        const TF Ri = -Constants::kappa<TF> * bfluxbot * zsl / fm::pow3(du);
-        return find_obuk_g(zL, f, n, Ri, zsl);
-    }
-
-    template<typename TF> __device__
-    TF calc_obuk_noslip_dirichlet_g(
-            const float* const __restrict__ zL,
-            const float* const __restrict__ f,
-            int& n,
-            const TF du,
-            const TF db,
-            const TF zsl)
-    {
-        // Calculate the appropriate Richardson number.
-        const TF Ri = Constants::kappa<TF> * db * zsl / fm::pow2(du);
-        return find_obuk_g(zL, f, n, Ri, zsl);
-    }
-
-    template<typename TF> __global__
+    template<typename TF, bool sw_constant_z0> __global__
     void stability_g(
             TF* const __restrict__ ustar,
             TF* const __restrict__ obuk,
@@ -104,6 +56,7 @@ namespace
             const TF* const __restrict__ bfluxbot,
             const TF* const __restrict__ dutot,
             const TF* const __restrict__ z0m,
+            const TF* const __restrict__ z0h,
             const float* const __restrict__ zL_sl_g,
             const float* const __restrict__ f_sl_g,
             const TF db_ref,
@@ -129,14 +82,22 @@ namespace
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Flux_type)
             {
-                obuk [ij] = calc_obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                if (sw_constant_z0)
+                    obuk[ij] = bsk::calc_obuk_noslip_flux_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                else
+                    obuk[ij] = bsk::calc_obuk_noslip_flux_iterative_g(obuk[ij], dutot[ij], bfluxbot[ij], zsl, z0m[ij]);
+
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary_type::Dirichlet_type && thermobc == Boundary_type::Dirichlet_type)
             {
                 TF db = b[ijk] - bbot[ij] + db_ref;
-                obuk [ij] = calc_obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                if (sw_constant_z0)
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_lookup_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                else
+                    obuk[ij] = bsk::calc_obuk_noslip_dirichlet_iterative_g(obuk[ij], dutot[ij], db, zsl, z0m[ij], z0h[ij]);
+
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m[ij], obuk[ij]);
             }
         }
@@ -377,6 +338,8 @@ void Boundary_surface<TF>::backward_device()
 template<typename TF>
 void Boundary_surface<TF>::clear_device()
 {
+    Boundary<TF>::clear_device();
+
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
     cuda_safe_call(cudaFree(z0m_g));
@@ -453,16 +416,30 @@ void Boundary_surface<TF>::exec(
         const TF db_ref = thermo.get_db_ref();
 
         // Calculate ustar and Obukhov length, including ghost cells
-        stability_g<<<gridGPU2, blockGPU2>>>(
-            ustar_g, obuk_g, nobuk_g,
-            buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
-            dutot->fld_g, z0m_g,
-            zL_sl_g, f_sl_g,
-            db_ref, gd.z[gd.kstart],
-            gd.icells, gd.jcells,
-            gd.kstart, gd.icells,
-            gd.ijcells,
-            mbcbot, thermobc);
+        if (sw_constant_z0)
+            stability_g<TF, true><<<gridGPU2, blockGPU2>>>(
+                ustar_g, obuk_g, nobuk_g,
+                buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
+                dutot->fld_g,
+                z0m_g, z0h_g,
+                zL_sl_g, f_sl_g,
+                db_ref, gd.z[gd.kstart],
+                gd.icells, gd.jcells,
+                gd.kstart, gd.icells,
+                gd.ijcells,
+                mbcbot, thermobc);
+        else
+            stability_g<TF, false><<<gridGPU2, blockGPU2>>>(
+                ustar_g, obuk_g, nobuk_g,
+                buoy->fld_g, buoy->fld_bot_g, buoy->flux_bot_g,
+                dutot->fld_g,
+                z0m_g, z0h_g,
+                zL_sl_g, f_sl_g,
+                db_ref, gd.z[gd.kstart],
+                gd.icells, gd.jcells,
+                gd.kstart, gd.icells,
+                gd.ijcells,
+                mbcbot, thermobc);
         cuda_check_error();
 
         fields.release_tmp_g(buoy);

@@ -36,6 +36,7 @@ import csv
 import copy
 import datetime
 import itertools
+import inspect
 from copy import deepcopy
 
 # -------------------------
@@ -151,9 +152,7 @@ class Read_namelist:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
                     if isinstance(value, list):
-                        if not isinstance(value[0], str):
-                            value = [str(x) for x in value]
-                        value = ','.join(value)
+                        value = ','.join(str(v) for v in value)
                     elif isinstance(value, bool):
                         value = '1' if value else '0'
                     f.write('{}={}\n'.format(variable, value))
@@ -1042,3 +1041,29 @@ def run_restart(
         if not case.success:
             return 1
     return 0
+
+
+def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
+    if srcdir is None:
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rte-rrtmgp/' 
+    if destdir is None:
+        destdir = os.getcwd()
+    if gpt == '128_112':
+        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', destdir+'/coefficients_lw.nc')
+        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', destdir+'/coefficients_sw.nc')
+    elif gpt == '256_224':
+        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-lw-g256-210809.nc', destdir+'/coefficients_lw.nc')
+        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-sw-g224-210809.nc', destdir+'/coefficients_sw.nc')
+    else:
+        raise ValueError('gpt should be in {\'128_112\', \'256_224\'}')
+
+    shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', destdir+'/cloud_coefficients_lw.nc')
+    shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', destdir+'/cloud_coefficients_sw.nc')
+
+def copy_lsmfiles(srcdir=None, destdir=None):
+    if srcdir is None:
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../misc/'
+    if destdir is None:
+        destdir = os.getcwd()
+    shutil.copy(srcdir+'van_genuchten_parameters.nc', destdir)
+    

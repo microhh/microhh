@@ -232,7 +232,7 @@ int Field3d_io<TF>::load_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int jslice,
         const int kstart, const int kend)
 {
@@ -257,7 +257,7 @@ int Field3d_io<TF>::save_xz_slice(
                 // take the modulus of jslice and gd.jmax to have the right offset within proc
                 const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + k*kk;
                 const int ijkb = i + (k-kstart)*kkb;
-                tmp[ijkb] = data[ijk];
+                tmp[ijkb] = data[ijk] + data0;
             }
 
 #ifdef DISABLE_2D_MPIIO
@@ -362,7 +362,7 @@ int Field3d_io<TF>::save_xz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_yz_slice(
-        TF* restrict data, TF* restrict tmp,
+        TF* restrict data, TF const restrict data0, TF* restrict tmp,
         const char* filename, const int islice,
         const int kstart, const int kend)
 {
@@ -388,7 +388,7 @@ int Field3d_io<TF>::save_yz_slice(
                 // take the modulus of jslice and jmax to have the right offset within proc
                 const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
                 const int ijkb = j + (k-kstart)*kkb;
-                tmp[ijkb] = data[ijk];
+                tmp[ijkb] = data[ijk] + data0;
             }
 
 #ifdef DISABLE_2D_MPIIO
@@ -492,7 +492,7 @@ int Field3d_io<TF>::save_yz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
@@ -512,7 +512,7 @@ int Field3d_io<TF>::save_xy_slice(
             // Take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
 #ifdef DISABLE_2D_MPIIO
@@ -752,7 +752,7 @@ int Field3d_io<TF>::load_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int jslice,
         const int kstart, const int kend)
 {
@@ -773,7 +773,7 @@ int Field3d_io<TF>::save_xz_slice(
             // take the modulus of jslice and gd.jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (jslice+gd.jgc)*jj + k*kk;
             const int ijkb = i + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;
@@ -789,7 +789,7 @@ int Field3d_io<TF>::save_xz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_yz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int islice,
         const int kstart, const int kend)
 {
@@ -811,7 +811,7 @@ int Field3d_io<TF>::save_yz_slice(
             // take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
             const int ijkb = j + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;
@@ -827,7 +827,7 @@ int Field3d_io<TF>::save_yz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
@@ -846,7 +846,7 @@ int Field3d_io<TF>::save_xy_slice(
             // Take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;

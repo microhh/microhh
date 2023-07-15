@@ -10,7 +10,7 @@
 #include <map>
 #include <algorithm>
 #include <memory>
-#include "Types.h"
+#include "types.h"
 #include "Source_functions.h"
 #include "Gas_concs.h"
 

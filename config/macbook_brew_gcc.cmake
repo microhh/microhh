@@ -36,4 +36,4 @@ set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 # endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
-add_definitions(-DRTE_RRTMGP_USE_CBOOL)
+add_definitions(-DRTE_USE_CBOOL)

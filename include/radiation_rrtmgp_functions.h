@@ -34,22 +34,10 @@
 #include <iostream>
 #include <iomanip>
 
-//#include "constants.h"
-//#include "fast_math.h"
-#include "Types.h"
+#include "types.h"
 
 namespace Radiation_rrtmgp_functions
 {
-    //using namespace Constants;
-    //using Fast_math::pow2;
-
-    // INLINE FUNCTIONS
-//    template<typename TF>
-//    CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi)
-//    {
-//        const TF th = thl + Lv<TF>*ql/(cp<TF>*exn) + Ls<TF>*qi/(cp<TF>*exn);
-//        return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi));
-//    }
     inline std::pair<Float, Float> calc_cos_zenith_angle(
             const Float lat, const Float lon, const int day_of_year,
             const Float seconds_since_midnight, const int year)
@@ -57,9 +45,6 @@ namespace Radiation_rrtmgp_functions
         /* Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
                      Radiative Processes in Meteorology and Climatology.
                      Elsevier, New York, 318 pp. */
-
-
-        // CvH: there is no necessity to do this computation in single precision as it single value cpu only.
 
         const Float pi = Float(M_PI);
 

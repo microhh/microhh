@@ -55,7 +55,7 @@
 #include "Aerosol_optics.h"
 
 
-// IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP, which defines
+// IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP which defines
 // a type Float that is float or double depending on the flag. The type of Float is coupled to the TF switch in MicroHH.
 // To avoid confusion, we limit the use of TF in the code to the class headers and use Float.
 using namespace Radiation_rrtmgp_functions;
@@ -684,11 +684,6 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         const Float sza = inputin.get_item<Float>("radiation", "sza", "");
         mu0 = std::cos(sza);
     }
-    else
-    {
-        lat = inputin.get_item<Float>("radiation", "lat", "");
-        lon = inputin.get_item<Float>("radiation", "lon", "");
-    }
 
     // Surface diffuse radiation filtering
     sw_diffuse_filter = inputin.get_item<bool>("radiation", "swfilterdiffuse", "", false);
@@ -1181,6 +1176,7 @@ void Radiation_rrtmgp<TF>::create_column(
                 "Pressure of radiation reference column",
                 "Pa", "p_rad", root_group,
                 p_lev.v());
+
         if (sw_update_background || !sw_fixed_sza)
         {
             stats.add_prof("sw_flux_up_ref",
@@ -1944,7 +1940,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(array.fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), no_offset, name, iotime, loc);
         }
 
         if (do_column)
@@ -2465,7 +2461,7 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
-	    Array<Float, 1>&aod550,
+	Array<Float, 1>&aod550,
         const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
         const Array<Float,2>& h2o, const Array<Float, 2>& rh,
         const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
@@ -2758,7 +2754,7 @@ bool Radiation_rrtmgp<TF>::is_day(const Float mu0)
 }
 
 
-#ifdef RTE_USE_SP
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
 #else
 template class Radiation_rrtmgp<double>;

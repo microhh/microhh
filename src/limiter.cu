@@ -73,7 +73,10 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 
     const TF dti = 1./dt;
 
-    constexpr TF eps = std::numeric_limits<TF>::epsilon();
+    // Add epsilon, to make sure the final result ends just above zero.
+    // NOTE: don't use `eps<TF>` here; `eps<float>` is too large
+    //       as a lower limit for e.g. hydrometeors or chemical species.
+    constexpr TF eps = std::numeric_limits<double>::epsilon();
 
     for (auto& name : limit_list)
     {

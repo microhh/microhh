@@ -339,7 +339,7 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
-        b.fld_g, b.flux_bot_g,
+        b.fld_g, b.fld_bot_g,
         fields.sp.at("th")->fld_g, fields.sp.at("th")->fld_bot_g,
         bs.thref_g, bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);

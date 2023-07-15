@@ -540,13 +540,13 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
     cuda_safe_call(cudaMalloc(&mlen_g, nmemsize));
     cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), nmemsize, cudaMemcpyHostToDevice));
 }
-#endif
 
 template<typename TF>
 void Diff_smag2<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(mlen_g));
 }
+#endif
 
 #ifdef USECUDA
 template<typename TF>
