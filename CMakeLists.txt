@@ -32,7 +32,7 @@ endif()
 
 if(USESP)
   add_compile_definitions(FLOAT_SINGLE)
-  add_compile_definitions(RTE_RRTMGP_SINGLE_PRECISION)
+  add_compile_definitions(RTE_USE_SP)
   message(STATUS "Precision: Single (32-bits floats)")
 else()
   message(STATUS "Precision: Double (64-bits floats)")
