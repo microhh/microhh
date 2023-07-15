@@ -33,14 +33,14 @@ namespace Diff_kernels_g
 
     template<typename TF, Surface_model surface_model> __global__
     void calc_strain2_g(
-            TF* __restrict__ strain2,
-            TF* __restrict__ u,
-            TF* __restrict__ v,
-            TF* __restrict__ w,
-            TF* __restrict__ dudz,
-            TF* __restrict__ dvdz,
-            TF* __restrict__ dzi,
-            TF* __restrict__ dzhi,
+            TF* const __restrict__ strain2,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ w,
+            const TF* const __restrict__ dudz,
+            const TF* const __restrict__ dvdz,
+            const TF* const __restrict__ dzi,
+            const TF* const __restrict__ dzhi,
             const TF dxi, const TF dyi,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -124,17 +124,29 @@ namespace Diff_kernels_g
     }
 
     template<typename TF, Surface_model surface_model> __global__
-    void diff_uvw_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
-                    TF* __restrict__ evisc,
-                    TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                    TF* __restrict__ fluxbotu, TF* __restrict__ fluxtopu,
-                    TF* __restrict__ fluxbotv, TF* __restrict__ fluxtopv,
-                    TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxi, const TF dyi,
-                    TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                    const TF visc,
-                    const int istart, const int jstart, const int kstart,
-                    const int iend,   const int jend,   const int kend,
-                    const int jj,     const int kk)
+    void diff_uvw_g(
+            TF* const __restrict__ ut,
+            TF* const __restrict__ vt,
+            TF* const __restrict__ wt,
+            const TF* const __restrict__ evisc,
+            const TF* const __restrict__ u,
+            const TF* const __restrict__ v,
+            const TF* const __restrict__ w,
+            const TF* const __restrict__ fluxbotu,
+            const TF* const __restrict__ fluxtopu,
+            const TF* const __restrict__ fluxbotv,
+            const TF* const __restrict__ fluxtopv,
+            const TF* const __restrict__ dzi,
+            const TF* const __restrict__ dzhi,
+            const TF* const __restrict__ rhoref,
+            const TF* const __restrict__ rhorefh,
+            const TF dxi,
+            const TF dyi,
+            const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -268,14 +280,24 @@ namespace Diff_kernels_g
     }
 
     template<typename TF, Surface_model surface_model> __global__
-    void diff_c_g(TF* __restrict__ at, TF* __restrict__ a, TF* __restrict__ evisc,
-                  TF* __restrict__ fluxbot, TF* __restrict__ fluxtop,
-                  TF* __restrict__ dzi, TF* __restrict__ dzhi, const TF dxidxi, const TF dyidyi,
-                  TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                  const TF tPri, const TF visc,
-                  const int istart, const int jstart, const int kstart,
-                  const int iend,   const int jend,   const int kend,
-                  const int jj,     const int kk)
+    void diff_c_g(
+            TF* const __restrict__ at,
+            const TF* const __restrict__ a,
+            const TF* const __restrict__ evisc,
+            const TF* const __restrict__ fluxbot,
+            const TF* const __restrict__ fluxtop,
+            const TF* const __restrict__ dzi,
+            const TF* const __restrict__ dzhi,
+            const TF* const __restrict__ rhoref,
+            const TF* const __restrict__ rhorefh,
+            const TF dxidxi,
+            const TF dyidyi,
+            const TF tPri,
+            const TF visc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -338,8 +360,5 @@ namespace Diff_kernels_g
             }
         }
     }
-
-
-
 }
 #endif
