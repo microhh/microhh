@@ -44,7 +44,7 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels;
 
-    template <typename TF, Surface_model surface_model>
+    template <typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc_neutral(
             TF* const restrict evisc,
             const TF* const restrict u,
@@ -62,7 +62,6 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
-            const bool sw_mason, 
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -311,7 +310,7 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     const std::string group_name = "default";
 
     // Set the switch for use of Mason's wall correction
-    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true); // SvdL, 04-05-2023: added switch
+    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true);
 
     fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
 
@@ -534,46 +533,43 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
     {
-        // Calculate eddy viscosity using MO at lowest model level
+        auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
+                const TF* const restrict z0m)
+        {
+            calc_evisc_neutral<TF, surface_model, sw_mason>(
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzhi.data(), z0m,
+                    gd.dx, gd.dy, gd.zsize,
+                    this->cs,
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
+        };
+
         if (boundary.get_switch() != "default")
         {
             const std::vector<TF>& z0m = boundary.get_z0m();
 
-            calc_evisc_neutral<TF, Surface_model::Enabled>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), z0m.data(),
-                    gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    sw_mason,
-                    boundary_cyclic);
+            if (sw_mason)
+                evisc_wrapper.template operator()<Surface_model::Enabled, true>(z0m.data());
+            else
+                evisc_wrapper.template operator()<Surface_model::Enabled, false>(z0m.data());
         }
-
-        // Calculate eddy viscosity assuming resolved walls
         else
         {
-            calc_evisc_neutral<TF, Surface_model::Disabled>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(), gd.dzhi.data(), nullptr,
-                    gd.dx, gd.dy, gd.zsize, this->cs, fields.visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    sw_mason,
-                    boundary_cyclic);
+            if (sw_mason)
+                evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr);
+            else
+                evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr);
         }
     }
     // assume buoyancy calculation is needed
@@ -601,7 +597,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                     gd.dz.data(),
                     gd.dzi.data(),
                     z0m,
-                    gd.dx, gd.dy, this->cs, this->tPr,
+                    gd.dx, gd.dy,
+                    this->cs, this->tPr,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
