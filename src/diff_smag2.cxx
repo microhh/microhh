@@ -489,46 +489,37 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
+    auto strain2_wrapper = [&]<Surface_model surface_model>(
+            const TF* const restrict dudz,
+            const TF* const restrict dvdz)
+    {
+        dk::calc_strain2<TF, Surface_model::Enabled>(
+                fields.sd.at("evisc")->fld.data(),
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(),
+                dudz,
+                dvdz,
+                gd.z.data(),
+                gd.dzi.data(),
+                gd.dzhi.data(),
+                1./gd.dx, 1./gd.dy,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
     if (boundary.get_switch() != "default")
     {
         // Calculate strain rate using MO for velocity gradients lowest level.
         const std::vector<TF>& dudz = boundary.get_dudz();
         const std::vector<TF>& dvdz = boundary.get_dvdz();
 
-        dk::calc_strain2<TF, Surface_model::Enabled>(
-                fields.sd.at("evisc")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                dudz.data(),
-                dvdz.data(),
-                gd.z.data(),
-                gd.dzi.data(),
-                gd.dzhi.data(),
-                1./gd.dx, 1./gd.dy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        strain2_wrapper.template operator()<Surface_model::Enabled>(dudz.data(), dvdz.data());
     }
     else
-    {
-        // Calculate strain rate using resolved boundaries.
-        dk::calc_strain2<TF, Surface_model::Disabled>(
-                fields.sd.at("evisc")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                nullptr, nullptr,
-                gd.z.data(),
-                gd.dzi.data(),
-                gd.dzhi.data(),
-                1./gd.dx, 1./gd.dy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
+        strain2_wrapper.template operator()<Surface_model::Enabled>(nullptr, nullptr);
 
     // Start with retrieving the stability information
     if (thermo.get_switch() == "0")
@@ -727,7 +718,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
     }
     else
     {
-        // Calculate boudnary and interior:
+        // Calculate boundary and interior:
         diff_flux_wrapper.template operator()<Surface_model::Disabled>();
     }
 }
