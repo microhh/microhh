@@ -409,8 +409,8 @@ namespace Diff_kernels
             const int jj, const int kk)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
-
         const int ii = 1;
+        const TF tPr_i = TF(1)/tPr;
 
         if (surface_model == Surface_model::Enabled)
         {
@@ -421,11 +421,11 @@ namespace Diff_kernels
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk;
-                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])/tPr + visc;
-                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])/tPr + visc;
-                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])/tPr + visc;
-                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])/tPr + visc;
-                    const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])/tPr + visc;
+                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii]) * tPr_i + visc;
+                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj]) * tPr_i + visc;
+                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk]) * tPr_i + visc;
 
                     at[ijk] +=
                              + ( evisce*(a[ijk+ii]-a[ijk   ])
@@ -443,11 +443,11 @@ namespace Diff_kernels
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + (kend-1)*kk;
-                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])/tPr + visc;
-                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])/tPr + visc;
-                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])/tPr + visc;
-                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])/tPr + visc;
-                    const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])/tPr + visc;
+                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii]) * tPr_i + visc;
+                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj]) * tPr_i + visc;
+                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ]) * tPr_i + visc;
 
                     at[ijk] +=
                              + ( evisce*(a[ijk+ii]-a[ijk   ])
@@ -465,12 +465,12 @@ namespace Diff_kernels
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])/tPr + visc;
-                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])/tPr + visc;
-                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj])/tPr + visc;
-                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ])/tPr + visc;
-                    const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk])/tPr + visc;
-                    const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ])/tPr + visc;
+                    const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii]) * tPr_i + visc;
+                    const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF eviscn = TF(0.5)*(evisc[ijk   ]+evisc[ijk+jj]) * tPr_i + visc;
+                    const TF eviscs = TF(0.5)*(evisc[ijk-jj]+evisc[ijk   ]) * tPr_i + visc;
+                    const TF evisct = TF(0.5)*(evisc[ijk   ]+evisc[ijk+kk]) * tPr_i + visc;
+                    const TF eviscb = TF(0.5)*(evisc[ijk-kk]+evisc[ijk   ]) * tPr_i + visc;
 
                     at[ijk] +=
                              + ( evisce*(a[ijk+ii]-a[ijk   ])
@@ -495,6 +495,7 @@ namespace Diff_kernels
             const int jj, const int kk)
     {
         constexpr int k_offset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+        const TF tPr_i = TF(1)/tPr;
 
         #pragma omp parallel for
         for (int k=kstart+k_offset; k<(kend+1-k_offset); ++k)
@@ -504,7 +505,7 @@ namespace Diff_kernels
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const TF eviscc = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr + visc;
+                    const TF eviscc = 0.5*(evisc[ijk-kk]+evisc[ijk]) * tPr_i + visc;
 
                     out[ijk] = - eviscc*(data[ijk] - data[ijk-kk])*dzhi[k];
                 }
@@ -587,7 +588,5 @@ namespace Diff_kernels
                 out[ijk] = data[ij];
             }
     }
-
-
 }
 #endif
