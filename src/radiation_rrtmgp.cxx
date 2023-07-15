@@ -1502,7 +1502,10 @@ void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
     const int year = timeloop.get_year();
     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
     Float azimuth_dummy;
-    std::tie(this->mu0, azimuth_dummy) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+
+    auto& gd = grid.get_grid_data();
+
+    std::tie(this->mu0, azimuth_dummy) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
 
     // Calculate correction factor for impact Sun's distance on the solar "constant"
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
@@ -1989,7 +1992,8 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
             bool cross_diff = std::find(crosslist.begin(), crosslist.end(), "sw_flux_dn_diff_filtered") != crosslist.end();
             if (sw_diffuse_filter && do_cross && cross_diff)
             {
-                cross.cross_plane(sw_flux_dn_dif_f.data(), "sw_flux_dn_diff_filtered", iotime);
+                constexpr TF no_offset = TF(0);
+                cross.cross_plane(sw_flux_dn_dif_f.data(), no_offset, "sw_flux_dn_diff_filtered", iotime);
             }
 
             if (sw_aerosol)

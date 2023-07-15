@@ -41,8 +41,7 @@
 #include "Rte_lw_rt.h"
 #include "Rte_sw_rt.h"
 #include "Raytracer.h"
-#include "raytracer_kernels.h"
-#include <curand_kernel.h>
+// #include <curand_kernel.h>
 
 
 class Master;
