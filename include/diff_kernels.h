@@ -25,6 +25,7 @@
 
 #include "fast_math.h"
 #include "boundary.h"
+#include "constants.h"
 
 namespace Diff_kernels
 {

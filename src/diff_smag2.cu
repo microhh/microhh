@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "master.h"
 #include "diff_smag2.h"
+#include "boundary.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
@@ -42,8 +43,6 @@ namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
-
-    enum class Surface_model {Enabled, Disabled};
 
     template<typename TF, Surface_model surface_model> __global__
     void calc_strain2_g(
@@ -550,7 +549,7 @@ void Diff_smag2<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
