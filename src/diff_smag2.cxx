@@ -146,7 +146,7 @@ namespace
         boundary_cyclic.exec(evisc);
     }
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc(
             TF* const restrict evisc,
             const TF* const restrict u,
@@ -164,7 +164,6 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
-            const bool sw_mason,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -586,47 +585,46 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         auto tmp = fields.get_tmp();
 
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
-        const std::vector<TF>& dbdz = boundary.get_dbdz();
+
+        auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
+                const TF* const restrict dbdz,
+                const TF* const restrict z0m)
+        {
+            calc_evisc<TF, surface_model, sw_mason>(
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    buoy_tmp->fld.data(),
+                    dbdz,
+                    gd.z.data(),
+                    gd.dz.data(),
+                    gd.dzi.data(),
+                    z0m,
+                    gd.dx, gd.dy, this->cs, this->tPr,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
+        };
 
         if (boundary.get_switch() != "default")
         {
             const std::vector<TF>& z0m = boundary.get_z0m();
+            const std::vector<TF>& dbdz = boundary.get_dbdz();
 
-            calc_evisc<TF, Surface_model::Enabled>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    buoy_tmp->fld.data(),
-                    dbdz.data(),
-                    gd.z.data(), gd.dz.data(),
-                    gd.dzi.data(), z0m.data(),
-                    gd.dx, gd.dy, this->cs, this->tPr,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    sw_mason,
-                    boundary_cyclic);
+            if (sw_mason)
+                evisc_wrapper.template operator()<Surface_model::Enabled, true>(dbdz.data(), z0m.data());
+            else
+                evisc_wrapper.template operator()<Surface_model::Enabled, false>(dbdz.data(), z0m.data());
         }
         else
         {
-            calc_evisc<TF, Surface_model::Disabled>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    buoy_tmp->fld.data(),
-                    nullptr,
-                    gd.z.data(), gd.dz.data(),
-                    gd.dzi.data(), nullptr,
-                    gd.dx, gd.dy, this->cs, this->tPr,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    sw_mason,
-                    boundary_cyclic);
+            if (sw_mason)
+                evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr, nullptr);
+            else
+                evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr, nullptr);
         }
 
         fields.release_tmp(buoy_tmp);
