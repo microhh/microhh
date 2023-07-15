@@ -661,59 +661,74 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
+    auto diff_flux_wrapper = [&]<Surface_model surface_model>()
+    {
+        // Calculate the interior.
+        if (fld_in.loc[0] == 1)
+            dk::calc_diff_flux_u<TF, surface_model>(
+                    out.fld.data(),
+                    fld_in.fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    fields.sd.at("evisc")->fld.data(),
+                    gd.dxi, gd.dzhi.data(),
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+        else if (fld_in.loc[1] == 1)
+            dk::calc_diff_flux_v<TF, surface_model>(
+                    out.fld.data(),
+                    fld_in.fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    fields.sd.at("evisc")->fld.data(),
+                    gd.dyi, gd.dzhi.data(),
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+        else
+            dk::calc_diff_flux_c<TF, surface_model>(
+                    out.fld.data(),
+                    fld_in.fld.data(),
+                    fields.sd.at("evisc")->fld.data(),
+                    gd.dzhi.data(),
+                    tPr, fld_in.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+    };
+
     if (boundary.get_switch() != "default")
     {
         // Calculate the boundary fluxes.
-        dk::calc_diff_flux_bc(out.fld.data(), fld_in.flux_bot.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
-        dk::calc_diff_flux_bc(out.fld.data(), fld_in.flux_top.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kend  , gd.icells, gd.ijcells);
+        dk::calc_diff_flux_bc(
+                out.fld.data(),
+                fld_in.flux_bot.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
 
-        // Calculate the interior.
-        if (fld_in.loc[0] == 1)
-            dk::calc_diff_flux_u<TF, Surface_model::Enabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dxi, gd.dzhi.data(),
-                    fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        else if (fld_in.loc[1] == 1)
-            dk::calc_diff_flux_v<TF, Surface_model::Enabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dyi, gd.dzhi.data(),
-                    fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        else
-            dk::calc_diff_flux_c<TF, Surface_model::Enabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dzhi.data(),
-                    tPr, fld_in.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+        dk::calc_diff_flux_bc(
+                out.fld.data(),
+                fld_in.flux_top.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kend,
+                gd.icells, gd.ijcells);
+
+        // Calculate interior:
+        diff_flux_wrapper.template operator()<Surface_model::Enabled>();
     }
     else
     {
-        // Include the wall.
-        if (fld_in.loc[0] == 1)
-            dk::calc_diff_flux_u<TF, Surface_model::Disabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dxi, gd.dzhi.data(),
-                    fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        else if (fld_in.loc[1] == 1)
-            dk::calc_diff_flux_v<TF, Surface_model::Disabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.mp.at("w")->fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dyi, gd.dzhi.data(),
-                    fields.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        else
-            dk::calc_diff_flux_c<TF, Surface_model::Disabled>(
-                    out.fld.data(), fld_in.fld.data(), fields.sd.at("evisc")->fld.data(),
-                    gd.dzhi.data(),
-                    tPr, fld_in.visc,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+        // Calculate boudnary and interior:
+        diff_flux_wrapper.template operator()<Surface_model::Disabled>();
     }
 }
 
