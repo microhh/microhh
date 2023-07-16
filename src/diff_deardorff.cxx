@@ -246,10 +246,10 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-       if (surface_model == Surface_model::Disabled)
-            throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
-       else
-       {
+        if (surface_model == Surface_model::Disabled)
+             throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
+        else
+        {
             // Variables for the wall damping and length scales
             const TF n_mason = 2.;
             TF mlen;
@@ -680,12 +680,13 @@ void Diff_deardorff<TF>::create(Stats<TF>& stats)
     // SvdL, 15-04-2023: If sgs tke from input >= 0, this function shouldn't be necessary.
     // However, sgs tke blows up, when this check is removed. Still don't fully understand why...
     // update 14-04-2023: probably related to the same type of crash Chiel experiences with sgs_diss
-    check_for_minval<TF>(fields.sp.at("sgstke")->fld.data(),
-                      gd.istart, gd.iend,
-                      gd.jstart, gd.jend,
-                      gd.kstart, gd.kend,
-                      gd.icells, gd.jcells, gd.ijcells,
-                      boundary_cyclic);
+    check_for_minval<TF>(
+            fields.sp.at("sgstke")->fld.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.jcells, gd.ijcells,
+            boundary_cyclic);
 }
 
 #ifndef USECUDA
