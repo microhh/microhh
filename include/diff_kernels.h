@@ -483,6 +483,33 @@ namespace Diff_kernels
                 }
     }
 
+    template<typename TF>
+    TF calc_dnmul(
+            const TF* const restrict evisc,
+            const TF* const restrict dzi,
+            const TF dxidxi, const TF dyidyi,
+            const TF tPr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const TF tPrfac_i = TF(1)/std::min(TF(1.), tPr);
+        TF dnmul = 0;
+
+        // get the maximum time step for diffusion
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    dnmul = std::max(dnmul, std::abs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k])));
+                }
+
+        return dnmul;
+    }
+
     template <typename TF, Surface_model surface_model>
     void calc_diff_flux_c(
             TF* const restrict out,

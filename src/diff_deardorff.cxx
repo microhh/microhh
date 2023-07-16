@@ -498,31 +498,6 @@ namespace
                 }
         }
     }
-
-    template<typename TF>
-    TF calc_dnmul(
-            TF* const restrict eviscs,
-            const TF* const restrict dzi,
-            const TF dxidxi, const TF dyidyi,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        TF dnmul = 0;
-
-        // get the maximum time step for diffusion
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    dnmul = std::max(dnmul, std::abs(eviscs[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
-                }
-
-        return dnmul;
-    }
 }
 
 template<typename TF>
@@ -597,26 +572,23 @@ unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const 
 {
     auto& gd = grid.get_grid_data();
 
-    if (!sw_buoy) // when no buoyancy, use eddy viscosity for momentum
-    {
-        dnmul = calc_dnmul<TF>(
-                fields.sd.at("evisc")->fld.data(),
-                gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
-    else // use eddy viscosity for heat/scalars
-    {
-        dnmul = calc_dnmul<TF>(
-                fields.sd.at("eviscs")->fld.data(),
-                gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
+    const TF tPr_dummy = 1;
+
+    // When no buoyancy, use eddy viscosity for momentum.
+    TF* evisc = !sw_buoy
+        ? fields.sd.at("evisc")->fld.data()
+        : fields.sd.at("eviscs")->fld.data();
+
+    dnmul = dk::calc_dnmul<TF>(
+            evisc,
+            gd.dzi.data(),
+            1./(gd.dx*gd.dx),
+            1./(gd.dy*gd.dy),
+            tPr_dummy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     master.max(&dnmul, 1);
 
@@ -633,26 +605,23 @@ double Diff_deardorff<TF>::get_dn(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    if (!sw_buoy) // when no buoyancy, use eddy viscosity for momentum
-    {
-        dnmul = calc_dnmul<TF>(
-                fields.sd.at("evisc")->fld.data(),
-                gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
-    else // use eddy viscosity for heat/scalars
-    {
-        dnmul = calc_dnmul<TF>(
-                fields.sd.at("eviscs")->fld.data(),
-                gd.dzi.data(), 1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    }
+    const TF tPr_dummy = 1;
+
+    // When no buoyancy, use eddy viscosity for momentum.
+    TF* evisc = !sw_buoy
+        ? fields.sd.at("evisc")->fld.data()
+        : fields.sd.at("eviscs")->fld.data();
+
+    dnmul = dk::calc_dnmul<TF>(
+            evisc,
+            gd.dzi.data(),
+            1./(gd.dx*gd.dx),
+            1./(gd.dy*gd.dy),
+            tPr_dummy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
 
     master.max(&dnmul, 1);
 
