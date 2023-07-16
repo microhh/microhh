@@ -247,13 +247,95 @@ namespace
 template<typename TF>
 unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
-    return Constants::ulhuge;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    const TF dxidxi = TF(1)/(gd.dx * gd.dx);
+    const TF dyidyi = TF(1)/(gd.dy * gd.dy);
+    const TF tPr_i_dummy = 1;
+
+    auto tmp1 = fields.get_tmp_g();
+
+    // When no buoyancy, use eddy viscosity for momentum.
+    TF* evisc_g = !sw_buoy
+        ? fields.sd.at("evisc")->fld_g
+        : fields.sd.at("eviscs")->fld_g;
+
+    // Calculate dnmul in tmp1 field
+    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+            tmp1->fld_g,
+            evisc_g,
+            gd.dzi_g,
+            tPr_i_dummy,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Get maximum from tmp1 field
+    double dnmul = field3d_operators.calc_max_g(tmp1->fld_g);
+    dnmul = std::max(Constants::dsmall, dnmul);
+
+    const unsigned long idtlim = idt * dnmax/(dnmul*dt);
+
+    fields.release_tmp_g(tmp1);
+
+    return idtlim;
 }
 
 template<typename TF>
 double Diff_deardorff<TF>::get_dn(const double dt)
 {
-    return -1;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    const TF dxidxi = TF(1)/(gd.dx * gd.dx);
+    const TF dyidyi = TF(1)/(gd.dy * gd.dy);
+    const TF tPr_i_dummy = 1;
+
+    // Calculate dnmul in tmp1 field
+    auto dnmul_tmp = fields.get_tmp_g();
+
+    // When no buoyancy, use eddy viscosity for momentum.
+    TF* evisc_g = !sw_buoy
+        ? fields.sd.at("evisc")->fld_g
+        : fields.sd.at("eviscs")->fld_g;
+
+    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+        dnmul_tmp->fld_g,
+        evisc_g,
+        gd.dzi_g,
+        tPr_i_dummy,
+        dxidxi, dyidyi,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
+    cuda_check_error();
+
+    // Get maximum from tmp1 field
+    // CvH This is odd, because there might be need for calc_max in CPU version.
+    double dnmul = field3d_operators.calc_max_g(dnmul_tmp->fld_g);
+
+    fields.release_tmp_g(dnmul_tmp);
+
+    return dnmul*dt;
 }
 
 template<typename TF>

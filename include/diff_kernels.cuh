@@ -360,5 +360,29 @@ namespace Diff_kernels_g
             }
         }
     }
+
+    template<typename TF> __global__
+    void calc_dnmul_g(
+            TF* const __restrict__ dnmul,
+            const TF* const __restrict__ evisc,
+            const TF* const __restrict__ dzi,
+            const TF tPrfac_i,
+            const TF dxidxi,
+            const TF dyidyi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj,     const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            dnmul[ijk] = fabs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k]));
+        }
+    }
 }
 #endif

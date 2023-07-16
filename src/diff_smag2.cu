@@ -189,24 +189,6 @@ namespace
             evisc[ijkt+kk] = evisc[ijkt];
         }
     }
-
-    template<typename TF> __global__
-    void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc,
-                      TF* __restrict__ dzi, TF tPrfac_i, const TF dxidxi, const TF dyidyi,
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend,
-                      const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            dnmul[ijk] = fabs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k]));
-        }
-    }
 }
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
@@ -546,11 +528,15 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     auto tmp1 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
-    calc_dnmul_g<<<gridGPU, blockGPU>>>(
-            tmp1->fld_g, fields.sd.at("evisc")->fld_g,
-            gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+            tmp1->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            gd.dzi_g,
+            tPrfac_i,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
 
@@ -587,11 +573,15 @@ double Diff_smag2<TF>::get_dn(double dt)
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();
 
-    calc_dnmul_g<<<gridGPU, blockGPU>>>(
-        dnmul_tmp->fld_g, fields.sd.at("evisc")->fld_g,
-        gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
+    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+        dnmul_tmp->fld_g,
+        fields.sd.at("evisc")->fld_g,
+        gd.dzi_g,
+        tPrfac_i,
+        dxidxi, dyidyi,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
