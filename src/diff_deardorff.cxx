@@ -44,8 +44,8 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels;
 
-    // SvdL, 15-04-2023: check_for_minval is currently still needed, could be related to blow-up of sgstke-dissipation.
-    // minimum viscosity (mvisc, as in DALES) seems to be redundant as molecular viscosity is added anyway in diffusion. 
+    // Check_for_minval is currently still needed, could be related to blow-up of sgstke-dissipation.
+    // minimum viscosity (mvisc, as in DALES) seems to be redundant as molecular viscosity is added anyway in diffusion.
     template<typename TF> constexpr TF mvisc = 0.;//1e-5;
 
     template <typename TF>
@@ -66,7 +66,7 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    // SvdL, 15-04-2023: after initialization of sgstke field, still do check if values exceed minimum value
+                    // After initialization of sgstke field, still do check if values exceed minimum value
                     if ( a[ijk] < Constants::sgstke_min<TF>)
                         a[ijk] = Constants::sgstke_min<TF>;
                 }
@@ -74,7 +74,7 @@ namespace
         boundary_cyclic.exec(a);
     }
 
-    template <typename TF, Surface_model surface_model>
+    template <typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc_neutral(
             TF* const restrict evisc,
             const TF* const restrict a,
@@ -91,7 +91,6 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
-            const bool sw_mason, ///< SvdL, 15-04-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -105,49 +104,8 @@ namespace
         TF fac  ;
         TF kvisc;
 
-        // SvdL, 15-04-2023: resolved wall deardorff yet to be implemented. For now, only works with surface_model=Enabled
         if (surface_model == Surface_model::Disabled)
-        {
-            //for (int k=kstart; k<kend; ++k)
-            //{
-            //    // const TF mlen_wall = Constants::kappa<TF>*std::min(z[k], zsize-z[k]);
-            //    const TF mlen_smag = cs*std::pow(dx*dy*dz[k], TF(1./3.));
-
-            //    for (int j=jstart; j<jend; ++j)
-            //        #pragma ivdep
-            //        for (int i=istart; i<iend; ++i)
-            //        {
-            //            const int ijk_bot = i + j*jj + kstart*kk;
-            //            const int ijk_top = i + j*jj + kend*kk;
-            //            const TF u_tau_bot = std::pow(
-            //                    fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
-            //                  + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ), TF(0.25) );
-            //            const TF u_tau_top = std::pow(
-            //                    fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
-            //                  + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ), TF(0.25) );
-            //            const TF fac_bot = TF(1.) - std::exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
-            //            const TF fac_top = TF(1.) - std::exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
-            //            const TF fac = std::min( fac_bot, fac_top );
-
-            //            const int ijk = i + j*jj + k*kk;
-            //            evisc[ijk] = fm::pow2(fac * mlen_smag) * std::sqrt(evisc[ijk]);
-            //        }
-            //}
-
-            //// For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
-            //// is mirrored around the surface.
-            //const int kb = kstart;
-            //const int kt = kend-1;
-            //for (int j=0; j<jcells; ++j)
-            //    #pragma ivdep
-            //    for (int i=0; i<icells; ++i)
-            //    {
-            //        const int ijkb = i + j*jj + kb*kk;
-            //        const int ijkt = i + j*jj + kt*kk;
-            //        evisc[ijkb-kk] = evisc[ijkb];
-            //        evisc[ijkt+kk] = evisc[ijkt];
-            //    }
-        }
+            throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
         else
         {
             for (int k=kstart; k<kend; ++k) // Counter starts at kstart (as sgstke is defined here)
@@ -178,7 +136,7 @@ namespace
         boundary_cyclic.exec(evisc);
     }
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc(
             TF* const restrict evisc,
             const TF* const restrict a,
@@ -197,47 +155,13 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
-            const bool sw_mason, ///< SvdL, 15-04-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
 
-       // SvdL, 15-04-2023: resolved wall deardorff yet to be implemented. For now, only works with surface_model=Enabled
        if (surface_model == Surface_model::Disabled)
-       {
-           // for (int k=kstart; k<kend; ++k)
-           // {
-           //     // calculate smagorinsky constant times filter width squared, do not use wall damping with resolved walls.
-           //     const TF mlen = std::pow(dx*dy*dz[k], TF(1./3.));
-           //     const TF fac = fm::pow2(mlen);
-           //
-           //     for (int j=jstart; j<jend; ++j)
-           //         #pragma ivdep
-           //         for (int i=istart; i<iend; ++i)
-           //         {
-           //             const int ijk = i + j*jj + k*kk;
-           //             // Add the buoyancy production to the TKE
-           //             TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
-           //             RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
-           //             evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
-           //         }
-           // }
-           //
-           // // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
-           // // is mirrored over the surface.
-           // const int kb = kstart;
-           // const int kt = kend-1;
-           // for (int j=0; j<jcells; ++j)
-           //     #pragma ivdep
-           //     for (int i=0; i<icells; ++i)
-           //     {
-           //         const int ijkb = i + j*jj + kb*kk;
-           //         const int ijkt = i + j*jj + kt*kk;
-           //         evisc[ijkb-kk] = evisc[ijkb];
-           //         evisc[ijkt+kk] = evisc[ijkt];
-           //     }
-       }
+            throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
        else
        {
             // Variables for the wall damping and length scales
@@ -270,7 +194,7 @@ namespace
                     // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
                     kvisc = cm * fac * std::sqrt(a[ijk]);
                     evisc[ijk] = std::max(kvisc, mvisc<TF>);
-                }    
+                }
 
             for (int k=kstart+1; k<kend; ++k) // Counter starts at kstart (as sgstke is defined here)
             {
@@ -284,7 +208,7 @@ namespace
                         const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
 
-                        if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
+                        if (N2[ijk] > 0) // Only if stably stratified, adapt length scale
                             mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
                         else
                             mlen = mlen0;
@@ -305,7 +229,7 @@ namespace
         boundary_cyclic.exec(evisc);
     }
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc_heat(
             TF* const restrict evisch,
             const TF* const restrict evisc,
@@ -321,47 +245,13 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells, const int ijcells,
-            const bool sw_mason, ///< SvdL, 15-04-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
         const int kk = ijcells;
 
-       // SvdL, 15-04-2023: resolved wall deardorff to be implemented. For now, only works with surface_model=Enabled
        if (surface_model == Surface_model::Disabled)
-       {
-           // for (int k=kstart; k<kend; ++k)
-           // {
-           //     // calculate smagorinsky constant times filter width squared, do not use wall damping with resolved walls.
-           //     const TF mlen = std::pow(dx*dy*dz[k], TF(1./3.));
-           //     const TF fac = fm::pow2(mlen);
-           //
-           //     for (int j=jstart; j<jend; ++j)
-           //         #pragma ivdep
-           //         for (int i=istart; i<iend; ++i)
-           //         {
-           //             const int ijk = i + j*jj + k*kk;
-           //             // Add the buoyancy production to the TKE
-           //             TF RitPrratio = N2[ijk] / evisc[ijk] / tPr;
-           //             RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
-           //             evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(TF(1.)-RitPrratio);
-           //         }
-           // }
-           //
-           // // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
-           // // is mirrored over the surface.
-           // const int kb = kstart;
-           // const int kt = kend-1;
-           // for (int j=0; j<jcells; ++j)
-           //     #pragma ivdep
-           //     for (int i=0; i<icells; ++i)
-           //     {
-           //         const int ijkb = i + j*jj + kb*kk;
-           //         const int ijkt = i + j*jj + kt*kk;
-           //         evisc[ijkb-kk] = evisc[ijkb];
-           //         evisc[ijkt+kk] = evisc[ijkt];
-           //     }
-       }
+            throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
        else
        {
             // Variables for the wall damping and length scales
@@ -432,7 +322,7 @@ namespace
     template <typename TF>
     void sgstke_shear_tend(
             TF* const restrict at,
-            const TF* const restrict a, // SvdL, 15-04-2023: not necessary to pass but do it for consistency
+            const TF* const restrict a,
             const TF* const restrict evisc,
             const TF* const restrict strain2,
             const int istart, const int iend,
@@ -457,7 +347,7 @@ namespace
     template <typename TF>
     void sgstke_buoy_tend(
             TF* const restrict at,
-            const TF* const restrict a, // SvdL, 15-04-2023: not necessary to pass but do it for consistency
+            const TF* const restrict a,
             const TF* const restrict evisch,
             const TF* const restrict N2,
             const TF* const restrict bgradbot,
@@ -506,11 +396,11 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int jj, const int kk,
-            const bool sw_mason) ///< SvdL, 15-04-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
+            const bool sw_mason)
     {
-      const TF n_mason = 2.;
-      TF mlen ;
-      TF fac  ;
+        const TF n_mason = 2.;
+        TF mlen ;
+        TF fac  ;
 
         // Calculate geometric filter width, based on Deardorff (1980)
         const TF mlen0 = std::pow(dx*dy*dz[kstart], TF(1./3.));
@@ -533,7 +423,8 @@ namespace
                     fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                 (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be altered by the Mason correction but mlen0 not? Why not both?
+                // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
+                // altered by the Mason correction but mlen0 not? Why not both?
                 // Calculate dissipation of SGS TKE based on Deardorff (1980)
                 at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
             }
@@ -561,7 +452,8 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be altered by the Mason correction but mlen0 not? Why not both?
+                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
+                    // altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
                     at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
                 }
@@ -581,7 +473,7 @@ namespace
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int jj, const int kk,
-            const bool sw_mason) ///< SvdL, 15-04-2023: definitely not the nicest option, but otherwhise sw_mason is not defined in scope of this namespace
+            const bool sw_mason)
     {
         const TF n_mason = 2.;
         TF fac;
@@ -604,7 +496,8 @@ namespace
                     else
                         fac = mlen0;
 
-                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be altered by the Mason correction but mlen0 not? Why not both?
+                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
+                    // altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
                     at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac ;
                 }
@@ -664,25 +557,24 @@ Diff_deardorff<TF>::Diff_deardorff(
     sw_buoy = (sw_thermo == "0") ? false : true;
 
     // Set the switch for use of Mason's wall correction
-    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true); //SvdL, 26-04-2023: changed input name to swmason for consistency 
+    sw_mason = inputin.get_item<bool>("diff", "swmason", "", true);
 
     // Initialize field of SGS TKE
     fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
 
-    // SvdL, 15-04-2023: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ... I'll have to check
-    // maybe it was just because of a call to a non-existing variable?
+    // SvdL, 15-04-2023: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ...
+    // Maybe it was just because of a call to a non-existing variable?
     fields.sp.at("sgstke")->visc = inputin.get_item<TF>("fields", "svisc", "sgstke");
 
     fields.init_diagnostic_field("evisc",  "Eddy viscosity for momentum", "m2 s-1", group_name, gd.sloc);
 
     // Add additional eddy viscosity for heat/scalars, if there is buoyancy
-    if (sw_buoy) 
+    if (sw_buoy)
         fields.init_diagnostic_field("eviscs", "Eddy viscosity for scalars", "m2 s-1",  group_name, gd.sloc);
 
     // Checks on input
     if (grid.get_spatial_order() != Grid_order::Second)
         throw std::runtime_error("Diff_deardorff only runs with second order grids.");
-
     if (boundary.get_switch() == "default")
         throw std::runtime_error("Diff_deardorff does not support resolved walls.");
 }
@@ -955,22 +847,31 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
     // Start with retrieving the stability information
     if (!sw_buoy)
     {
+        auto evisc_neutral_wrapper = [&]<Surface_model surface_model, bool sw_mason>()
+        {
+            calc_evisc_neutral<TF, surface_model, sw_mason>(
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.sp.at("sgstke")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzhi.data(), z0m.data(),
+                    gd.dx, gd.dy, gd.zsize,
+                    this->cm, this->cn, fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells,
+                    gd.ijcells,
+                    boundary_cyclic);
+        };
+
         // Calculate eddy viscosity using MO at lowest model level
-        calc_evisc_neutral<TF, Surface_model::Enabled>(
-                fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                gd.z.data(), gd.dz.data(),
-                gd.dzhi.data(), z0m.data(),
-                gd.dx, gd.dy, gd.zsize,
-                this->cm, this->cn, fields.visc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells, sw_mason, ///< SvdL, 14-04-2023: not the nicest, see above
-                boundary_cyclic);
+        if (sw_mason)
+            evisc_neutral_wrapper.template operator()<Surface_model::Enabled, true>();
+        else
+            evisc_neutral_wrapper.template operator()<Surface_model::Enabled, false>();
 
         sgstke_diss_tend_neutral<TF>(
                 fields.st.at("sgstke")->fld.data(),
@@ -985,7 +886,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells, sw_mason); ///< SvdL, 14-04-2023: not the nicest, see above
+                gd.icells, gd.ijcells,
+                sw_mason);
 
                 stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
     }
@@ -996,39 +898,55 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
         const std::vector<TF>& dbdz = boundary.get_dbdz(); // SvdL, 19 April 2023: this should already be the "surface" N2
 
-        calc_evisc<TF, Surface_model::Enabled>(
-                fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                buoy_tmp->fld.data(),
-                dbdz.data(),
-                gd.z.data(), gd.dz.data(),
-                gd.dzi.data(), z0m.data(),
-                gd.dx, gd.dy,
-                this->cn, this->cm,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells, sw_mason, ///< SvdL, 14-04-2023: not the nicest, see above
-                boundary_cyclic);
+        auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>()
+        {
+            calc_evisc<TF, surface_model, sw_mason>(
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.sp.at("sgstke")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    buoy_tmp->fld.data(),
+                    dbdz.data(),
+                    gd.z.data(), gd.dz.data(),
+                    gd.dzi.data(), z0m.data(),
+                    gd.dx, gd.dy,
+                    this->cn, this->cm,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
+        };
 
-        // Calculate the eddy diffusivity for heat and scalars
-        calc_evisc_heat<TF, Surface_model::Enabled>(
-                fields.sd.at("eviscs")->fld.data(),
-                fields.sd.at("evisc")->fld.data(),
-                fields.sp.at("sgstke")->fld.data(),
-                buoy_tmp->fld.data(),
-                dbdz.data(),
-                gd.z.data(), gd.dz.data(), z0m.data(),
-                gd.dx, gd.dy,
-                this->cn, this->ch1, this->ch2,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.ijcells, sw_mason, ///< SvdL, 14-04-2023: not the nicest, see above
-                boundary_cyclic);
+        auto evisc_heat_wrapper = [&]<Surface_model surface_model, bool sw_mason>()
+        {
+            calc_evisc_heat<TF, surface_model, sw_mason>(
+                    fields.sd.at("eviscs")->fld.data(),
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.sp.at("sgstke")->fld.data(),
+                    buoy_tmp->fld.data(),
+                    dbdz.data(),
+                    gd.z.data(), gd.dz.data(), z0m.data(),
+                    gd.dx, gd.dy,
+                    this->cn, this->ch1, this->ch2,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.jcells, gd.ijcells,
+                    boundary_cyclic);
+        };
+
+        if (sw_mason)
+        {
+            evisc_wrapper.template operator()<Surface_model::Enabled, true>();
+            evisc_heat_wrapper.template operator()<Surface_model::Enabled, true>();
+        }
+        else
+        {
+            evisc_wrapper.template operator()<Surface_model::Enabled, false>();
+            evisc_heat_wrapper.template operator()<Surface_model::Enabled, false>();
+        }
 
         // BvS: I left the tendency calculations of sgstke here; feels a bit strange
         // to calculate them in `exec_viscosity`, but otherwise strain^2 has to be
