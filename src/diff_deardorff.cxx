@@ -100,10 +100,6 @@ namespace
         constexpr TF n_mason = TF(2.);
         constexpr TF A_vandriest = TF(26.);
 
-        TF mlen ;
-        TF fac  ;
-        TF kvisc;
-
         if (surface_model == Surface_model::Disabled)
             throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
         else
@@ -119,6 +115,7 @@ namespace
                     {
                         const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
+                        TF fac;
 
                         if (sw_mason) // Apply Mason's wall correction
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
@@ -127,7 +124,7 @@ namespace
                             fac = mlen0;
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                        kvisc = cm * fac * std::sqrt(a[ijk]);
+                        const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
                     }
             }
@@ -166,9 +163,8 @@ namespace
        {
             // Variables for the wall damping and length scales
             const TF n_mason = 2.;
-            TF mlen ;
-            TF fac  ;
-            TF kvisc;
+            TF mlen;
+            TF fac;
 
             // Calculate geometric filter width, based on Deardorff (1980)
             const TF mlen0 = std::pow(dx*dy*dz[kstart], TF(1./3.));
@@ -192,7 +188,7 @@ namespace
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                     // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                    kvisc = cm * fac * std::sqrt(a[ijk]);
+                    const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                     evisc[ijk] = std::max(kvisc, mvisc<TF>);
                 }
 
@@ -220,7 +216,7 @@ namespace
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                        kvisc = cm * fac * std::sqrt(a[ijk]);
+                        const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
                     }
             }
@@ -256,9 +252,8 @@ namespace
        {
             // Variables for the wall damping and length scales
             const TF n_mason = 2.;
-            TF mlen ;
-            TF fac  ;
-            TF kvisc;
+            TF mlen;
+            TF fac;
 
             // Calculate geometric filter width, based on Deardorff (1980)
             const TF mlen0 = std::pow(dx*dy*dz[kstart], TF(1./3.));
@@ -282,7 +277,7 @@ namespace
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                     // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                    kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
+                    const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                     evisch[ijk] = std::max(kvisc, mvisc<TF>);
                 }
 
@@ -310,7 +305,7 @@ namespace
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                        kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
+                        const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                         evisch[ijk] = std::max(kvisc, mvisc<TF>);
                     }
             }
@@ -412,7 +407,7 @@ namespace
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
 
-                if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
+                if (bgradbot[ij] > 0) // Only if stably stratified, adapt length scale
                     mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
                 else
                     mlen = mlen0;
@@ -441,7 +436,7 @@ namespace
                     const int ij = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
 
-                    if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
+                    if (N2[ijk] > 0) // Only if stably stratified, adapt length scale
                         mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
                     else
                         mlen = mlen0;
@@ -1096,7 +1091,8 @@ void Diff_deardorff<TF>::diff_flux(
                 gd.icells, gd.ijcells);
     else
     {
-        // SvdL, 14-04-2023: if no buoyancy scalars diffuse with eddy viscosity for momentum, sgstke and w always diffuse with this one
+        // SvdL, 14-04-2023: if no buoyancy scalars diffuse with eddy viscosity for momentum,
+        // sgstke and w always diffuse with this one.
         std::string varname = fld_in.name;
         if (!sw_buoy || varname == "sgstke" || varname == "w")
             dk::calc_diff_flux_c<TF, Surface_model::Enabled>(
