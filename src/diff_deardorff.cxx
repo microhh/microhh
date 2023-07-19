@@ -44,6 +44,8 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels;
 
+    // @ Bart: is de code ook werkend te krijgen zonder deze controle op minimum viscositeit aan begin vd run?
+    // het lijkt me dat dit te voorkomen moet zijn.
     // Check_for_minval is currently still needed, could be related to blow-up of sgstke-dissipation.
     // minimum viscosity (mvisc, as in DALES) seems to be redundant as molecular viscosity is added anyway in diffusion.
     template<typename TF> constexpr TF mvisc = 0.;//1e-5;
@@ -83,10 +85,9 @@ namespace
             const TF* const restrict w,
             const TF* const restrict z,
             const TF* const restrict dz,
-            const TF* const restrict dzhi,
             const TF* z0m,
-            const TF dx, const TF dy, const TF zsize,
-            const TF cm, const TF cn, const TF visc,
+            const TF dx, const TF dy,
+            const TF cn, const TF cm,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -123,7 +124,7 @@ namespace
                         else
                             fac = mlen0;
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
+                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
                         const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
                     }
@@ -144,7 +145,6 @@ namespace
             const TF* const restrict bgradbot,
             const TF* const restrict z,
             const TF* const restrict dz,
-            const TF* const restrict dzi,
             const TF* const restrict z0m,
             const TF dx, const TF dy,
             const TF cn, const TF cm,
@@ -162,7 +162,7 @@ namespace
        else
        {
             // Variables for the wall damping and length scales
-            const TF n_mason = 2.;
+            const TF n_mason = TF(2.);
             TF mlen;
             TF fac;
 
@@ -187,7 +187,7 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
+                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
                     const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                     evisc[ijk] = std::max(kvisc, mvisc<TF>);
                 }
@@ -215,7 +215,7 @@ namespace
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
+                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
                         const TF kvisc = cm * fac * std::sqrt(a[ijk]);
                         evisc[ijk] = std::max(kvisc, mvisc<TF>);
                     }
@@ -251,7 +251,7 @@ namespace
         else
         {
             // Variables for the wall damping and length scales
-            const TF n_mason = 2.;
+            const TF n_mason = TF(2.);
             TF mlen;
             TF fac;
 
@@ -276,7 +276,7 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
+                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
                     const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                     evisch[ijk] = std::max(kvisc, mvisc<TF>);
                 }
@@ -304,7 +304,7 @@ namespace
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
+                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
                         const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                         evisch[ijk] = std::max(kvisc, mvisc<TF>);
                     }
@@ -393,7 +393,7 @@ namespace
             const int jj, const int kk,
             const bool sw_mason)
     {
-        const TF n_mason = 2.;
+        const TF n_mason = TF(2.);
         TF mlen ;
         TF fac  ;
 
@@ -470,7 +470,7 @@ namespace
             const int jj, const int kk,
             const bool sw_mason)
     {
-        const TF n_mason = 2.;
+        const TF n_mason = TF(2.);
         TF fac;
 
         for (int k=kstart; k<kend; ++k)
@@ -482,10 +482,10 @@ namespace
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ij = i + j*jj;
+                    const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
 
-                    if (sw_mason) // Apply Mason's wall correction here, as in DALES
+                    if (sw_mason) // Apply Mason's wall correction here
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                     else
@@ -821,9 +821,9 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("v")->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     gd.z.data(), gd.dz.data(),
-                    gd.dzhi.data(), z0m.data(),
-                    gd.dx, gd.dy, gd.zsize,
-                    this->cm, this->cn, fields.visc,
+                    z0m.data(),
+                    gd.dx, gd.dy,
+                    this->cn, this->cm,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
@@ -873,8 +873,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
                     dbdz.data(),
-                    gd.z.data(), gd.dz.data(),
-                    gd.dzi.data(), z0m.data(),
+                    gd.z.data(), gd.dz.data(), 
+                    z0m.data(),
                     gd.dx, gd.dy,
                     this->cn, this->cm,
                     gd.istart, gd.iend,
