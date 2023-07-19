@@ -873,7 +873,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("w")->fld.data(),
                     buoy_tmp->fld.data(),
                     dbdz.data(),
-                    gd.z.data(), gd.dz.data(), 
+                    gd.z.data(), gd.dz.data(),
                     z0m.data(),
                     gd.dx, gd.dy,
                     this->cn, this->cm,

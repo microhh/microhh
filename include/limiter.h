@@ -55,6 +55,6 @@ class Limiter
         const std::string tend_name = "limit";
         const std::string tend_longname = "Limiter";
 
-        bool sw_min;
+        bool limit_sgstke;
 };
 #endif

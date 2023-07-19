@@ -28,6 +28,7 @@
 #include "stats.h"
 #include "limiter.h"
 #include "tools.h"
+#include "constants.h"
 
 namespace
 {
@@ -35,7 +36,8 @@ namespace
     void tendency_limiter(
             TF* const __restrict__ at,
             const TF* const __restrict__ a,
-            const TF dt, const TF dti, const TF eps,
+            const TF min_value,
+            const TF dt, const TF dti,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -50,7 +52,7 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             const TF a_new = a[ijk] + dt*at[ijk];
-            at[ijk] += (a_new < TF(0.)) ? (-a_new + eps) * dti : TF(0.);
+            at[ijk] += (a_new < TF(0.)) ? (-a_new + min_value) * dti : TF(0.);
         }
     }
 }
@@ -59,9 +61,6 @@ namespace
 template <typename TF>
 void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 {
-    if (limit_list.empty())
-        return;
-
     const Grid_data<TF>& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
@@ -76,13 +75,15 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
     // Add epsilon, to make sure the final result ends just above zero.
     // NOTE: don't use `eps<TF>` here; `eps<float>` is too large
     //       as a lower limit for e.g. hydrometeors or chemical species.
-    constexpr TF eps = std::numeric_limits<double>::epsilon();
+    constexpr TF min_value = std::numeric_limits<double>::epsilon();
 
     for (auto& name : limit_list)
     {
         tendency_limiter<TF><<<gridGPU, blockGPU>>>(
-            fields.at.at(name)->fld_g, fields.ap.at(name)->fld_g,
-            dt, dti, eps,
+            fields.at.at(name)->fld_g,
+            fields.ap.at(name)->fld_g,
+            min_value,
+            dt, dti,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
@@ -92,6 +93,21 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
         stats.calc_tend(*fields.at.at(name), tend_name);
     }
 
+    if (limit_sgstke)
+    {
+        tendency_limiter<TF><<<gridGPU, blockGPU>>>(
+            fields.at.at("sgstke")->fld_g,
+            fields.ap.at("sgstke")->fld_g,
+            Constants::sgstke_min<TF>,
+            dt, dti,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        stats.calc_tend(*fields.at.at("sgstke"), tend_name);
+    }
 }
 #endif
 
