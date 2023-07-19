@@ -42,6 +42,8 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels_g;
 
+    template<typename TF> constexpr TF mvisc = 0.;//1e-5;
+
     template<typename TF, Surface_model surface_model, bool sw_mason> __global__
     void calc_evisc_neutral_g(
             TF* const restrict evisc,
@@ -57,7 +59,7 @@ namespace
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int ijcells);
+            const int icells, const int ijcells)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -77,21 +79,21 @@ namespace
             const int ijk = i + j*jj + k*kk;
 
             if (surface_model == Surface_model::Disabled)
-                throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
+                asm("trap;");
             else
             {
                 // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = std::pow(dx*dy*dz[k], TF(1./3.));
+                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
 
                 if (sw_mason) // Apply Mason's wall correction
-                    fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
-                                (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    fac = pow(TF(1.)/(TF(1.)/pow(mlen0, n_mason) + TF(1.)/
+                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                 else
                     fac = mlen0;
 
                 // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                const TF kvisc = cm * fac * std::sqrt(a[ijk]);
-                evisc[ijk] = std::max(kvisc, mvisc<TF>);
+                const TF kvisc = cm * fac * sqrt(a[ijk]);
+                evisc[ijk] = max(kvisc, mvisc<TF>);
                         
             }
         }
@@ -134,33 +136,33 @@ namespace
             const int ijk = i + j*jj + k*kk;
             
             if (surface_model == Surface_model::Disabled)
-                throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
+                asm("trap;");
             else
             {
                 // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = std::pow(dx*dy*dz[k], TF(1./3.));
+                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
                 mlen = mlen0;
 
                 if (k == kstart)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
+                        mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
                 }
 
-                fac  = std::min(mlen0, mlen);
+                fac  = min(mlen0, mlen);
 
                 if (sw_mason) // Apply Mason's wall correction here
-                    fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                            (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
+                            (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                 // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                const TF kvisc = cm * fac * std::sqrt(a[ijk]);
-                evisc[ijk] = std::max(kvisc, mvisc<TF>);
+                const TF kvisc = cm * fac * sqrt(a[ijk]);
+                evisc[ijk] = max(kvisc, mvisc<TF>);
 
             }
         }
@@ -199,41 +201,41 @@ namespace
         {
 
             if (surface_model == Surface_model::Disabled)
-                throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
+                asm("trap;");
             else    
             {
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + k*kk;
 
                 // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = std::pow(dx*dy*dz[k], TF(1./3.));
+                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
                 mlen = mlen0;
 
                 if (k == kstart)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
+                        mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
                 }
 
-                fac  = std::min(mlen0, mlen);
+                fac  = min(mlen0, mlen);
 
                 if (sw_mason) // Apply Mason's wall correction here
-                    fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
+                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                 // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc).
                 const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
-                evisch[ijk] = std::max(kvisc, mvisc<TF>);
+                evisch[ijk] = max(kvisc, mvisc<TF>);
             }   
         }
     }
 
-    template<typename TF, Surface_model surface_model, bool sw_mason> __global__
+    template<typename TF> __global__
     void sgstke_shear_tend_g(
             TF* __restrict__ at,
             const TF* __restrict__ a,
@@ -262,7 +264,7 @@ namespace
         }
     }
 
-    template<typename TF, Surface_model surface_model, bool sw_mason> __global__
+    template<typename TF> __global__
     void sgstke_buoy_tend_g(
             TF* __restrict__ at,
             const TF* __restrict__ a,
@@ -328,36 +330,36 @@ namespace
             const int ijk = i + j*jj + k*kk;
             
             // Calculate geometric filter width, based on Deardorff (1980)
-            const TF mlen0 = std::pow(dx*dy*dz[k], TF(1./3.));
+            const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
             mlen = mlen0;
 
             // Only if stably stratified, adapt length scale
             if (k == kstart)
             {
                 if (bgradbot[ij] > 0) 
-                    mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
+                    mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
             }
             else
             {
                 if (N2[ijk] > 0)
-                    mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
+                    mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
             }
 
-            fac  = std::min(mlen0, mlen);
+            fac  = min(mlen0, mlen);
 
             // Apply Mason's wall correction here
             if (sw_mason)
-                fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
+                        (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
             
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
-            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
+            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * pow(a[ijk], TF(3./2.)) / fac;
         }
     }
 
     template<typename TF,  bool sw_mason> __global__
     void sgstke_diss_tend_neutral_g(
-            TF* __restrict__ at,
+            TF* const __restrict__ at,
             const TF* __restrict__ a,
             const TF* __restrict__ z,
             const TF* __restrict__ dz,
@@ -384,15 +386,15 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            const TF mlen0 = std::pow(dx*dy*dz[k], TF(1./3.));
+            const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
             fac = mlen0;
 
             if (sw_mason) // Apply Mason's wall correction here
-                fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
-                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                fac = pow(TF(1.)/(TF(1.)/pow(mlen0, n_mason) + TF(1.)/
+                        (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
-            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac ;
+            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * pow(a[ijk], TF(3./2.)) / fac ;
 
         }
     }
@@ -664,7 +666,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.st.at("sgstke")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     gd.z_g, gd.dz_g, z0m_g,
-                    gd.x, gd.y,
+                    gd.dx, gd.dy,
                     this->ce1, this->ce2,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
@@ -675,7 +677,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.st.at("sgstke")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     gd.z_g, gd.dz_g, z0m_g,
-                    gd.x, gd.y,
+                    gd.dx, gd.dy,
                     this->ce1, this->ce2,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
@@ -737,7 +739,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells);
+                    gd.icells, gd.ijcells);
         else
             calc_evisc_heat_g<TF, Surface_model::Enabled, false><<<gridGPU, blockGPU>>>(
                     fields.sd.at("eviscs")->fld_g,
@@ -750,7 +752,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells);
+                    gd.icells, gd.ijcells);
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         boundary_cyclic.exec_g(fields.sd.at("eviscs")->fld_g);
@@ -811,7 +813,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         fields.release_tmp_g(buoy_tmp);
     }
 
-    sgstke_shear_tend_g<TF>(
+    sgstke_shear_tend_g<TF><<<gridGPU, blockGPU>>>(
            fields.st.at("sgstke")->fld_g,
            fields.sp.at("sgstke")->fld_g,
            fields.sd.at("evisc")->fld_g,
