@@ -57,7 +57,8 @@ namespace Constants
     template<typename TF> constexpr TF zL_max = 10.;
     template<typename TF> constexpr TF zL_min = -1.e4;
 
-    template<typename TF> constexpr TF sgstke_min = 1e-10;   // Minimum value SGS TKE [m2 s-2], value from DALES.
+    // NOTE: we need to keep `sgstke_min` around epsilon<float>, which is ~1e-7.
+    template<typename TF> constexpr TF sgstke_min = 1e-7;   // Minimum value SGS TKE [m2 s-2]
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)
