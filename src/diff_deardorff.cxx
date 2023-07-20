@@ -44,14 +44,9 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels;
 
-    // @ Bart: is de code ook werkend te krijgen zonder deze controle op minimum viscositeit aan begin vd run?
-    // het lijkt me dat dit te voorkomen moet zijn.
-    // Check_for_minval is currently still needed, could be related to blow-up of sgstke-dissipation.
-    // minimum viscosity (mvisc, as in DALES) seems to be redundant as molecular viscosity is added anyway in diffusion.
-    template<typename TF> constexpr TF mvisc = 0.;//1e-5;
-
     template <typename TF>
-    void check_for_minval(TF* const restrict a,
+    void check_for_minval(
+            TF* const restrict a,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -67,10 +62,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-
-                    // After initialization of sgstke field, still do check if values exceed minimum value
-                    if ( a[ijk] < Constants::sgstke_min<TF>)
-                        a[ijk] = Constants::sgstke_min<TF>;
+                    a[ijk] = std::max(a[ijk], Constants::sgstke_min<TF>);
                 }
 
         boundary_cyclic.exec(a);
@@ -124,9 +116,8 @@ namespace
                         else
                             fac = mlen0;
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
-                        const TF kvisc = cm * fac * std::sqrt(a[ijk]);
-                        evisc[ijk] = std::max(kvisc, mvisc<TF>);
+                        // Calculate eddy diffusivity for momentum.
+                        evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
                     }
             }
         }
@@ -187,9 +178,8 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
-                    const TF kvisc = cm * fac * std::sqrt(a[ijk]);
-                    evisc[ijk] = std::max(kvisc, mvisc<TF>);
+                    // Calculate eddy diffusivity for momentum.
+                    evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
                 }
 
             for (int k=kstart+1; k<kend; ++k) // Counter starts at kstart (as sgstke is defined here)
@@ -215,9 +205,8 @@ namespace
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
-                        const TF kvisc = cm * fac * std::sqrt(a[ijk]);
-                        evisc[ijk] = std::max(kvisc, mvisc<TF>);
+                        // Calculate eddy diffusivity for momentum.
+                        evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
                     }
             }
         }
@@ -276,9 +265,8 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
-                    const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
-                    evisch[ijk] = std::max(kvisc, mvisc<TF>);
+                    // Calculate eddy diffusivity for momentum.
+                    evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                 }
 
             for (int k=kstart+1; k<kend; ++k) // Counter starts at kstart (as sgstke is defined here)
@@ -304,9 +292,8 @@ namespace
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                        // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc)
-                        const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
-                        evisch[ijk] = std::max(kvisc, mvisc<TF>);
+                        // Calculate eddy diffusivity for momentum.
+                        evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
                     }
             }
         }

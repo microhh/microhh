@@ -42,8 +42,6 @@ namespace
     namespace fm = Fast_math;
     namespace dk = Diff_kernels_g;
 
-    template<typename TF> constexpr TF mvisc = 0.;//1e-5;
-
     template<typename TF, Surface_model surface_model, bool sw_mason> __global__
     void calc_evisc_neutral_g(
             TF* const restrict evisc,
@@ -91,10 +89,8 @@ namespace
                 else
                     fac = mlen0;
 
-                // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                const TF kvisc = cm * fac * sqrt(a[ijk]);
-                evisc[ijk] = max(kvisc, mvisc<TF>);
-                        
+                // Calculate eddy diffusivity for momentum.
+                evisc[ijk] = cm * fac * sqrt(a[ijk]);
             }
         }
     }
@@ -160,10 +156,8 @@ namespace
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                             (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc), as in DALES.
-                const TF kvisc = cm * fac * sqrt(a[ijk]);
-                evisc[ijk] = max(kvisc, mvisc<TF>);
-
+                // Calculate eddy diffusivity for momentum.
+                evisc[ijk] = cm * fac * sqrt(a[ijk]);
             }
         }
     }
@@ -228,10 +222,9 @@ namespace
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                                 (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                // Calculate eddy diffusivity for momentum and enforce minimum value (mvisc).
-                const TF kvisc = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
-                evisch[ijk] = max(kvisc, mvisc<TF>);
-            }   
+                // Calculate eddy diffusivity for momentum.
+                evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
+            }
         }
     }
 
