@@ -52,6 +52,7 @@ namespace
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict z0m,
+            const TF* const restrict mlen0,
             const TF dx, const TF dy,
             const TF cn, const TF cm,
             const int istart, const int iend,
@@ -80,14 +81,11 @@ namespace
                 asm("trap;");
             else
             {
-                // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
-
                 if (sw_mason) // Apply Mason's wall correction
-                    fac = pow(TF(1.)/(TF(1.)/pow(mlen0, n_mason) + TF(1.)/
+                    fac = pow(TF(1.)/(TF(1.)/pow(mlen0[k], n_mason) + TF(1.)/
                                 (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
                 else
-                    fac = mlen0;
+                    fac = mlen0[k];
 
                 // Calculate eddy diffusivity for momentum.
                 evisc[ijk] = cm * fac * sqrt(a[ijk]);
@@ -107,6 +105,7 @@ namespace
             const TF* const restrict z,
             const TF* const restrict dz,
             const TF* const restrict z0m,
+            const TF* const restrict mlen0,
             const TF dx, const TF dy,
             const TF cn, const TF cm,
             const int istart, const int iend,
@@ -135,9 +134,7 @@ namespace
                 asm("trap;");
             else
             {
-                // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
-                mlen = mlen0;
+                mlen = mlen0[k];
 
                 if (k == kstart)
                 {
@@ -150,7 +147,7 @@ namespace
                         mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
                 }
 
-                fac  = min(mlen0, mlen);
+                fac  = min(mlen0[k], mlen);
 
                 if (sw_mason) // Apply Mason's wall correction here
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
@@ -172,6 +169,7 @@ namespace
             const TF* __restrict__ z,
             const TF* __restrict__ dz,
             const TF* __restrict__ z0m,
+            const TF* __restrict__ mlen0,
             const TF dx, const TF dy,
             const TF cn, const TF ch1, const TF ch2,
             const int istart, const int iend,
@@ -201,9 +199,7 @@ namespace
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                // Calculate geometric filter width, based on Deardorff (1980)
-                const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
-                mlen = mlen0;
+                mlen = mlen0[k];
 
                 if (k == kstart)
                 {
@@ -216,14 +212,14 @@ namespace
                         mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
                 }
 
-                fac  = min(mlen0, mlen);
+                fac  = min(mlen0[k], mlen);
 
                 if (sw_mason) // Apply Mason's wall correction here
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                                 (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                 // Calculate eddy diffusivity for momentum.
-                evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
+                evisch[ijk] = (ch1 + ch2 * fac / mlen0[k]) * evisc[ijk];
             }
         }
     }
@@ -299,6 +295,7 @@ namespace
             const TF* __restrict__ z,
             const TF* __restrict__ dz,
             const TF* __restrict__ z0m,
+            const TF* __restrict__ mlen0,
             const TF dx, const TF dy,
             const TF cn, const TF ce1, const TF ce2,
             const int istart, const int iend,
@@ -323,8 +320,7 @@ namespace
             const int ijk = i + j*jj + k*kk;
             
             // Calculate geometric filter width, based on Deardorff (1980)
-            const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
-            mlen = mlen0;
+            mlen = mlen0[k];
 
             // Only if stably stratified, adapt length scale
             if (k == kstart)
@@ -338,7 +334,7 @@ namespace
                     mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
             }
 
-            fac  = min(mlen0, mlen);
+            fac  = min(mlen0[k], mlen);
 
             // Apply Mason's wall correction here
             if (sw_mason)
@@ -346,7 +342,7 @@ namespace
                         (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
             
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
-            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * pow(a[ijk], TF(3./2.)) / fac;
+            at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac;
         }
     }
 
@@ -357,6 +353,7 @@ namespace
             const TF* __restrict__ z,
             const TF* __restrict__ dz,
             const TF* __restrict__ z0m,
+            const TF* __restrict__ mlen0,
             const TF dx, const TF dy,
             const TF ce1, const TF ce2,
             const int istart, const int iend,
@@ -379,16 +376,14 @@ namespace
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            const TF mlen0 = pow(dx*dy*dz[k], TF(1./3.));
-            fac = mlen0;
+            fac = mlen0[k];
 
             if (sw_mason) // Apply Mason's wall correction here
-                fac = pow(TF(1.)/(TF(1.)/pow(mlen0, n_mason) + TF(1.)/
+                fac = pow(TF(1.)/(TF(1.)/pow(mlen0[k], n_mason) + TF(1.)/
                         (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
-            at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * pow(a[ijk], TF(3./2.)) / fac ;
-
+            at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac ;
         }
     }
 }
@@ -630,7 +625,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("u")->fld_g,
                     fields.mp.at("v")->fld_g,
                     fields.mp.at("w")->fld_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->cm,
                     gd.istart, gd.iend,
@@ -645,7 +641,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("u")->fld_g,
                     fields.mp.at("v")->fld_g,
                     fields.mp.at("w")->fld_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->cm,
                     gd.istart, gd.iend,
@@ -658,7 +655,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
             sgstke_diss_tend_neutral_g<TF, true><<<gridGPU, blockGPU>>>(
                     fields.st.at("sgstke")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->ce1, this->ce2,
                     gd.istart, gd.iend,
@@ -669,7 +667,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
             sgstke_diss_tend_neutral_g<TF, false><<<gridGPU, blockGPU>>>(
                     fields.st.at("sgstke")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->ce1, this->ce2,
                     gd.istart, gd.iend,
@@ -695,7 +694,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("v")->fld_g,
                     fields.mp.at("w")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->cm,
                     gd.istart, gd.iend,
@@ -711,7 +711,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.mp.at("v")->fld_g,
                     fields.mp.at("w")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->cm,
                     gd.istart, gd.iend,
@@ -726,7 +727,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->ch1, this->ch2,
                     gd.istart, gd.iend,
@@ -739,7 +741,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
-                    gd.z_g, gd.dz_g, z0m_g,
+                    gd.z_g, gd.dz_g,
+                    z0m_g, mlen0_g,
                     gd.dx, gd.dy,
                     this->cn, this->ch1, this->ch2,
                     gd.istart, gd.iend,
@@ -775,6 +778,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                    gd.z_g,
                    gd.dz_g,
                    z0m_g,
+                   mlen0_g,
                    gd.dx, gd.dy,
                    this->cn,
                    this->ce1,
@@ -792,6 +796,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.z_g,
                     gd.dz_g,
                     z0m_g,
+                    mlen0_g,
                     gd.dx, gd.dy,
                     this->cn,
                     this->ce1,
@@ -825,11 +830,22 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 template<typename TF>
 void Diff_deardorff<TF>::prepare_device(Boundary<TF>& boundary)
 {
+    auto& gd = grid.get_grid_data();
+
+    std::vector<TF> mlen0(gd.kcells);
+
+    for (int k=0; k<gd.kcells; ++k)
+        mlen0[k] = std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.));
+
+    const int nmemsize = gd.kcells*sizeof(TF);
+    cuda_safe_call(cudaMalloc(&mlen0_g, nmemsize));
+    cuda_safe_call(cudaMemcpy(mlen0_g, mlen0.data(), nmemsize, cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
 void Diff_deardorff<TF>::clear_device()
 {
+    cuda_safe_call(cudaFree(mlen0_g));
 }
 #endif
 

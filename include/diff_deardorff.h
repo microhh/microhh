@@ -67,7 +67,9 @@ class Diff_deardorff : public Diff<TF>
 
         void create_stats(Stats<TF>&);
 
-        TF* mlen_g;
+        #ifdef USECUDA
+        TF* mlen0_g;
+        #endif
 
         double dnmax;
         double dnmul;
