@@ -62,13 +62,7 @@ Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, D
     master(masterin), grid(gridin), fields(fieldsin), diff(diffin)
 {
     limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
-
-    // Set the switch for use of deardorff scheme (always enforce sgs tke >= 0 regardless of user setting)
-    const std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
-
-    // Always limit SGS-TKE with Deardorff.
-    const std::string sw_diff = inputin.get_item<std::string>("diff", "swdiff", "", swspatialorder);
-    limit_sgstke = (sw_diff == "deardorff") ? true : false;
+    limit_sgstke = (diffin.get_switch() == Diffusion_type::Diff_deardorff);
 }
 
 template <typename TF>
