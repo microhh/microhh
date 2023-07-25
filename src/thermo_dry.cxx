@@ -389,7 +389,9 @@ void Thermo_dry<TF>::init()
 }
 
 template<typename TF>
-void Thermo_dry<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_dry<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
+        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     fields.set_calc_mean_profs(true);
@@ -819,6 +821,7 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     auto& gd = grid.get_grid_data();
 
     auto b = fields.get_tmp();
+    TF no_offset = 0.;
 
     if (swcross_b)
     {
@@ -829,13 +832,13 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(b->fld.data(), "b", iotime, gd.sloc);
+            cross.cross_simple(b->fld.data(), no_offset, "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
-            cross.cross_plane(b->fld_bot.data(), "bbot", iotime);
+            cross.cross_plane(b->fld_bot.data(), no_offset, "bbot", iotime);
         else if (it == "bfluxbot")
-            cross.cross_plane(b->flux_bot.data(), "bfluxbot", iotime);
+            cross.cross_plane(b->flux_bot.data(), no_offset, "bfluxbot", iotime);
         else if (it == "thlngrad")
             cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
     }

@@ -32,7 +32,7 @@
 #include "Aerosol_optics.h"
 #include "Rte_lw.h"
 #include "Rte_sw.h"
-#include "Types.h"
+#include "types.h"
 
 
 class Master;
@@ -227,9 +227,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
         Float Nc0;         // Total droplet number concentration.
-
-        Float lat; // Latitude (degrees)
-        Float lon; // Longitude (degrees)
 
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;

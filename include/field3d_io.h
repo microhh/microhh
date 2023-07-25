@@ -38,9 +38,9 @@ class Field3d_io
         int save_field3d(TF*, TF*, TF*, const char*, const TF, int, int); // Saves a full 3d field.
         int load_field3d(TF*, TF*, TF*, const char*, const TF, int, int); // Loads a full 3d field.
 
-        int save_xz_slice(TF*, TF*, const char*, int, int, int); // Saves a xz-slice from a 3d field.
-        int save_yz_slice(TF*, TF*, const char*, int, int, int); // Saves a yz-slice from a 3d field.
-        int save_xy_slice(TF*, TF*, const char*, int kslice=0);  // Saves a xy-slice from a 3d field.
+        int save_xz_slice(TF*, TF, TF*, const char*, int, int, int); // Saves a xz-slice from a 3d field.
+        int save_yz_slice(TF*, TF, TF*, const char*, int, int, int); // Saves a yz-slice from a 3d field.
+        int save_xy_slice(TF*, TF, TF*, const char*, int kslice=0);  // Saves a xy-slice from a 3d field.
         int load_xy_slice(TF*, TF*, const char*, int kslice=-1); // Loads a xy-slice.
 
     private:

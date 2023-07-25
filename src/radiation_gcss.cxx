@@ -314,8 +314,6 @@ Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF
     Radiation<TF>(masterin, gridin, fieldsin, inputin)
 {
     swradiation = "gcss"; //2 for gcss
-    lat = inputin.get_item<TF>("radiation", "lat", "");
-    lon = inputin.get_item<TF>("radiation", "lon", "");
     xka = inputin.get_item<TF>("radiation", "xka", "");
     fr0 = inputin.get_item<TF>("radiation", "fr0", "");
     fr1 = inputin.get_item<TF>("radiation", "fr1", "");
@@ -363,7 +361,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF
 
     thermo.get_thermo_field(*ql, "ql", false, false);
 
-    TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
+    TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
 
     exec_gcss_rad<TF>(
             fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
@@ -394,9 +392,10 @@ bool Radiation_gcss<TF>::check_field_exists(const std::string& name)
 template<typename TF>
 void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string& name, Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     if (name == "lflx")
     {
-        auto& gd = grid.get_grid_data();
         auto lwp = fields.get_tmp();
         auto ql  = fields.get_tmp();
         thermo.get_thermo_field(*ql, "ql", false, false);
@@ -414,9 +413,9 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
 
-        auto& gd = grid.get_grid_data();
+        TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
+
         if (mu > mu_min) // if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp();
@@ -552,12 +551,13 @@ void Radiation_gcss<TF>::exec_all_stats(
         auto& gd = grid.get_grid_data();
 
         auto tmp = fields.get_tmp();
+        const TF no_offset = 0.;
 
         for (auto& it : crosslist)
         {
             get_radiation_field(*tmp, it, thermo, timeloop);
             // All cross sections possible in this class are at the sloc located.
-            cross.cross_simple(tmp->fld.data(), it, iotime, gd.sloc);
+            cross.cross_simple(tmp->fld.data(), no_offset, it, iotime, gd.sloc);
         }
 
         fields.release_tmp(tmp);

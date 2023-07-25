@@ -33,6 +33,10 @@
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
+#include "timedep.h"
+#include "stats.h"
+
+
 
 /**
  * This function constructs the grid class.
@@ -54,8 +58,11 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     gd.jtot = input.get_item<int>("grid", "jtot", "");
     gd.ktot = input.get_item<int>("grid", "ktot", "");
 
-    utrans = input.get_item<TF>("grid", "utrans", "", 0.);
-    vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
+    gd.utrans = input.get_item<TF>("grid", "utrans", "", 0.);
+    gd.vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
+
+    gd.lat = input.get_item<TF>("grid", "lat", "",  input.get_item<TF>("radiation", "lat", "", 0.)); //As a legacy option, the latitude can be read from the radiation section
+    gd.lon = input.get_item<TF>("grid", "lon", "",  input.get_item<TF>("radiation", "lon", "", 0.)); //As a legacy option, the longitude can be read from the radiation section
 
     std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
@@ -187,7 +194,7 @@ void Grid<TF>::init()
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-void Grid<TF>::create(Netcdf_handle& input_nc)
+void Grid<TF>::create(Input& inputin, Netcdf_handle& input_nc)
 {
     // Get the grid coordinates from the input. This one is read from the global scope.
     input_nc.get_variable(gd.z, "z", {0}, {gd.ktot});
@@ -198,11 +205,30 @@ void Grid<TF>::create(Netcdf_handle& input_nc)
         std::string msg = "Highest grid point is above prescribed zsize";
         throw std::runtime_error(msg);
     }
-
     // calculate the grid
     calculate();
 }
 
+template<typename TF>
+void Grid<TF>::create_stats(Stats<TF>& stats)
+{
+    const std::string group_name = "default";
+
+    // Add variables to the statistics
+    if (stats.get_switch())
+    {
+        stats.add_time_series("lat", "Latitude", "degrees", group_name);
+        stats.add_time_series("lon", "Longitude", "degrees", group_name);
+    }
+}
+
+
+template<typename TF>
+void Grid<TF>::exec_stats(Stats<TF>& stats)
+{
+    stats.set_time_series("lat", gd.lat);
+    stats.set_time_series("lon", gd.lon);
+}
 /**
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
@@ -354,10 +380,27 @@ void Grid<TF>::save()
 }
 
 template<typename TF>
-void Grid<TF>::load()
+void Grid<TF>::load(Input& inputin, Netcdf_handle& input_nc)
 {
     load_grid();
+
+    std::string timedep_dim = "time_latlon";
+    swtimedep = inputin.get_item<bool>("grid", "swtimedep", "", false);
+    tdep_latlon.emplace("lat", new Timedep<TF>(master, (*this), "lat", swtimedep));
+    tdep_latlon.at("lat")->create_timedep(input_nc, timedep_dim);
+    tdep_latlon.emplace("lon", new Timedep<TF>(master, (*this), "lon", swtimedep));
+    tdep_latlon.at("lon")->create_timedep(input_nc, timedep_dim);
+
+
 }
+
+template <typename TF>
+void Grid<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+        tdep_latlon.at("lat")->update_time_dependent(gd.lat, timeloop);
+        tdep_latlon.at("lon")->update_time_dependent(gd.lon, timeloop);
+}
+
 
 /**
  * This function checks whether the number of ghost cells does not exceed the slice thickness.

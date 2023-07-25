@@ -255,7 +255,8 @@ void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
-
+    TF offset = 0.;
+    
     auto save_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -265,7 +266,7 @@ void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;

@@ -231,7 +231,7 @@ template<typename TF>
 void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
-    grid->load();
+    grid->load(*input, *input_nc);
     fft->load();
     timeloop->load(timeloop->get_iotime());
 
@@ -246,6 +246,11 @@ void Model<TF>::load()
     fields->create_stats(*stats);
     fields->create_column(*column);
 
+    grid->create_stats(*stats);
+
+    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
+    thermo->load(timeloop->get_iotime());
+
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
@@ -256,9 +261,6 @@ void Model<TF>::load()
     source->create(*input, *input_nc);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
-
-    thermo->create(*input, *input_nc, *stats, *column, *cross, *dump);
-    thermo->load(timeloop->get_iotime());
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
@@ -285,7 +287,7 @@ template<typename TF>
 void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
-    grid->create(*input_nc);
+    grid->create(*input, *input_nc);
     fields->create(*input, *input_nc);
 
     // Save the initialized data to disk for the run mode.
@@ -339,6 +341,7 @@ void Model<TF>::exec()
             while (true)
             {
                 // Update the time dependent parameters.
+                grid     ->update_time_dependent(*timeloop);
                 boundary ->update_time_dependent(*timeloop);
                 thermo   ->update_time_dependent(*timeloop);
                 force    ->update_time_dependent(*timeloop);
@@ -596,6 +599,7 @@ void Model<TF>::clear_gpu()
     fields   ->clear_device();
     thermo   ->clear_device();
     boundary ->clear_device();
+    diff     ->clear_device();
     force    ->clear_device();
     ib       ->clear_device();
     microphys->clear_device();
@@ -620,6 +624,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
+        grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
         aerosol  ->exec_stats(*stats);

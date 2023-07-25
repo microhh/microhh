@@ -395,8 +395,8 @@ void Boundary<TF>::process_time_dependent(
 
         for (auto& fld : sbot_2d_list)
         {
-            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot", iotime0);
-            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot", iotime1);
+            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot_in", iotime0);
+            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot_in", iotime1);
         }
 
         master.sum(&nerror, 1);
@@ -503,7 +503,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
                 // Read new time step
                 char filename[256];
-                std::string name = fld + "_bot";
+                std::string name = fld + "_bot_in";
                 std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
                 master.print_message("Loading \"%s\" ... ", filename);
 
@@ -605,17 +605,17 @@ void Boundary<TF>::set_values()
     const bool set_flux_grad = (swboundary == "default");
 
     set_bc<TF, true>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-           mbcbot, ubot, fields.visc, grid.utrans,
+           mbcbot, ubot, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-           mbcbot, vbot, fields.visc, grid.vtrans,
+           mbcbot, vbot, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     set_bc<TF, true>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
-           mbctop, utop, fields.visc, grid.utrans,
+           mbctop, utop, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
-           mbctop, vtop, fields.visc, grid.vtrans,
+           mbctop, vtop, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     const TF no_offset = 0.;
@@ -627,10 +627,15 @@ void Boundary<TF>::set_values()
             // The time dependent 2D bc's are set in `update_time_dependent()`.
             continue;
         }
+        else if (swboundary == "surface_lsm" && (it.first == "thl" || it.first == "qt"))
+        {
+            // Temperature/moisture are prognostic (well, not really, but they are read in from restart files...)
+            continue;
+        }
         else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
             // Load 2D fields for bottom boundary from disk.
-            std::string filename = it.first + "_bot.0000000";
+            std::string filename = it.first + "_bot_in.0000000";
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();

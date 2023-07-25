@@ -58,7 +58,7 @@ class Thermo_moist : public Thermo<TF>
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         void create_basestate(Input&, Netcdf_handle&);
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.

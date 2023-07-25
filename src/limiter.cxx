@@ -59,7 +59,9 @@ namespace
         const TF dti = TF(1.)/dt;
 
         // Add epsilon, to make sure the final result ends just above zero.
-        constexpr TF eps = std::numeric_limits<TF>::epsilon();
+        // NOTE: don't use `eps<TF>` here; `eps<float>` is too large
+        //       as a lower limit for e.g. hydrometeors or chemical species.
+        constexpr TF eps = std::numeric_limits<double>::epsilon();
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)

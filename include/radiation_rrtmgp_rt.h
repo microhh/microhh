@@ -31,7 +31,7 @@
 #include "Aerosol_optics.h"
 #include "Rte_lw.h"
 #include "Rte_sw.h"
-#include "Types.h"
+#include "types.h"
 
 #include "Gas_concs_rt.h"
 #include "Gas_optics_rrtmgp_rt.h"
@@ -41,8 +41,7 @@
 #include "Rte_lw_rt.h"
 #include "Rte_sw_rt.h"
 #include "Raytracer.h"
-#include "raytracer_kernels.h"
-#include <curand_kernel.h>
+// #include <curand_kernel.h>
 
 
 class Master;

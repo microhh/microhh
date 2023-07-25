@@ -466,11 +466,6 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
     // Switch between heterogeneous and homogeneous z0's
     sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
 
-    #ifdef USECUDA
-    if (!sw_constant_z0)
-        throw std::runtime_error("\"boundary_surface\" with heterogeneous z0s is not (yet) supported");
-    #endif
-
     // Switch for z0 as function of u* (Charnock relation)
     sw_charnock = inputin.get_item<bool>("boundary", "swcharnock", "", false);
 
@@ -644,7 +639,8 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
-
+    TF no_offset = 0;
+    
     auto save_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -654,7 +650,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -696,21 +692,22 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : cross_list)
     {
+        TF no_offset = 0;
         if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
+            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
         else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
+            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
         else if (it == "z0m")
-            cross.cross_plane(z0m.data(), "z0m", iotime);
+            cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
         else if (it == "z0h")
-            cross.cross_plane(z0h.data(), "z0h", iotime);
+            cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (it == "ra")
         {
             bsk::calc_ra(
                     tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
-            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+            cross.cross_plane(tmp1->flux_bot.data(), no_offset, "ra", iotime);
         }
     }
 
@@ -761,7 +758,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             Boundary_type::Dirichlet_type, ubot,
-            fields.visc, grid.utrans,
+            fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
@@ -769,7 +766,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
             Boundary_type::Dirichlet_type, vbot,
-            fields.visc, grid.vtrans,
+            fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     // in case the momentum has a fixed ustar, set the value to that of the input
@@ -791,14 +788,14 @@ void Boundary_surface<TF>::set_ustar()
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
-            mbcbot, ubot, fields.visc, grid.utrans,
+            mbcbot, ubot, fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
             fields.mp.at("v")->fld_bot.data(),
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
-            mbcbot, vbot, fields.visc, grid.vtrans,
+            mbcbot, vbot, fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     for (int j=0; j<gd.jcells; ++j)

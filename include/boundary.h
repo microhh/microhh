@@ -172,10 +172,13 @@ class Boundary
 
         #ifdef USECUDA
         std::map<std::string, TF*> inflow_profiles_g;
+        std::map<std::string, TF*> sbot_2d_prev_g;
+        std::map<std::string, TF*> sbot_2d_next_g;
         #endif
 
         // GPU functions and variables
-        void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
+        void set_bc_g   (TF*, TF*, TF*, Boundary_type, TF, TF, TF, bool); ///< Set the values for the boundary fields.
+        void set_bc_2d_g(TF*, TF*, TF*, TF*, Boundary_type, TF, TF, bool); ///< Set the values for the boundary fields.
 
     private:
         virtual void update_slave_bcs(); // Update the slave boundary values.

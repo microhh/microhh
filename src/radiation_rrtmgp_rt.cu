@@ -23,6 +23,7 @@
 
 #include "radiation_rrtmgp_rt.h"
 #include "radiation_rrtmgp_functions.h"
+
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
@@ -39,14 +40,18 @@
 #include "Array.h"
 #include "Fluxes.h"
 #include "Fluxes_rt.h"
-#include "subset_kernel_launcher_cuda.h"
-#include "rrtmgp_kernel_launcher_cuda_rt.h"
-#include "gpt_combine_kernel_launcher_cuda_rt.h"
 
-using namespace Radiation_rrtmgp_functions;
+#include "raytracer_definitions.h"
+#include "subset_kernels_cuda.h"
+#include "gas_optics_rrtmgp_kernels_cuda_rt.h"
+#include "gpt_combine_kernels_cuda_rt.h"
+
 
 namespace
 {
+    using namespace Radiation_rrtmgp_functions;
+    using namespace Raytracer_definitions;
+
     __global__
     void calc_tendency_rt(
             Float* __restrict__ thlt_rad,
@@ -1201,7 +1206,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_net().ptr());
     };
@@ -1435,7 +1440,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
     };
@@ -1530,18 +1535,18 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
     const Vector<int> kn_grid = {kngrid_i, kngrid_j, kngrid_k};
 
     // initiate flux & heating rate arrays to 0
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_dn.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_up.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dir.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dif.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_up.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dir.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dif.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_dn.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_up.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dir.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_dif.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_sfc_up.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dir.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lay, gd.jmax, gd.imax, rt_flux_abs_dif.ptr());
 
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_up.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn_dir.ptr());
-    rrtmgp_kernel_launcher_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_net.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_up.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_dn_dir.ptr());
+    Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_lev, gd.jmax, gd.imax, flux_net.ptr());
 
 
     // Define the pointers for the subsetting.
@@ -1664,7 +1669,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     toa_src_dummy,
                     col_dry.subset({{ {col_s, col_e}, {1, n_lay} }}));
 
-            subset_kernel_launcher_cuda::get_from_subset(
+            Subset_kernels_cuda::get_from_subset(
                     n_col, n_lay, n_col_subset, col_s,
                     optical_props->get_tau().ptr(), optical_props->get_ssa().ptr(), optical_props->get_g().ptr(),
                     optical_props_subset->get_tau().ptr(), optical_props_subset->get_ssa().ptr(), optical_props_subset->get_g().ptr());
@@ -1719,9 +1724,9 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         }
         else
         {
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_tau().ptr());
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_ssa().ptr());
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_g().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_tau().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_ssa().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, cloud_optical_props->get_g().ptr());
         }
 
         if (sw_aerosol)
@@ -1742,9 +1747,9 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         }
         else
         {
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_tau().ptr());
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_ssa().ptr());
-            rrtmgp_kernel_launcher_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_g().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_tau().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_ssa().ptr());
+            Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(n_col, n_lay, aerosol_optical_props->get_g().ptr());
         }
 
         std::unique_ptr<Fluxes_broadband_rt> fluxes =
@@ -1767,7 +1772,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
         fluxes->net_flux();
 
-        gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
+        Gpt_combine_kernels_cuda_rt::add_from_gpoint(
                   n_col, n_lev, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                   fluxes->get_flux_up().ptr(), fluxes->get_flux_dn().ptr(), fluxes->get_flux_dn_dir().ptr(), fluxes->get_flux_net().ptr());
 
@@ -1811,11 +1816,11 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     fluxes->get_flux_abs_dir(),
                     fluxes->get_flux_abs_dif());
 
-            gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
+            Gpt_combine_kernels_cuda_rt::add_from_gpoint(
                       gd.imax, gd.jmax, rt_flux_tod_dn.ptr(), rt_flux_tod_up.ptr(), rt_flux_sfc_dir.ptr(), rt_flux_sfc_dif.ptr(), rt_flux_sfc_up.ptr(),
                       fluxes->get_flux_tod_dn().ptr(), fluxes->get_flux_tod_up().ptr(), fluxes->get_flux_sfc_dir().ptr(), fluxes->get_flux_sfc_dif().ptr(), fluxes->get_flux_sfc_up().ptr());
 
-            gpt_combine_kernel_launcher_cuda_rt::add_from_gpoint(
+            Gpt_combine_kernels_cuda_rt::add_from_gpoint(
                       n_col, n_lay, rt_flux_abs_dir.ptr(), rt_flux_abs_dif.ptr(),
                       fluxes->get_flux_abs_dir().ptr(), fluxes->get_flux_abs_dif().ptr());
 
@@ -2454,7 +2459,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), name) != crosslist.end())
-                cross.cross_simple(array.fld.data(), name, iotime, loc);
+                cross.cross_simple(array.fld.data(), no_offset, name, iotime, loc);
         }
 
         if (do_column)
@@ -2508,15 +2513,15 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         if (do_cross)
         {
             if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dir_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_dir_rt.data(), "sw_flux_sfc_dir_rt", iotime);
+                cross.cross_plane(sw_flux_sfc_dir_rt.data(), no_offset, "sw_flux_sfc_dir_rt", iotime);
             if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dif_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_dif_rt.data(), "sw_flux_sfc_dif_rt", iotime);
+                cross.cross_plane(sw_flux_sfc_dif_rt.data(), no_offset, "sw_flux_sfc_dif_rt", iotime);
             if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_up_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_up_rt.data(), "sw_flux_sfc_up_rt", iotime);
+                cross.cross_plane(sw_flux_sfc_up_rt.data(), no_offset, "sw_flux_sfc_up_rt", iotime);
             if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_dn_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_tod_dn_rt.data(), "sw_flux_tod_dn_rt", iotime);
+                cross.cross_plane(sw_flux_tod_dn_rt.data(), no_offset, "sw_flux_tod_dn_rt", iotime);
             if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_up_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_tod_up_rt.data(), "sw_flux_tod_up_rt", iotime);
+                cross.cross_plane(sw_flux_tod_up_rt.data(), no_offset, "sw_flux_tod_up_rt", iotime);
         }
     }
 

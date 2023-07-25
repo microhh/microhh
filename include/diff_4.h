@@ -47,6 +47,7 @@ class Diff_4 : public Diff<TF>
 
         #ifdef USECUDA
         void prepare_device(Boundary<TF>&) {};
+        void clear_device() {};
         #endif
 
     private:

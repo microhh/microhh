@@ -71,6 +71,7 @@ class Pres
         void fft_backward(TF*, TF*, TF*);
 
         bool FFT_per_slice;
+        bool force_FFT_per_slice;
         cufftHandle iplanf;
         cufftHandle jplanf;
         cufftHandle iplanb;

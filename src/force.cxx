@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
+// #include <math.h>
 #include <iostream>
 #include "master.h"
 #include "grid.h"
@@ -29,6 +30,7 @@
 #include "field3d_operators.h"
 #include "timedep.h"
 #include "force.h"
+#include "constants.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "timeloop.h"
@@ -320,13 +322,13 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
 
     if (swwls_in == "1" || swwls_in == "mean" || swwls_in == "local")
-        bool swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
+        swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
 
     // Checks on input:
     if (swwls_in == "1")
     {
-        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=mean\"\n");
-        swwls_in = "mean";
+        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=local\"\n");
+        swwls_in = "local";
     }
 
     // Set the internal switches and read other required input
@@ -348,7 +350,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
-        fc = inputin.get_item<TF>("force", "fc", "");
+        fc = inputin.get_item<TF>("force", "fc", "", -1.);
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
     }
@@ -528,9 +530,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
             // Account for the Galilean transformation
             if (it == "u")
-                add_offset(nudgeprofs[it].data(), -grid.utrans, gd.kstart, gd.kend);
+                add_offset(nudgeprofs[it].data(), -gd.utrans, gd.kstart, gd.kend);
             else if (it == "v")
-                add_offset(nudgeprofs[it].data(), -grid.vtrans, gd.kstart, gd.kend);
+                add_offset(nudgeprofs[it].data(), -gd.vtrans, gd.kstart, gd.kend);
         }
 
         // Process the time dependent data
@@ -539,9 +541,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             // Account for the Galilean transformation
             TF offset;
             if (it.first == "u")
-                offset = -grid.utrans;
+                offset = -gd.utrans;
             else if (it.first == "v")
-                offset = -grid.vtrans;
+                offset = -gd.vtrans;
             else
                 offset = 0;
 
@@ -586,7 +588,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
 
         enforce_fixed_flux<TF>(
-                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
+                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, gd.utrans, dt,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
         stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
@@ -604,18 +606,22 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
 
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
-    {
+    {   
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
+                    
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
         else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 

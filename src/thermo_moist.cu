@@ -332,6 +332,30 @@ namespace
     }
 
     template<typename TF> __global__
+    void calc_liquid_and_ice_g(
+            TF* __restrict__ qlqi,
+            TF* __restrict__ thl,
+            TF* __restrict__ qt,
+            TF* __restrict__ exn,
+            TF* __restrict__ p,
+            int istart, int jstart, int kstart,
+            int iend,   int jend,   int kend,
+            int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            Struct_sat_adjust<TF> ssa = sat_adjust_g(thl[ijk], qt[ijk], p[k], exn[k]);
+            qlqi[ijk] = ssa.ql + ssa.qi;
+        }
+    }
+
+    template<typename TF> __global__
     void calc_liquid_water_h_g(TF* __restrict__ qlh, TF* __restrict__ th, TF* __restrict__ qt,
                              TF* __restrict__ exnh, TF* __restrict__ ph,
                              int istart, int jstart, int kstart,
@@ -817,6 +841,8 @@ void Thermo_moist<TF>::clear_device()
     cuda_safe_call(cudaFree(bs.prefh_g  ));
     cuda_safe_call(cudaFree(bs.exnref_g ));
     cuda_safe_call(cudaFree(bs.exnrefh_g));
+    cuda_safe_call(cudaFree(bs.rhoref_g ));
+    cuda_safe_call(cudaFree(bs.rhorefh_g));
     tdep_pbot->clear_device();
 }
 
@@ -1007,7 +1033,19 @@ void Thermo_moist<TF>::get_thermo_field_g(
     {
         calc_ice_g<<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
-            bs.exnrefh_g, bs.prefh_g,
+            bs.exnref_g, bs.pref_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "ql_qi")
+    {
+        calc_liquid_and_ice_g<<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.exnref_g, bs.pref_g,
             gd.istart,  gd.jstart,  gd.kstart,
             gd.iend,    gd.jend,    gd.kend,
             gd.icells, gd.ijcells);
@@ -1026,7 +1064,8 @@ void Thermo_moist<TF>::get_thermo_field_g(
     else if (name == "N2")
     {
         calc_N2_g<<<gridGPU2, blockGPU2>>>(
-            fld.fld_g, fields.sp.at("thl")->fld_g, bs.thvref_g, gd.dzi_g,
+            fld.fld_g, fields.sp.at("thl")->fld_g,
+            bs.thvref_g, gd.dzi_g,
             gd.istart,  gd.jstart, gd.kstart,
             gd.iend,    gd.jend,   gd.kend,
             gd.icells, gd.ijcells);

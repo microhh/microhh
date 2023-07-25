@@ -358,7 +358,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
             calc_buoyancy_tend_b_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
-                grid.utrans, bs.n2, sinalpha, cosalpha,
+                gd.utrans, bs.n2, sinalpha, cosalpha,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -410,7 +410,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
             calc_buoyancy_tend_b_4th_g<<<gridGPU, blockGPU>>>(
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
-                grid.utrans, bs.n2, sinalpha, cosalpha,
+                gd.utrans, bs.n2, sinalpha, cosalpha,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);

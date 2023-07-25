@@ -344,7 +344,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         fields.release_tmp_g(tmp);
 
-        const TF fbody = (uflux - uavg - grid.utrans) / dt - utavg;
+        const TF fbody = (uflux - uavg - gd.utrans) / dt - utavg;
 
         add_pressure_force_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("u")->fld_g,
@@ -372,12 +372,17 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
+        
+
         if (grid.get_spatial_order() == Grid_order::Second)
         {
             coriolis_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
                 gd.icells, gd.ijcells,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);
@@ -388,7 +393,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             coriolis_4th_g<<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
                 gd.icells, gd.ijcells,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);

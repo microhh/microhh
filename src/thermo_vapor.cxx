@@ -507,7 +507,9 @@ void Thermo_vapor<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 }
 
 template<typename TF>
-void Thermo_vapor<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_vapor<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
+        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
     create_basestate(inputin, input_nc);
 
@@ -922,14 +924,15 @@ void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : crosslist)
     {
+        TF no_offset = 0.;
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
+            cross.cross_simple(output->fld.data(), no_offset, "b", iotime, gd.sloc);
         else if (it == "blngrad")
             cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
         else if (it == "bbot")
-            cross.cross_plane(output->fld_bot.data(), "bbot", iotime);
+            cross.cross_plane(output->fld_bot.data(), no_offset, "bbot", iotime);
         else if (it == "bfluxbot")
-            cross.cross_plane(output->flux_bot.data(), "bfluxbot", iotime);
+            cross.cross_plane(output->flux_bot.data(), no_offset, "bfluxbot", iotime);
     }
 
     fields.release_tmp(output);

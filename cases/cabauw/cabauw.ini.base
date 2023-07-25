@@ -15,6 +15,8 @@ ysize=None
 zsize=None
 utrans=0.0
 vtrans=0.0
+lat=51.971
+lon=4.927
 swspatialorder=2
 
 [advec]
@@ -50,8 +52,6 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
-lat=51.971
-lon=4.927
 swhomogenizesfcrad=0
 
 [aerosol]

@@ -48,6 +48,7 @@ class Diff_disabled : public Diff<TF>
         #ifdef USECUDA
         // GPU functions and variables
         void prepare_device(Boundary<TF>&) {}
+        void clear_device() {}
         #endif
     private:
 
