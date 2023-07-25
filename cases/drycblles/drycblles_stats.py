@@ -15,7 +15,7 @@ z = stats.variables['z'][:]
 zh = stats.variables['zh'][:]
 
 st = thermo.variables['th'][start:end, :]
-evisct = default.variables['evisc'][start:end, :]
+#evisct = default.variables['evisc'][start:end, :]
 u2t = default.variables['u_2'][start:end, :]
 v2t = default.variables['v_2'][start:end, :]
 w2t = default.variables['w_2'][start:end, :]
@@ -26,7 +26,7 @@ sfluxt = thermo.variables['th_flux'][start:end, :]
 sgradt = thermo.variables['th_grad'][start:end, :]
 
 s = np.mean(st, axis=0)
-evisc = np.mean(evisct, axis=0)
+#evisc = np.mean(evisct, axis=0)
 
 u2 = np.mean(u2t, axis=0)
 v2 = np.mean(v2t, axis=0)
@@ -51,9 +51,10 @@ for n in range(start, end, step):
 plt.xlabel(r'$\theta [K]$')
 plt.ylabel(r'$z [m]$')
 
+evisct=(1.+1e-5)*np.ones(z.shape)
 plt.figure()
 for n in range(start, end, step):
-    plt.plot(evisct[n, :], z)
+    plt.plot(evisct, z)
 plt.xlabel(r'$K_m [m^2 s^{-1}]$')
 plt.ylabel(r'$z [m]$')
 
