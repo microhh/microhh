@@ -29,7 +29,6 @@
 #include "grid.h"
 #include "netcdf_interface.h"
 #include "stats.h"
-//#include "constants.h"
 #include "thermo.h"
 #include "fields.h"
 #include "timedep.h"
@@ -37,11 +36,6 @@
 #include "Array.h"
 
 using Aerosol_concs = Gas_concs;
-
-namespace
-{
-    // Kernels...
-}
 
 template<typename TF>
 Aerosol<TF>::Aerosol(
@@ -67,8 +61,6 @@ void Aerosol<TF>::init()
 
     auto& gd = grid.get_grid_data();
 
-    std::cout << "init() aerosols" << std::endl;
-
     aermr01.resize(gd.kcells);
     aermr02.resize(gd.kcells);
     aermr03.resize(gd.kcells);
@@ -91,8 +83,6 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
         return;
 
     auto& gd = grid.get_grid_data();
-
-    std::cout << "create() aerosols" << std::endl;
 
     if (sw_timedep)
     {
@@ -184,15 +174,6 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
 }
 
 #ifndef USECUDA
-//template <typename TF>
-//void Aerosol<TF>::exec(Thermo<TF>& thermo)
-//{
-//    if (!sw_aerosol)
-//        return;
-//
-//    auto& gd = grid.get_grid_data();
-//}
-
 template <typename TF>
 void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {

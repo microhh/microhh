@@ -69,8 +69,6 @@ void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
     n_era_layers = rad_nc.get_dimension_size("lay");
     n_era_levels = rad_nc.get_dimension_size("lev");
 
-    std::cout << "init() timedepent background profiles" << std::endl;
-
     // temperature, pressure and moisture
     t_lay.resize(n_era_layers);
     t_lev.resize(n_era_levels);
@@ -101,8 +99,6 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     // Read input from NetCDF and prepare statistics output.
     if (!sw_update_background)
         return;
-
-    std::cout << "create() timedependent background profiles" << std::endl;
 
     // create time dependent profiles
     const TF offset = 0;

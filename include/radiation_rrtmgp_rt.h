@@ -90,7 +90,6 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         #ifdef USECUDA
         TF* get_surface_radiation_g(const std::string&);
         void prepare_device();
-        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
         void clear_device();
         void forward_device() {};
         void backward_device() {};
@@ -341,6 +340,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
+
+        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;
