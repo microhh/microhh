@@ -1583,7 +1583,7 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     auto& gd = grid.get_grid_data();
     for (auto& it : tdep_gases)
     {
-        it.second->update_time_dependent_background_prof(gasprofs.at(it.first), timeloop, gd.ktot);
+        it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, gd.ktot);
 
         Array<Float,2> tmp_array({1, int(gd.ktot)});
         for (int k=0; k<gd.ktot; ++k)

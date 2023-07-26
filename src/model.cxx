@@ -585,7 +585,6 @@ void Model<TF>::prepare_gpu()
     radiation->prepare_device();
     column   ->prepare_device();
     aerosol  ->prepare_device();
-    background ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -606,7 +605,6 @@ void Model<TF>::clear_gpu()
     radiation->clear_device();
     column   ->clear_device();
     aerosol  ->clear_device();
-    background ->clear_device();
 
     // Clear pressure last, for memory check
     pres     ->clear_device();

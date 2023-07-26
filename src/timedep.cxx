@@ -141,14 +141,11 @@ void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>
 }
 
 template <typename TF>
-void Timedep<TF>::update_time_dependent_background_prof(std::vector<TF>& prof, Timeloop<TF>& timeloop, const TF z_dim_length)
+void Timedep<TF>::update_time_dependent_prof(std::vector<TF>& prof, Timeloop<TF>& timeloop, const TF z_dim_length)
 {
     if (sw == Timedep_switch::Disabled)
         return;
 
-//    auto& gd = grid.get_grid_data();
-//    const int kk = gd.kmax;
-//    const int kgc = gd.kgc;
     const int kk = int(z_dim_length);
 
     // Get/calculate the interpolation indexes/factors

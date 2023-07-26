@@ -12,7 +12,6 @@
 #include "grid.h"
 #include "netcdf_interface.h"
 #include "stats.h"
-//#include "constants.h"
 #include "thermo.h"
 #include "fields.h"
 #include "timedep.h"
@@ -20,11 +19,6 @@
 #include "Gas_concs.h"
 
 using Aerosol_concs = Gas_concs;
-
-namespace
-{
-    // Kernels...
-}
 
 template<typename TF>
 Background<TF>::Background(
@@ -192,16 +186,6 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
 }
 
-#ifndef USECUDA
-template <typename TF>
-void Background<TF>::exec(Thermo<TF>& thermo)
-{
-    if (!sw_update_background)
-        return;
-
-    auto& gd = grid.get_grid_data();
-}
-
 template <typename TF>
 void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
@@ -213,37 +197,34 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (do_radiation)
     {
         // temperature, pressure and moisture
-        tdep_t_lay   ->update_time_dependent_background_prof(t_lay, timeloop, n_era_layers);
-        tdep_t_lev   ->update_time_dependent_background_prof(t_lev, timeloop, n_era_levels);
-        tdep_p_lay   ->update_time_dependent_background_prof(p_lay, timeloop, n_era_layers);
-        tdep_p_lev   ->update_time_dependent_background_prof(p_lev, timeloop, n_era_levels);
-        tdep_h2o     ->update_time_dependent_background_prof(h2o, timeloop, n_era_layers);
+        tdep_t_lay   ->update_time_dependent_prof(t_lay, timeloop, n_era_layers);
+        tdep_t_lev   ->update_time_dependent_prof(t_lev, timeloop, n_era_levels);
+        tdep_p_lay   ->update_time_dependent_prof(p_lay, timeloop, n_era_layers);
+        tdep_p_lev   ->update_time_dependent_prof(p_lev, timeloop, n_era_levels);
+        tdep_h2o     ->update_time_dependent_prof(h2o, timeloop, n_era_layers);
 
         // gasses
         for (auto& it : tdep_gases)
-            it.second->update_time_dependent_background_prof(gasprofs.at(it.first), timeloop, n_era_layers);
+            it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, n_era_layers);
 
         // aerosols
         if (sw_aerosol && sw_aerosol_timedep)
         {
-            tdep_aermr01 ->update_time_dependent_background_prof(aermr01, timeloop, n_era_layers);
-            tdep_aermr02 ->update_time_dependent_background_prof(aermr02, timeloop, n_era_layers);
-            tdep_aermr03 ->update_time_dependent_background_prof(aermr03, timeloop, n_era_layers);
-            tdep_aermr04 ->update_time_dependent_background_prof(aermr04, timeloop, n_era_layers);
-            tdep_aermr05 ->update_time_dependent_background_prof(aermr05, timeloop, n_era_layers);
-            tdep_aermr06 ->update_time_dependent_background_prof(aermr06, timeloop, n_era_layers);
-            tdep_aermr07 ->update_time_dependent_background_prof(aermr07, timeloop, n_era_layers);
-            tdep_aermr08 ->update_time_dependent_background_prof(aermr08, timeloop, n_era_layers);
-            tdep_aermr09 ->update_time_dependent_background_prof(aermr09, timeloop, n_era_layers);
-            tdep_aermr10 ->update_time_dependent_background_prof(aermr10, timeloop, n_era_layers);
-            tdep_aermr11 ->update_time_dependent_background_prof(aermr11, timeloop, n_era_layers);
+            tdep_aermr01 ->update_time_dependent_prof(aermr01, timeloop, n_era_layers);
+            tdep_aermr02 ->update_time_dependent_prof(aermr02, timeloop, n_era_layers);
+            tdep_aermr03 ->update_time_dependent_prof(aermr03, timeloop, n_era_layers);
+            tdep_aermr04 ->update_time_dependent_prof(aermr04, timeloop, n_era_layers);
+            tdep_aermr05 ->update_time_dependent_prof(aermr05, timeloop, n_era_layers);
+            tdep_aermr06 ->update_time_dependent_prof(aermr06, timeloop, n_era_layers);
+            tdep_aermr07 ->update_time_dependent_prof(aermr07, timeloop, n_era_layers);
+            tdep_aermr08 ->update_time_dependent_prof(aermr08, timeloop, n_era_layers);
+            tdep_aermr09 ->update_time_dependent_prof(aermr09, timeloop, n_era_layers);
+            tdep_aermr10 ->update_time_dependent_prof(aermr10, timeloop, n_era_layers);
+            tdep_aermr11 ->update_time_dependent_prof(aermr11, timeloop, n_era_layers);
         }
-
-//        std::cout << "update() timedependent background profiles" << std::endl;
     }
-
 }
-#endif
+
 
 template<typename TF>
 void Background<TF>::exec_stats(Stats<TF>& stats)
@@ -308,20 +289,6 @@ void Background<TF>::get_tpm(Array<Float,2>& t_lay_col, Array<Float,2>& t_lev_co
 template<typename TF>
 void Background<TF>::get_gasses(Gas_concs& gas_concs_col)
 {
-//    Array<Float,2> h2o_bg_a({1, int(n_era_layers)});
-//    Array<Float,2> o3_bg_a({1, int(n_era_layers)});
-
-//    for (int k=1; k<n_era_layers; ++k)
-//    {
-////        h2o_bg_a({1, k}) = h2o[k];
-////        o3_bg_a({1, k}) = o3[k];
-//        h2o_bg_a({1, k}) = gasprofs.at("h2o")[k];
-//        o3_bg_a({1, k}) = gasprofs.at("o3")[k];
-//    }
-
-//    gas_concs_col.set_vmr("h2o", h2o_bg_a);
-//    gas_concs_col.set_vmr("o3", o3_bg_a);
-
     for (auto& it : tdep_gases)
     {
         Array<Float,2> tmp_array({1, int(n_era_layers)});

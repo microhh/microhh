@@ -86,7 +86,7 @@ void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
 
 #ifdef USECUDA
 template <typename TF>
-void Timedep<TF>::update_time_dependent_background_prof_g(TF* prof, Timeloop<TF>& timeloop, const TF z_dim_length)
+void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop, const TF z_dim_length)
 {
     if (sw == Timedep_switch::Disabled)
         return;

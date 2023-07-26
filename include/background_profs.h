@@ -37,14 +37,8 @@ public:
 
     void init(Netcdf_handle&, Timeloop<TF>&);
     void create(Input&, Netcdf_handle&, Stats<TF>&);
-    void exec(Thermo<TF>&);
     void exec_stats(Stats<TF>&);
     void update_time_dependent(Timeloop<TF>&);
-
-    // GPU functions and variables
-    void prepare_device();
-    void clear_device();
-    std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
 
     void get_tpm(Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Gas_concs&);
     void get_gasses(Gas_concs&);
@@ -62,8 +56,6 @@ private:
     double dt_rad;
     unsigned long idt_rad;
 
-//    const TF n_era_layers = 136;
-//    const TF n_era_levels = 137;
     TF n_era_layers;
     TF n_era_levels;
 
@@ -109,24 +101,6 @@ private:
     std::unique_ptr<Timedep<TF>> tdep_aermr09;
     std::unique_ptr<Timedep<TF>> tdep_aermr10;
     std::unique_ptr<Timedep<TF>> tdep_aermr11;
-
-    // GPU functions and variables
-    TF* t_lay_g;    ///< Pointer to GPU array.
-    TF* t_lev_g;
-    TF* p_lay_g;
-    TF* p_lev_g;
-    TF* h2o_g;
-    TF* aermr01_g;
-    TF* aermr02_g;
-    TF* aermr03_g;
-    TF* aermr04_g;
-    TF* aermr05_g;
-    TF* aermr06_g;
-    TF* aermr07_g;
-    TF* aermr08_g;
-    TF* aermr09_g;
-    TF* aermr10_g;
-    TF* aermr11_g;
 };
 
 #endif //BACKGROUND_PROFS_H
