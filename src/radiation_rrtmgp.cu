@@ -1501,15 +1501,8 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     for (auto& it : tdep_gases)
     {
-        const int nlaysize  = gd.ktot*sizeof(TF);
         it.second->update_time_dependent_prof_g(gasprofs_g.at(it.first), timeloop, gd.ktot);
-        cuda_safe_call(cudaMemcpy(gasprofs.at(it.first).data(), gasprofs_g.at(it.first), nlaysize, cudaMemcpyDeviceToHost));
-
-        Array<Float,2> tmp_array({1, int(gd.ktot)});
-        for (int k=0; k<gd.ktot; ++k)
-        {
-            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
-        }
+        Array_gpu<Float,2> tmp_array(gasprofs_g.at(it.first), {1, int(gd.ktot)});
         gas_concs_gpu->set_vmr(it.first, tmp_array);
     }
 }
