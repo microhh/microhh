@@ -57,6 +57,10 @@ template<typename> class Fields;
 template<typename> class Thermo;
 template<typename> class Timeloop;
 
+using Aerosol_concs = Gas_concs;
+#ifdef USECUDA
+using Aerosol_concs_gpu = Gas_concs_gpu;
+#endif
 
 template<typename TF>
 class Radiation_rrtmgp_rt : public Radiation<TF>
@@ -278,7 +282,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         Gas_concs gas_concs_col;
 
-        Gas_concs aerosol_concs_col;
+        Aerosol_concs aerosol_concs_col;
         Array<Float,2> rh_col;
 
         std::unique_ptr<Source_func_lw> sources_lw;
@@ -289,7 +293,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         // The full solver.
         Gas_concs gas_concs;
-        Gas_concs aerosol_concs;
+        Aerosol_concs aerosol_concs;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
@@ -335,7 +339,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
 #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
-        std::unique_ptr<Gas_concs_gpu> aerosol_concs_gpu;
+        std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;

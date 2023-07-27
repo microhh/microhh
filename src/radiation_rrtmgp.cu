@@ -611,7 +611,7 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
-    this->aerosol_concs_gpu = std::make_unique<Gas_concs_gpu>(aerosol_concs);
+    this->aerosol_concs_gpu = std::make_unique<Aerosol_concs_gpu>(aerosol_concs);
 
     const int nlaysize  = gd.ktot*sizeof(TF);
     for (auto& it : gaslist)
@@ -1016,7 +1016,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         if (sw_aerosol)
         {
-            Gas_concs_gpu aerosol_concs_subset(*aerosol_concs_gpu, col_s_in, n_col_in);
+            Aerosol_concs_gpu aerosol_concs_subset(*aerosol_concs_gpu, col_s_in, n_col_in);
             aerosol_sw_gpu->aerosol_optics(
                     aerosol_concs_subset,
                     rh.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
@@ -1194,8 +1194,10 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
         // get aerosol mixing ratios
         if (sw_aerosol && sw_aerosol_timedep)
+        {
             aerosol.get_radiation_fields(aerosol_concs);
-        this->aerosol_concs_gpu = std::make_unique<Gas_concs_gpu>(aerosol_concs);
+            this->aerosol_concs_gpu = std::make_unique<Gas_concs_gpu>(aerosol_concs);
+        }
 
         try
         {
