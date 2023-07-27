@@ -274,6 +274,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
+        Array<Float,1> aod550;
 
         Gas_concs gas_concs_col;
 
@@ -342,6 +343,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
+        Float* aod550_g;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

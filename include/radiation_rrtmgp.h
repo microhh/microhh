@@ -321,6 +321,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
+        Float* aod550_g;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

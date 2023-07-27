@@ -603,6 +603,8 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
     // initialize timedependent gasses
     for (auto& it : gaslist)
         gasprofs[it] = std::vector<TF>(gd.ktot);
+
+    aod550.set_dims({gd.imax*gd.jmax});
 }
 
 

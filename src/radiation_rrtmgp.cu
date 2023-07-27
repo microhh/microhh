@@ -187,6 +187,42 @@ namespace
         }
     }
 
+    __global__
+    void sum_tau_kernel(
+            const int ncol, const int nlev, const int col_s_in,
+            const Float* __restrict__ tau, Float* __restrict__ aod)
+    {
+        const int icol = blockIdx.x*blockDim.x + threadIdx.x;
+        int ibnd = 10;
+
+        if ( icol < ncol)
+        {
+            Float aod_s = 0;
+            for (int ilev=0; ilev < nlev; ++ilev)
+            {
+                const int idx_in = icol + ilev*ncol + ibnd*nlev*ncol;
+                aod_s += tau[idx_in];
+            }
+            aod[col_s_in + icol - 1] = aod_s;
+        }
+    }
+
+    void sum_tau(
+            int ncol, int nlev, int col_s_in,
+            const Float* tau, Float* aod)
+    {
+        const int block_lev = 16;
+        const int block_col = 16;
+
+        const int grid_col = ncol/block_col + (ncol%block_col > 0);
+        const int grid_lev = nlev/block_lev + (nlev%block_lev > 0);
+
+        dim3 grid_gpu(grid_col);
+        dim3 block_gpu(block_col);
+
+        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, aod);
+    }
+
     std::vector<std::string> get_variable_string(
             const std::string& var_name,
             std::vector<int> i_count,
@@ -612,8 +648,11 @@ void Radiation_rrtmgp<TF>::prepare_device()
                 load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
         if (sw_aerosol)
+        {
             this->aerosol_sw_gpu = std::make_unique<Aerosol_optics_gpu>(
                     load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+            cuda_safe_call(cudaMalloc(&aod550_g, gd.imax*gd.jmax*sizeof(Float)));
+        }
 
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
@@ -857,6 +896,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     const int n_bnd = this->kdist_sw_gpu->get_nband();
 
     const Bool top_at_1 = 0;
+    const bool do_radiation_stats = timeloop.is_stats_step();
 
     // Define the pointers for the subsetting.
     std::unique_ptr<Optical_props_arry_gpu> optical_props_subset =
@@ -991,21 +1031,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
 
-//            int ibnd = 11;
-//            for (int ilay = 1; ilay <= n_lay; ++ilay)
-//                for (int icol = 1; icol <= n_col_in; ++icol)
-//                {
-//                    if (ilay == 1)
-//                    {
-//                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
-//                        aod550({col_s_in+icol-1}) = tau;
-//                    }
-//                    else
-//                    {
-//                        const Float tau = aerosol_optical_props_subset_in->get_tau()({icol, ilay, ibnd});
-//                        aod550({col_s_in+icol-1}) += tau;
-//                    }
-//                }
+            if (do_radiation_stats)
+            sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), aod550_g);
+
         }
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
@@ -1031,6 +1059,12 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
     };
+
+    if (sw_aerosol && do_radiation_stats)
+    {
+        const int nmemsize = gd.imax*gd.jmax * sizeof(TF);
+        cuda_safe_call(cudaMemcpy(aod550.ptr(), aod550_g, nmemsize, cudaMemcpyDeviceToHost));
+    }
 
     for (int b=1; b<=n_blocks; ++b)
     {
