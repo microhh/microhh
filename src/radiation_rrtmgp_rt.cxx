@@ -29,6 +29,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+#include "thermo_moist_functions.h"
 #include "input.h"
 #include "netcdf_interface.h"
 #include "stats.h"
@@ -843,12 +844,9 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         {
             Float h2o = gas_concs.get_vmr("h2o")({1, ilay});
 
-            const Float m_air = 28.97;
-            const Float m_h2o = 18.01528;
-            Float q = h2o * m_h2o / m_air;
-            Float esat = 6.11e2 * exp(17.269 * (t_lay({1, ilay}) -273.16) / (t_lay({1, ilay}) - 35.86));
-            Float h20_sat_liq = std::max(0.622 * esat / p_lay({1, ilay}), 1.0);
-            rh({1, ilay}) = q / h20_sat_liq;
+            Float q = h2o * Constants::xmh2o<Float> / Constants::xmair<Float>;
+            Float qsat_liq = Thermo_moist_functions::qsat_liq(p_lay({1, ilay}), t_lay({1, ilay}));
+            rh({1, ilay}) = std::max(std::min(q / qsat_liq, TF(1.)), TF(0.));
         }
 
         aerosol_sw->aerosol_optics(
