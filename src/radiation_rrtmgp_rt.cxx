@@ -1341,18 +1341,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    auto& gd = grid.get_grid_data();
-    for (auto& it : tdep_gases)
-    {
-        it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, gd.ktot);
-
-        Array<Float,2> tmp_array({1, int(gd.ktot)});
-        for (int k=0; k<gd.ktot; ++k)
-        {
-            tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
-        }
-        gas_concs.set_vmr(it.first, tmp_array);
-    }
+    throw std::runtime_error("no raytracing in CPU mode, sorry!");
 }
 #endif
 

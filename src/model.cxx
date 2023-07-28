@@ -372,9 +372,6 @@ void Model<TF>::exec()
                 // Calculate the thermodynamics and the buoyancy tendency.
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
 
-                // Set/calculate aerosol properties for microphysics and radiation
-                // aerosol->exec(*thermo);
-
                 // Calculate the microphysics.
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
