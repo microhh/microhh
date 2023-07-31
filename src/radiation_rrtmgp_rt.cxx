@@ -845,8 +845,8 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
             Float h2o = gas_concs.get_vmr("h2o")({1, ilay});
 
             Float q = h2o * Constants::xmh2o<Float> / Constants::xmair<Float>;
-            Float qsat_liq = Thermo_moist_functions::qsat_liq(p_lay({1, ilay}), t_lay({1, ilay}));
-            rh({1, ilay}) = std::max(std::min(q / qsat_liq, TF(1.)), TF(0.));
+            Float qsat = Thermo_moist_functions::qsat(p_lay({1, ilay}), t_lay({1, ilay}));
+            rh({1, ilay}) = std::max(std::min(q / qsat, TF(1.)), TF(0.));
         }
 
         aerosol_sw->aerosol_optics(
@@ -1220,9 +1220,25 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
     cloud_sw = std::make_unique<Cloud_optics>(
             load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
-    if (sw_aerosol)
+    if (sw_aerosol){
         aerosol_sw = std::make_unique<Aerosol_optics>(
                 load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+
+        // determine the band that contains 550nm, to calculate AOD550
+        Netcdf_file coef_nc(master, "aerosol_optics.nc", Netcdf_mode::Read);
+        int n_bnd = coef_nc.get_dimension_size("band_sw");
+        Array<Float, 1> band_lims_upper((coef_nc.get_variable<Float>("wavenumber2_sw", {n_bnd})), {n_bnd});
+
+        ibnd_550 = 1;
+        int upper_limit = band_lims_upper({ibnd_550});
+        int wavenumber_550 = 1/550e-7; //convert wavelength 550nm to wavenumber in cm-1
+        while (upper_limit < wavenumber_550)
+        {
+            ibnd_550 += 1;
+            upper_limit = band_lims_upper({ibnd_550});
+        }
+    }
+
 
     // Set up the statistics.
     if (stats.get_switch())

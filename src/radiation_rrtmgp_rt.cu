@@ -269,10 +269,9 @@ namespace
     __global__
     void sum_tau_kernel(
             const int ncol, const int nlev, const int col_s_in,
-            const Float* __restrict__ tau, Float* __restrict__ aod)
+            const Float* __restrict__ tau, const int ibnd, Float* __restrict__ aod)
     {
         const int icol = blockIdx.x*blockDim.x + threadIdx.x;
-        int ibnd = 10;
 
         if ( icol < ncol)
         {
@@ -288,7 +287,7 @@ namespace
 
     void sum_tau(
             int ncol, int nlev, int col_s_in,
-            const Float* tau, Float* aod)
+            const Float* tau, const int ibnd, Float* aod)
     {
         const int block_lev = 16;
         const int block_col = 16;
@@ -299,7 +298,7 @@ namespace
         dim3 grid_gpu(grid_col);
         dim3 block_gpu(block_col);
 
-        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, aod);
+        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd, aod);
     }
 
     std::vector<std::string> get_variable_string(
@@ -1460,7 +1459,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
                     dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
 
             if (do_radiation_stats)
-                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), aod550_g);
+                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550-1, aod550_g);
         }
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});

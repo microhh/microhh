@@ -279,6 +279,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
         Array<Float,1> aod550;
+        int ibnd_550;
 
         Gas_concs gas_concs_col;
 
