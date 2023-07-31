@@ -1195,8 +1195,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         // get aerosol mixing ratios
         if (sw_aerosol && sw_aerosol_timedep)
         {
-            aerosol.get_radiation_fields(aerosol_concs);
-            this->aerosol_concs_gpu = std::make_unique<Gas_concs_gpu>(aerosol_concs);
+            aerosol.get_radiation_fields(aerosol_concs_gpu);
         }
 
         try

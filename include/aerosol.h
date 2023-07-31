@@ -31,6 +31,9 @@
 #include "Gas_concs.h"
 
 using Aerosol_concs = Gas_concs;
+#ifdef USECUDA
+using Aerosol_concs_gpu = Gas_concs_gpu;
+#endif
 
 class Master;
 class Input;
@@ -53,16 +56,18 @@ class Aerosol
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&);
-        void exec_stats(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
         #ifdef USECUDA
         // GPU functions and variables
         void prepare_device();
         void clear_device();
+        void get_radiation_fields(std::unique_ptr<Aerosol_concs_gpu>&);
         #endif
 
+        #ifndef USECUDA
         void get_radiation_fields(Aerosol_concs&);
+        #endif
 
     private:
         Master& master;

@@ -622,7 +622,6 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
-        aerosol  ->exec_stats(*stats);
         background ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);

@@ -139,38 +139,6 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
         group_nc.get_variable(aermr11, "aermr11", {0}, {gd.ktot});
         std::rotate(aermr11.rbegin(), aermr11.rbegin()+gd.kstart, aermr11.rend());
     }
-
-    // Prepare statistics.
-    const std::string group_name = "default";
-
-    if (sw_timedep)
-    {
-        stats.add_prof("aermr01", "Sea salt (0.03 - 0.5 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr02", "Sea salt (0.5 - 5 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr03", "Sea salt (5 - 20 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr04", "Dust (0.03 - 0.55 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr05", "Dust (0.55 - 0.9 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr06", "Dust (0.9 - 20 um) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr07", "Organic matter (hydrophilic) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr08", "Organic matter (hydrophobic) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr09", "Black carbon (hydrophilic) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr10", "Black carbon (hydrophobic) mixing ratio", "kg Kg-1", "z", group_name);
-        stats.add_prof("aermr11", "Sulfates mixing ratio", "kg Kg-1", "z", group_name);
-    }
-    else
-    {
-        stats.add_fixed_prof("aermr01", "Sea salt (0.03 - 0.5 um) mixing ratio", "kg Kg-1", "z", group_name, aermr01);
-        stats.add_fixed_prof("aermr02", "Sea salt (0.5 - 5 um) mixing ratio", "kg Kg-1", "z", group_name, aermr02);
-        stats.add_fixed_prof("aermr03", "Sea salt (5 - 20 um) mixing ratio", "kg Kg-1", "z", group_name, aermr03);
-        stats.add_fixed_prof("aermr04", "Dust (0.03 - 0.55 um) mixing ratio", "kg Kg-1", "z", group_name, aermr04);
-        stats.add_fixed_prof("aermr05", "Dust (0.55 - 0.9 um) mixing ratio", "kg Kg-1", "z", group_name, aermr05);
-        stats.add_fixed_prof("aermr06", "Dust (0.9 - 20 um) mixing ratio", "kg Kg-1", "z", group_name, aermr06);
-        stats.add_fixed_prof("aermr07", "Organic matter (hydrophilic) mixing ratio", "kg Kg-1", "z", group_name, aermr07);
-        stats.add_fixed_prof("aermr08", "Organic matter (hydrophobic) mixing ratio", "kg Kg-1", "z", group_name, aermr08);
-        stats.add_fixed_prof("aermr09", "Black carbon (hydrophilic) mixing ratio", "kg Kg-1", "z", group_name, aermr09);
-        stats.add_fixed_prof("aermr10", "Black carbon (hydrophobic) mixing ratio", "kg Kg-1", "z", group_name, aermr10);
-        stats.add_fixed_prof("aermr11", "Sulfates mixing ratio", "kg Kg-1", "z", group_name, aermr11);
-    }
 }
 
 #ifndef USECUDA
@@ -197,30 +165,7 @@ void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 #endif
 
-template<typename TF>
-void Aerosol<TF>::exec_stats(Stats<TF>& stats)
-{
-    if (!sw_aerosol)
-        return;
-
-    auto& gd = grid.get_grid_data();
-
-    if (sw_timedep)
-    {
-        stats.set_prof("aermr01", aermr01);
-        stats.set_prof("aermr02", aermr02);
-        stats.set_prof("aermr03", aermr03);
-        stats.set_prof("aermr04", aermr04);
-        stats.set_prof("aermr05", aermr05);
-        stats.set_prof("aermr06", aermr06);
-        stats.set_prof("aermr07", aermr07);
-        stats.set_prof("aermr08", aermr08);
-        stats.set_prof("aermr09", aermr09);
-        stats.set_prof("aermr10", aermr10);
-        stats.set_prof("aermr11", aermr11);
-    }
-}
-
+#ifndef USECUDA
 template<typename TF>
 void Aerosol<TF>::get_radiation_fields(Aerosol_concs& aerosol_concs)
 {
@@ -267,6 +212,10 @@ void Aerosol<TF>::get_radiation_fields(Aerosol_concs& aerosol_concs)
     aerosol_concs.set_vmr("aermr10", aermr10_a);
     aerosol_concs.set_vmr("aermr11", aermr11_a);
 }
+#endif
 
-template class Aerosol<double>;
+#ifdef FLOAT_SINGLE
 template class Aerosol<float>;
+#else
+template class Aerosol<double>;
+#endif

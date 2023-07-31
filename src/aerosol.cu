@@ -3,6 +3,7 @@
 #include "tools.h"
 #include "timedep.h"
 #include "aerosol.h"
+#include "Array.h"
 
 template<typename TF>
 void Aerosol<TF>::prepare_device()
@@ -78,9 +79,6 @@ void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (sw_timedep)
     {
-        auto& gd = grid.get_grid_data();
-        const int nmemsize  = gd.kcells*sizeof(TF);
-
         tdep_aermr01 ->update_time_dependent_prof_g(aermr01_g, timeloop);
         tdep_aermr02 ->update_time_dependent_prof_g(aermr02_g, timeloop);
         tdep_aermr03 ->update_time_dependent_prof_g(aermr03_g, timeloop);
@@ -92,21 +90,48 @@ void Aerosol<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         tdep_aermr09 ->update_time_dependent_prof_g(aermr09_g, timeloop);
         tdep_aermr10 ->update_time_dependent_prof_g(aermr10_g, timeloop);
         tdep_aermr11 ->update_time_dependent_prof_g(aermr11_g, timeloop);
-
-        cuda_safe_call(cudaMemcpy(aermr01.data(), aermr01_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr02.data(), aermr02_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr03.data(), aermr03_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr04.data(), aermr04_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr05.data(), aermr05_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr06.data(), aermr06_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr07.data(), aermr07_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr08.data(), aermr08_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr09.data(), aermr09_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr10.data(), aermr10_g, nmemsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(aermr11.data(), aermr11_g, nmemsize, cudaMemcpyDeviceToHost));
     }
 }
+
+template<typename TF>
+void Aerosol<TF>::get_radiation_fields(std::unique_ptr<Aerosol_concs_gpu>& aerosol_concs_gpu)
+{
+    auto& gd = grid.get_grid_data();
+    const int ncol = 1;
+
+    Array_gpu<Float,2> aermr01_a(aermr01_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr02_a(aermr02_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr03_a(aermr03_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr04_a(aermr04_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr05_a(aermr05_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr06_a(aermr06_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr07_a(aermr07_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr08_a(aermr08_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr09_a(aermr09_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr10_a(aermr10_g, {1, int(gd.kcells)});
+    Array_gpu<Float,2> aermr11_a(aermr11_g, {1, int(gd.kcells)});
+
+    const int kstart = gd.kgc+1;
+    const int kend = gd.ktot + gd.kgc;
+
+    aerosol_concs_gpu->set_vmr("aermr01", aermr01_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr02", aermr02_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr03", aermr03_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr04", aermr04_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr05", aermr05_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr06", aermr06_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr07", aermr07_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr08", aermr08_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr09", aermr09_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr10", aermr10_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+    aerosol_concs_gpu->set_vmr("aermr11", aermr11_a.subset({ {{1, ncol}, {kstart, kend}}} ));
+
+}
+
 #endif
 
-template class Aerosol<double>;
+#ifdef FLOAT_SINGLE
 template class Aerosol<float>;
+#else
+template class Aerosol<double>;
+#endif
