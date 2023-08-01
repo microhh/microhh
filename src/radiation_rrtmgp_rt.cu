@@ -2516,6 +2516,12 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
             save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
+
+        if (sw_update_background)
+        {
+            stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
+            stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
+        }
     }
 
     if (sw_shortwave)
@@ -2544,8 +2550,14 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
                 total_aod += aod550({icol});
             }
             Float mean_aod = total_aod/ncol;
-            std::cout << mean_aod << std::endl;
             stats.set_time_series("AOD550", mean_aod);
+        }
+
+        if (sw_update_background || !sw_fixed_sza)
+        {
+            stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
+            stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
+            stats.set_prof_background("sw_flux_dn_dir_ref", sw_flux_dn_dir_col.v());
         }
 
         const int nsfcsize = gd.ijcells*sizeof(Float);

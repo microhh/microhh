@@ -674,6 +674,11 @@ void Radiation_rrtmgp_rt<TF>::create(
         stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
         stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
         stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
+
+        if (sw_aerosol)
+        {
+            stats.add_time_series("AOD550", "Aerosol optical depth at 550nm", "-", group_name);
+        }
     }
 
     // Get the allowed cross sections from the cross list
@@ -948,6 +953,7 @@ void Radiation_rrtmgp_rt<TF>::create_column(
         Array<Float,2> p_lev(rad_nc.get_variable<Float>("p_lev", {n_lev, n_col}), {n_col, n_lev});
 
         stats.add_dimension("p_rad", n_lev);
+        stats.add_dimension("era_levels", n_lev);
 
         const std::string group_name = "radiation";
         const std::string root_group= "";
@@ -957,6 +963,28 @@ void Radiation_rrtmgp_rt<TF>::create_column(
                 "Pressure of radiation reference column",
                 "Pa", "p_rad", root_group,
                 p_lev.v());
+
+        if (sw_update_background || !sw_fixed_sza)
+        {
+            stats.add_prof("sw_flux_up_ref",
+                           "Shortwave upwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+            stats.add_prof("sw_flux_dn_ref",
+                           "Shortwave downwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+            stats.add_prof("sw_flux_dn_dir_ref",
+                           "Shortwave direct downwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+        }
+        if (sw_update_background)
+        {
+            stats.add_prof("lw_flux_up_ref",
+                           "Longwave upwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+            stats.add_prof("lw_flux_dn_ref",
+                           "Longwave downwelling flux of reference column",
+                           "W m-2", "era_levels", group_name);
+        }
     }
 
     // 4. Read background profiles on pressure levels

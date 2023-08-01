@@ -2022,7 +2022,6 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
                 stats.set_prof_background("sw_flux_dn_dir_ref", sw_flux_dn_dir_col.v());
-//                std::cout << "set prof succesful" << std::endl;
             }
 
             stats.set_time_series("sza", std::acos(mu0));
