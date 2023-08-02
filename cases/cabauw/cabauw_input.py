@@ -388,13 +388,13 @@ if __name__ == '__main__':
 
     # Simple equidistant grid.
     zsize = 4000
-    ktot = 128
+    ktot = 160
 
-    itot = 16
-    jtot = 16
+    itot = 512
+    jtot = 512
 
-    xsize = itot*50
-    ysize = jtot*50
+    xsize = 25600
+    ysize = 25600
 
     endtime = 43200
 
