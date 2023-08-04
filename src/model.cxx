@@ -255,6 +255,7 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
+    dust->create(timeloop->get_ifactor());
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
@@ -747,6 +748,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dust     ->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();

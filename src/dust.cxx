@@ -28,6 +28,8 @@
 #include "grid.h"
 #include "fields.h"
 #include "dust.h"
+#include "constants.h"
+#include "timeloop.h"
 
 namespace
 {
@@ -73,12 +75,41 @@ Dust<TF>::Dust(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
             if (ws.at(scalar) > 0)
                 throw std::runtime_error("Gravitational settling velocities need to be negative!");
         }
+
+        // Constraint on time stepping.
+        cfl_max = inputin.get_item<TF>("dust", "cfl_max", "", 1.2);
     }
 }
 
 template<typename TF>
 Dust<TF>::~Dust()
 {
+}
+
+template<typename TF>
+void Dust<TF>::create(const double ifactor)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Find minimum vertical grid spacing.
+    TF dz_min = TF(Constants::dbig);
+    for (int k=gd.kstart; k<gd.kend; ++k)
+       dz_min = std::min(dz_min, gd.dz[k]);
+
+    // Find maximum gravitational settling velocity.
+    TF w_max = -TF(Constants::dbig);
+    for (auto& w : ws)
+        w_max = std::max(w_max, std::abs(w.second));
+
+    // Calculate maximum time step.
+    const double dt_max = cfl_max / w_max * dz_min;
+    idt_max = dt_max * ifactor;
+}
+
+template<typename TF>
+unsigned long Dust<TF>::get_time_limit()
+{
+    return idt_max;
 }
 
 #ifndef USECUDA

@@ -37,15 +37,19 @@ class Dust
         ~Dust();
 
         void exec(Stats<TF>&);
+        void create(const double);
+        unsigned long get_time_limit();
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
 
+        bool sw_dust;
+        TF cfl_max;
+        unsigned long idt_max;
+
         // Gravitational settling velocities, negative downward.
         std::map<std::string, TF> ws;
-
-        bool sw_dust;
 };
 #endif
