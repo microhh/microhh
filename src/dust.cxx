@@ -42,15 +42,13 @@ namespace
             const int kstart, const int kend,
             const int jstride, const int kstride)
     {
-        const int kk = kstride;
-
         // Simple upwind advection, like in subsidence.
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jstride + k*kstride;
-                    st[ijk] -= ws * (s[ijk+kk]-s[ijk])*dzhi[k+1];
+                    st[ijk] -= ws * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
                 }
     }
 }
@@ -83,6 +81,7 @@ Dust<TF>::~Dust()
 {
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Dust<TF>::exec(Stats<TF>& stats)
 {
@@ -102,6 +101,7 @@ void Dust<TF>::exec(Stats<TF>& stats)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 }
+#endif
 
 template class Dust<double>;
 template class Dust<float>;
