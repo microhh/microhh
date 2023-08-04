@@ -42,6 +42,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "dust.h"
 #include "thermo.h"
 #include "radiation.h"
 #include "microphys.h"
@@ -133,6 +134,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        dust      = std::make_shared<Dust   <TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -396,6 +398,9 @@ void Model<TF>::exec()
 
                 // Add point and line sources of scalars.
                 source->exec(*timeloop);
+
+                // Gravitational settling of dust.
+                dust->exec(*stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
