@@ -52,7 +52,8 @@ def create_case_input(
         gpt_set,
         itot, jtot, ktot,
         xsize, ysize, zsize,
-        endtime, TF):
+        endtime, TF,
+        npx=1, npy=1):
 
     # Link required files (if not present)
     if use_htessel:
@@ -114,6 +115,9 @@ def create_case_input(
     Update .ini file
     """
     ini = mht.Read_namelist('cabauw.ini.base')
+
+    ini['master']['npx'] = npx
+    ini['master']['npy'] = npy
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
