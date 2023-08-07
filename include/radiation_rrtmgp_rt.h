@@ -65,11 +65,11 @@ using Aerosol_concs_gpu = Gas_concs_gpu;
 template<typename TF>
 class Radiation_rrtmgp_rt : public Radiation<TF>
 {
-	public:
-		Radiation_rrtmgp_rt(Master&, Grid<TF>&, Fields<TF>&, Input&);
+    public:
+        Radiation_rrtmgp_rt(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_rrtmgp_rt() {}
 
-		bool check_field_exists(const std::string& name)
+        bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
 
         void init(Timeloop<TF>&);
@@ -99,12 +99,12 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void backward_device() {};
         #endif
 
-	private:
-		using Radiation<TF>::swradiation;
-		using Radiation<TF>::master;
-		using Radiation<TF>::grid;
-		using Radiation<TF>::fields;
-		using Radiation<TF>::field3d_operators;
+    private:
+        using Radiation<TF>::swradiation;
+        using Radiation<TF>::master;
+        using Radiation<TF>::grid;
+        using Radiation<TF>::fields;
+        using Radiation<TF>::field3d_operators;
 
         void create_column(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);

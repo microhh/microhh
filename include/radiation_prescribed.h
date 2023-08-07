@@ -42,8 +42,8 @@ template<typename> class Timedep;
 template<typename TF>
 class Radiation_prescribed : public Radiation<TF>
 {
-	public:
-		Radiation_prescribed(Master&, Grid<TF>&, Fields<TF>&, Input&);
+    public:
+        Radiation_prescribed(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Radiation_prescribed();
 
         void init(Timeloop<TF>&);
@@ -58,7 +58,7 @@ class Radiation_prescribed : public Radiation<TF>
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_prescribed"); }
-		bool check_field_exists(const std::string& name)
+        bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_prescribed"); }
 
         // Empty functions which do nothing:
@@ -77,12 +77,12 @@ class Radiation_prescribed : public Radiation<TF>
         void backward_device();
         #endif
 
-	private:
-		using Radiation<TF>::swradiation;
-		using Radiation<TF>::master;
-		using Radiation<TF>::grid;
-		using Radiation<TF>::fields;
-		using Radiation<TF>::field3d_operators;
+    private:
+        using Radiation<TF>::swradiation;
+        using Radiation<TF>::master;
+        using Radiation<TF>::grid;
+        using Radiation<TF>::fields;
+        using Radiation<TF>::field3d_operators;
 
         bool swtimedep_prescribed;
 
