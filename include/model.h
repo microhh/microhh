@@ -44,6 +44,8 @@ template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Pres;
 template<typename> class Force;
+template<typename> class Aerosol;
+template<typename> class Background;
 template<typename> class Thermo;
 template<typename> class Microphys;
 template<typename> class Radiation;
@@ -94,6 +96,8 @@ class Model
         std::shared_ptr<Diff<TF>> diff;
         std::shared_ptr<Pres<TF>> pres;
         std::shared_ptr<Force<TF>> force;
+        std::shared_ptr<Aerosol<TF>> aerosol;
+        std::shared_ptr<Background<TF>> background;
         std::shared_ptr<Thermo<TF>> thermo;
         std::shared_ptr<Microphys<TF>> microphys;
         std::shared_ptr<Radiation<TF>> radiation;
