@@ -22,6 +22,7 @@
 #include <numeric>
 #include <string>
 #include <cmath>
+#include <stdexcept>
 
 #include "radiation_rrtmgp.h"
 #include "radiation_rrtmgp_functions.h"

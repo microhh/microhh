@@ -19,6 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdexcept>
+
 #include "radiation_disabled.h"
 #include "constants.h"
 
