@@ -70,6 +70,9 @@ def create_case_input(
         copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc')
         copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc')
 
+    if use_aerosols:
+        copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
+
     """
     Create vertical grid for LES
     """
@@ -381,7 +384,7 @@ if __name__ == '__main__':
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
-    use_aerosols =True           # False = no aerosols
+    use_aerosols = False         # False = no aerosols
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
