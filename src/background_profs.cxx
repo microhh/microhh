@@ -27,6 +27,10 @@ Background<TF>::Background(
 {
     // Read `.ini` settings.
     sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
+
+    if (!sw_update_background)
+        return;
+    
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
     sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
