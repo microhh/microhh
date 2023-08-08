@@ -22,6 +22,7 @@
 #include <numeric>
 #include <string>
 #include <cmath>
+#include <stdexcept>
 
 #include "radiation_rrtmgp.h"
 #include "radiation_rrtmgp_functions.h"
@@ -845,11 +846,8 @@ void Radiation_rrtmgp<TF>::create(
         stats.add_time_series("sza", "solar zenith angle", "rad", group_name);
         stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
 
-	if (sw_aerosol)
-        {
+        if (sw_aerosol)
             stats.add_time_series("AOD550", "Aerosol optical depth at 550nm", "-", group_name);
-	}
-
     }
 
     // Get the allowed cross sections from the cross list
@@ -2471,8 +2469,9 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
-	Array<Float, 1>&aod550,
+        Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
+        Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
+        Array<Float, 1>&aod550,
         const Array<Float,2>& t_lay, const Array<Float,2>& t_lev,
         const Array<Float,2>& h2o, const Array<Float, 2>& rh,
         const Array<Float,2>& clwp, const Array<Float,2>& ciwp,

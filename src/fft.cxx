@@ -325,7 +325,7 @@ namespace
     template<>
     void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
     {
-    	#ifdef FLOAT_SINGLE
+        #ifdef FLOAT_SINGLE
         fftwf_execute(pf);
         #endif
     }

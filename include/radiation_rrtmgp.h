@@ -57,11 +57,11 @@ using Aerosol_concs_gpu = Gas_concs_gpu;
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
 {
-	public:
-		Radiation_rrtmgp(Master&, Grid<TF>&, Fields<TF>&, Input&);
+    public:
+        Radiation_rrtmgp(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Radiation_rrtmgp() {}
 
-		bool check_field_exists(const std::string& name)
+        bool check_field_exists(const std::string& name)
         { throw std::runtime_error("\"check_field_exists()\" is not implemented in radiation_rrtmpg"); }
 
         void init(Timeloop<TF>&);
@@ -92,12 +92,12 @@ class Radiation_rrtmgp : public Radiation<TF>
         void backward_device() {};
         #endif
 
-	private:
-		using Radiation<TF>::swradiation;
-		using Radiation<TF>::master;
-		using Radiation<TF>::grid;
-		using Radiation<TF>::fields;
-		using Radiation<TF>::field3d_operators;
+    private:
+        using Radiation<TF>::swradiation;
+        using Radiation<TF>::master;
+        using Radiation<TF>::grid;
+        using Radiation<TF>::fields;
+        using Radiation<TF>::field3d_operators;
 
         Boundary_cyclic<TF> boundary_cyclic;
 
@@ -165,7 +165,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_shortwave(
                 Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
-		        Array<Float,1>&,
+                Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
@@ -254,7 +254,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
-	    Array<Float,1> aod550;
+        Array<Float,1> aod550;
         int ibnd_550;
 
         Gas_concs gas_concs_col;
@@ -314,8 +314,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
         std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
 
-
-	#ifdef USECUDA
+        #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;

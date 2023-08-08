@@ -2103,14 +2103,16 @@ void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>
                     const int day_of_year = int(timeloop.calc_day_of_year());
                     const int year = timeloop.get_year();
                     const Float seconds_after_midnight = Float(timeloop.calc_hour_of_day()*3600);
-                    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+                    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(
+                            lat, lon, day_of_year, seconds_after_midnight, year);
 
                     // Calculate correction factor for impact Sun's distance on the solar "constant"
                     const Float frac_day_of_year = Float(day_of_year) + seconds_after_midnight / Float(86400);
                     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
-		        }
-		if (!sw_fixed_sza || sw_update_background)
-		{
+                }
+
+                if (!sw_fixed_sza || sw_update_background)
+                {
                     if (is_day(this->mu0) || !sw_is_tuned)
                     {
                         const int n_bnd = kdist_sw->get_nband();

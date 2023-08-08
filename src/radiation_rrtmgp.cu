@@ -1443,13 +1443,13 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
                     cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
 
-		    // Set tendency to zero if sw was calculated just for tuning..
-		    if (!sw_is_tuned)
+                    // Set tendency to zero if sw was calculated just for tuning..
+                    if (!sw_is_tuned)
                         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
                 }
 
-		if (!sw_is_tuned)
-		    sw_is_tuned = true;
+                if (!sw_is_tuned)
+                    sw_is_tuned = true;
 
                 if (do_radiation_stats)
                 {

@@ -1164,7 +1164,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
                     "Shortwave direct downwelling flux of reference column",
                     "W m-2", "p_rad", group_name,
                     sw_flux_dn_dir_col.v());
-		}
+            }
         }
     }
 }
