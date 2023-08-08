@@ -23,6 +23,8 @@
 #ifndef THERMO_DRY_H
 #define THERMO_DRY_H
 
+#include <stdexcept>
+
 #include "boundary_cyclic.h"
 #include "timedep.h"
 #include "thermo.h"

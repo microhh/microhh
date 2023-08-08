@@ -23,6 +23,7 @@
 #ifndef THERMO_BUOY_H
 #define THERMO_BUOY_H
 
+#include <stdexcept>
 #include "thermo.h"
 
 class Master;

@@ -23,6 +23,7 @@
 #ifndef THERMO_DISABLED_H
 #define THERMO_DISABLED_H
 
+#include <stdexcept>
 #include "thermo.h"
 
 class Master;
