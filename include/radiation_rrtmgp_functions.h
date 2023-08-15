@@ -85,9 +85,10 @@ namespace Radiation_rrtmgp_functions
 
         const Float cos_elevation = std::cos(Float(0.5)*pi - std::acos(cos_zenith));
 
-        const Float cos_azimuth = (
+        // put maximum at -1 to prevent problems in single precision
+        const Float cos_azimuth = std::max(Float(-1.), (
               std::cos(radlat) * std::sin(declination_angle)
-            - std::sin(radlat) * std::cos(declination_angle) * std::cos(hour_angle) ) / cos_elevation;
+            - std::sin(radlat) * std::cos(declination_angle) * std::cos(hour_angle) ) / cos_elevation);
 
         const Float azimuth = (hour_angle <= Float(0.)) ? std::acos(cos_azimuth) : Float(2.)*pi - std::acos(cos_azimuth);
 
