@@ -269,8 +269,8 @@ class Read_grid:
         self.dim['z'] = self.read(ktot)
         self.dim['zh'][:-1] = self.read(ktot)
 
-        self.dim['zh'][-1] = self.dim['z'][-1] + 2*(self.dim['z'][-1] - self.dim['zh'][-2])
-
+        self.dim['zh'][-1] = 2 * self.dim['z'][-1] - self.dim['zh'][-2]
+        print('zh',self.dim['zh'])
         self.fin.close()
         del self.fin
 
@@ -379,17 +379,18 @@ def get_cross_indices(variable, mode):
         raise ValueError('\"mode\" should be in {\"xy\", \"xz\", \"yz\"}')
 
     # Get a list of all the cross-section files
-    files = glob.glob('{}.{}.*.*'.format(variable, mode))
+    files = glob.glob('{}.{}.*.*.*'.format(variable, mode))
     if len(files) == 0:
         raise Exception('Cannot find any cross-section')
 
     # Get a list with all the cross-section files for one time
     time = files[0].split('.')[-1]
-    files = glob.glob('{}.{}.*.{}'.format(variable, mode, time))
+    halflevel = files[0].split('.')[2]
+    files = glob.glob('{}.{}.*.*.{}'.format(variable, mode, time))
 
     # Get the indices
     indices = sorted([int(f.split('.')[-2]) for f in files])
-    return indices
+    return indices, halflevel
 
 
 _opts = {
@@ -1041,7 +1042,6 @@ def run_restart(
         if not case.success:
             return 1
     return 0
-
 
 def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
     if srcdir is None:
