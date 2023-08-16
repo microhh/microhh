@@ -114,7 +114,7 @@ void Boundary_surface_lsm<TF>::exec(
     TF* sw_up = radiation.get_surface_radiation_g("sw_up");
     TF* lw_dn = radiation.get_surface_radiation_g("lw_down");
     TF* lw_up = radiation.get_surface_radiation_g("lw_up");
-
+    
     // Get (near-) surface thermo.
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
     TF* T_bot = tmp1->flux_bot_g;
@@ -456,7 +456,7 @@ void Boundary_surface_lsm<TF>::exec(
             cuda_check_error();
         }
 
-    // Calc MO gradients, for subgrid scheme
+    // Calc MO gaadients, for subgrid scheme
     bsk::calc_duvdz_mo_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,

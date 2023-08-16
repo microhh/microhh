@@ -54,6 +54,8 @@
 #include "dump.h"
 #include "model.h"
 #include "source.h"
+#include "aerosol.h"
+#include "background_profs.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -138,6 +140,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -196,6 +200,8 @@ void Model<TF>::init()
     decay->init(*input);
     budget->init();
     source->init();
+    aerosol->init();
+    background->init(*input_nc, *timeloop);
 
     stats->init(timeloop->get_ifactor());
     column->init(timeloop->get_ifactor());
@@ -258,6 +264,8 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
+    aerosol->create(*input, *input_nc, *stats);
+    background->create(*input, *input_nc, *stats);
 
     microphys->create(*input, *input_nc, *stats, *cross, *dump, *column);
 
@@ -343,6 +351,8 @@ void Model<TF>::exec()
                 thermo   ->update_time_dependent(*timeloop);
                 force    ->update_time_dependent(*timeloop);
                 radiation->update_time_dependent(*timeloop);
+                aerosol  ->update_time_dependent(*timeloop);
+                background  ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -371,7 +381,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol, *background);
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
@@ -438,7 +448,7 @@ void Model<TF>::exec()
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
                     if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
                     {
-                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats);
+                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats, *aerosol, *background);
                     }
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
@@ -576,6 +586,7 @@ void Model<TF>::prepare_gpu()
     microphys->prepare_device();
     radiation->prepare_device();
     column   ->prepare_device();
+    aerosol  ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -595,6 +606,8 @@ void Model<TF>::clear_gpu()
     microphys->clear_device();
     radiation->clear_device();
     column   ->clear_device();
+    aerosol  ->clear_device();
+
     // Clear pressure last, for memory check
     pres     ->clear_device();
 }
@@ -614,6 +627,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
         thermo   ->exec_stats(*stats);
+        background ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
         diff     ->exec_stats(*stats);
         budget   ->exec_stats(*stats);

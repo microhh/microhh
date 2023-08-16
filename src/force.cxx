@@ -22,7 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
-#include <math.h>
+// #include <math.h>
 #include <iostream>
 #include "master.h"
 #include "grid.h"
