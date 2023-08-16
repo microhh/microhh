@@ -24,6 +24,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>    // std::count
+#include <stdexcept>
+
 #include "master.h"
 #include "grid.h"
 #include "soil_grid.h"
