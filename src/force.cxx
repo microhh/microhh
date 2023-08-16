@@ -22,7 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
-#include <math.h>
+// #include <math.h>
 #include <iostream>
 #include "master.h"
 #include "grid.h"
@@ -321,15 +321,10 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
     std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
 
-    if (swwls_in == "1" || swwls_in == "mean" || swwls_in == "local")
+    if (swwls_in == "mean" || swwls_in == "local")
         swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
-
-    // Checks on input:
-    if (swwls_in == "1")
-    {
-        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=local\"\n");
-        swwls_in = "local";
-    }
+    else
+        throw std::runtime_error("Invalid option for \"swlspres\"");
 
     // Set the internal switches and read other required input
     // Large-scale pressure forcing.

@@ -26,6 +26,9 @@ def test_cabauw_case(executable):
 
     # Don't test ray-tracer for now..
     use_rt = False
+    # include or exclude aerosols
+    use_aerosols = False
+
     gpt_set = '128_112'
 
     for use_htessel in [True, False]:
@@ -60,6 +63,7 @@ def test_cabauw_case(executable):
                             use_htessel,
                             use_rrtmgp,
                             use_rt,
+                            use_aerosols,
                             use_homogeneous_z0,
                             use_homogeneous_ls,
                             gpt_set,
