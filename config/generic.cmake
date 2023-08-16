@@ -1,8 +1,7 @@
 # Generic CMake file that should work on many systems, provided that the environmental variables are set properly
 # Provides pathways for Intel and GCC compilers
 # Make sure to set the following variables: CPLUS_INCLUDE_PATH and LIBRARY_PATH (depending on the system configuriation, they may be called differently)
-# The following libraries should be included: netcdf fftw3 fftw3f hdf5 
-# If using CUDA, also include cufft 
+# The following libraries should be included: netcdf fftw3 fftw3f hdf5
 #
 # Tested on the following systems:
 # ARM Cumulus with GCC CUDA/MPICH (RedHat)
@@ -68,8 +67,10 @@ set(HDF5_LIB "hdf5")
 set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necessary to add m z curl sz if necessary
 
 if(USECUDA)
-    set(CMAKE_CUDA_ARCHITECTURES 80)
-    set(USER_CUDA_NVCC_FLAGS "-std=c++17 --expt-relaxed-constexpr")
+    set(CMAKE_CUDA_ARCHITECTURES 70)
+    set(USER_CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
+    set(USER_CUDA_NVCC_FLAGS_RELEASE "-DNDEBUG")
+    set(USER_CUDA_NVCC_FLAGS_DEBUG "-O0 -g -DCUDACHECKS")
     add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
 endif()
 
