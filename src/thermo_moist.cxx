@@ -1957,11 +1957,11 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_qlqithv = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water.
-        const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
-        const std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
-        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
-        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqipath", "qlqibase", "qlqitop"};
-        const std::vector<std::string> allowed_crossvars_qsat = {"qsatpath"};
+        const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
+        const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top"};
+        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi_path", "qlqi_base", "qlqi_top"};
+        const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
 
@@ -2191,12 +2191,12 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     {
         if (it == "b")
             cross.cross_simple(output->fld.data(), no_offset, "b", iotime, gd.sloc);
-        else if (it == "blngrad")
-            cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
-        else if (it == "bbot")
-            cross.cross_plane(output->fld_bot.data(), no_offset, "bbot", iotime);
-        else if (it == "bfluxbot")
-            cross.cross_plane(output->flux_bot.data(), no_offset, "bfluxbot", iotime);
+        else if (it == "b_lngrad")
+            cross.cross_lngrad(output->fld.data(), "b_lngrad", iotime);
+        else if (it == "b_bot")
+            cross.cross_plane(output->fld_bot.data(), no_offset, "b_bot", iotime);
+        else if (it == "b_fluxbot")
+            cross.cross_plane(output->flux_bot.data(), no_offset, "b_fluxbot", iotime);
     }
 
     if (swcross_ql)
@@ -2206,12 +2206,12 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     {
         if (it == "ql")
             cross.cross_simple(output->fld.data(), no_offset, "ql", iotime, gd.sloc);
-        if (it == "qlpath")
-            cross.cross_path(output->fld.data(), "qlpath", iotime);
-        if (it == "qlbase")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlbase", iotime);
-        if (it == "qltop")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qltop", iotime);
+        if (it == "ql_path")
+            cross.cross_path(output->fld.data(), "ql_path", iotime);
+        if (it == "ql_base")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "ql_base", iotime);
+        if (it == "ql_top")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "ql_top", iotime);
     }
 
     if (swcross_qi)
@@ -2222,7 +2222,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         if (it == "qi")
             cross.cross_simple(output->fld.data(), no_offset, "qi", iotime, gd.sloc);
         if (it == "qipath")
-            cross.cross_path(output->fld.data(), "qipath", iotime);
+            cross.cross_path(output->fld.data(), "qi_path", iotime);
     }
 
     if (swcross_qlqi)
@@ -2230,12 +2230,12 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : crosslist)
     {
-        if (it == "qlqipath")
-            cross.cross_path(output->fld.data(), "qlqipath", iotime);
-        if (it == "qlqibase")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqibase", iotime);
-        if (it == "qlqitop")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqitop", iotime);
+        if (it == "qlqi_path")
+            cross.cross_path(output->fld.data(), "qlqi_path", iotime);
+        if (it == "qlqi_base")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqi_base", iotime);
+        if (it == "qlqi_top")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqi_top", iotime);
     }
 
     if (swcross_qsat)
@@ -2243,8 +2243,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : crosslist)
     {
-        if (it == "qsatpath")
-            cross.cross_path(output->fld.data(), "qsatpath", iotime);
+        if (it == "qsat_path")
+            cross.cross_path(output->fld.data(), "qsat_path", iotime);
     }
 
     for (auto& it : crosslist)

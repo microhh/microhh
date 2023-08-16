@@ -820,7 +820,7 @@ void Thermo_vapor<TF>::create_cross(Cross<TF>& cross)
     {
         swcross_b = false;
         // Vectors with allowed cross variables for buoyancy and liquid water
-        std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
+        std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
 
         crosslist  = cross.get_enabled_variables(allowed_crossvars_b);
 
@@ -927,12 +927,12 @@ void Thermo_vapor<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         TF no_offset = 0.;
         if (it == "b")
             cross.cross_simple(output->fld.data(), no_offset, "b", iotime, gd.sloc);
-        else if (it == "blngrad")
-            cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
-        else if (it == "bbot")
-            cross.cross_plane(output->fld_bot.data(), no_offset, "bbot", iotime);
-        else if (it == "bfluxbot")
-            cross.cross_plane(output->flux_bot.data(), no_offset, "bfluxbot", iotime);
+        else if (it == "b_lngrad")
+            cross.cross_lngrad(output->fld.data(), "b_lngrad", iotime);
+        else if (it == "b_bot")
+            cross.cross_plane(output->fld_bot.data(), no_offset, "b_bot", iotime);
+        else if (it == "b_fluxbot")
+            cross.cross_plane(output->flux_bot.data(), no_offset, "b_fluxbot", iotime);
     }
 
     fields.release_tmp(output);

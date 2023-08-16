@@ -976,7 +976,7 @@ void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                cross.cross_plane(tmp->flux_bot.data(), no_offset, scalar+"fluxbot_ib", iotime);
+                cross.cross_plane(tmp->flux_bot.data(), no_offset, scalar+"_fluxbot_ib", iotime);
 
                 fields.release_tmp(tmp);
             }

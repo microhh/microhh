@@ -270,7 +270,6 @@ class Read_grid:
         self.dim['zh'][:-1] = self.read(ktot)
 
         self.dim['zh'][-1] = 2 * self.dim['z'][-1] - self.dim['zh'][-2]
-        print('zh',self.dim['zh'])
         self.fin.close()
         del self.fin
 
