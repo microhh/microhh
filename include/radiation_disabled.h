@@ -51,7 +51,7 @@ class Radiation_disabled : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) {};
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) {};
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&) {};
 
         unsigned long get_time_limit(unsigned long);
         void update_time_dependent(Timeloop<TF>&) {};
@@ -67,7 +67,7 @@ class Radiation_disabled : public Radiation<TF>
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) {};
         void exec_individual_column_stats(
-                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) {};
+                Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&) {};
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
