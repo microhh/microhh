@@ -323,8 +323,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
 
     if (swwls_in == "mean" || swwls_in == "local")
         swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
-    else
-        throw std::runtime_error("Invalid option for \"swlspres\"");
 
     // Set the internal switches and read other required input
     // Large-scale pressure forcing.
