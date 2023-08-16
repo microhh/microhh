@@ -95,7 +95,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=1
+swwls=local
 swtimedep_wls=1
 
 [fields]
