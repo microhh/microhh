@@ -69,14 +69,10 @@ set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necess
 
 if(USECUDA)
     set(CMAKE_CUDA_ARCHITECTURES 80)
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(LIBS ${LIBS} -rdynamic libcufft.so)
     set(USER_CUDA_NVCC_FLAGS "-std=c++17 --expt-relaxed-constexpr")
-    set(USER_CUDA_NVCC_RELEASE_FLAGS "-O3 --use_fast_math")
     add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
 endif()
 
 # Disable MPI-IO for cross-sections on GPFS file systems. This may or may not be necessary, depending on the system
 add_definitions(-DDISABLE_2D_MPIIO=1)
-
 add_definitions(-DRTE_USE_CBOOL)
