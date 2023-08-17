@@ -209,7 +209,7 @@ namespace
     {
         const int ii = 1;
 
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -217,15 +217,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     st[ijk] = interp2(w[ijk-ii], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
                 }
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                int ijk = i + j*jj + kstart*kk;
-                st[ijk] = 0;
-                ijk = i + j*jj + kend*kk;
-                st[ijk] = 0;
-            }
     }
 
     template<typename TF>
@@ -234,7 +225,7 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -242,16 +233,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     st[ijk] = interp2(w[ijk-jj], w[ijk]) * interp2(s[ijk-kk], s[ijk]);
                 }
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                int ijk = i + j*jj + kstart*kk;
-                st[ijk] = 0;
-                ijk = i + j*jj + kend*kk;
-                st[ijk] = 0;
-            }
-
     }
 
     template<typename TF>
@@ -260,7 +241,7 @@ namespace
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int jj, const int kk)
     {
-        for (int k=kstart+1; k<kend; ++k)
+        for (int k=kstart; k<kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -268,15 +249,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     st[ijk] = w[ijk] * interp2(s[ijk-kk], s[ijk]);
                 }
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                int ijk = i + j*jj + kstart*kk;
-                st[ijk] = 0;
-                ijk = i + j*jj + kend*kk;
-                st[ijk] = 0;
-            }
     }
 }
 
