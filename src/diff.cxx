@@ -62,16 +62,27 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
 
     if (swdiff == "0")
         return std::make_shared<Diff_disabled<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
-    else if (swdiff == "2")
-        return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
-    else if (swdiff == "4")
-        return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
-    else if (swdiff == "smag2")
-        return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
+    else if (gridin.get_spatial_order() == Grid_order::Second)
+    {
+        if (swdiff == "2")
+            return std::make_shared<Diff_2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
+        else if (swdiff == "smag2")
+            return std::make_shared<Diff_smag2<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
+        else
+        {
+            std::string msg = "swdiff = \"" + swdiff + "\" is an illegal value for swdiff with swspatialorder = \"2\"";
+            throw std::runtime_error(msg);
+        }
+    }
     else
     {
-        std::string msg = swdiff + " is an illegal value for swdiff";
-        throw std::runtime_error(msg);
+        if (swdiff == "4")
+            return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
+        else
+        {
+            std::string msg = "swdiff = \"" + swdiff + "\" is an illegal value for swdiff with swspatialorder = \"4\"";
+            throw std::runtime_error(msg);
+        }
     }
 }
 

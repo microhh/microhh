@@ -61,24 +61,35 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
 
     if (swadvec == "0")
         return std::make_shared<Advec_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "2")
-        return std::make_shared<Advec_2<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "4")
-        return std::make_shared<Advec_4<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "4m")
-        return std::make_shared<Advec_4m<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "2i4")
-        return std::make_shared<Advec_2i4<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "2i5")
-        return std::make_shared<Advec_2i5<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "2i53")
-        return std::make_shared<Advec_2i53<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swadvec == "2i62")
-        return std::make_shared<Advec_2i62<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (gridin.get_spatial_order() == Grid_order::Second)
+    {
+        if (swadvec == "2")
+            return std::make_shared<Advec_2<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "2i4")
+            return std::make_shared<Advec_2i4<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "2i5")
+            return std::make_shared<Advec_2i5<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "2i53")
+            return std::make_shared<Advec_2i53<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "2i62")
+            return std::make_shared<Advec_2i62<TF>>(masterin, gridin, fieldsin, inputin);
+        else
+        {
+            std::string msg = "swadvec = \"" + swadvec +  "\" is an illegal value with swspatialorder = \"2\"";
+            throw std::runtime_error(msg);
+        }
+    }
     else
     {
-        std::string msg = swadvec +  " is an illegal value for swadvec";
-        throw std::runtime_error(msg);
+        if (swadvec == "4")
+            return std::make_shared<Advec_4<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "4m")
+            return std::make_shared<Advec_4m<TF>>(masterin, gridin, fieldsin, inputin);
+        else
+        {
+            std::string msg = "swadvec = \"" + swadvec +  "\" is an illegal value with swspatialorder = \"4\"";
+            throw std::runtime_error(msg);
+        }
     }
 }
 
