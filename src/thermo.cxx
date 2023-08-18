@@ -32,7 +32,6 @@
 #include "thermo_buoy.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
-#include "thermo_vapor.h"
 #include "thermo_disabled.h"
 
 template<typename TF>
@@ -64,8 +63,6 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(
         return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin, sim_mode);
     else if (swthermo == "moist")
         return std::make_shared<Thermo_moist<TF>>(masterin, gridin, fieldsin, inputin);
-    else if (swthermo == "vapor")
-        return std::make_shared<Thermo_vapor<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swthermo == "buoy")
         return std::make_shared<Thermo_buoy<TF>>(masterin, gridin, fieldsin, inputin);
     else
