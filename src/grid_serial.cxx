@@ -98,12 +98,12 @@ void Grid<TF>::load_grid()
     if (nerror)
         throw std::runtime_error("Error in grid");
 
-    fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
-    fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
-    fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile);
-    fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile);
-    fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile);
-    fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile);
+    (void)!fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
+    (void)!fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
+    (void)!fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile);
+    (void)!fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile);
+    (void)!fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile);
+    (void)!fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile);
     fclose(pFile);
 
     // calculate the missing coordinates

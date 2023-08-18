@@ -501,9 +501,9 @@ void Timeloop<TF>::load(int starttime)
         }
         else
         {
-            fread(&itime    , sizeof(unsigned long), 1, pFile);
-            fread(&idt      , sizeof(unsigned long), 1, pFile);
-            fread(&iteration, sizeof(int), 1, pFile);
+            (void)!fread(&itime    , sizeof(unsigned long), 1, pFile);
+            (void)!fread(&idt      , sizeof(unsigned long), 1, pFile);
+            (void)!fread(&iteration, sizeof(int), 1, pFile);
 
             fclose(pFile);
         }

@@ -1230,8 +1230,8 @@ void Thermo_moist<TF>::load(const int iotime)
         {
             master.print_message("OK\n");
 
-            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
-            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            (void)!fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+            (void)!fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
             fclose(pFile);
         }
     }
