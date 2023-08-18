@@ -74,9 +74,9 @@ endif()
 
 # Start the project only after the system specific settings are loaded.
 if(USECUDA)
-  project(microhhc C CXX CUDA Fortran)
+  project(microhhc CXX CUDA Fortran)
 else()
-  project(microhhc C CXX Fortran)
+  project(microhhc CXX Fortran)
 endif()
 
 
