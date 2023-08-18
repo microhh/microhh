@@ -88,17 +88,17 @@ void Grid<TF>::load_grid()
     if (pFile == NULL)
         nerror++;
 
-    if(fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
+    if (fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
         ++nerror;
-    if(fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
+    if (fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
         ++nerror;
-    if(fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
+    if (fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
         ++nerror;
-    if(fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
+    if (fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
         ++nerror;
-    if(fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
+    if (fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
         ++nerror;
-    if(fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
+    if (fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
         ++nerror;
     fclose(pFile);
 

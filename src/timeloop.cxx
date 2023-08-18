@@ -501,11 +501,11 @@ void Timeloop<TF>::load(int starttime)
         }
         else
         {
-            if(fread(&itime    , sizeof(unsigned long), 1, pFile) != 1 )
+            if (fread(&itime    , sizeof(unsigned long), 1, pFile) != 1 )
                 ++nerror;
-            if(fread(&idt      , sizeof(unsigned long), 1, pFile) != 1 )
+            if (fread(&idt      , sizeof(unsigned long), 1, pFile) != 1 )
                 ++nerror;
-            if(fread(&iteration, sizeof(int), 1, pFile) != 1 )
+            if (fread(&iteration, sizeof(int), 1, pFile) != 1 )
                 ++nerror;
 
             fclose(pFile);

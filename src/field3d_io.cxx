@@ -873,7 +873,7 @@ int Field3d_io<TF>::load_xy_slice(
     pFile = fopen(filename, "rb");
     if (pFile == NULL)
         return 1;
-    if(fread(tmp, sizeof(TF), count, pFile) != count )
+    if (fread(tmp, sizeof(TF), count, pFile) != count )
         return 1;
     fclose(pFile);
 
