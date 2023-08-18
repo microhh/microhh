@@ -79,7 +79,7 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
             throw std::runtime_error(msg);
         }
     }
-    else
+    else if (gridin.get_spatial_order() == Grid_order::Fourth)
     {
         if (swadvec == "4")
             return std::make_shared<Advec_4<TF>>(masterin, gridin, fieldsin, inputin);
@@ -90,6 +90,11 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
             std::string msg = "swadvec = \"" + swadvec +  "\" is an illegal value with swspatialorder = \"4\"";
             throw std::runtime_error(msg);
         }
+    }
+    else
+    {
+        std::string msg = "Illegal combination of grid and advection settings";
+        throw std::runtime_error(msg);
     }
 }
 

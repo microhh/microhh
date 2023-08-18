@@ -74,7 +74,7 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
             throw std::runtime_error(msg);
         }
     }
-    else
+    else if (gridin.get_spatial_order() == Grid_order::Fourth)
     {
         if (swdiff == "4")
             return std::make_shared<Diff_4<TF>>(masterin, gridin, fieldsin, boundaryin, inputin);
@@ -83,6 +83,11 @@ std::shared_ptr<Diff<TF>> Diff<TF>::factory(
             std::string msg = "swdiff = \"" + swdiff + "\" is an illegal value for swdiff with swspatialorder = \"4\"";
             throw std::runtime_error(msg);
         }
+    }
+    else
+    {
+        std::string msg = "Illegal combination of grid and diffusion settings";
+        throw std::runtime_error(msg);
     }
 }
 
