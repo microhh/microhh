@@ -35,7 +35,6 @@
 #include "advec_2i4.h"
 #include "advec_2i5.h"
 #include "advec_2i62.h"
-#include "advec_2i53.h"
 #include "advec_4.h"
 #include "advec_4m.h"
 
@@ -69,8 +68,6 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
             return std::make_shared<Advec_2i4<TF>>(masterin, gridin, fieldsin, inputin);
         else if (swadvec == "2i5")
             return std::make_shared<Advec_2i5<TF>>(masterin, gridin, fieldsin, inputin);
-        else if (swadvec == "2i53")
-            return std::make_shared<Advec_2i53<TF>>(masterin, gridin, fieldsin, inputin);
         else if (swadvec == "2i62")
             return std::make_shared<Advec_2i62<TF>>(masterin, gridin, fieldsin, inputin);
         else
