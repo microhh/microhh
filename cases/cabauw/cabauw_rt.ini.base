@@ -135,7 +135,7 @@ masklist=ql,qlcore,bplus
 swcross=1
 sampletime=60
 xy=0,100,200,300,400,600,800,1000,1200,1400
-crosslist=qlqipath,qlqibase,qlqitop,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thlfluxbot,qtfluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt,lw_flux_up,lw_flux_dn,thl,qt,ql,w,b
+crosslist=qlqi_path,qlqi_base,qlqi_top,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thl_fluxbot,qt_fluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt,lw_flux_up,lw_flux_dn,thl,qt,ql,w,b
 
 [column]
 swcolumn=0

@@ -572,13 +572,14 @@ int Cross<TF>::cross_simple(
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
-
+    char locstr[4];
+    std::sprintf(locstr,"%.1u%.1u%.1u",loc[0],loc[1],loc[2]);
     // Loop over the index arrays to save all xz cross sections.
     if (loc == gd.vloc)
     {
         for (auto& it: jxzh)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz", locstr, it, iotime);
             nerror += check_save(
                     field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
@@ -587,7 +588,7 @@ int Cross<TF>::cross_simple(
     {
         for (auto& it: jxz)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz",  locstr, it, iotime);
             nerror += check_save(
                     field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
@@ -598,7 +599,7 @@ int Cross<TF>::cross_simple(
     {
         for (auto& it: ixzh)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
             nerror += check_save(
                     field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
@@ -607,7 +608,7 @@ int Cross<TF>::cross_simple(
     {
         for (auto& it: ixz)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
             nerror += check_save(
                     field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
         }
@@ -618,7 +619,7 @@ int Cross<TF>::cross_simple(
         // loop over the index arrays to save all xy cross sections
         for (auto& it: kxyh)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
             nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
         }
     }
@@ -626,7 +627,7 @@ int Cross<TF>::cross_simple(
     {
         for (auto& it: kxy)
         {
-            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", it, iotime);
+            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
             nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
         }
     }
@@ -643,8 +644,8 @@ int Cross<TF>::cross_plane(TF* restrict data, TF restrict offset, std::string na
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
-
-    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", iotime);
+    
+    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy.000", iotime);
     nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename), filename);
     fields.release_tmp(tmpfld);
     return nerror;

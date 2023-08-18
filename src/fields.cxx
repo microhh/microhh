@@ -482,18 +482,18 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
         for (auto& it : ap)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, cross_path);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "_top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "_path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
@@ -1236,13 +1236,13 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
     }
     for (auto& it : cross_lngrad)
-        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
+        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"_lngrad", iotime);
 
     for (auto& it : cross_fluxbot)
-        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"fluxbot", iotime);
+        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"_fluxbot", iotime);
 
     for (auto& it : cross_fluxtop)
-        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"fluxtop", iotime);
+        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"_fluxtop", iotime);
 
     for (auto& it : cross_bot)
     {
@@ -1252,7 +1252,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"bot", iotime);
+        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"_bot", iotime);
     }
 
     for (auto& it : cross_top)
@@ -1263,11 +1263,11 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"top", iotime);
+        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
     }
     
     for (auto& it : cross_path)
-        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }
 
 template<typename TF>
