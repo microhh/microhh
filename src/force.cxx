@@ -462,14 +462,23 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
-        group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
-        std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
-        std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
-
         const TF offset = 0;
-        for (auto& it : tdep_geo)
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
+        if (tdep_geo.find("u_geo")==tdep_geo.end())
+        {
+            group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
+            std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
+        }
+        else
+            tdep_geo["u_geo"]->create_timedep_prof(input_nc, offset, timedep_dim);
+
+        if (tdep_geo.find("v_geo")==tdep_geo.end())
+        {
+            group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
+            std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
+        }
+        else
+            tdep_geo["v_geo"]->create_timedep_prof(input_nc, offset, timedep_dim);
+
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
 
@@ -488,14 +497,17 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the large scale sources, which are the variable names with a "_ls" suffix.
         for (std::string& it : lslist)
         {
-            group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
-            std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+            if (tdep_ls.find(it)==tdep_ls.end())
+            {
+                group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
+                std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+            }
+            else
+            {
+                const TF offset = 0;
+                tdep_ls[it]->create_timedep_prof(input_nc, offset, timedep_dim);
+            }
         }
-
-        // Process the time dependent data
-        const TF offset = 0;
-        for (auto& it : tdep_ls)
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
 
         for (std::string& it : lslist)
             stats.add_tendency(*fields.at.at(it), "z", tend_name_ls, tend_longname_ls);
@@ -518,42 +530,53 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the nudging profiles, which are the variable names with a "nudge" suffix
         for (auto& it : nudgelist)
         {
-            group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
-            std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
-
-            // Account for the Galilean transformation
-            if (it == "u")
-                add_offset(nudgeprofs[it].data(), -gd.utrans, gd.kstart, gd.kend);
-            else if (it == "v")
-                add_offset(nudgeprofs[it].data(), -gd.vtrans, gd.kstart, gd.kend);
-        }
-
-        // Process the time dependent data
-        for (auto& it : tdep_nudge)
-        {
-            // Account for the Galilean transformation
-            TF offset;
-            if (it.first == "u")
-                offset = -gd.utrans;
-            else if (it.first == "v")
-                offset = -gd.vtrans;
+            if (tdep_nudge.find(it)==tdep_nudge.end())
+            {
+                group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
+                std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
+                // Account for the Galilean transformation
+                if (it == "u")
+                    add_offset(nudgeprofs[it].data(), -gd.utrans, gd.kstart, gd.kend);
+                else if (it == "v")
+                    add_offset(nudgeprofs[it].data(), -gd.vtrans, gd.kstart, gd.kend);
+            }
             else
-                offset = 0;
+            {
+                // Process the time dependent data
+                for (auto& it : tdep_nudge)
+                {
+                    // Account for the Galilean transformation
+                    TF offset;
+                    if (it.first == "u")
+                        offset = -gd.utrans;
+                    else if (it.first == "v")
+                        offset = -gd.vtrans;
+                    else
+                        offset = 0;
 
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
-            stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
+                    it.second->create_timedep_prof(input_nc, offset, timedep_dim);
+                    stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
+                }
+            }
         }
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
     {
-        group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
-        std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
-
         const TF offset = 0;
-        tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
+        if (not tdep_wls)
+        {
 
+            group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
+            std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
+        }
+        else
+        {
+            const TF offset = 0;
+            tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
+        }
+        
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
 
