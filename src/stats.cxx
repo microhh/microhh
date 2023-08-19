@@ -1066,7 +1066,7 @@ void Stats<TF>::add_prof(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        throw std::runtime_error("Variable " + name + "is added twice in add_prof_series()");
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_series()");
 
     Level_type level;
     if ((zloc == "z") || (zloc == "zs") || (zloc == "era_levels"))
@@ -1137,7 +1137,7 @@ void Stats<TF>::add_fixed_prof(
     auto& gd = grid.get_grid_data();
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        throw std::runtime_error("Variable " + name + "is added twice in add_fixed_prof()");
+        throw std::runtime_error("Variable " + name + " is added twice in add_fixed_prof()");
 
     for (auto& mask : masks)
     {
@@ -1181,7 +1181,7 @@ void Stats<TF>::add_fixed_prof_raw(
 {
     
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        throw std::runtime_error("Variable " + name + "is added twice in add_prof_raw()");
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
 
     for (auto& mask : masks)
     {
@@ -1215,7 +1215,7 @@ void Stats<TF>::add_time_series(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        throw std::runtime_error("Variable " + name + "is added twice in add_time_series()");
+        throw std::runtime_error("Variable " + name + " is added twice in add_time_series()");
 
     // Add the series to all files.
     for (auto& mask : masks)
