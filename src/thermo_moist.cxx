@@ -1920,10 +1920,6 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(rh);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
-
-        stats.add_time_series("thl_bot", "Surface liquid water potential temperature", "K", group_name);
-        stats.add_time_series("qt_bot", "Surface specific humidity", "kg kg-1", group_name);
-
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
 }
