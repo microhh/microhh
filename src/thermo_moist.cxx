@@ -1229,9 +1229,10 @@ void Thermo_moist<TF>::load(const int iotime)
         else
         {
             master.print_message("OK\n");
-
-            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
-            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            if (fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
+                ++nerror;
+            if (fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot + 1)
+                ++nerror;
             fclose(pFile);
         }
     }
