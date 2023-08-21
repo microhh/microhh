@@ -1116,5 +1116,9 @@ void Boundary_surface_lsm<TF>::clear_device()
 }
 #endif
 
-template class Boundary_surface_lsm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_lsm<float>;
+#else
+template class Boundary_surface_lsm<double>;
+#endif

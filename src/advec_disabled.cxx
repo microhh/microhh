@@ -65,5 +65,8 @@ void Advec_disabled<TF>::get_advec_flux(
     std::fill(advec_flux.fld.begin(), advec_flux.fld.end(), TF(0.));
 }
 
-template class Advec_disabled<double>;
+#ifdef FLOAT_SINGLE
 template class Advec_disabled<float>;
+#else
+template class Advec_disabled<double>;
+#endif

@@ -69,5 +69,9 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
     }
 }
 
-template class Budget<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget<float>;
+#else
+template class Budget<double>;
+#endif
