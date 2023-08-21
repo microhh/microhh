@@ -160,14 +160,14 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const int);
 
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
@@ -179,21 +179,21 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const int itot, const int jtot, const int ktot);
 
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
         void exec_shortwave_rt(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 Array_gpu<Float,2>& rt_flux_tod_dn, Array_gpu<Float,2>& rt_flux_tod_up, Array_gpu<Float,2>& rt_flux_sfc_dir, Array_gpu<Float,2>& rt_flux_sfc_dif,
                 Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,

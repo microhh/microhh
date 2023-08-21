@@ -29,6 +29,7 @@
 #include "timeloop.h"
 #include "timedep.h"
 #include "thermo.h"
+#include "microphys.h"
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
@@ -1098,7 +1099,7 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_longwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
@@ -1156,8 +1157,8 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -1301,7 +1302,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_shortwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
@@ -1368,8 +1369,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -1557,7 +1558,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
         Array_gpu<Float,2>& rt_flux_tod_dn, Array_gpu<Float,2>& rt_flux_tod_up, Array_gpu<Float,2>& rt_flux_sfc_dir, Array_gpu<Float,2>& rt_flux_sfc_dif,
         Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,
@@ -1645,8 +1646,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         const Float sig_g = 1.34;
         const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-        const Float Nc0 = 100.e6;
-        const Float Ni0 = 1.e5;
+        const TF Nc0 = microphys.get_Nc0();
+        const TF Ni0 = microphys.get_Ni0();
 
         const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
         const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -1982,7 +1983,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
 
                 exec_longwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds);
@@ -2069,7 +2070,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     if (sw_clear_sky_stats)
                     {
                         exec_longwave(
-                                thermo, timeloop, stats,
+                                thermo, microphys, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                                 !compute_clouds);
@@ -2159,7 +2160,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 if (is_day(this->mu0) || !sw_is_tuned)
                 {
                     exec_shortwave_rt(
-                            thermo, timeloop, stats,
+                            thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             rt_flux_tod_dn, rt_flux_tod_up, rt_flux_sfc_dir, rt_flux_sfc_dif,
                             rt_flux_sfc_up, rt_flux_abs_dir, rt_flux_abs_dif,
@@ -2362,7 +2363,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         if (is_day(this->mu0))
                         {
                             exec_shortwave(
-                                    thermo, timeloop, stats,
+                                    thermo, microphys, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
                                     t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                                     !compute_clouds);

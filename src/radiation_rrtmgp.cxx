@@ -2355,6 +2355,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             const TF Nc0 = microphys.get_Nc0();
             const TF Ni0 = microphys.get_Ni0();
 
+            std::cout << "CvH: " << Nc0 << ", " << Ni0 << std::endl;
+
             const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
             const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
