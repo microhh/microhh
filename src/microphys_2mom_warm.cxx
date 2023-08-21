@@ -1023,5 +1023,9 @@ void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
     field = rr_bot;
 }
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

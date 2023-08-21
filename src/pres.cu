@@ -517,5 +517,9 @@ void Pres<TF>::check_cufft_memory()
 }
 #endif
 
-template class Pres<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres<float>;
+#else
+template class Pres<double>;
+#endif

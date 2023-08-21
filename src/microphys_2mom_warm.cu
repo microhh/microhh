@@ -696,5 +696,9 @@ void Microphys_2mom_warm<TF>::clear_device()
 }
 #endif
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

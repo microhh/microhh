@@ -1201,5 +1201,9 @@ void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
 
-template class Microphys_nsw6<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_nsw6<float>;
+#else
+template class Microphys_nsw6<double>;
+#endif
