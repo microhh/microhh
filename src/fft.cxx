@@ -598,5 +598,9 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
             iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(), transpose);
 }
 
-template class FFT<double>;
+
+#ifdef FLOAT_SINGLE
 template class FFT<float>;
+#else
+template class FFT<double>;
+#endif
