@@ -28,6 +28,7 @@
 #include "timeloop.h"
 #include "timedep.h"
 #include "thermo.h"
+#include "microphys.h"
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
@@ -1129,7 +1130,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
 #ifdef USECUDA
 template <typename TF>
-void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>& aerosol, Background<TF>& background)
+void Radiation_rrtmgp<TF>::exec(
+        Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1583,7 +1586,7 @@ void Radiation_rrtmgp<TF>::clear_device()
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();

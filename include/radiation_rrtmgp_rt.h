@@ -76,7 +76,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>& aerosol, Background<TF>& background);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         void update_time_dependent(Timeloop<TF>&);
@@ -88,7 +88,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA

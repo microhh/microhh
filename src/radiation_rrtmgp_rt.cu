@@ -1879,8 +1879,9 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
 #ifdef USECUDA
 template <typename TF>
-void Radiation_rrtmgp_rt<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
-                                   Aerosol<TF>& aerosol, Background<TF>& background)
+void Radiation_rrtmgp_rt<TF>::exec(
+        Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
 

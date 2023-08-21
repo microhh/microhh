@@ -52,7 +52,6 @@ template<typename> class Microphys;
 namespace Micro_2mom_warm_constants
 {
     template<typename TF> constexpr TF pi       = 3.14159265359;
-    template<typename TF> TF Nc0;                                      // Fixed cloud droplet number
     template<typename TF> constexpr TF K_t      = 2.5e-2;              // Conductivity of heat [J/(sKm)]
     template<typename TF> constexpr TF D_v      = 3.e-5;               // Diffusivity of water vapor [m2/s]
     template<typename TF> constexpr TF rho_w    = 1.e3;                // Density water
@@ -168,6 +167,9 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         void get_surface_rain_rate(std::vector<TF>&);
 
+        TF get_Nc0() { return this->Nc0; }
+        TF get_Ni0() { return static_cast<TF>(1e5); } // CvH: this is a temporary fix with previous default value, Ni0 is 3D in tomita!
+
         unsigned long get_time_limit(unsigned long, double);
 
         #ifdef USECUDA
@@ -189,6 +191,8 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         std::vector<std::string> crosslist;                  // Cross-sections handled by this class
         std::vector<std::string> available_masks = {"qr"};   // Vector with the masks that fields can provide
+
+        TF Nc0; // Cloud droplet number concentration.
 
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
