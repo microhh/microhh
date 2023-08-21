@@ -2319,5 +2319,9 @@ void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     fields.release_tmp(output);
 }
 
-template class Thermo_moist<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_moist<float>;
+#else
+template class Thermo_moist<double>;
+#endif

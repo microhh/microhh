@@ -529,5 +529,9 @@ void Thermo_buoy<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 }
 #endif
 
-template class Thermo_buoy<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_buoy<float>;
+#else
+template class Thermo_buoy<double>;
+#endif

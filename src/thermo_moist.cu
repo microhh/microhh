@@ -1388,5 +1388,9 @@ void Thermo_moist<TF>::get_land_surface_fields_g(
 }
 #endif
 
-template class Thermo_moist<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_moist<float>;
+#else
+template class Thermo_moist<double>;
+#endif
