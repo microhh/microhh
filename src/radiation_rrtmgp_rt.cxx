@@ -1450,7 +1450,8 @@ bool Radiation_rrtmgp_rt<TF>::is_day(const Float mu0)
     return false;
 }
 
-#ifdef RTE_USE_SP
+
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp_rt<float>;
 #else
 template class Radiation_rrtmgp_rt<double>;

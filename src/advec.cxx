@@ -95,6 +95,7 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
     }
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Advec<float>;
 #else

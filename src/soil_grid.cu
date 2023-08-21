@@ -63,5 +63,9 @@ void Soil_grid<TF>::clear_device()
 }
 #endif
 
-template class Soil_grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_grid<float>;
+#else
+template class Soil_grid<double>;
+#endif

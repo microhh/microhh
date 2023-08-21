@@ -1161,6 +1161,7 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
     }
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Boundary<float>;
 #else

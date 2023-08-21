@@ -344,6 +344,7 @@ void Background<TF>::get_aerosols(Aerosol_concs& aerosol_concs_col)
     aerosol_concs_col.set_vmr("aermr11", aermr11_bg_a);
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Background<float>;
 #else

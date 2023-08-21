@@ -764,6 +764,7 @@ void Boundary<TF>::backward_device()
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Boundary<float>;
 #else

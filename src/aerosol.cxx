@@ -214,6 +214,7 @@ void Aerosol<TF>::get_radiation_fields(Aerosol_concs& aerosol_concs)
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Aerosol<float>;
 #else

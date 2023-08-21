@@ -159,6 +159,7 @@ void Boundary_cyclic<TF>::exec_2d_g(TF* data)
     cuda_check_error();
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Boundary_cyclic<float>;
 #else

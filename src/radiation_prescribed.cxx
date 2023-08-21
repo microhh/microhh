@@ -166,6 +166,7 @@ std::vector<TF>& Radiation_prescribed<TF>::get_surface_radiation(const std::stri
     }
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Radiation_prescribed<float>;
 #else

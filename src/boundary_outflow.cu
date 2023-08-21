@@ -291,6 +291,7 @@ void Boundary_outflow<TF>::exec(
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Boundary_outflow<float>;
 #else

@@ -647,6 +647,7 @@ void Boundary_cyclic<TF>::exec_2d(unsigned int* restrict data)
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Boundary_cyclic<float>;
 #else

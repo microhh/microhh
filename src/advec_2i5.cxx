@@ -1081,6 +1081,7 @@ void Advec_2i5<TF>::get_advec_flux(
         throw std::runtime_error("Advec_2i5 cannot deliver flux field at that location");
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Advec_2i5<float>;
 #else

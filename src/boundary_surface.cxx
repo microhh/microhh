@@ -990,7 +990,8 @@ void Boundary_surface<TF>::update_slave_bcs()
     // the fields are computed by the surface model in update_bcs.
 }
 
-#ifdef FLOAT SINGLE
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface<float>;
 #else
 template class Boundary_surface<double>;
