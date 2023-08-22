@@ -508,9 +508,6 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
     t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
-    emis_sfc    = inputin.get_item<Float>("radiation", "emis_sfc"   , "");
-    sfc_alb_dir = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
-    sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
@@ -622,6 +619,15 @@ void Radiation_rrtmgp_rt<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+    // Read in the surface properties and store them in a 2D field.
+    const TF emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
+    const TF sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+    const TF sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+
+    std::fill(emis_sfc.begin(), emis_sfc.end(), emis_sfc_hom);
+    std::fill(sfc_albedo_dir.begin(), sfc_albedo_dir.end(), sfc_albedo_dir_hom);
+    std::fill(sfc_albedo_dif.begin(), sfc_albedo_dif.end(), sfc_albedo_dif_hom);
+
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != "moist")
     {

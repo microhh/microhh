@@ -547,7 +547,7 @@ namespace
             const Float* const restrict kernel_x,
             const Float* const restrict kernel_y,
             const int n_steps,
-            const Float alb_dir, const Float alb_dif,
+            const Float* const restrict alb_dir, const Float* const restrict alb_dif,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int igc, const int jgc,
@@ -617,8 +617,8 @@ namespace
                 const int ijk_nogc = (i-igc) + (j-jgc)*imax;
 
                 sw_flux_dn_sfc[ij] = sw_flux_dn_dir[ijk_nogc] + sw_flux_dn_dif_f[ij];
-                sw_flux_up_sfc[ij] = alb_dir * sw_flux_dn_dir[ijk_nogc]
-                                   + alb_dif * sw_flux_dn_dif_f[ij];
+                sw_flux_up_sfc[ij] = alb_dir[ijk_nogc] * sw_flux_dn_dir[ijk_nogc]
+                                   + alb_dif[ijk_nogc] * sw_flux_dn_dif_f[ij];
             }
     }
 
@@ -676,10 +676,13 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
     t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
-    emis_sfc    = inputin.get_item<Float>("radiation", "emis_sfc"   , "");
-    sfc_alb_dir = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
-    sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
+
+    // Read representative values for the surface properties that are used in the column calcs.
+    // CvH: how to deal with this for heterogeneous surfaces?
+    emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
+    sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+    sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
 
     if (sw_fixed_sza)
     {
@@ -782,6 +785,15 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 
     // initialize aod
     aod550.set_dims({gd.imax*gd.jmax});
+
+    if (sw_shortwave)
+    {
+        sfc_alb_dir.set_dims({gd.imax*gd.jmax});
+        sfc_alb_dif.set_dims({gd.imax*gd.jmax});
+    }
+
+    if (sw_longwave)
+        emis_sfc.set_dims({gd.imax*gd.jmax});
 }
 
 
@@ -798,6 +810,15 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+    // Read in the surface properties and store them in a 2D field.
+    const TF emis_sfc_hom = input.get_item<Float>("radiation", "emis_sfc", "");
+    const TF sfc_alb_dir_hom = input.get_item<Float>("radiation", "sfc_alb_dir", "");
+    const TF sfc_alb_dif_hom = input.get_item<Float>("radiation", "sfc_alb_dif", "");
+
+    emis_sfc.fill(emis_sfc_hom);
+    sfc_alb_dir.fill(sfc_alb_dir_hom);
+    sfc_alb_dif.fill(sfc_alb_dif_hom);
+
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != "moist")
     {
@@ -1250,7 +1271,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     // Compute the longwave for the reference profile.
     sources_lw = std::make_unique<Source_func_lw>(n_col, n_lay_col, *kdist_lw);
@@ -1325,10 +1346,11 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         Array<Float,2> sfc_alb_dir({n_bnd, n_col});
         Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
+        // For the column calculation, we use the representative albedo.
         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         {
-            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
         }
 
         Array<Float,1> mu0({n_col});
@@ -1536,7 +1558,7 @@ void Radiation_rrtmgp<TF>::set_background_column_longwave(const TF p_top)
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     solve_longwave_column(optical_props_lw,
                           lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
@@ -1564,8 +1586,8 @@ void Radiation_rrtmgp<TF>::set_background_column_shortwave(const TF p_top)
 
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
     {
-        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
     }
 
     Array<Float,1> mu0({n_col});
@@ -1808,7 +1830,7 @@ void Radiation_rrtmgp<TF>::exec(
                                 flux_dn.ptr(), flux_dn_dir.ptr(),
                                 filter_kernel_x.data(), filter_kernel_y.data(),
                                 n_filter_iterations,
-                                sfc_alb_dir, sfc_alb_dif,
+                                sfc_alb_dir.ptr(), sfc_alb_dif.ptr(),
                                 gd.istart, gd.iend,
                                 gd.jstart, gd.jend,
                                 gd.igc, gd.jgc,
@@ -2308,7 +2330,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
     Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
-    Array<Float,2> emis_sfc(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
+    Array<Float,2> emis_sfc({n_bnd, n_col});
+    for (int icol=1; icol<=n_col; ++icol)
+        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+        {
+            emis_sfc({ibnd, icol}) = this->emis_sfc({icol});
+        }
 
     gas_concs.set_vmr("h2o", h2o);
     Array<Float,2> col_dry({n_col, n_lay});
@@ -2525,8 +2552,17 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
     // Create the boundary conditions
     Array<Float,1> mu0(std::vector<Float>(1, this->mu0), {1});
-    Array<Float,2> sfc_alb_dir(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
-    Array<Float,2> sfc_alb_dif(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
+
+    // CvH Shadowing of this-> variable is dangerous, change later.
+    Array<Float,2> sfc_alb_dir({n_bnd, n_col});
+    Array<Float,2> sfc_alb_dif({n_bnd, n_col});
+
+    for (int icol=1; icol<=n_col; ++icol)
+        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
+        {
+            sfc_alb_dir({ibnd, icol}) = this->sfc_alb_dir({icol});
+            sfc_alb_dif({ibnd, icol}) = this->sfc_alb_dif({icol});
+        }
 
     // Create the field for the top of atmosphere source.
     Array<Float,2> toa_src({n_col, n_gpt});

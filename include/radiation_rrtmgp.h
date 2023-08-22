@@ -228,9 +228,6 @@ class Radiation_rrtmgp : public Radiation<TF>
         // RRTMGP related variables.
         Float tsi_scaling; // Total solar irradiance scaling factor.
         Float t_sfc;       // Surface absolute temperature in K.
-        Float emis_sfc;    // Surface emissivity.
-        Float sfc_alb_dir; // Surface albedo.
-        Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
         Float Nc0;         // Total droplet number concentration.
 
@@ -282,6 +279,15 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Cloud_optics> cloud_sw;
 
         std::unique_ptr<Aerosol_optics> aerosol_sw;
+
+        // Surface fields that go into solver;
+        TF emis_sfc_hom;
+        TF sfc_alb_dir_hom;
+        TF sfc_alb_dif_hom;
+
+        Array<Float,1> emis_sfc;
+        Array<Float,1> sfc_alb_dir;
+        Array<Float,1> sfc_alb_dif;
 
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
