@@ -1844,7 +1844,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_tau(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_ssa(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_g(),
-                    rel, sfc_alb_dir, zenith_angle,
+                    rel, sfc_alb_dir.subset({{ {band, band}, {1, n_col} }}), zenith_angle,
                     azimuth_angle,
                     sw_flux_dn_dir_inc({1,igpt}) * mu0({1}), sw_flux_dn_dif_inc({1,igpt}),
                     fluxes->get_flux_tod_dn(),
