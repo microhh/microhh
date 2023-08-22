@@ -610,9 +610,16 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 
     aod550.set_dims({gd.imax*gd.jmax});
 
-    sfc_alb_dir.set_dims({gd.imax*gd.jmax});
-    sfc_alb_dif.set_dims({gd.imax*gd.jmax});
-    emis_sfc.set_dims({gd.imax*gd.jmax});
+    const int n_bnd = kdist_lw->get_nband();
+
+    if (sw_shortwave)
+    {
+        sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
+    }
+
+    if (sw_longwave)
+        emis_sfc.set_dims({n_bnd, gd.imax*gd.jmax});
 }
 
 

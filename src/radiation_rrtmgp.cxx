@@ -786,14 +786,16 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
     // initialize aod
     aod550.set_dims({gd.imax*gd.jmax});
 
+    const int n_bnd = kdist_lw->get_nband();
+
     if (sw_shortwave)
     {
-        sfc_alb_dir.set_dims({gd.imax*gd.jmax});
-        sfc_alb_dif.set_dims({gd.imax*gd.jmax});
+        sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
     }
 
     if (sw_longwave)
-        emis_sfc.set_dims({gd.imax*gd.jmax});
+        emis_sfc.set_dims({n_bnd, gd.imax*gd.jmax});
 }
 
 
@@ -810,6 +812,8 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+    // For now, the surface is uniform over the wavelengths and constant in space.
+    // CvH spatially and wavelength dependent properties use a lot of memory (total (2*14 + 16) 2D slices).
     emis_sfc.fill(emis_sfc_hom);
     sfc_alb_dir.fill(sfc_alb_dir_hom);
     sfc_alb_dif.fill(sfc_alb_dif_hom);
@@ -2325,13 +2329,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
     Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
-    Array<Float,2> emis_sfc({n_bnd, n_col});
-    for (int icol=1; icol<=n_col; ++icol)
-        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        {
-            emis_sfc({ibnd, icol}) = this->emis_sfc({icol});
-        }
-
     gas_concs.set_vmr("h2o", h2o);
     Array<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs.get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
@@ -2547,17 +2544,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
     // Create the boundary conditions
     Array<Float,1> mu0(std::vector<Float>(1, this->mu0), {1});
-
-    // CvH Shadowing of this-> variable is dangerous, change later.
-    Array<Float,2> sfc_alb_dir({n_bnd, n_col});
-    Array<Float,2> sfc_alb_dif({n_bnd, n_col});
-
-    for (int icol=1; icol<=n_col; ++icol)
-        for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        {
-            sfc_alb_dir({ibnd, icol}) = this->sfc_alb_dir({icol});
-            sfc_alb_dif({ibnd, icol}) = this->sfc_alb_dif({icol});
-        }
 
     // Create the field for the top of atmosphere source.
     Array<Float,2> toa_src({n_col, n_gpt});
