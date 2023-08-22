@@ -176,6 +176,7 @@ namespace
             fld[ijk] += profile[k];
         }
     }
+
     __global__
     void store_surface_fluxes(
             Float* __restrict__ flux_up_sfc, Float* __restrict__ flux_dn_sfc,
@@ -2534,24 +2535,27 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir_clear"), "sw_flux_dn_dir_clear", gd.wloc);
         }
 
-        if (sw_aerosol)
+        if (do_stats)
         {
-            // calc mean aod
-            int ncol = gd.imax*gd.jmax;
-            Float total_aod = 0;
-            for (int icol = 1; icol <= ncol; ++icol)
+            if (sw_aerosol)
             {
-                total_aod += aod550({icol});
+                // calc mean aod
+                int ncol = gd.imax*gd.jmax;
+                Float total_aod = 0;
+                for (int icol = 1; icol <= ncol; ++icol)
+                {
+                    total_aod += aod550({icol});
+                }
+                Float mean_aod = total_aod/ncol;
+                stats.set_time_series("AOD550", mean_aod);
             }
-            Float mean_aod = total_aod/ncol;
-            stats.set_time_series("AOD550", mean_aod);
-        }
 
-        if (sw_update_background || !sw_fixed_sza)
-        {
-            stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
-            stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
-            stats.set_prof_background("sw_flux_dn_dir_ref", sw_flux_dn_dir_col.v());
+            if ((sw_update_background || !sw_fixed_sza))
+            {
+                stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
+                stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
+                stats.set_prof_background("sw_flux_dn_dir_ref", sw_flux_dn_dir_col.v());
+            }
         }
 
         const int nsfcsize = gd.ijcells*sizeof(Float);
@@ -2585,10 +2589,13 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         }
     }
 
-    stats.set_time_series("sza", std::acos(mu0));
-    stats.set_time_series("saa", azimuth);
-    stats.set_time_series("tsi_scaling", this->tsi_scaling);
-    stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+    if (do_stats)
+    {
+        stats.set_time_series("sza", std::acos(mu0));
+        stats.set_time_series("saa", azimuth);
+        stats.set_time_series("tsi_scaling", this->tsi_scaling);
+        stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+    }
 }
 #endif
 
