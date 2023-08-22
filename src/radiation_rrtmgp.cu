@@ -826,7 +826,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = (b-1) * n_col_block + 1;
         const int col_e =  b    * n_col_block;
 
-        Array_gpu<Float,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_subset = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_subset = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -850,7 +850,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = n_col - n_col_block_residual + 1;
         const int col_e = n_col;
 
-        Array_gpu<Float,2> emis_sfc_residual = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_residual = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_residual = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
@@ -1069,8 +1069,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -1099,8 +1099,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_residual = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
