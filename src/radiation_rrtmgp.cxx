@@ -785,17 +785,6 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 
     // initialize aod
     aod550.set_dims({gd.imax*gd.jmax});
-
-    const int n_bnd = kdist_lw->get_nband();
-
-    if (sw_shortwave)
-    {
-        sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
-        sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
-    }
-
-    if (sw_longwave)
-        emis_sfc.set_dims({n_bnd, gd.imax*gd.jmax});
 }
 
 
@@ -812,12 +801,6 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-    // For now, the surface is uniform over the wavelengths and constant in space.
-    // CvH spatially and wavelength dependent properties use a lot of memory (total (2*14 + 16) 2D slices).
-    emis_sfc.fill(emis_sfc_hom);
-    sfc_alb_dir.fill(sfc_alb_dir_hom);
-    sfc_alb_dif.fill(sfc_alb_dif_hom);
-
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != "moist")
     {
@@ -858,6 +841,25 @@ void Radiation_rrtmgp<TF>::create(
         #else
         throw;
         #endif
+    }
+
+    // Allocate the surface fields only after the number of bands is known.
+    // For now, the surface is uniform over the wavelengths and constant in space.
+    // CvH spatially and wavelength dependent properties use a lot of memory (total (2*14 + 16) 2D slices).
+    if (sw_shortwave)
+    {
+        const int n_bnd = kdist_sw->get_nband();
+        sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dir.fill(sfc_alb_dir_hom);
+        sfc_alb_dif.fill(sfc_alb_dif_hom);
+    }
+
+    if (sw_longwave)
+    {
+        const int n_bnd = kdist_lw->get_nband();
+        emis_sfc.set_dims({n_bnd, gd.imax*gd.jmax});
+        emis_sfc.fill(emis_sfc_hom);
     }
 
     if (stats.get_switch() && sw_shortwave)

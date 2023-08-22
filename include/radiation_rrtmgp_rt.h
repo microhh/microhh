@@ -309,9 +309,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         TF sfc_alb_dir_hom;
         TF sfc_alb_dif_hom;
 
-        Array<Float,1> emis_sfc;
-        Array<Float,1> sfc_alb_dir;
-        Array<Float,1> sfc_alb_dif;
+        Array<Float,2> emis_sfc;
+        Array<Float,2> sfc_alb_dir;
+        Array<Float,2> sfc_alb_dif;
 
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
@@ -360,6 +360,10 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
         Float* aod550_g;
+
+        Array_gpu<Float,2> emis_sfc_g;
+        Array_gpu<Float,2> sfc_alb_dir_g;
+        Array_gpu<Float,2> sfc_alb_dif_g;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

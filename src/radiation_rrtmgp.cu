@@ -608,6 +608,11 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpt_pool, nbnd_pool);
 
+    // Transfer the surface properties to the GPU
+    emis_sfc_g = emis_sfc;
+    sfc_alb_dir_g = sfc_alb_dir;
+    sfc_alb_dif_g = sfc_alb_dif;
+
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
     this->aerosol_concs_gpu = std::make_unique<Aerosol_concs_gpu>(aerosol_concs);
@@ -713,10 +718,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     // Make views to the base state pointer.
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
     auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
-
-    // CvH: this can be improved by creating a fill function for the GPU.
-    Array<Float,2> emis_sfc_cpu(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
-    Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
 
     gas_concs_gpu->set_vmr("h2o", h2o);
 
@@ -925,10 +926,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     // Create the boundary conditions
     Array<Float,1> mu0_cpu(std::vector<Float>(1, this->mu0), {1});
     Array_gpu<Float,1> mu0(mu0_cpu);
-    Array<Float,2> sfc_alb_dir_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dir(sfc_alb_dir_cpu);
-    Array<Float,2> sfc_alb_dif_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dif(sfc_alb_dif_cpu);
 
     gas_concs_gpu->set_vmr("h2o", h2o);
 
