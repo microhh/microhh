@@ -58,9 +58,13 @@ class Radiation_disabled : public Radiation<TF>
 
         // Empty functions that should throw
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
-            { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_disabled"); }
+        { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_disabled"); }
         std::vector<TF>& get_surface_radiation(const std::string&)
-            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
+        { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_disabled"); }
+        std::vector<TF>& get_surface_emissivity(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface emissivity field"); }
+        std::vector<TF>& get_surface_albedo(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface albedo field"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
