@@ -510,6 +510,12 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
+    // Read representative values for the surface properties that are used in the column calcs.
+    // CvH: how to deal with this for heterogeneous surfaces?
+    emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
+    sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+    sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
     kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "");
     kngrid_j = inputin.get_item<Float>("radiation", "kngrid_j", "");
@@ -603,6 +609,10 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
         gasprofs[it] = std::vector<TF>(gd.ktot);
 
     aod550.set_dims({gd.imax*gd.jmax});
+
+    sfc_alb_dir.set_dims({gd.imax*gd.jmax});
+    sfc_alb_dif.set_dims({gd.imax*gd.jmax});
+    emis_sfc.set_dims({gd.imax*gd.jmax});
 }
 
 
@@ -619,14 +629,9 @@ void Radiation_rrtmgp_rt<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-    // Read in the surface properties and store them in a 2D field.
-    const TF emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
-    const TF sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
-    const TF sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
-
-    std::fill(emis_sfc.begin(), emis_sfc.end(), emis_sfc_hom);
-    std::fill(sfc_albedo_dir.begin(), sfc_albedo_dir.end(), sfc_albedo_dir_hom);
-    std::fill(sfc_albedo_dif.begin(), sfc_albedo_dif.end(), sfc_albedo_dif_hom);
+    emis_sfc.fill(emis_sfc_hom);
+    sfc_alb_dir.fill(sfc_alb_dir_hom);
+    sfc_alb_dif.fill(sfc_alb_dif_hom);
 
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != "moist")
@@ -1048,7 +1053,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_longwave(
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     // Compute the longwave for the reference profile.
     sources_lw = std::make_unique<Source_func_lw>(n_col, n_lay_col, *kdist_lw);
@@ -1123,10 +1128,11 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
         Array<Float,2> sfc_alb_dir({n_bnd, n_col});
         Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
+        // Use the representative value for the column calculations.
         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         {
-            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
         }
 
         Array<Float,1> mu0({n_col});
@@ -1335,7 +1341,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_longwave(Thermo<TF>& thermo)
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     solve_longwave_column(optical_props_lw,
                           lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
@@ -1363,8 +1369,8 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
     {
-        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
     }
 
     Array<Float,1> mu0({n_col});

@@ -248,9 +248,6 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         // RRTMGP related variables.
         Float tsi_scaling; // Total solar irradiance scaling factor.
         Float t_sfc;       // Surface absolute temperature in K.
-        Float emis_sfc;    // Surface emissivity.
-        Float sfc_alb_dir; // Surface albedo.
-        Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
         Float azimuth;     // Azimuth angle.
         Float Nc0;         // Total droplet number concentration.
@@ -306,6 +303,16 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Cloud_optics> cloud_sw;
 
         std::unique_ptr<Aerosol_optics> aerosol_sw;
+
+        // Surface fields that go into solver;
+        TF emis_sfc_hom;
+        TF sfc_alb_dir_hom;
+        TF sfc_alb_dif_hom;
+
+        Array<Float,1> emis_sfc;
+        Array<Float,1> sfc_alb_dir;
+        Array<Float,1> sfc_alb_dif;
+
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
         std::vector<Float> lw_flux_up_sfc;
@@ -342,7 +349,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
         std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
 
-#ifdef USECUDA
+        #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;

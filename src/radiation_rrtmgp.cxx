@@ -810,11 +810,6 @@ void Radiation_rrtmgp<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
-    // Read in the surface properties and store them in a 2D field.
-    const TF emis_sfc_hom = input.get_item<Float>("radiation", "emis_sfc", "");
-    const TF sfc_alb_dir_hom = input.get_item<Float>("radiation", "sfc_alb_dir", "");
-    const TF sfc_alb_dif_hom = input.get_item<Float>("radiation", "sfc_alb_dif", "");
-
     emis_sfc.fill(emis_sfc_hom);
     sfc_alb_dir.fill(sfc_alb_dir_hom);
     sfc_alb_dif.fill(sfc_alb_dif_hom);
