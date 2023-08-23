@@ -590,7 +590,7 @@ void Microphys_2mom_warm<TF>::create(
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_profs(*fields.sp.at("qr"), "z", {"path", "cover"}, group_name);
+        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "cover"}, group_name);
 
         if (swmicrobudget)
         {
