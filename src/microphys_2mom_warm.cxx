@@ -590,7 +590,7 @@ void Microphys_2mom_warm<TF>::create(
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        // stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "path", "cover"}, group_name);
+        stats.add_profs(*fields.sp.at("qr"), "z", {"path", "cover"}, group_name);
 
         if (swmicrobudget)
         {
@@ -763,7 +763,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
     const TF threshold_qr = 1.e-6;
 
     stats.calc_stats_2d("rr", rr_bot, no_offset);
-    // stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr);
+    stats.calc_stats("qr", *fields.sp.at("qr"), no_offset, threshold_qr);
 
     if (swmicrobudget)
     {
