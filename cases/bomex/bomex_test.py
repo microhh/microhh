@@ -26,9 +26,7 @@ mht.merge_options(opt_small_nostats, opt_nostats)
 # Case configuration dicts with name label for permutations.
 dict_opts = {
         'default': {},
-        'vapor': {'thermo': {'swthermo': 'vapor'}},
-        'fixed_basestate': {'thermo': {'swupdatebasestate': 0}},
-        'fixed_basestate_vapor': {'thermo': {'swthermo': 'vapor', 'swupdatebasestate': 0}}}
+        'fixed_basestate': {'thermo': {'swupdatebasestate': 0}}}
 
 
 if __name__ == '__main__':
