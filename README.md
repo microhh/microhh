@@ -42,9 +42,9 @@ First, enter the config directory:
 
     cd config
 
-Here, you find a potential series of settings with the extension .cmake for different systems. Check whether your system is there. If not, create a file with the correct compiler settings and the proper location for all libraries. Then, copy your system file to default.cmake. Let us assume your system is Ubuntu:
+Here, you find a potential series of settings with the extension `.cmake` for different systems. Check whether your system is there. If not, you can try the generic configuration (`generic.cmake`), or create a file with the correct compiler settings and the proper location for all libraries on your system. Then, copy your system file to default.cmake, for example:
 
-    cp ubuntu.cmake default.cmake
+    cp generic.cmake default.cmake
 
 Then, go back to the main directory and create a subdirectory with an arbitrary name in which you will compile the code. Let us assume this directory is called "build":
 
