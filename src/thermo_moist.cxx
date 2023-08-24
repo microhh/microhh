@@ -2097,9 +2097,9 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     get_thermo_field(*rh, "rh", true, true);
     stats.calc_stats("rh", *rh, no_offset, no_threshold);
 
-    // Surface values
-    stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
-    stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
+    // // Surface values
+    // stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
+    // stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
 
     fields.release_tmp(rh);
 
