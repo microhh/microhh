@@ -75,6 +75,11 @@ Timeloop<TF>::Timeloop(
     {
         flag_utc_time = true;
         strptime(datetime_utc_string.c_str(), "%Y-%m-%d %H:%M:%S", &tm_utc_start);
+
+        // NOTE: the following fields are NOT set by `strptime()`, which can lead to undefined behaviour.
+        tm_utc_start.tm_isdst = 0;      // no daylight saving offset.
+        tm_utc_start.tm_gmtoff = 0;     // no offset from UTC.
+        tm_utc_start.tm_zone = "utc";   // time zone = UTC.
     }
 
     if (sim_mode == Sim_mode::Post)
@@ -496,9 +501,12 @@ void Timeloop<TF>::load(int starttime)
         }
         else
         {
-            fread(&itime    , sizeof(unsigned long), 1, pFile);
-            fread(&idt      , sizeof(unsigned long), 1, pFile);
-            fread(&iteration, sizeof(int), 1, pFile);
+            if (fread(&itime    , sizeof(unsigned long), 1, pFile) != 1 )
+                ++nerror;
+            if (fread(&idt      , sizeof(unsigned long), 1, pFile) != 1 )
+                ++nerror;
+            if (fread(&iteration, sizeof(int), 1, pFile) != 1 )
+                ++nerror;
 
             fclose(pFile);
         }

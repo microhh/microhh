@@ -56,7 +56,7 @@ namespace
 #ifdef USECUDA
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&)
 {
     if (swtimedep_prescribed)
     {

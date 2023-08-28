@@ -867,14 +867,14 @@ int Field3d_io<TF>::load_xy_slice(
 {
     auto& gd = grid.get_grid_data();
 
-    const int count = gd.imax*gd.jmax;
+    const unsigned int count = gd.imax*gd.jmax;
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
     if (pFile == NULL)
         return 1;
-
-    fread(tmp, sizeof(TF), count, pFile);
+    if (fread(tmp, sizeof(TF), count, pFile) != count )
+        return 1;
     fclose(pFile);
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.

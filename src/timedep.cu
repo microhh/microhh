@@ -84,5 +84,26 @@ void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop)
 }
 #endif
 
+#ifdef USECUDA
+template <typename TF>
+void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop, const TF z_dim_length)
+{
+    if (sw == Timedep_switch::Disabled)
+        return;
+
+//    auto& gd = grid.get_grid_data();
+    const int blockk = 128;
+    const int gridk  = int(z_dim_length)/blockk + (int(z_dim_length)%blockk > 0);
+
+    // Get/calculate the interpolation indexes/factors
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+
+    // Calculate the new vertical profile
+    calc_time_dependent_prof_g<<<gridk, blockk>>>(
+            prof, data_g, ifac.fac0, ifac.fac1, ifac.index0, ifac.index1, int(z_dim_length), 0);
+    cuda_check_error();
+}
+#endif
+
 template class Timedep<double>;
 template class Timedep<float>;
