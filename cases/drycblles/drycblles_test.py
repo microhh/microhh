@@ -23,9 +23,9 @@ opt_nostats = {
 # Case configuration dicts with name label for permutations.
 dict_opts = {
         'default': {},
-        'advec_2i3': {'advec': {'swadvec': '2i3'}},
-        'advec_2i4': {'advec': {'swadvec': '2i4'}}}
-
+        'advec_2i5': {'advec': {'swadvec': '2i5'}},
+        'advec_2i4': {'advec': {'swadvec': '2i4'}},
+        'deardorff': {'diff': {'swdiff': 'deardorff'}}}
 
 if __name__ == '__main__':
 
