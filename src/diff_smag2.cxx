@@ -505,7 +505,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         strain2_wrapper.template operator()<Surface_model::Enabled>(nullptr, nullptr);
 
     // Start with retrieving the stability information
-    if (thermo.get_switch() == "0")
+    if (thermo.get_switch() == Thermo_type::Disabled)
     {
         auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
                 const TF* const restrict z0m)

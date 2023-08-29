@@ -308,7 +308,7 @@ Thermo_buoy<TF>::Thermo_buoy(Master& masterin, Grid<TF>& gridin, Fields<TF>& fie
 Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
     auto& gd = grid.get_grid_data();
-    swthermo = "buoy";
+    swthermo = Thermo_type::Buoy;
 
     const std::string group_name = "thermo";
 

@@ -269,7 +269,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             gd.icells, gd.ijcells);
         cuda_check_error();
 
-        if (thermo.get_switch() == "0")
+        if (thermo.get_switch() == Thermo_type::Disabled)
         {
             // Start with retrieving the stability information
             evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
@@ -327,7 +327,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         cuda_check_error();
 
         // start with retrieving the stability information
-        if (thermo.get_switch() == "0")
+        if (thermo.get_switch() == Thermo_type::Disabled)
         {
             evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,

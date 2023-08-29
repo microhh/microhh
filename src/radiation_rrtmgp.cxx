@@ -799,11 +799,8 @@ void Radiation_rrtmgp<TF>::create(
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Check if the thermo supports the radiation.
-    if (thermo.get_switch() != "moist")
-    {
-        const std::string error = "Radiation does not support thermo mode " + thermo.get_switch();
-        throw std::runtime_error(error);
-    }
+    if (thermo.get_switch() != Thermo_type::Moist)
+        throw std::runtime_error("Radiation only supports swthermo=moist.");
 
     // Setup spatial filtering diffuse surace radiation (if enabled..)
     create_diffuse_filter();

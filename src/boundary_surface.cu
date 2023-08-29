@@ -399,7 +399,7 @@ void Boundary_surface<TF>::exec(
     boundary_cyclic.exec_2d_g(dutot->fld_g);
 
     // start with retrieving the stability information
-    if (thermo.get_switch() == "0")
+    if (thermo.get_switch() == Thermo_type::Disabled)
     {
         // Calculate ustar and Obukhov length, including ghost cells
         stability_neutral_g<<<gridGPU2, blockGPU2>>>(

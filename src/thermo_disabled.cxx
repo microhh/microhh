@@ -32,7 +32,7 @@
 template<typename TF>
 Thermo_disabled<TF>::Thermo_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swthermo = "0";
+    swthermo = Thermo_type::Disabled;
 }
 
 template<typename TF>

@@ -37,6 +37,7 @@ template<typename> class Field3d;
 template<typename> class Timeloop;
 
 enum class Sim_mode;
+enum class Thermo_type {Buoy, Dry, Moist, Disabled};
 
 /**
  * Base class for the thermo scheme. This class is abstract and only
@@ -50,7 +51,7 @@ class Thermo
         Thermo(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Thermo();
         static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode);
-        const std::string& get_switch() const;
+        Thermo_type get_switch();
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
@@ -121,6 +122,6 @@ class Thermo
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        std::string swthermo;
+        Thermo_type swthermo;
 };
 #endif
