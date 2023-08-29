@@ -146,5 +146,9 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     }
 }
 
-template class Dump<double>;
+
+#ifdef FLOAT_SINGLE
 template class Dump<float>;
+#else
+template class Dump<double>;
+#endif

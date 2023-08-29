@@ -61,5 +61,9 @@ template<typename TF>
 void Pres_disabled<TF>::clear_device() {}
 #endif
 
-template class Pres_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_disabled<float>;
+#else
+template class Pres_disabled<double>;
+#endif

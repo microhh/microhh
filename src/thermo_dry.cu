@@ -366,5 +366,10 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     fields.release_tmp_g(output);
 }
 #endif
-template class Thermo_dry<double>;
+
+
+#ifdef FLOAT_SINGLE
 template class Thermo_dry<float>;
+#else
+template class Thermo_dry<double>;
+#endif

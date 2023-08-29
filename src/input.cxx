@@ -430,6 +430,7 @@ std::vector<T> Input::get_list(const std::string& blockname,
     }
 }
 
+
 // Explicitly instantiate templates.
 template bool Input::get_item<bool>(const std::string&, const std::string&, const std::string&);
 template int Input::get_item<int>(const std::string&, const std::string&, const std::string&);

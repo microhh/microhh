@@ -195,5 +195,9 @@ void Diff_2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restric
     calc_diff_flux(out.fld.data(), data.fld.data(), data.visc, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 }
 
-template class Diff_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_2<float>;
+#else
+template class Diff_2<double>;
+#endif

@@ -799,5 +799,8 @@ int Cross<TF>::cross_soil(
 }
 
 
-template class Cross<double>;
+#ifdef FLOAT_SINGLE
 template class Cross<float>;
+#else
+template class Cross<double>;
+#endif

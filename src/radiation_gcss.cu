@@ -356,6 +356,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;
 #else

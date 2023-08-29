@@ -2600,6 +2600,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp_rt<float>;
 #else

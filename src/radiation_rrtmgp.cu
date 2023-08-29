@@ -1779,6 +1779,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 }
 #endif
 
+
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;
 #else

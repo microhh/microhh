@@ -900,5 +900,9 @@ int Field3d_io<TF>::load_xy_slice(
 }
 #endif
 
-template class Field3d_io<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_io<float>;
+#else
+template class Field3d_io<double>;
+#endif

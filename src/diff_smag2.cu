@@ -869,5 +869,9 @@ double Diff_smag2<TF>::get_dn(double dt)
 }
 #endif
 
-template class Diff_smag2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_smag2<float>;
+#else
+template class Diff_smag2<double>;
+#endif

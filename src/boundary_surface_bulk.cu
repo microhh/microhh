@@ -329,5 +329,9 @@ void Boundary_surface_bulk<TF>::exec(
 }
 #endif
 
-template class Boundary_surface_bulk<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_bulk<float>;
+#else
+template class Boundary_surface_bulk<double>;
+#endif
