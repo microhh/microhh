@@ -51,8 +51,9 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
+
                     const TF a_new = a[ijk] + dt*at[ijk];
-                    at[ijk] += (a_new < TF(0.)) ? (-a_new + min_value) * dti : TF(0.);
+                    at[ijk] += (a_new < min_value) ? (-a_new + min_value) * dti : TF(0.);
                 }
     }
 }
