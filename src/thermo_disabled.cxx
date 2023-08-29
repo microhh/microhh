@@ -58,5 +58,9 @@ TF Thermo_disabled<TF>::get_buoyancy_diffusivity()
     return 0.;
 }
 
-template class Thermo_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_disabled<float>;
+#else
+template class Thermo_disabled<double>;
+#endif

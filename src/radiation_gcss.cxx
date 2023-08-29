@@ -350,8 +350,9 @@ unsigned long Radiation_gcss<TF>::get_time_limit(unsigned long itime)
 
 #ifndef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
-                              Aerosol<TF>&, Background<TF>&)
+void Radiation_gcss<TF>::exec(
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
     auto& gd = grid.get_grid_data();
     auto lwp = fields.get_tmp();
@@ -577,6 +578,7 @@ void Radiation_gcss<TF>::exec_all_stats(
         fields.release_tmp(output);
     }
 }
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;

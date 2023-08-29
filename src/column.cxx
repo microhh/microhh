@@ -374,5 +374,9 @@ void Column<TF>::calc_time_series(
 }
 #endif
 
-template class Column<double>;
+
+#ifdef FLOAT_SINGLE
 template class Column<float>;
+#else
+template class Column<double>;
+#endif

@@ -72,5 +72,9 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(
     }
 }
 
-template class Thermo<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo<float>;
+#else
+template class Thermo<double>;
+#endif

@@ -105,5 +105,9 @@ void Timedep<TF>::update_time_dependent_prof_g(TF* prof, Timeloop<TF>& timeloop,
 }
 #endif
 
-template class Timedep<double>;
+
+#ifdef FLOAT_SINGLE
 template class Timedep<float>;
+#else
+template class Timedep<double>;
+#endif

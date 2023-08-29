@@ -375,7 +375,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
     micro::autoconversion_g<<<gridGPU, blockGPU>>>(
         fields.st.at("qr")->fld_g, fields.st.at("nr")->fld_g,
         fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
-        fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner, Nc0<TF>,
+        fields.sp.at("qr")->fld_g, ql->fld_g, fields.rhoref_g, exner, Nc0,
         gd.istart, gd.jstart, gd.kstart,
         gd.iend,   gd.jend,   gd.kend,
         gd.icells, gd.ijcells);
@@ -696,5 +696,9 @@ void Microphys_2mom_warm<TF>::clear_device()
 }
 #endif
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

@@ -548,8 +548,8 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
 
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "");
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
@@ -590,7 +590,7 @@ void Microphys_2mom_warm<TF>::create(
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "path", "cover"}, group_name);
+        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "cover"}, group_name);
 
         if (swmicrobudget)
         {
@@ -693,7 +693,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets
     mp3d::autoconversion(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0,
                          gd.istart, gd.jstart, gd.kstart,
                          gd.iend,   gd.jend,   gd.kend,
                          gd.icells, gd.ijcells);
@@ -829,7 +829,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         zero_field(qtt->fld.data(),  gd.ncells);
 
         mp3d::autoconversion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
-                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0,
                              gd.istart, gd.jstart, gd.kstart,
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
@@ -1023,5 +1023,9 @@ void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
     field = rr_bot;
 }
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

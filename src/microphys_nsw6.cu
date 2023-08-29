@@ -1008,5 +1008,9 @@ void Microphys_nsw6<TF>::clear_device()
 }
 #endif
 
-template class Microphys_nsw6<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_nsw6<float>;
+#else
+template class Microphys_nsw6<double>;
+#endif

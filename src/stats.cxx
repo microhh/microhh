@@ -522,7 +522,7 @@ namespace
             const int icells, const int ijcells)
     {
         #pragma omp parallel for
-        for (int k=kstart-1; k<kend+1; ++k)
+        for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -1066,7 +1066,7 @@ void Stats<TF>::add_prof(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        return;
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_series()");
 
     Level_type level;
     if ((zloc == "z") || (zloc == "zs") || (zloc == "era_levels"))
@@ -1105,11 +1105,10 @@ void Stats<TF>::add_prof(
         }
         else if ((zloc == "era_levels") || (zloc == "era_layers"))
         {
-//            const TF n_era_levels = 137;
-            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(), level};
+           const TF n_era_levels = 137;
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_era_levels), level};
 
             m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
-
             m.background_profs.at(name).ncvar.add_attribute("units", unit);
             m.background_profs.at(name).ncvar.add_attribute("long_name", longname);
         }
@@ -1135,6 +1134,9 @@ void Stats<TF>::add_fixed_prof(
         const std::vector<TF>& prof)
 {
     auto& gd = grid.get_grid_data();
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        throw std::runtime_error("Variable " + name + " is added twice in add_fixed_prof()");
 
     for (auto& mask : masks)
     {
@@ -1163,6 +1165,8 @@ void Stats<TF>::add_fixed_prof(
 
         m.data_file->sync();
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -1174,6 +1178,10 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& group_name,
         const std::vector<TF>& prof)
 {
+    
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
+
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
@@ -1192,6 +1200,8 @@ void Stats<TF>::add_fixed_prof_raw(
 
         m.data_file->sync();
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -1204,7 +1214,7 @@ void Stats<TF>::add_time_series(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        return;
+        throw std::runtime_error("Variable " + name + " is added twice in add_time_series()");
 
     // Add the series to all files.
     for (auto& mask : masks)
@@ -1342,7 +1352,7 @@ void Stats<TF>::set_prof_background(const std::string& varname, const std::vecto
     else
     {
         for (auto& it : masks)
-        it.second.background_profs.at(varname).data = prof;
+            it.second.background_profs.at(varname).data = prof;
     }
 }
 
@@ -2259,5 +2269,9 @@ void Stats<TF>::calc_grad_4th(
     }
 }
 
-template class Stats<double>;
+
+#ifdef FLOAT_SINGLE
 template class Stats<float>;
+#else
+template class Stats<double>;
+#endif

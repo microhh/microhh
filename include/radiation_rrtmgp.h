@@ -68,7 +68,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         void update_time_dependent(Timeloop<TF>&);
@@ -84,7 +84,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Aerosol<TF>&, Background<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
@@ -160,14 +161,14 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const int);
 
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
@@ -177,14 +178,14 @@ class Radiation_rrtmgp : public Radiation<TF>
 
         #ifdef USECUDA
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 Array<Float, 1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,

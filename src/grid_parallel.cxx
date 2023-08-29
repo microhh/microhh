@@ -186,6 +186,11 @@ void Grid<TF>::load_grid()
     calculate();
 }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif
+
 #endif

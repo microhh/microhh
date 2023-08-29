@@ -63,5 +63,10 @@ void Diff_disabled<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& 
 {
     std::fill(out.fld.begin(), out.fld.end(), TF(0.));
 }
-template class Diff_disabled<double>;
+
+
+#ifdef FLOAT_SINGLE
 template class Diff_disabled<float>;
+#else
+template class Diff_disabled<double>;
+#endif

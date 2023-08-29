@@ -346,13 +346,13 @@ void Model<TF>::exec()
             while (true)
             {
                 // Update the time dependent parameters.
-                grid     ->update_time_dependent(*timeloop);
-                boundary ->update_time_dependent(*timeloop);
-                thermo   ->update_time_dependent(*timeloop);
-                force    ->update_time_dependent(*timeloop);
-                radiation->update_time_dependent(*timeloop);
-                aerosol  ->update_time_dependent(*timeloop);
-                background  ->update_time_dependent(*timeloop);
+                grid      ->update_time_dependent(*timeloop);
+                boundary  ->update_time_dependent(*timeloop);
+                thermo    ->update_time_dependent(*timeloop);
+                force     ->update_time_dependent(*timeloop);
+                radiation ->update_time_dependent(*timeloop);
+                aerosol   ->update_time_dependent(*timeloop);
+                background->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -381,7 +381,7 @@ void Model<TF>::exec()
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
 
                 // Calculate the radiation fluxes and the related heating rate.
-                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol, *background);
+                radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol, *background, *microphys);
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
@@ -448,7 +448,7 @@ void Model<TF>::exec()
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
                     if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
                     {
-                        radiation->exec_individual_column_stats(*column, *thermo, *timeloop, *stats, *aerosol, *background);
+                        radiation->exec_individual_column_stats(*column, *thermo, *microphys, *timeloop, *stats, *aerosol, *background);
                     }
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
