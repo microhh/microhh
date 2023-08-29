@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_DEARDORFF_H
-#define DIFF_DEARDORFF_H
+#ifndef DIFF_TKE2_H
+#define DIFF_TKE2_H
 
 #include "diff.h"
 #include "boundary_cyclic.h"
@@ -31,11 +31,11 @@ template<typename> class Stats;
 
 
 template<typename TF>
-class Diff_deardorff : public Diff<TF>
+class Diff_tke2 : public Diff<TF>
 {
     public:
-        Diff_deardorff(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
-        ~Diff_deardorff();
+        Diff_tke2(Master&, Grid<TF>&, Fields<TF>&, Boundary<TF>&, Input&);
+        ~Diff_tke2();
 
         Diffusion_type get_switch() const;
         unsigned long get_time_limit(unsigned long, double);
@@ -63,7 +63,7 @@ class Diff_deardorff : public Diff<TF>
 
         using Diff<TF>::tPr;
 
-        const Diffusion_type swdiff = Diffusion_type::Diff_deardorff;
+        const Diffusion_type swdiff = Diffusion_type::Diff_tke2;
 
         void create_stats(Stats<TF>&);
 

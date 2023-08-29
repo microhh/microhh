@@ -63,7 +63,7 @@ Limiter<TF>::Limiter(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, D
     master(masterin), grid(gridin), fields(fieldsin), diff(diffin)
 {
     limit_list = inputin.get_list<std::string>("limiter", "limitlist", "", std::vector<std::string>());
-    limit_sgstke = (diffin.get_switch() == Diffusion_type::Diff_deardorff);
+    limit_sgstke = (diffin.get_switch() == Diffusion_type::Diff_tke2);
 }
 
 template <typename TF>

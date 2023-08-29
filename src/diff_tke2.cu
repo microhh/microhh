@@ -33,7 +33,7 @@
 #include "monin_obukhov.h"
 #include "tools.h"
 
-#include "diff_deardorff.h"
+#include "diff_tke2.h"
 #include "diff_kernels.cuh"
 
 namespace
@@ -390,7 +390,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const double dt)
+unsigned long Diff_tke2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -438,7 +438,7 @@ unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const 
 }
 
 template<typename TF>
-double Diff_deardorff<TF>::get_dn(const double dt)
+double Diff_tke2<TF>::get_dn(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -484,7 +484,7 @@ double Diff_deardorff<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::exec(Stats<TF>& stats)
+void Diff_tke2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -571,7 +571,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
+void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -830,7 +830,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::prepare_device(Boundary<TF>& boundary)
+void Diff_tke2<TF>::prepare_device(Boundary<TF>& boundary)
 {
     auto& gd = grid.get_grid_data();
 
@@ -845,11 +845,11 @@ void Diff_deardorff<TF>::prepare_device(Boundary<TF>& boundary)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::clear_device()
+void Diff_tke2<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(mlen0_g));
 }
 #endif
 
-template class Diff_deardorff<double>;
-template class Diff_deardorff<float>;
+template class Diff_tke2<double>;
+template class Diff_tke2<float>;

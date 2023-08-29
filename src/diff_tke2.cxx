@@ -35,7 +35,7 @@
 #include "stats.h"
 #include "fast_math.h"
 
-#include "diff_deardorff.h"
+#include "diff_tke2.h"
 #include "diff_kernels.h"
 
 namespace
@@ -483,7 +483,7 @@ namespace
 }
 
 template<typename TF>
-Diff_deardorff<TF>::Diff_deardorff(
+Diff_tke2<TF>::Diff_tke2(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Boundary<TF>& boundaryin, Input& inputin) :
     Diff<TF>(masterin, gridin, fieldsin, boundaryin, inputin),
     boundary_cyclic(master, grid),
@@ -524,31 +524,31 @@ Diff_deardorff<TF>::Diff_deardorff(
 
     // Checks on input
     if (grid.get_spatial_order() != Grid_order::Second)
-        throw std::runtime_error("Diff_deardorff only runs with second order grids.");
+        throw std::runtime_error("Diff_tke2 only runs with second order grids.");
     if (boundary.get_switch() == "default")
-        throw std::runtime_error("Diff_deardorff does not support resolved walls.");
+        throw std::runtime_error("Diff_tke2 does not support resolved walls.");
 }
 
 template<typename TF>
-Diff_deardorff<TF>::~Diff_deardorff()
+Diff_tke2<TF>::~Diff_tke2()
 {
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::init()
+void Diff_tke2<TF>::init()
 {
     boundary_cyclic.init();
 }
 
 template<typename TF>
-Diffusion_type Diff_deardorff<TF>::get_switch() const
+Diffusion_type Diff_tke2<TF>::get_switch() const
 {
     return swdiff;
 }
 
 #ifndef USECUDA
 template<typename TF>
-unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const double dt)
+unsigned long Diff_tke2<TF>::get_time_limit(const unsigned long idt, const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -581,7 +581,7 @@ unsigned long Diff_deardorff<TF>::get_time_limit(const unsigned long idt, const 
 
 #ifndef USECUDA
 template<typename TF>
-double Diff_deardorff<TF>::get_dn(const double dt)
+double Diff_tke2<TF>::get_dn(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
@@ -610,7 +610,7 @@ double Diff_deardorff<TF>::get_dn(const double dt)
 #endif
 
 template<typename TF>
-void Diff_deardorff<TF>::create(Stats<TF>& stats)
+void Diff_tke2<TF>::create(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -638,7 +638,7 @@ void Diff_deardorff<TF>::create(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Diff_deardorff<TF>::exec(Stats<TF>& stats)
+void Diff_tke2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
@@ -761,7 +761,7 @@ void Diff_deardorff<TF>::exec(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
+void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto str2_tmp = fields.get_tmp();
@@ -948,7 +948,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 #endif
 
 template<typename TF>
-void Diff_deardorff<TF>::create_stats(Stats<TF>& stats)
+void Diff_tke2<TF>::create_stats(Stats<TF>& stats)
 {
     const std::string group_name_tke = "sgstke";
     const std::string group_name_default = "default";
@@ -980,7 +980,7 @@ void Diff_deardorff<TF>::create_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
+void Diff_tke2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -993,7 +993,7 @@ void Diff_deardorff<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 }
 
 template<typename TF>
-void Diff_deardorff<TF>::diff_flux(
+void Diff_tke2<TF>::diff_flux(
         Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
 {
     auto& gd = grid.get_grid_data();
@@ -1065,5 +1065,5 @@ void Diff_deardorff<TF>::diff_flux(
     }
 }
 
-template class Diff_deardorff<double>;
-template class Diff_deardorff<float>;
+template class Diff_tke2<double>;
+template class Diff_tke2<float>;
