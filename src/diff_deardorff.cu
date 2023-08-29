@@ -45,7 +45,7 @@ namespace
     template<typename TF, Surface_model surface_model, bool sw_mason> __global__
     void calc_evisc_neutral_g(
             TF* const restrict evisc,
-            const TF* const restrict a,
+            const TF* const restrict sgstke,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -88,7 +88,7 @@ namespace
                     fac = mlen0[k];
 
                 // Calculate eddy diffusivity for momentum.
-                evisc[ijk] = cm * fac * sqrt(a[ijk]);
+                evisc[ijk] = cm * fac * sqrt(sgstke[ijk]);
             }
         }
     }
@@ -96,7 +96,7 @@ namespace
     template<typename TF, Surface_model surface_model, bool sw_mason> __global__
     void calc_evisc_g(
             TF* const restrict evisc,
-            const TF* const restrict a,
+            const TF* const restrict sgstke,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -139,12 +139,12 @@ namespace
                 if (k == kstart)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
+                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
                 }
 
                 fac  = min(mlen0[k], mlen);
@@ -154,7 +154,7 @@ namespace
                             (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                 // Calculate eddy diffusivity for momentum.
-                evisc[ijk] = cm * fac * sqrt(a[ijk]);
+                evisc[ijk] = cm * fac * sqrt(sgstke[ijk]);
             }
         }
     }
@@ -163,7 +163,7 @@ namespace
     void calc_evisc_heat_g(
             TF* const restrict evisch,
             const TF* __restrict__ evisc,
-            const TF* __restrict__ a,
+            const TF* __restrict__ sgstke,
             const TF* __restrict__ N2,
             const TF* __restrict__ bgradbot,
             const TF* __restrict__ z,
@@ -204,12 +204,12 @@ namespace
                 if (k == kstart)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
+                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
                 }
 
                 fac  = min(mlen0[k], mlen);
@@ -226,7 +226,7 @@ namespace
 
     template<typename TF> __global__
     void sgstke_shear_tend_g(
-            TF* __restrict__ at,
+            TF* const __restrict__ at,
             const TF* __restrict__ a,
             const TF* __restrict__ evisc,
             const TF* __restrict__ strain2,
@@ -255,7 +255,7 @@ namespace
 
     template<typename TF> __global__
     void sgstke_buoy_tend_g(
-            TF* __restrict__ at,
+            TF* const __restrict__ at,
             const TF* __restrict__ a,
             const TF* __restrict__ evisch,
             const TF* __restrict__ N2,
@@ -288,14 +288,14 @@ namespace
 
     template<typename TF, bool sw_mason> __global__
     void sgstke_diss_tend_g(
-            TF* __restrict__ at,
-            const TF* __restrict__ a,
-            const TF* __restrict__ N2,
-            const TF* __restrict__ bgradbot,
-            const TF* __restrict__ z,
-            const TF* __restrict__ dz,
-            const TF* __restrict__ z0m,
-            const TF* __restrict__ mlen0,
+            TF* const __restrict__ at,
+            const TF* const __restrict__ a,
+            const TF* const __restrict__ N2,
+            const TF* const __restrict__ bgradbot,
+            const TF* const __restrict__ z,
+            const TF* const __restrict__ dz,
+            const TF* const __restrict__ z0m,
+            const TF* const __restrict__ mlen0,
             const TF dx, const TF dy,
             const TF cn, const TF ce1, const TF ce2,
             const int istart, const int iend,
@@ -349,11 +349,11 @@ namespace
     template<typename TF,  bool sw_mason> __global__
     void sgstke_diss_tend_neutral_g(
             TF* const __restrict__ at,
-            const TF* __restrict__ a,
-            const TF* __restrict__ z,
-            const TF* __restrict__ dz,
-            const TF* __restrict__ z0m,
-            const TF* __restrict__ mlen0,
+            const TF* const __restrict__ a,
+            const TF* const __restrict__ z,
+            const TF* const __restrict__ dz,
+            const TF* const __restrict__ z0m,
+            const TF* const __restrict__ mlen0,
             const TF dx, const TF dy,
             const TF ce1, const TF ce2,
             const int istart, const int iend,
@@ -463,15 +463,15 @@ double Diff_deardorff<TF>::get_dn(const double dt)
         : fields.sd.at("eviscs")->fld_g;
 
     dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
-        dnmul_tmp->fld_g,
-        evisc_g,
-        gd.dzi_g,
-        tPr_i_dummy,
-        dxidxi, dyidyi,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+            dnmul_tmp->fld_g,
+            evisc_g,
+            gd.dzi_g,
+            tPr_i_dummy,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Get maximum from tmp1 field
@@ -602,17 +602,17 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
     // Calculate total strain rate
     dk::calc_strain2_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-        str2_tmp->fld_g,
-        fields.mp.at("u")->fld_g,
-        fields.mp.at("v")->fld_g,
-        fields.mp.at("w")->fld_g,
-        dudz_g, dvdz_g,
-        gd.dzi_g, gd.dzhi_g,
-        gd.dxi, gd.dyi,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+            str2_tmp->fld_g,
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("w")->fld_g,
+            dudz_g, dvdz_g,
+            gd.dzi_g, gd.dzhi_g,
+            gd.dxi, gd.dyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
     cuda_check_error();
 
     // Start with retrieving the stability information
@@ -753,9 +753,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         boundary_cyclic.exec_g(fields.sd.at("eviscs")->fld_g);
 
-        //// BvS: I left the tendency calculations of sgstke here; feels a bit strange
-        //// to calculate them in `exec_viscosity`, but otherwise strain^2 has to be
-        //// recalculated in diff->exec()...
+        // Calculate tendencies here, to prevent having to
+        // re-calculate `strain2` in diffusion->exec()`.
         sgstke_buoy_tend_g<TF><<<gridGPU, blockGPU>>>(
                fields.st.at("sgstke")->fld_g,
                fields.sp.at("sgstke")->fld_g,
@@ -767,7 +766,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                gd.kstart, gd.kend,
                gd.icells, gd.ijcells);
 
-        //stats.calc_tend(*fields.st.at("sgstke"), tend_name_buoy);
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.st.at("sgstke"), tend_name_buoy);
 
         if (sw_mason)
             sgstke_diss_tend_g<TF, true><<<gridGPU, blockGPU>>>(
@@ -806,7 +806,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-        //stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
+        cudaDeviceSynchronize();
+        stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
 
         fields.release_tmp_g(buoy_tmp);
     }
@@ -821,7 +822,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
            gd.kstart, gd.kend,
            gd.icells, gd.ijcells);
 
-    //stats.calc_tend(*fields.st.at("sgstke"), tend_name_shear);
+    cudaDeviceSynchronize();
+    stats.calc_tend(*fields.st.at("sgstke"), tend_name_shear);
 
     // Release temporary fields
     fields.release_tmp_g(str2_tmp);

@@ -27,8 +27,8 @@
 #include "fields.h"
 #include "stats.h"
 #include "limiter.h"
-#include "constants.h" // tentativechange, SvdL, 07.06.22
-#include "diff.h" // tentativechange, SvdL, 07.06.22
+#include "constants.h"
+#include "diff.h"
 
 namespace
 {

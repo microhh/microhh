@@ -45,12 +45,13 @@ namespace
     namespace dk = Diff_kernels;
 
     template <typename TF>
-    void check_for_minval(
-            TF* const restrict a,
+    void enforce_min_sgstke(
+            TF* const restrict sgstke,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
-            const int icells, const int jcells, const int ijcells,
+            const int icells, const int jcells,
+            const int ijcells,
             Boundary_cyclic<TF>& boundary_cyclic)
     {
         const int jj = icells;
@@ -62,16 +63,16 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    a[ijk] = std::max(a[ijk], Constants::sgstke_min<TF>);
+                    sgstke[ijk] = std::max(sgstke[ijk], Constants::sgstke_min<TF>);
                 }
 
-        boundary_cyclic.exec(a);
+        boundary_cyclic.exec(sgstke);
     }
 
     template <typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc_neutral(
             TF* const restrict evisc,
-            const TF* const restrict a,
+            const TF* const restrict sgstke,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -117,7 +118,7 @@ namespace
                             fac = mlen0;
 
                         // Calculate eddy diffusivity for momentum.
-                        evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
+                        evisc[ijk] = cm * fac * std::sqrt(sgstke[ijk]);
                     }
             }
         }
@@ -128,7 +129,7 @@ namespace
     template<typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc(
             TF* const restrict evisc,
-            const TF* const restrict a,
+            const TF* const restrict sgstke,
             const TF* const restrict u,
             const TF* const restrict v,
             const TF* const restrict w,
@@ -168,7 +169,7 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(bgradbot[ij]);
                     else
                         mlen = mlen0;
 
@@ -179,7 +180,7 @@ namespace
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                     // Calculate eddy diffusivity for momentum.
-                    evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
+                    evisc[ijk] = cm * fac * std::sqrt(sgstke[ijk]);
                 }
 
             for (int k=kstart+1; k<kend; ++k) // Counter starts at kstart (as sgstke is defined here)
@@ -195,7 +196,7 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if (N2[ijk] > 0) // Only if stably stratified, adapt length scale
-                            mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(N2[ijk]);
                         else
                             mlen = mlen0;
 
@@ -206,7 +207,7 @@ namespace
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
                         // Calculate eddy diffusivity for momentum.
-                        evisc[ijk] = cm * fac * std::sqrt(a[ijk]);
+                        evisc[ijk] = cm * fac * std::sqrt(sgstke[ijk]);
                     }
             }
         }
@@ -218,7 +219,7 @@ namespace
     void calc_evisc_heat(
             TF* const restrict evisch,
             const TF* const restrict evisc,
-            const TF* const restrict a,
+            const TF* const restrict sgstke,
             const TF* const restrict N2,
             const TF* const restrict bgradbot,
             const TF* const restrict z,
@@ -255,7 +256,7 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(a[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(bgradbot[ij]);
                     else
                         mlen = mlen0;
 
@@ -282,7 +283,7 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                            mlen = cn * std::sqrt(a[ijk]) / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(N2[ijk]);
                         else
                             mlen = mlen0;
 
@@ -405,8 +406,6 @@ namespace
                     fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                 (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
-                // altered by the Mason correction but mlen0 not? Why not both?
                 // Calculate dissipation of SGS TKE based on Deardorff (1980)
                 at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
             }
@@ -434,8 +433,6 @@ namespace
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
-                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
-                    // altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
                     at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac;
                 }
@@ -478,8 +475,6 @@ namespace
                     else
                         fac = mlen0;
 
-                    // SvdL, 15-04-2023: quite strange (so check later), because why would (fac) be
-                    // altered by the Mason correction but mlen0 not? Why not both?
                     // Calculate dissipation of SGS TKE based on Deardorff (1980)
                     at[ijk] -= (ce1 + ce2 * fac / mlen0 ) * std::pow(a[ijk], TF(3./2.)) / fac ;
                 }
@@ -519,8 +514,6 @@ Diff_deardorff<TF>::Diff_deardorff(
     // Initialize field of SGS TKE
     fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
 
-    // SvdL, 15-04-2023: If I remember correctly, exactly this was needed to avoid zero divisions somewhere? ...
-    // Maybe it was just because of a call to a non-existing variable?
     fields.sp.at("sgstke")->visc = inputin.get_item<TF>("fields", "svisc", "sgstke");
 
     fields.init_diagnostic_field("evisc",  "Eddy viscosity for momentum", "m2 s-1", group_name, gd.sloc);
@@ -633,10 +626,8 @@ void Diff_deardorff<TF>::create(Stats<TF>& stats)
 
     create_stats(stats);
 
-    // SvdL, 15-04-2023: If sgs tke from input >= 0, this function shouldn't be necessary.
-    // However, sgs tke blows up, when this check is removed. Still don't fully understand why...
-    // update 14-04-2023: probably related to the same type of crash Chiel experiences with sgs_diss
-    check_for_minval<TF>(
+    // Limit initial TKE field at `Constants::sgstke_min`.
+    enforce_min_sgstke<TF>(
             fields.sp.at("sgstke")->fld.data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
@@ -848,7 +839,7 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         // Assume buoyancy calculation is needed
         auto buoy_tmp = fields.get_tmp();
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
-        const std::vector<TF>& dbdz = boundary.get_dbdz(); // SvdL, 19 April 2023: this should already be the "surface" N2
+        const std::vector<TF>& dbdz = boundary.get_dbdz();
 
         auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>()
         {
@@ -931,7 +922,8 @@ void Diff_deardorff<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
-                gd.icells, gd.ijcells, sw_mason); ///< SvdL, 14-04-2023: not the nicest, see above);
+                gd.icells, gd.ijcells,
+                sw_mason);
 
         stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
 
@@ -1008,7 +1000,6 @@ void Diff_deardorff<TF>::diff_flux(
 
     const TF tPr_dummy = 1;
 
-    // SvdL. 15-04-2023: still check if these boundary fluxes for sgstke are correct?
     // Calculate the boundary fluxes.
     dk::calc_diff_flux_bc(
             out.fld.data(), fld_in.flux_bot.data(),
@@ -1048,8 +1039,8 @@ void Diff_deardorff<TF>::diff_flux(
                 gd.icells, gd.ijcells);
     else
     {
-        // SvdL, 14-04-2023: if no buoyancy scalars diffuse with eddy viscosity for momentum,
-        // sgstke and w always diffuse with this one.
+        // If no buoyancy, scalars diffuse with eddy viscosity for momentum.
+        // Sgstke and w always diffuse with this one.
         std::string varname = fld_in.name;
         if (!sw_buoy || varname == "sgstke" || varname == "w")
             dk::calc_diff_flux_c<TF, Surface_model::Enabled>(
