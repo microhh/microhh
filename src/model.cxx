@@ -458,7 +458,7 @@ void Model<TF>::exec()
                         #pragma omp taskwait
                         cpu_up_to_date = true;
                         fields   ->backward_device();
-                        boundary ->backward_device();
+                        boundary ->backward_device(*thermo);
                         thermo   ->backward_device();
                         microphys->backward_device();
                         #endif
@@ -516,7 +516,7 @@ void Model<TF>::exec()
                             #pragma omp taskwait
                             cpu_up_to_date = true;
                             fields   ->backward_device();
-                            boundary ->backward_device();
+                            boundary ->backward_device(*thermo);
                             thermo   ->backward_device();
                             microphys->backward_device();
                         }
@@ -562,7 +562,7 @@ void Model<TF>::exec()
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
-    boundary->backward_device();
+    boundary->backward_device(*thermo);
     thermo  ->backward_device();
 
     clear_gpu();
@@ -580,7 +580,7 @@ void Model<TF>::prepare_gpu()
     fields   ->prepare_device();
     buffer   ->prepare_device();
     thermo   ->prepare_device();
-    boundary ->prepare_device();
+    boundary ->prepare_device(*thermo);
     diff     ->prepare_device(*boundary);
     force    ->prepare_device();
     ib       ->prepare_device();
@@ -600,7 +600,7 @@ void Model<TF>::clear_gpu()
     soil_grid->clear_device();
     fields   ->clear_device();
     thermo   ->clear_device();
-    boundary ->clear_device();
+    boundary ->clear_device(*thermo);
     diff     ->clear_device();
     force    ->clear_device();
     ib       ->clear_device();
@@ -674,7 +674,7 @@ void Model<TF>::setup_stats()
             #pragma omp taskwait
             cpu_up_to_date = true;
             fields   ->backward_device();
-            boundary ->backward_device();
+            boundary ->backward_device(*thermo);
             thermo   ->backward_device();
             microphys->backward_device();
         }

@@ -120,10 +120,10 @@ class Boundary
         virtual TF* get_dvdz_g();
         virtual TF* get_dbdz_g();
 
-        virtual void prepare_device();
-        virtual void forward_device();
-        virtual void backward_device();
-        virtual void clear_device();
+        virtual void prepare_device(Thermo<TF>&);
+        virtual void forward_device(Thermo<TF>&);
+        virtual void backward_device(Thermo<TF>&);
+        virtual void clear_device(Thermo<TF>&);
         #endif
 
     protected:

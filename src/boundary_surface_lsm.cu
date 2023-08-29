@@ -883,13 +883,13 @@ void Boundary_surface_lsm<TF>::print_ij(
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::prepare_device()
+void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
     // Prepare base boundary, for inflow profiles.
-    Boundary<TF>::prepare_device();
+    Boundary<TF>::prepare_device(thermo);
 
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
     const int int_memsize_ij = gd.ijcells*sizeof(int);
@@ -975,11 +975,11 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&rho_C_g, memsize_vg_lut));
 
     // Copy data from host to device
-    forward_device();
+    forward_device(thermo);
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::forward_device()
+void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
@@ -1068,7 +1068,7 @@ void Boundary_surface_lsm<TF>::forward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::backward_device()
+void Boundary_surface_lsm<TF>::backward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1090,7 +1090,7 @@ void Boundary_surface_lsm<TF>::backward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::clear_device()
+void Boundary_surface_lsm<TF>::clear_device(Thermo<TF>& thermo)
 {
     //
     // De-llocate fields on GPU
