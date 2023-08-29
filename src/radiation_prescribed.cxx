@@ -127,7 +127,7 @@ void Radiation_prescribed<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Aerosol<TF>&, Background<TF>&)
+        Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
 }
 #endif

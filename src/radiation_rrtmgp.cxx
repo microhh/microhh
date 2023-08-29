@@ -30,6 +30,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+#include "microphys.h"
 #include "thermo_moist_functions.h"
 #include "input.h"
 #include "netcdf_interface.h"
@@ -1606,7 +1607,7 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, 
-        Aerosol<TF>& aerosol, Background<TF>& background)
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1683,7 +1684,7 @@ void Radiation_rrtmgp<TF>::exec(
                 }
 
                 exec_longwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds, gd.imax*gd.jmax);
@@ -1733,7 +1734,7 @@ void Radiation_rrtmgp<TF>::exec(
                     if (sw_clear_sky_stats)
                     {
                         exec_longwave(
-                                thermo, timeloop, stats,
+                                thermo, microphys, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                                 !compute_clouds, gd.imax*gd.jmax);
@@ -1766,7 +1767,7 @@ void Radiation_rrtmgp<TF>::exec(
                 if (is_day(this->mu0))
                 {
                     exec_shortwave(
-                            thermo, timeloop, stats,
+                            thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             aod550,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -1857,7 +1858,7 @@ void Radiation_rrtmgp<TF>::exec(
                         if (is_day(this->mu0))
                         {
                             exec_shortwave(
-                                    thermo, timeloop, stats,
+                                    thermo, microphys, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
                                     aod550,
                                     t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -2041,7 +2042,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();
@@ -2153,7 +2154,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             }
 
             exec_longwave(
-                    thermo, timeloop, stats,
+                    thermo, microphys, timeloop, stats,
                     flux_up, flux_dn, flux_net,
                     t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                     compute_clouds, n_cols);
@@ -2164,7 +2165,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             if (sw_clear_sky_stats)
             {
                 exec_longwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         !compute_clouds, n_cols);
@@ -2216,7 +2217,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
                 Array<Float,1> aod550_column_stats;
                 aod550_column_stats.set_dims({n_col});
                 exec_shortwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_dn_dir, flux_net,
                         aod550_column_stats,
                         t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -2229,7 +2230,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
                 if (sw_clear_sky_stats)
                 {
                     exec_shortwave(
-                            thermo, timeloop, stats,
+                            thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             aod550_column_stats,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -2260,7 +2261,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<Float,2>& flux_up, Array<Float,2>& flux_dn, Array<Float,2>& flux_net,
         const Array<Float,2>& t_lay, const Array<Float,2>& t_lev, const Array<Float,1>& t_sfc,
         const Array<Float,2>& h2o, const Array<Float,2>& clwp, const Array<Float,2>& ciwp,
@@ -2351,9 +2352,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-            // CvH: Numbers according to RCEMIP.
-            const Float Nc0 = 100.e6;
-            const Float Ni0 = 1.e5;
+            const TF Nc0 = microphys.get_Nc0();
+            const TF Ni0 = microphys.get_Ni0();
 
             const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
             const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -2468,7 +2468,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array<Float,2>& flux_up, Array<Float,2>& flux_dn,
         Array<Float,2>& flux_dn_dir, Array<Float,2>& flux_net,
         Array<Float, 1>&aod550,
@@ -2576,9 +2576,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-            // CvH: Numbers according to RCEMIP.
-            const Float Nc0 = 100.e6;
-            const Float Ni0 = 1.e5;
+            const TF Nc0 = microphys.get_Nc0();
+            const TF Ni0 = microphys.get_Ni0();
 
             const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
             const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;

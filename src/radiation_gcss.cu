@@ -221,7 +221,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();

@@ -69,6 +69,9 @@ class Microphys_nsw6 : public Microphys<TF>
 
         void get_surface_rain_rate(std::vector<TF>&);
 
+        TF get_Nc0() { return this->Nc0; }
+        TF get_Ni0() { return static_cast<TF>(1e5); } // CvH: this is a temporary fix with previous default value, Ni0 is 3D in tomita!
+
         unsigned long get_time_limit(unsigned long, double);
 
         #ifdef USECUDA

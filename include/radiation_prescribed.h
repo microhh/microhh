@@ -36,6 +36,7 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
+template<typename> class Microphys;
 template<typename> class Timeloop;
 template<typename> class Timedep;
 
@@ -50,7 +51,7 @@ class Radiation_prescribed : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         std::vector<TF>& get_surface_radiation(const std::string&);
@@ -66,7 +67,8 @@ class Radiation_prescribed : public Radiation<TF>
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Aerosol<TF>&, Background<TF>&) {};
 
         #ifdef USECUDA

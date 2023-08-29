@@ -1394,7 +1394,7 @@ void Radiation_rrtmgp_rt<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Aerosol<TF>& aerosol, Background<TF>& background)
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     throw std::runtime_error("no raytracing in CPU mode, sorry!");
 }
@@ -1435,7 +1435,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
 
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background)
 {
     throw std::runtime_error("We are not running column output in raytracing mode!");
