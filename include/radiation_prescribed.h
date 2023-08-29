@@ -54,7 +54,13 @@ class Radiation_prescribed : public Radiation<TF>
         void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
+
         std::vector<TF>& get_surface_radiation(const std::string&);
+        std::vector<TF>& get_surface_emissivity(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface emissivity field"); }
+        std::vector<TF>& get_surface_albedo(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface albedo field"); }
+
         void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)

@@ -64,6 +64,8 @@ class Radiation
         virtual bool check_field_exists(const std::string& name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&) = 0;
         virtual std::vector<TF>& get_surface_radiation(const std::string&) = 0;
+        virtual std::vector<TF>& get_surface_emissivity(const std::string&) = 0;
+        virtual std::vector<TF>& get_surface_albedo(const std::string&) = 0;
 
         // virtual void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
         // virtual void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
