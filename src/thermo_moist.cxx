@@ -1229,9 +1229,10 @@ void Thermo_moist<TF>::load(const int iotime)
         else
         {
             master.print_message("OK\n");
-
-            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
-            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            if (fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
+                ++nerror;
+            if (fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot + 1)
+                ++nerror;
             fclose(pFile);
         }
     }
@@ -1920,10 +1921,6 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(rh);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
-
-        stats.add_time_series("thl_bot", "Surface liquid water potential temperature", "K", group_name);
-        stats.add_time_series("qt_bot", "Surface specific humidity", "kg kg-1", group_name);
-
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
 }
@@ -2100,9 +2097,9 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     get_thermo_field(*rh, "rh", true, true);
     stats.calc_stats("rh", *rh, no_offset, no_threshold);
 
-    // Surface values
-    stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
-    stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
+    // // Surface values
+    // stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
+    // stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
 
     fields.release_tmp(rh);
 
@@ -2318,5 +2315,9 @@ void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     fields.release_tmp(output);
 }
 
-template class Thermo_moist<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_moist<float>;
+#else
+template class Thermo_moist<double>;
+#endif

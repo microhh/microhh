@@ -1275,5 +1275,9 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
     }
 }
 
-template class Diff_smag2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_smag2<float>;
+#else
+template class Diff_smag2<double>;
+#endif

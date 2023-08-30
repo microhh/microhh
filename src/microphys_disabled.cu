@@ -36,5 +36,9 @@ void Microphys_disabled<TF>::get_surface_rain_rate_g(
 }
 #endif
 
-template class Microphys_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_disabled<float>;
+#else
+template class Microphys_disabled<double>;
+#endif

@@ -501,9 +501,12 @@ void Timeloop<TF>::load(int starttime)
         }
         else
         {
-            fread(&itime    , sizeof(unsigned long), 1, pFile);
-            fread(&idt      , sizeof(unsigned long), 1, pFile);
-            fread(&iteration, sizeof(int), 1, pFile);
+            if (fread(&itime    , sizeof(unsigned long), 1, pFile) != 1 )
+                ++nerror;
+            if (fread(&idt      , sizeof(unsigned long), 1, pFile) != 1 )
+                ++nerror;
+            if (fread(&iteration, sizeof(int), 1, pFile) != 1 )
+                ++nerror;
 
             fclose(pFile);
         }
@@ -641,5 +644,9 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
     return ifac;
 }
 
-template class Timeloop<double>;
+
+#ifdef FLOAT_SINGLE
 template class Timeloop<float>;
+#else
+template class Timeloop<double>;
+#endif

@@ -127,8 +127,8 @@ void Aerosol<TF>::get_radiation_fields(std::unique_ptr<Aerosol_concs_gpu>& aeros
     aerosol_concs_gpu->set_vmr("aermr11", aermr11_a.subset({ {{1, ncol}, {kstart, kend}}} ));
 
 }
-
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Aerosol<float>;

@@ -546,5 +546,9 @@ TF Source<TF>::calc_norm(
     return sum;
 }
 
-template class Source<double>;
+
+#ifdef FLOAT_SINGLE
 template class Source<float>;
+#else
+template class Source<double>;
+#endif

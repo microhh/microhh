@@ -135,5 +135,9 @@ void Column<TF>::clear_device()
 }
 #endif
 
-template class Column<double>;
+
+#ifdef FLOAT_SINGLE
 template class Column<float>;
+#else
+template class Column<double>;
+#endif

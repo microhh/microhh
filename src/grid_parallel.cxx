@@ -156,16 +156,16 @@ void Grid<TF>::load_grid()
     {
         pFile = fopen(filename, "rb");
         if (pFile == NULL)
-        {
-            master.print_message("FAILED\n");
             ++nerror;
-        }
         else
         {
             int n = (2*gd.itot+2*gd.jtot)*sizeof(TF);
-            fseek(pFile, n, SEEK_SET);
-            fread(&gd.z [gd.kstart], sizeof(TF), gd.kmax, pFile);
-            fread(&gd.zh[gd.kstart], sizeof(TF), gd.kmax, pFile);
+            if (fseek(pFile, n, SEEK_SET) != 0)
+                ++nerror;
+            if (fread(&gd.z [gd.kstart], sizeof(TF), gd.kmax, pFile) != (unsigned)gd.kmax )
+                ++nerror;
+            if (fread(&gd.zh[gd.kstart], sizeof(TF), gd.kmax, pFile) != (unsigned)gd.kmax )
+                ++nerror;
             fclose(pFile);
         }
     }
@@ -186,6 +186,11 @@ void Grid<TF>::load_grid()
     calculate();
 }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif
+
 #endif

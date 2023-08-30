@@ -211,5 +211,9 @@ TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)
 }
 #endif
 
-template class Field3d_operators<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_operators<float>;
+#else
+template class Field3d_operators<double>;
+#endif

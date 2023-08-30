@@ -1398,5 +1398,8 @@ void Fields<TF>::reset_tendencies()
 }
 
 
-template class Fields<double>;
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif
