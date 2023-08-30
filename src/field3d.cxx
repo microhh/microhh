@@ -105,5 +105,9 @@ int Field3d<TF>::init()
     return 0;
 }
 
-template class Field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d<float>;
+#else
+template class Field3d<double>;
+#endif

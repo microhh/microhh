@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "fft.h"
 
+
 template<typename TF>
 FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
     master(masterin), grid(gridin),
@@ -40,6 +41,21 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
     fftoutj = nullptr;
 }
 
+
+#ifdef FLOAT_SINGLE
+template<>
+void FFT<float>::init()
+{
+    auto& gd = grid.get_grid_data();
+
+    fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
+    fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
+    fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
+    fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
+
+    transpose.init();
+}
+#else
 template<>
 void FFT<double>::init()
 {
@@ -52,22 +68,29 @@ void FFT<double>::init()
 
     transpose.init();
 }
+#endif
 
+
+#ifdef FLOAT_SINGLE
 template<>
-void FFT<float>::init()
+FFT<float>::~FFT()
 {
-    auto& gd = grid.get_grid_data();
+    if (has_fftw_plan)
+    {
+        fftwf_destroy_plan(iplanff);
+        fftwf_destroy_plan(iplanbf);
+        fftwf_destroy_plan(jplanff);
+        fftwf_destroy_plan(jplanbf);
+    }
 
-    #ifdef FLOAT_SINGLE
-    fftini  = fftwf_alloc_real(gd.itot*gd.jmax);
-    fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
-    fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
-    fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
-    #endif
+    fftwf_free(fftini);
+    fftwf_free(fftouti);
+    fftwf_free(fftinj);
+    fftwf_free(fftoutj);
 
-    transpose.init();
+    fftwf_cleanup();
 }
-
+#else
 template<>
 FFT<double>::~FFT()
 {
@@ -86,28 +109,56 @@ FFT<double>::~FFT()
 
     fftw_cleanup();
 }
+#endif
 
+
+#ifdef FLOAT_SINGLE
 template<>
-FFT<float>::~FFT()
+void FFT<float>::load()
 {
-    #ifdef FLOAT_SINGLE
-    if (has_fftw_plan)
+    // LOAD THE FFTW PLAN
+    auto& gd = grid.get_grid_data();
+
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    int n = fftwf_import_wisdom_from_filename(filename);
+    if (n == 0)
     {
-        fftwf_destroy_plan(iplanff);
-        fftwf_destroy_plan(iplanbf);
-        fftwf_destroy_plan(jplanff);
-        fftwf_destroy_plan(jplanbf);
+        master.print_message("FAILED\n");
+        throw std::runtime_error("Error loading FFTW Plan");
     }
+    else
+        master.print_message("OK\n");
 
-    fftwf_free(fftini);
-    fftwf_free(fftouti);
-    fftwf_free(fftinj);
-    fftwf_free(fftoutj);
+    // use the FFTW3 many interface in order to reduce function call overhead
+    int rank = 1;
+    int ni[] = {gd.itot};
+    int nj[] = {gd.jtot};
+    int istride = 1;
+    int jstride = gd.iblock;
+    int idist = gd.itot;
+    int jdist = 1;
 
-    fftwf_cleanup();
-    #endif
+    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
+    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+
+    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+
+    has_fftw_plan = true;
+
+    fftwf_forget_wisdom();
 }
-
+#else
 template<>
 void FFT<double>::load()
 {
@@ -153,30 +204,17 @@ void FFT<double>::load()
 
     fftw_forget_wisdom();
 }
+#endif
 
 
+#ifdef FLOAT_SINGLE
 template<>
-void FFT<float>::load()
+void FFT<float>::save()
 {
-    #ifdef FLOAT_SINGLE
-    // LOAD THE FFTW PLAN
+    // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
+    // Use the FFTW3 many interface in order to reduce function call overhead.
     auto& gd = grid.get_grid_data();
 
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-    master.print_message("Loading \"%s\" ... ", filename);
-
-    int n = fftwf_import_wisdom_from_filename(filename);
-    if (n == 0)
-    {
-        master.print_message("FAILED\n");
-        throw std::runtime_error("Error loading FFTW Plan");
-    }
-    else
-        master.print_message("OK\n");
-
-    // use the FFTW3 many interface in order to reduce function call overhead
     int rank = 1;
     int ni[] = {gd.itot};
     int nj[] = {gd.jtot};
@@ -189,21 +227,40 @@ void FFT<float>::load()
     fftwf_r2r_kind kindb[] = {FFTW_HC2R};
 
     iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+                                  fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
     iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+                                  fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
     jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+                                  fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
     jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+                                  fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
 
     has_fftw_plan = true;
 
-    fftwf_forget_wisdom();
-    #endif
+    int nerror = 0;
+    if (master.get_mpiid() == 0)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        int n = fftwf_export_wisdom_to_filename(filename);
+        if (n == 0)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+            master.print_message("OK\n");
+    }
+
+    master.sum(&nerror, 1);
+
+    if (nerror)
+        throw std::runtime_error("Error saving FFTW plan");
 }
-
-
+#else
 template<>
 void FFT<double>::save()
 {
@@ -256,79 +313,26 @@ void FFT<double>::save()
     if (nerror)
         throw std::runtime_error("Error saving FFTW plan");
 }
+#endif
 
-template<>
-void FFT<float>::save()
-{
-    #ifdef FLOAT_SINGLE
-    // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
-    // Use the FFTW3 many interface in order to reduce function call overhead.
-    auto& gd = grid.get_grid_data();
-
-    int rank = 1;
-    int ni[] = {gd.itot};
-    int nj[] = {gd.jtot};
-    int istride = 1;
-    int jstride = gd.iblock;
-    int idist = gd.itot;
-    int jdist = 1;
-
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
-
-    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
-    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
-    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
-    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
-
-    has_fftw_plan = true;
-
-    int nerror = 0;
-    if (master.get_mpiid() == 0)
-    {
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-        master.print_message("Saving \"%s\" ... ", filename);
-
-        int n = fftwf_export_wisdom_to_filename(filename);
-        if (n == 0)
-        {
-            master.print_message("FAILED\n");
-            nerror++;
-        }
-        else
-            master.print_message("OK\n");
-    }
-
-    master.sum(&nerror, 1);
-
-    if (nerror)
-        throw std::runtime_error("Error saving FFTW plan");
-    #endif
-}
 
 namespace
 {
     template<typename> void fftw_execute_wrapper(const fftw_plan&, const fftwf_plan&);
 
+    #ifdef FLOAT_SINGLE
+    template<>
+    void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftwf_execute(pf);
+    }
+    #else
     template<>
     void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
     {
         fftw_execute(p);
     }
-
-    template<>
-    void fftw_execute_wrapper<float>(const fftw_plan& p, const fftwf_plan& pf)
-    {
-        #ifdef FLOAT_SINGLE
-        fftwf_execute(pf);
-        #endif
-    }
+    #endif
 
     #ifndef USEMPI
     template<typename TF>
@@ -598,5 +602,9 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
             iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(), transpose);
 }
 
-template class FFT<double>;
+
+#ifdef FLOAT_SINGLE
 template class FFT<float>;
+#else
+template class FFT<double>;
+#endif

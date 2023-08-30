@@ -542,5 +542,9 @@ void Boundary_surface<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-template class Boundary_surface<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface<float>;
+#else
+template class Boundary_surface<double>;
+#endif

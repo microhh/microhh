@@ -40,6 +40,8 @@ template<typename> class Dump;
 template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Timedep;
+template<typename> class Thermo;
+template<typename> class Microphys;
 template<typename> class Timeloop;
 
 template<typename TF>
@@ -52,7 +54,7 @@ class Radiation_gcss : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
         void update_time_dependent(Timeloop<TF>&) {};
@@ -61,14 +63,19 @@ class Radiation_gcss : public Radiation<TF>
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&);
 
         std::vector<TF>& get_surface_radiation(const std::string&)
-            { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
+        { throw std::runtime_error("\"get_surface_radiation()\" is not implemented in radiation_gcss"); }
+        std::vector<TF>& get_surface_emissivity(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface emissivity field"); }
+        std::vector<TF>& get_surface_albedo(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface albedo field"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Aerosol<TF>&, Background<TF>&)
             { throw std::runtime_error("\"exec_individual_column_stats()\" is not implemented in radiation_gcss"); }
 

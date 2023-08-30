@@ -508,10 +508,13 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
     t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
-    emis_sfc    = inputin.get_item<Float>("radiation", "emis_sfc"   , "");
-    sfc_alb_dir = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
-    sfc_alb_dif = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
+
+    // Read representative values for the surface properties that are used in the column calcs.
+    // CvH: how to deal with this for heterogeneous surfaces?
+    emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
+    sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+    sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
 
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
     kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "");
@@ -656,6 +659,25 @@ void Radiation_rrtmgp_rt<TF>::create(
         #else
         throw;
         #endif
+    }
+
+    // Allocate the surface fields only after the number of bands is known.
+    // For now, the surface is uniform over the wavelengths and constant in space.
+    // CvH spatially and wavelength dependent properties use a lot of memory (total (2*14 + 16) 2D slices).
+    if (sw_shortwave)
+    {
+        const int n_bnd = kdist_sw->get_nband();
+        sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
+        sfc_alb_dir.fill(sfc_alb_dir_hom);
+        sfc_alb_dif.fill(sfc_alb_dif_hom);
+    }
+
+    if (sw_longwave)
+    {
+        const int n_bnd = kdist_lw->get_nband();
+        emis_sfc.set_dims({n_bnd, gd.imax*gd.jmax});
+        emis_sfc.fill(emis_sfc_hom);
     }
 
     if (stats.get_switch() && sw_shortwave)
@@ -1039,7 +1061,7 @@ void Radiation_rrtmgp_rt<TF>::create_column_longwave(
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     // Compute the longwave for the reference profile.
     sources_lw = std::make_unique<Source_func_lw>(n_col, n_lay_col, *kdist_lw);
@@ -1114,10 +1136,11 @@ void Radiation_rrtmgp_rt<TF>::create_column_shortwave(
         Array<Float,2> sfc_alb_dir({n_bnd, n_col});
         Array<Float,2> sfc_alb_dif({n_bnd, n_col});
 
+        // Use the representative value for the column calculations.
         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         {
-            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+            sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+            sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
         }
 
         Array<Float,1> mu0({n_col});
@@ -1326,7 +1349,7 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_longwave(Thermo<TF>& thermo)
     const int n_bnd = kdist_lw->get_nband();
     Array<Float,2> emis_sfc({n_bnd, 1});
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
-        emis_sfc({ibnd, 1}) = this->emis_sfc;
+        emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
     solve_longwave_column(optical_props_lw,
                           lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
@@ -1354,8 +1377,8 @@ void Radiation_rrtmgp_rt<TF>::set_background_column_shortwave(Thermo<TF>& thermo
 
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
     {
-        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir;
-        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif;
+        sfc_alb_dir({ibnd, 1}) = this->sfc_alb_dir_hom;
+        sfc_alb_dif({ibnd, 1}) = this->sfc_alb_dif_hom;
     }
 
     Array<Float,1> mu0({n_col});
@@ -1391,7 +1414,7 @@ void Radiation_rrtmgp_rt<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec(
         Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
-        Aerosol<TF>& aerosol, Background<TF>& background)
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     throw std::runtime_error("no raytracing in CPU mode, sorry!");
 }
@@ -1432,7 +1455,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
 
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background)
 {
     throw std::runtime_error("We are not running column output in raytracing mode!");
@@ -1447,7 +1470,8 @@ bool Radiation_rrtmgp_rt<TF>::is_day(const Float mu0)
     return false;
 }
 
-#ifdef RTE_USE_SP
+
+#ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp_rt<float>;
 #else
 template class Radiation_rrtmgp_rt<double>;

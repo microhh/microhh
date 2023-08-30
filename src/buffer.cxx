@@ -206,5 +206,9 @@ void Buffer<TF>::exec(Stats<TF>& stats)
 }
 #endif
 
-template class Buffer<double>;
+
+#ifdef FLOAT_SINGLE
 template class Buffer<float>;
+#else
+template class Buffer<double>;
+#endif

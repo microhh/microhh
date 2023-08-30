@@ -3100,5 +3100,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     }
 }
 
-template class Budget_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_4<float>;
+#else
+template class Budget_4<double>;
+#endif

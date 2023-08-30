@@ -122,5 +122,9 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
 }
 #endif
 
-template class Limiter<double>;
+
+#ifdef FLOAT_SINGLE
 template class Limiter<float>;
+#else
+template class Limiter<double>;
+#endif

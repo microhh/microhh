@@ -282,5 +282,9 @@ void Transpose<TF>::exit_mpi()
 }
 #endif
 
-template class Transpose<double>;
+
+#ifdef FLOAT_SINGLE
 template class Transpose<float>;
+#else
+template class Transpose<double>;
+#endif

@@ -168,5 +168,9 @@ void Timedep<TF>::update_time_dependent(TF& val, Timeloop<TF>& timeloop)
     return;
 }
 
-template class Timedep<double>;
+
+#ifdef FLOAT_SINGLE
 template class Timedep<float>;
+#else
+template class Timedep<double>;
+#endif

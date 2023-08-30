@@ -59,5 +59,9 @@ void Field3d<TF>::clear_device()
     cuda_safe_call(cudaFree(fld_mean_g));
 }
 
-template class Field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d<float>;
+#else
+template class Field3d<double>;
+#endif

@@ -845,5 +845,9 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     fields.release_tmp(b);
 }
 
-template class Thermo_dry<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_dry<float>;
+#else
+template class Thermo_dry<double>;
+#endif

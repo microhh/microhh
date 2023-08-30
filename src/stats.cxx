@@ -2269,5 +2269,9 @@ void Stats<TF>::calc_grad_4th(
     }
 }
 
-template class Stats<double>;
+
+#ifdef FLOAT_SINGLE
 template class Stats<float>;
+#else
+template class Stats<double>;
+#endif

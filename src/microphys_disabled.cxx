@@ -53,5 +53,9 @@ void Microphys_disabled<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::fill(field.begin(), field.end(), TF(0));
 }
 
-template class Microphys_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_disabled<float>;
+#else
+template class Microphys_disabled<double>;
+#endif

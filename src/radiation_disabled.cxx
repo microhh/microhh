@@ -48,6 +48,7 @@ bool Radiation_disabled<TF>::check_field_exists(const std::string& name)
     return false;  // always returns error
 }
 
+
 #ifdef FLOAT_SINGLE
 template class Radiation_disabled<float>;
 #else

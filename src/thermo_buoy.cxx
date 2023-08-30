@@ -470,5 +470,9 @@ bool Thermo_buoy<TF>::check_field_exists(std::string name)
         return false;
 }
 
-template class Thermo_buoy<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_buoy<float>;
+#else
+template class Thermo_buoy<double>;
+#endif

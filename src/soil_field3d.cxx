@@ -73,5 +73,9 @@ int Soil_field3d<TF>::init()
     return 0;
 }
 
-template class Soil_field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_field3d<float>;
+#else
+template class Soil_field3d<double>;
+#endif

@@ -644,5 +644,9 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
     return ifac;
 }
 
-template class Timeloop<double>;
+
+#ifdef FLOAT_SINGLE
 template class Timeloop<float>;
+#else
+template class Timeloop<double>;
+#endif
