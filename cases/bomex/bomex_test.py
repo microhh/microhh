@@ -29,6 +29,7 @@ dict_opts = {
         'fixed_basestate': {'thermo': {'swupdatebasestate': 0}},
         'deardorff': {
             'diff': {'swdiff': 'tke2'},
+            'boundary': {'sbot[sgstke]': 0, 'stop[sgstke]': 0},
             'advec': {'swadvec': '2i5', 'fluxlimit_list': 'sgstke'}}}
 
 

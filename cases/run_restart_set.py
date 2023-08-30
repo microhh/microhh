@@ -64,4 +64,4 @@ for prec in precs:
         # RICO LES intercomparison
         mht.run_restart('rico',
                 rico.opt_small, rico.opt_mpi, rico.dict_opts,
-                microhh_exec, mode, 'rico', experiment)
+               microhh_exec, mode, 'rico', experiment)
