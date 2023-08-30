@@ -229,6 +229,9 @@ double Diff_4<TF>::get_dn(const double dt)
 template<typename TF>
 void Diff_4<TF>::create(Stats<TF>& stats, const bool cold_start)
 {
+    if (cold_start)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // Get the maximum viscosity

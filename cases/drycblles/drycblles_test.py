@@ -26,6 +26,7 @@ dict_opts = {
         'advec_2i5': {'advec': {'swadvec': '2i5'}},
         'deardorff': {
             'diff': {'swdiff': 'tke2'},
+            'boundary': {'sbot[sgstke]': 0, 'stop[sgstke]': 0},
             'advec': {'swadvec': '2i5', 'fluxlimit_list': 'sgstke'}}}
 
 if __name__ == '__main__':

@@ -285,11 +285,7 @@ void Model<TF>::load()
     pres->set_values();
     pres->create(*stats);
     advec->create(*stats);
-
-    if (sim_mode == Sim_mode::Init)
-        diff->create(*stats, true);
-    else
-        diff->create(*stats, false);
+    diff->create(*stats, false);
 
     budget->create(*stats);
 }
@@ -301,6 +297,7 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input, *input_nc);
     fields->create(*input, *input_nc);
+    diff->create(*stats, true);
 
     // Save the initialized data to disk for the run mode.
     grid->save();

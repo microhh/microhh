@@ -614,20 +614,11 @@ void Diff_tke2<TF>::create(Stats<TF>& stats, const bool cold_start)
 {
     auto& gd = grid.get_grid_data();
 
-    // Get the maximum viscosity
-    TF viscmax = fields.visc;
-    for (auto& it : fields.sp)
-        viscmax = std::max(it.second->visc, viscmax);
-
-    // Calculate time step multiplier for diffusion number
-    dnmul = 0;
-    for (int k=gd.kstart; k<gd.kend; ++k)
-        dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
-
-    create_stats(stats);
-
-    // Limit initial TKE field at `Constants::sgstke_min`.
     if (cold_start)
+    {
+        // Limit initial TKE field at `Constants::sgstke_min`.
+        // Only do this at a cold start, otherwise restarts
+        // are potentially bitwise unidentical!
         enforce_min_sgstke<TF>(
                 fields.sp.at("sgstke")->fld.data(),
                 gd.istart, gd.iend,
@@ -635,6 +626,21 @@ void Diff_tke2<TF>::create(Stats<TF>& stats, const bool cold_start)
                 gd.kstart, gd.kend,
                 gd.icells, gd.jcells, gd.ijcells,
                 boundary_cyclic);
+    }
+    else
+    {
+        // Get the maximum viscosity
+        TF viscmax = fields.visc;
+        for (auto& it : fields.sp)
+            viscmax = std::max(it.second->visc, viscmax);
+
+        // Calculate time step multiplier for diffusion number
+        dnmul = 0;
+        for (int k=gd.kstart; k<gd.kend; ++k)
+            dnmul = std::max(dnmul, std::abs(viscmax * (1./(gd.dx*gd.dx) + 1./(gd.dy*gd.dy) + 1./(gd.dz[k]*gd.dz[k]))));
+
+        create_stats(stats);
+    }
 }
 
 #ifndef USECUDA
