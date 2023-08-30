@@ -818,7 +818,7 @@ void Radiation_rrtmgp<TF>::create(
     std::string timedep_dim_ls = "time_ls";
 
     for (auto& it : tdep_gases)
-        it.second->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
 
     // Initialize the tendency if the radiation is used.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))

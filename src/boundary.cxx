@@ -414,17 +414,6 @@ void Boundary<TF>::process_inflow(
     auto& gd = grid.get_grid_data();
 
     swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
-
-    Netcdf_group& init_group = input_nc.get_group("init");
-    for (auto& scalar : scalar_outflow)
-    {
-        std::vector<TF> prof = std::vector<TF>(gd.kcells);
-        if (!swtimedep_outflow)
-            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
-        std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
-        inflow_profiles.emplace(scalar, prof);
-    }
-
     if (swtimedep_outflow)
     {
         #ifdef USECUDA
@@ -438,6 +427,19 @@ void Boundary<TF>::process_inflow(
         {
             tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
             tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+            inflow_profiles[scalar] = std::vector<TF>(gd.kcells);
+        }
+    }
+    else
+    {
+        Netcdf_group& init_group = input_nc.get_group("init");
+        for (auto& scalar : scalar_outflow)
+        {
+            std::vector<TF> prof = std::vector<TF>(gd.kcells);
+            if (!swtimedep_outflow)
+                init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+            std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+            inflow_profiles.emplace(scalar, prof);
         }
     }
 }
