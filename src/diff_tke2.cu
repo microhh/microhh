@@ -851,5 +851,8 @@ void Diff_tke2<TF>::clear_device()
 }
 #endif
 
-template class Diff_tke2<double>;
+#ifdef FLOAT_SINGLE
 template class Diff_tke2<float>;
+#else
+template class Diff_tke2<double>;
+#endif
