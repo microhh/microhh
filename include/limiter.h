@@ -32,7 +32,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
-template<typename> class Diff; // tentativechange, SvdL, 07.06.22
+template<typename> class Diff;
 
 template<typename TF>
 class Limiter
@@ -48,7 +48,7 @@ class Limiter
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        Diff<TF>& diff; // tentativechange, SvdL, 08.06.22
+        Diff<TF>& diff;
 
         std::vector<std::string> limit_list;
 

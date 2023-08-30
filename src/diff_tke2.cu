@@ -129,7 +129,7 @@ namespace
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
-            
+
             if (surface_model == Surface_model::Disabled)
                 asm("trap;");
             else
@@ -194,7 +194,7 @@ namespace
 
             if (surface_model == Surface_model::Disabled)
                 asm("trap;");
-            else    
+            else
             {
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + k*kk;
@@ -276,7 +276,7 @@ namespace
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
-            
+
             // Calculate buoyancy destruction of SGS TKE based on Deardorff (1980)
             if (k == kstart)
                 at[ijk] -= evisch[ijk] * bgradbot[ij];
@@ -318,14 +318,14 @@ namespace
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
-            
+
             // Calculate geometric filter width, based on Deardorff (1980)
             mlen = mlen0[k];
 
             // Only if stably stratified, adapt length scale
             if (k == kstart)
             {
-                if (bgradbot[ij] > 0) 
+                if (bgradbot[ij] > 0)
                     mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
             }
             else
@@ -340,7 +340,7 @@ namespace
             if (sw_mason)
                 fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                         (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-            
+
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
             at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac;
         }
@@ -662,7 +662,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells); 
+                    gd.icells, gd.ijcells);
         else
             sgstke_diss_tend_neutral_g<TF, false><<<gridGPU, blockGPU>>>(
                     fields.st.at("sgstke")->fld_g,
@@ -674,7 +674,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells); 
+                    gd.icells, gd.ijcells);
     }
     else
     {
