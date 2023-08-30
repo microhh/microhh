@@ -356,7 +356,7 @@ double Diff_smag2<TF>::get_dn(const double dt)
 #endif
 
 template<typename TF>
-void Diff_smag2<TF>::create(Stats<TF>& stats)
+void Diff_smag2<TF>::create(Stats<TF>& stats, const bool cold_start)
 {
     auto& gd = grid.get_grid_data();
 

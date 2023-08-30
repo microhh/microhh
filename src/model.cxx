@@ -285,7 +285,12 @@ void Model<TF>::load()
     pres->set_values();
     pres->create(*stats);
     advec->create(*stats);
-    diff->create(*stats);
+
+    if (sim_mode == Sim_mode::Init)
+        diff->create(*stats, true);
+    else
+        diff->create(*stats, false);
+
     budget->create(*stats);
 }
 

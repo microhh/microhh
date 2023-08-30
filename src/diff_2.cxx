@@ -136,7 +136,7 @@ double Diff_2<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_2<TF>::create(Stats<TF>& stats)
+void Diff_2<TF>::create(Stats<TF>& stats, const bool cold_start)
 {
     auto& gd = grid.get_grid_data();
 
