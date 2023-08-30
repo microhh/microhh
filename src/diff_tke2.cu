@@ -274,7 +274,7 @@ namespace
 
         if (i < iend && j < jend && k < kend)
         {
-            const int ij  = i + jj;
+            const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
             
             // Calculate buoyancy destruction of SGS TKE based on Deardorff (1980)
