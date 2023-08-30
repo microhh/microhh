@@ -24,8 +24,9 @@ opt_nostats = {
 dict_opts = {
         'default': {},
         'advec_2i5': {'advec': {'swadvec': '2i5'}},
-        'advec_2i4': {'advec': {'swadvec': '2i4'}},
-        'deardorff': {'diff': {'swdiff': 'deardorff'}}}
+        'deardorff': {
+            'diff': {'swdiff': 'tke2'},
+            'advec': {'swadvec': '2i5', 'fluxlimit_list': 'sgstke'}}}
 
 if __name__ == '__main__':
 

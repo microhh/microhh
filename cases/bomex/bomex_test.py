@@ -27,7 +27,9 @@ mht.merge_options(opt_small_nostats, opt_nostats)
 dict_opts = {
         'default': {},
         'fixed_basestate': {'thermo': {'swupdatebasestate': 0}},
-        'deardorff': {'diff': {'swdiff': 'deardorff'}}}
+        'deardorff': {
+            'diff': {'swdiff': 'tke2'},
+            'advec': {'swadvec': '2i5', 'fluxlimit_list': 'sgstke'}}}
 
 
 if __name__ == '__main__':
