@@ -110,46 +110,46 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
     // temperature, pressure and moisture
     tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", sw_update_background);
-    tdep_t_lay->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
     tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", sw_update_background);
-    tdep_t_lev->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
+    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
     tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", sw_update_background);
-    tdep_p_lay->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
     tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", sw_update_background);
-    tdep_p_lev->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
+    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
     tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o_bg", sw_update_background);
-    tdep_h2o->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
 
     // gasses
     for (auto& it : tdep_gases)
-        it.second->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
 
     //aerosols
     if (sw_aerosol && sw_aerosol_timedep)
     {
         std::string timedep_dim = "time_aerosols";
         tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", sw_update_background);
-        tdep_aermr01->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", sw_update_background);
-        tdep_aermr02->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr02->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", sw_update_background);
-        tdep_aermr03->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr03->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", sw_update_background);
-        tdep_aermr04->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr04->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", sw_update_background);
-        tdep_aermr05->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr05->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", sw_update_background);
-        tdep_aermr06->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr06->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", sw_update_background);
-        tdep_aermr07->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr07->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", sw_update_background);
-        tdep_aermr08->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr08->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", sw_update_background);
-        tdep_aermr09->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr09->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", sw_update_background);
-        tdep_aermr10->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr10->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
         tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", sw_update_background);
-        tdep_aermr11->create_timedep_background_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr11->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
     }
 
     // Prepare statistics.

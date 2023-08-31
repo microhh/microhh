@@ -42,10 +42,10 @@ class Timedep
         void create_timedep(Netcdf_handle&, const std::string);
         void update_time_dependent(TF&, Timeloop<TF>&);
 
-        void create_timedep_prof(Netcdf_handle&, const TF, const std::string);
-        void create_timedep_background_prof(Netcdf_handle&, const TF, const std::string, const TF);
-        void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&);
-        void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&, const TF);
+        void create_timedep_prof(Netcdf_handle&, const TF, const std::string, const int kmax_in = -1);
+        // void create_timedep_background_prof(Netcdf_handle&, const TF, const std::string, const TF);
+        void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&, const int kmax_in = -1);
+        // void update_time_dependent_prof(std::vector<TF>&, Timeloop<TF>&, const TF);
 
         #ifdef USECUDA
         TF* data_g;
