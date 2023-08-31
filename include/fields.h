@@ -163,6 +163,8 @@ class Fields
         // TODO remove these to and bring them to diffusion model
         TF visc;
 
+        std::map<std::string, bool> required_read;
+
         /*
          *Device (GPU) functions and variables
          */
@@ -200,7 +202,6 @@ class Fields
         std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
 
         std::mutex tmp_fld_mutex;
-        std::map<std::string, bool> required_read;
         // cross sections
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
         std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.

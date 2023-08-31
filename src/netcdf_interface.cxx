@@ -615,7 +615,6 @@ void Netcdf_handle::get_variable(
 {
     std::string message = "Retrieving from NetCDF: " + name;
     master.print_message(message);
-
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
@@ -633,7 +632,6 @@ void Netcdf_handle::get_variable(
     {
         if (required_read)
         {
-            throw std::runtime_error("Netcdf variable " + name + " not found");
             std::string warning = "Netcdf variable " + name + " not found, filling with zeros";
             master.print_warning(warning);
         }
