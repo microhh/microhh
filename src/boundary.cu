@@ -655,7 +655,10 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     }
 
     if (swtimedep_outflow)
-        throw std::runtime_error("Time dependent outflow is not (yet) supported on the GPU...");
+    {
+        for (auto& it : tdep_outflow)
+            it.second->update_time_dependent_prof_g(inflow_profiles_g.at(it.first), timeloop);
+    }
 }
 
 template<typename TF>
