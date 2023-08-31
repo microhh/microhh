@@ -48,8 +48,9 @@ template<typename> class Microphys;
 
 class Input;
 
-enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
+enum class Boundary_type {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+enum class Surface_model {Enabled, Disabled};
 
 // Size of lookup table in Boundary_surface
 const int nzL_lut = 10000;
@@ -119,10 +120,10 @@ class Boundary
         virtual TF* get_dvdz_g();
         virtual TF* get_dbdz_g();
 
-        virtual void prepare_device();
-        virtual void forward_device();
-        virtual void backward_device();
-        virtual void clear_device();
+        virtual void prepare_device(Thermo<TF>&);
+        virtual void forward_device(Thermo<TF>&);
+        virtual void backward_device(Thermo<TF>&);
+        virtual void clear_device(Thermo<TF>&);
         #endif
 
     protected:

@@ -55,10 +55,10 @@ class Boundary_surface : public Boundary<TF>
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS
+        void prepare_device(Thermo<TF>&);
+        void forward_device(Thermo<TF>&);
+        void backward_device(Thermo<TF>&);
+        void clear_device(Thermo<TF>&);
 
         TF* get_z0m_g()  { return z0m_g; };
         TF* get_dudz_g() { return dudz_mo_g; };

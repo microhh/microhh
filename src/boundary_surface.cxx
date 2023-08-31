@@ -551,7 +551,7 @@ void Boundary_surface<TF>::init_surface(Input& input, Thermo<TF>& thermo)
 
     dudz_mo.resize(gd.ijcells);
     dvdz_mo.resize(gd.ijcells);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         dbdz_mo.resize(gd.ijcells);
 
     if (sw_constant_z0)
@@ -611,7 +611,7 @@ void Boundary_surface<TF>::load(const int iotime, Thermo<TF>& thermo)
     // eddy viscosity use the gradients from the previous time step.
     load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
     // The `fld->gradbot`'s are only needed for flux BCs, required by
@@ -671,7 +671,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
     // eddy viscosity use the gradients from the previous time step.
     save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
     // The `fld->gradbot`'s are only needed for flux BCs, required by
@@ -873,7 +873,7 @@ void Boundary_surface<TF>::exec(
             boundary_cyclic);
 
     // Start with retrieving the stability information.
-    if (thermo.get_switch() == "0")
+    if (thermo.get_switch() == Thermo_type::Disabled)
     {
         stability_neutral(
                 ustar.data(),
@@ -973,7 +973,7 @@ void Boundary_surface<TF>::exec(
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         auto buoy = fields.get_tmp();
         thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);

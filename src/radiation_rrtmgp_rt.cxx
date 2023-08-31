@@ -626,11 +626,8 @@ void Radiation_rrtmgp_rt<TF>::create(
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
     // Check if the thermo supports the radiation.
-    if (thermo.get_switch() != "moist")
-    {
-        const std::string error = "Radiation does not support thermo mode " + thermo.get_switch();
-        throw std::runtime_error(error);
-    }
+    if (thermo.get_switch() != Thermo_type::Moist)
+        throw std::runtime_error("Radiation only supports swthermo=moist.");
 
     // Setup timedependent gasses
     auto& gd = grid.get_grid_data();
@@ -638,7 +635,7 @@ void Radiation_rrtmgp_rt<TF>::create(
     std::string timedep_dim_ls = "time_ls";
 
     for (auto& it : tdep_gases)
-        it.second->create_timedep_background_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
 
     // Initialize the tendency if the radiation is used.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))

@@ -138,7 +138,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
         background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
@@ -182,6 +182,7 @@ template<typename TF>
 void Model<TF>::init()
 {
     master.init(*input);
+
     grid->init();
     soil_grid->init();
     fields->init(*input, *dump, *cross, sim_mode);
@@ -246,6 +247,7 @@ void Model<TF>::load()
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
 
+
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
@@ -283,7 +285,8 @@ void Model<TF>::load()
     pres->set_values();
     pres->create(*stats);
     advec->create(*stats);
-    diff->create(*stats);
+    diff->create(*stats, false);
+
     budget->create(*stats);
 }
 
@@ -294,6 +297,7 @@ void Model<TF>::save()
     // Initialize the grid and the fields from the input data.
     grid->create(*input, *input_nc);
     fields->create(*input, *input_nc);
+    diff->create(*stats, true);
 
     // Save the initialized data to disk for the run mode.
     grid->save();
@@ -337,7 +341,6 @@ void Model<TF>::exec()
         #endif
     #endif
 
-
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -363,7 +366,7 @@ void Model<TF>::exec()
                 fields->exec();
 
                 // Get the viscosity to be used in diffusion.
-                diff->exec_viscosity(*thermo);
+                diff->exec_viscosity(*stats, *thermo);
 
                 // Determine the time step.
                 set_time_step();
@@ -457,7 +460,7 @@ void Model<TF>::exec()
                         #pragma omp taskwait
                         cpu_up_to_date = true;
                         fields   ->backward_device();
-                        boundary ->backward_device();
+                        boundary ->backward_device(*thermo);
                         thermo   ->backward_device();
                         microphys->backward_device();
                         #endif
@@ -515,7 +518,7 @@ void Model<TF>::exec()
                             #pragma omp taskwait
                             cpu_up_to_date = true;
                             fields   ->backward_device();
-                            boundary ->backward_device();
+                            boundary ->backward_device(*thermo);
                             thermo   ->backward_device();
                             microphys->backward_device();
                         }
@@ -561,7 +564,7 @@ void Model<TF>::exec()
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
-    boundary->backward_device();
+    boundary->backward_device(*thermo);
     thermo  ->backward_device();
 
     clear_gpu();
@@ -579,7 +582,7 @@ void Model<TF>::prepare_gpu()
     fields   ->prepare_device();
     buffer   ->prepare_device();
     thermo   ->prepare_device();
-    boundary ->prepare_device();
+    boundary ->prepare_device(*thermo);
     diff     ->prepare_device(*boundary);
     force    ->prepare_device();
     ib       ->prepare_device();
@@ -599,7 +602,7 @@ void Model<TF>::clear_gpu()
     soil_grid->clear_device();
     fields   ->clear_device();
     thermo   ->clear_device();
-    boundary ->clear_device();
+    boundary ->clear_device(*thermo);
     diff     ->clear_device();
     force    ->clear_device();
     ib       ->clear_device();
@@ -629,7 +632,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_stats(*stats);
         background ->exec_stats(*stats);
         microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats);
+        diff     ->exec_stats(*stats, *thermo);
         budget   ->exec_stats(*stats);
         boundary ->exec_stats(*stats);
     }
@@ -673,7 +676,7 @@ void Model<TF>::setup_stats()
             #pragma omp taskwait
             cpu_up_to_date = true;
             fields   ->backward_device();
-            boundary ->backward_device();
+            boundary ->backward_device(*thermo);
             thermo   ->backward_device();
             microphys->backward_device();
         }
