@@ -704,7 +704,7 @@ TF* Boundary<TF>::get_dbdz_g()
 }
 
 template<typename TF>
-void Boundary<TF>::prepare_device()
+void Boundary<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -735,7 +735,7 @@ void Boundary<TF>::prepare_device()
 }
 
 template<typename TF>
-void Boundary<TF>::clear_device()
+void Boundary<TF>::clear_device(Thermo<TF>& thermo)
 {
     for(auto& it : tdep_bc)
         it.second->clear_device();
@@ -754,12 +754,12 @@ void Boundary<TF>::clear_device()
 }
 
 template<typename TF>
-void Boundary<TF>::forward_device()
+void Boundary<TF>::forward_device(Thermo<TF>& thermo)
 {
 }
 
 template<typename TF>
-void Boundary<TF>::backward_device()
+void Boundary<TF>::backward_device(Thermo<TF>& thermo)
 {
 }
 #endif

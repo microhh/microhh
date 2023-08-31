@@ -1078,7 +1078,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
 {
     auto& gd = grid.get_grid_data();
 
-    swthermo = "moist";
+    swthermo = Thermo_type::Moist;
 
     // 4th order code is not implemented in thermo_moist
     if (grid.get_spatial_order() == Grid_order::Fourth)

@@ -268,28 +268,29 @@ namespace
         }
     }
 
-    // Especially, check this one thoroughly (indices, grid positions, etc.)! - SvdLinden, 28.04.21
     template<typename TF>
     void advec_wls_2nd_local_w(
-            TF* const restrict st, const TF* const restrict s,
-            const TF* const restrict wls, const TF* const dzi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            TF* const restrict st,
+            const TF* const restrict s,
+            const TF* const restrict wls,
+            const TF* const dzi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int icells, const int ijcells)
     {
         const int jj = icells;
         const int kk = ijcells;
 
-        // should not be needed to do kend-1 separately ? CHECK?
-        // use an upwind differentiation
-        for (int k=kstart+1; k<kend; ++k) // for (int k=kstart+2; k<kend-1; ++k)
+        for (int k=kstart+1; k<kend; ++k)
         {
-            if ( interp2( wls[k-1], wls[k] ) > 0.) // formeel ook in conditie interp2
+            if ( interp2( wls[k-1], wls[k] ) > 0.)
             {
                 for (int j=jstart; j<jend; ++j)
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1]; // HIER DUS dz !! maar waar begint dz[kstart] +1 of niet??
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
                     }
             }
             else
@@ -641,7 +642,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            // Also apply to the velocity components u,v - SvdLinden, 28.04.21
+            // Also apply to the velocity components u,v.
             advec_wls_2nd_mean<TF>(
                     fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld_mean.data(), wls.data(), gd.dzhi.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -666,7 +667,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
     else if ( swwls == Large_scale_subsidence_type::Local_field )
     {
-        // New functions for the local subsidence term - SvdLinden, 28.04.21
         if (swwls_mom)
         {
             // Apply to all prognostic scalars, also velocity. Treat w-velocity separately
@@ -746,8 +746,6 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
-
-    // Idea: could decide to update interpolated wls to full levels here ? - SvdLinden, 28.04.21
 }
 #endif
 

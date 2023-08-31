@@ -335,7 +335,7 @@ Thermo_dry<TF>::Thermo_dry(
 {
     auto& gd = grid.get_grid_data();
 
-    swthermo = "dry";
+    swthermo = Thermo_type::Dry;
 
     const std::string group_name = "thermo";
 
