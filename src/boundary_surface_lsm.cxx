@@ -941,7 +941,7 @@ void Boundary_surface_lsm<TF>::exec(
 #endif
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
@@ -955,6 +955,13 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
+
 }
 
 template<typename TF>

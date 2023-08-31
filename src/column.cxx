@@ -45,6 +45,11 @@ Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
 
     if (swcolumn)
         sampletime = inputin.get_item<double>("column", "sampletime", "");
+    else
+        inputin.flag_as_used("column", "sampletime", "");
+
+    inputin.flag_as_used("column", "coordinates", "x");
+    inputin.flag_as_used("column", "coordinates", "y");
 }
 
 template<typename TF>

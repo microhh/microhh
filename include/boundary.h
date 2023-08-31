@@ -81,7 +81,7 @@ class Boundary
         static std::shared_ptr<Boundary> factory(
             Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
-        virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        virtual void init(Input&, Thermo<TF>&, const Sim_mode);   ///< Initialize the fields.
         virtual void create_cold_start(Netcdf_handle&); ///< Create fields for cold start.
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,

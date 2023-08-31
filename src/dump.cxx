@@ -53,6 +53,12 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
             throw std::runtime_error(msg);
         }
     }
+    else
+    {
+        inputin.flag_as_used("dump", "dumplist", "");
+        inputin.flag_as_used("dump", "sampletime", "");
+    }
+
 }
 
 template<typename TF>

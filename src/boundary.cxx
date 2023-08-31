@@ -273,7 +273,7 @@ void Boundary<TF>::process_bcs(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
+void Boundary<TF>::init(Input& input, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
@@ -286,6 +286,11 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+    if (sim_mode == Sim_mode::Init)
+    {
+        input.flag_as_used("boundary", "swtimedep", "");
+        input.flag_as_used("boundary", "timedeplist", "");
+    }
 }
 
 template<typename TF>
@@ -340,7 +345,7 @@ void Boundary<TF>::process_time_dependent(
                     tmplist.erase(ittmp);
             }
         }
-
+        
         // Display a warning for the non-supported.
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());

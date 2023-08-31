@@ -144,8 +144,10 @@ void Boundary_surface_bulk<TF>::create_cold_start(Netcdf_handle& input_nc)
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
+        std::cout << "Boundary_surface_bulk" << std::endl;
+
     // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
 
@@ -157,6 +159,13 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
+
 }
 
 template<typename TF>

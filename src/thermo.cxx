@@ -62,7 +62,7 @@ std::shared_ptr<Thermo<TF>> Thermo<TF>::factory(
     else if (swthermo == "dry")
         return std::make_shared<Thermo_dry<TF>>(masterin, gridin, fieldsin, inputin, sim_mode);
     else if (swthermo == "moist")
-        return std::make_shared<Thermo_moist<TF>>(masterin, gridin, fieldsin, inputin);
+        return std::make_shared<Thermo_moist<TF>>(masterin, gridin, fieldsin, inputin, sim_mode);
     else if (swthermo == "buoy")
         return std::make_shared<Thermo_buoy<TF>>(masterin, gridin, fieldsin, inputin);
     else

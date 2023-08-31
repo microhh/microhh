@@ -35,7 +35,7 @@ class Boundary_surface : public Boundary<TF>
         Boundary_surface(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface();
 
-        void init(Input&, Thermo<TF>&);
+        void init(Input&, Thermo<TF>&, const Sim_mode);
         void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
