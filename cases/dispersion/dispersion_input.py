@@ -19,7 +19,7 @@ itot = 256
 jtot = 96
 ktot = 64
 
-endtime = 10800
+endtime = 43200
 
 """
 Source settings.
