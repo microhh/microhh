@@ -416,10 +416,6 @@ void Boundary<TF>::process_inflow(
     swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
     if (swtimedep_outflow)
     {
-        #ifdef USECUDA
-        throw std::runtime_error("Time dependent outflow profiles are not (yet) implemented on the GPU.");
-        #endif
-
         Netcdf_group& tdep_group = input_nc.get_group("timedep");
         const TF offset = 0;
 
