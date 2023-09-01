@@ -53,6 +53,12 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
             throw std::runtime_error(msg);
         }
     }
+    else
+    {
+        inputin.flag_as_used("dump", "dumplist", "");
+        inputin.flag_as_used("dump", "sampletime", "");
+    }
+
 }
 
 template<typename TF>
@@ -146,5 +152,9 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     }
 }
 
-template class Dump<double>;
+
+#ifdef FLOAT_SINGLE
 template class Dump<float>;
+#else
+template class Dump<double>;
+#endif

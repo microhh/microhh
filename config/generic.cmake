@@ -1,8 +1,7 @@
 # Generic CMake file that should work on many systems, provided that the environmental variables are set properly
 # Provides pathways for Intel and GCC compilers
 # Make sure to set the following variables: CPLUS_INCLUDE_PATH and LIBRARY_PATH (depending on the system configuriation, they may be called differently)
-# The following libraries should be included: netcdf fftw3 fftw3f hdf5 
-# If using CUDA, also include cufft 
+# The following libraries should be included: netcdf fftw3 fftw3f hdf5
 #
 # Tested on the following systems:
 # ARM Cumulus with GCC CUDA/MPICH (RedHat)
@@ -47,10 +46,12 @@ else()
     if(USEINTEL)
         set(USER_CXX_FLAGS "-std=c++17 -restrict")
         set(USER_CXX_FLAGS_RELEASE "-O3 -march=native")
+        set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
         add_definitions(-DRESTRICTKEYWORD=restrict)
     else()
         set(USER_CXX_FLAGS "-std=c++17")
         set(USER_CXX_FLAGS_RELEASE "-O3 -march=native")
+        set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
         set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
         set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
@@ -59,7 +60,6 @@ else()
     endif()
 endif()
 
-set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(NETCDF_LIB_C "netcdf")
 set(FFTW_LIB "fftw3")
@@ -68,15 +68,13 @@ set(HDF5_LIB "hdf5")
 set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necessary to add m z curl sz if necessary
 
 if(USECUDA)
-    set(CMAKE_CUDA_ARCHITECTURES 80)
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(LIBS ${LIBS} -rdynamic libcufft.so)
-    set(USER_CUDA_NVCC_FLAGS "-std=c++17 --expt-relaxed-constexpr")
-    set(USER_CUDA_NVCC_RELEASE_FLAGS "-O3 --use_fast_math")
+    set(CMAKE_CUDA_ARCHITECTURES 70)
+    set(USER_CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
+    set(USER_CUDA_NVCC_FLAGS_RELEASE "-DNDEBUG")
+    set(USER_CUDA_NVCC_FLAGS_DEBUG "-O0 -g -DCUDACHECKS")
     add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
 endif()
 
 # Disable MPI-IO for cross-sections on GPFS file systems. This may or may not be necessary, depending on the system
 add_definitions(-DDISABLE_2D_MPIIO=1)
-
 add_definitions(-DRTE_USE_CBOOL)

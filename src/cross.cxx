@@ -282,6 +282,15 @@ Cross<TF>::Cross(
         // Get the list of vertical soil locations
         xy_soil = inputin.get_list<TF>("cross", "xy_soil", "", std::vector<TF>());
     }
+    else
+    {
+        inputin.flag_as_used("cross", "sampletime", "");
+        inputin.flag_as_used("cross", "crosslist", "");
+        inputin.flag_as_used("cross", "xy", "");
+        inputin.flag_as_used("cross", "xz", "");
+        inputin.flag_as_used("cross", "yz", "");
+        inputin.flag_as_used("cross", "xy_soil", "");
+    }
 }
 
 template<typename TF>
@@ -799,5 +808,8 @@ int Cross<TF>::cross_soil(
 }
 
 
-template class Cross<double>;
+#ifdef FLOAT_SINGLE
 template class Cross<float>;
+#else
+template class Cross<double>;
+#endif

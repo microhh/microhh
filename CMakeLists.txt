@@ -74,9 +74,9 @@ endif()
 
 # Start the project only after the system specific settings are loaded.
 if(USECUDA)
-  project(microhhc C CXX CUDA Fortran)
+  project(microhhc CXX CUDA Fortran)
 else()
-  project(microhhc C CXX Fortran)
+  project(microhhc CXX Fortran)
 endif()
 
 
@@ -93,6 +93,7 @@ endif()
 if(USECUDA)
   message(STATUS "CUDA: Enabled.")
   add_definitions("-DUSECUDA")
+  find_package(CUDAToolkit REQUIRED)
 else()
   message(STATUS "CUDA: Disabled.")
 endif()

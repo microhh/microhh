@@ -28,6 +28,7 @@
 #include "timeloop.h"
 #include "timedep.h"
 #include "thermo.h"
+#include "microphys.h"
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
@@ -608,6 +609,11 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpt_pool, nbnd_pool);
 
+    // Transfer the surface properties to the GPU
+    emis_sfc_g = emis_sfc;
+    sfc_alb_dir_g = sfc_alb_dir;
+    sfc_alb_dif_g = sfc_alb_dif;
+
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
     this->aerosol_concs_gpu = std::make_unique<Aerosol_concs_gpu>(aerosol_concs);
@@ -671,7 +677,7 @@ void Radiation_rrtmgp<TF>::prepare_device()
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
@@ -714,10 +720,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
     auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
 
-    // CvH: this can be improved by creating a fill function for the GPU.
-    Array<Float,2> emis_sfc_cpu(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
-    Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
-
     gas_concs_gpu->set_vmr("h2o", h2o);
 
     // CvH: This can be done better: we now allocate a complete array.
@@ -728,8 +730,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -825,7 +827,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = (b-1) * n_col_block + 1;
         const int col_e =  b    * n_col_block;
 
-        Array_gpu<Float,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_subset = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_subset = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -849,7 +851,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = n_col - n_col_block_residual + 1;
         const int col_e = n_col;
 
-        Array_gpu<Float,2> emis_sfc_residual = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_residual = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_residual = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
@@ -873,7 +875,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
         Array<Float, 1>&aod550,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
@@ -925,10 +927,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     // Create the boundary conditions
     Array<Float,1> mu0_cpu(std::vector<Float>(1, this->mu0), {1});
     Array_gpu<Float,1> mu0(mu0_cpu);
-    Array<Float,2> sfc_alb_dir_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dir(sfc_alb_dir_cpu);
-    Array<Float,2> sfc_alb_dif_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dif(sfc_alb_dif_cpu);
 
     gas_concs_gpu->set_vmr("h2o", h2o);
 
@@ -940,8 +938,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -1072,8 +1070,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -1102,8 +1100,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_residual = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
@@ -1129,7 +1127,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
 #ifdef USECUDA
 template <typename TF>
-void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>& aerosol, Background<TF>& background)
+void Radiation_rrtmgp<TF>::exec(
+        Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1232,7 +1232,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
                 const int n_col = gd.imax*gd.jmax;
                 exec_longwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds, n_col);
@@ -1319,7 +1319,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     {
                         const int n_col = gd.imax*gd.jmax;
                         exec_longwave(
-                                thermo, timeloop, stats,
+                                thermo, microphys, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                                 !compute_clouds, n_col);
@@ -1367,7 +1367,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 {
                     const int n_col = gd.imax*gd.jmax;
                     exec_shortwave(
-                            thermo, timeloop, stats,
+                            thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             aod550,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -1482,7 +1482,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         {
                             const int n_col = gd.imax*gd.jmax;
                             exec_shortwave(
-                                    thermo, timeloop, stats,
+                                    thermo, microphys, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
                                     aod550,
                                     t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -1583,7 +1583,7 @@ void Radiation_rrtmgp<TF>::clear_device()
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();
@@ -1681,7 +1681,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         }
 
         exec_longwave(
-                thermo, timeloop, stats,
+                thermo, microphys, timeloop, stats,
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                 compute_clouds, n_stat_col);
@@ -1692,7 +1692,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         if (sw_clear_sky_stats)
         {
             exec_longwave(
-                    thermo, timeloop, stats,
+                    thermo, microphys, timeloop, stats,
                     flux_up, flux_dn, flux_net,
                     t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                     !compute_clouds, n_stat_col);
@@ -1738,7 +1738,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         if (is_day(this->mu0))
         {
             exec_shortwave(
-                    thermo, timeloop, stats,
+                    thermo, microphys, timeloop, stats,
                     flux_up, flux_dn, flux_dn_dir, flux_net,
                     aod550_column_stats,
                     t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -1761,7 +1761,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             if (is_day(this->mu0))
             {
                 exec_shortwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_dn_dir, flux_net,
                         aod550_column_stats,
                         t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
@@ -1778,6 +1778,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     fields.release_tmp(tmp);
 }
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;

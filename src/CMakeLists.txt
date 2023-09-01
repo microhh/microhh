@@ -22,4 +22,10 @@
 FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
 
 add_library(microhhc STATIC ${sourcefiles})
-target_include_directories(microhhc PUBLIC "../include" "../rte-rrtmgp-cpp/include" "../rte-rrtmgp-cpp/include_rt" "../rte-rrtmgp-cpp/include_kernels_cuda" "../rte-rrtmgp-cpp/include_rt_kernels" ${INCLUDE_DIRS})
+target_include_directories(microhhc PRIVATE "../include" "../rte-rrtmgp-cpp/include" "../rte-rrtmgp-cpp/include_rt" "../rte-rrtmgp-cpp/include_kernels_cuda" "../rte-rrtmgp-cpp/include_rt_kernels" ${INCLUDE_DIRS})
+
+if(USECUDA)
+    target_link_libraries(microhhc PRIVATE CUDA::curand CUDA::cufft ${LIBS})
+else()
+    target_link_libraries(microhhc PRIVATE ${LIBS})
+endif()

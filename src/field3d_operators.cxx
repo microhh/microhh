@@ -154,5 +154,9 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
     return mean;
 }
 
-template class Field3d_operators<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_operators<float>;
+#else
+template class Field3d_operators<double>;
+#endif

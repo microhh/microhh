@@ -29,9 +29,9 @@ def copy(f1, f2):
 
 
 if __name__ == '__main__':
-    microhh_path = '/home/stratum2/models/microhh_rt'
-    scratch_path = '/scratch-shared/stratum2/cabauw_rt'
-    microhh_bin = '{}/build_sp_gpu/microhh'.format(microhh_path)
+    microhh_path = '../..'
+    scratch_path = '.'
+    microhh_bin = '{}/build_gpu_dp/microhh'.format(microhh_path)
 
     """
     Shared settings
@@ -93,16 +93,19 @@ if __name__ == '__main__':
         copy('{}/misc/van_genuchten_parameters.nc'.format(microhh_path), 'van_genuchten_parameters.nc')
 
         if gpt_set == '256_224':
-            copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc'.format(microhh_path), 'coefficients_lw.nc')
-            copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc'.format(microhh_path), 'coefficients_sw.nc')
+            copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g256.nc'.format(microhh_path), 'coefficients_lw.nc')
+            copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g224.nc'.format(microhh_path), 'coefficients_sw.nc')
         elif gpt_set == '128_112':
-            copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc'.format(microhh_path), 'coefficients_lw.nc')
-            copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc'.format(microhh_path), 'coefficients_sw.nc')
+            copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g128.nc'.format(microhh_path), 'coefficients_lw.nc')
+            copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g112.nc'.format(microhh_path), 'coefficients_sw.nc')
         else:
             raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
 
-        copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc'.format(microhh_path), 'cloud_coefficients_lw.nc')
-        copy('{}/rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc'.format(microhh_path), 'cloud_coefficients_sw.nc')
+        copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc'.format(microhh_path), 'cloud_coefficients_lw.nc')
+        copy('{}/rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc'.format(microhh_path), 'cloud_coefficients_sw.nc')
+
+        # if use_aerosols:
+        #     copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
 
         """
         Read / interpolate (LS)2D initial conditions and forcings

@@ -518,5 +518,9 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 #endif
 
-template class Force<double>;
+
+#ifdef FLOAT_SINGLE
 template class Force<float>;
+#else
+template class Force<double>;
+#endif

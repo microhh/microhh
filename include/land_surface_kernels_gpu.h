@@ -724,6 +724,27 @@ template<typename TF> __global__
     }
 
     template<typename TF>
+    void clear_tile(Surface_tile<TF>& tile)
+    {
+        cuda_safe_call(cudaFree(tile.fraction_g));
+        cuda_safe_call(cudaFree(tile.thl_bot_g));
+        cuda_safe_call(cudaFree(tile.qt_bot_g));
+
+        cuda_safe_call(cudaFree(tile.obuk_g));
+        cuda_safe_call(cudaFree(tile.ustar_g));
+        cuda_safe_call(cudaFree(tile.bfluxbot_g));
+        cuda_safe_call(cudaFree(tile.ra_g));
+
+        cuda_safe_call(cudaFree(tile.nobuk_g));
+
+        cuda_safe_call(cudaFree(tile.rs_g));
+        cuda_safe_call(cudaFree(tile.H_g));
+        cuda_safe_call(cudaFree(tile.LE_g));
+        cuda_safe_call(cudaFree(tile.G_g));
+        cuda_safe_call(cudaFree(tile.S_g));
+    }
+
+    template<typename TF>
     void forward_device_tile(Surface_tile<TF>& tile, const int ijcells)
     {
         const int memsize_tf  = ijcells * sizeof(TF);
