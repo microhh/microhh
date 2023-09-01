@@ -1044,20 +1044,28 @@ def run_restart(
 
 def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
     if srcdir is None:
-        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rte-rrtmgp/' 
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rrtmgp-data/' 
     if destdir is None:
         destdir = os.getcwd()
     if gpt == '128_112':
-        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', destdir+'/coefficients_lw.nc')
-        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', destdir+'/coefficients_sw.nc')
+        shutil.copy(srcdir+'rrtmgp-gas-lw-g128.nc', destdir+'/coefficients_lw.nc')
+        shutil.copy(srcdir+'rrtmgp-gas-sw-g112.nc', destdir+'/coefficients_sw.nc')
     elif gpt == '256_224':
-        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-lw-g256-210809.nc', destdir+'/coefficients_lw.nc')
-        shutil.copy(srcdir+'rrtmgp/data/rrtmgp-data-sw-g224-210809.nc', destdir+'/coefficients_sw.nc')
+        shutil.copy(srcdir+'rrtmgp-gas-lw-g256.nc', destdir+'/coefficients_lw.nc')
+        shutil.copy(srcdir+'rrtmgp-gas-sw-g224.nc', destdir+'/coefficients_sw.nc')
     else:
         raise ValueError('gpt should be in {\'128_112\', \'256_224\'}')
 
-    shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', destdir+'/cloud_coefficients_lw.nc')
-    shutil.copy(srcdir+'extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', destdir+'/cloud_coefficients_sw.nc')
+    shutil.copy(srcdir+'rrtmgp-clouds-lw.nc', destdir+'/cloud_coefficients_lw.nc')
+    shutil.copy(srcdir+'rrtmgp-clouds-sw.nc', destdir+'/cloud_coefficients_sw.nc')
+
+def copy_aerosolfiles(srcdir=None, destdir=None):
+    if srcdir is None:
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/data/' 
+    if destdir is None:
+        destdir = os.getcwd()
+
+    shutil.copy(srcdir+'aerosol_optics.nc', destdir+ 'aerosol_optics.nc')
 
 def copy_lsmfiles(srcdir=None, destdir=None):
     if srcdir is None:
