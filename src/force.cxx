@@ -531,7 +531,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the nudging profiles, which are the variable names with a "nudge" suffix
         for (auto& it : nudgelist)
         {
-            if (tdep_nudge.find(it)==tdep_nudge.end())
+            if (tdep_nudge.find(it) == tdep_nudge.end())
             {
                 group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
                 std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
@@ -543,21 +543,17 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             }
             else
             {
-                // Process the time dependent data
-                for (auto& it : tdep_nudge)
-                {
-                    // Account for the Galilean transformation
-                    TF offset;
-                    if (it.first == "u")
-                        offset = -gd.utrans;
-                    else if (it.first == "v")
-                        offset = -gd.vtrans;
-                    else
-                        offset = 0;
+                // Account for the Galilean transformation
+                TF offset;
+                if (it == "u")
+                    offset = -gd.utrans;
+                else if (it == "v")
+                    offset = -gd.vtrans;
+                else
+                    offset = 0;
 
-                    it.second->create_timedep_prof(input_nc, offset, timedep_dim);
-                    stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
-                }
+                tdep_nudge.at(it)->create_timedep_prof(input_nc, offset, timedep_dim);
+                stats.add_tendency(*fields.at.at(it), "z", tend_name_nudge, tend_longname_nudge);
             }
         }
     }
