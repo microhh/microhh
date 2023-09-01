@@ -1651,6 +1651,22 @@ template<typename TF>
 void Stats<TF>::calc_stats(
         const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
+    calc_stats_mean(varname, fld, offset);
+    calc_stats_moments(varname, fld, offset);
+    calc_stats_w(varname, fld, offset);
+    calc_stats_diff(varname, fld, offset);
+    calc_stats_flux(varname, fld, offset);
+    calc_stats_grad(varname, fld);
+    calc_stats_path(varname, fld);
+    calc_stats_cover(varname, fld, offset, threshold);
+    calc_stats_frac(varname, fld, offset, threshold);        
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_mean(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
     auto& gd = grid.get_grid_data();
 
     unsigned int flag;
@@ -1681,6 +1697,18 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_moments(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc moments
     for (int power=2; power<=4; power++)
@@ -1707,6 +1735,18 @@ void Stats<TF>::calc_stats(
             }
         }
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_w(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Resolved Flux
     name = varname + "_w";
@@ -1774,6 +1814,18 @@ void Stats<TF>::calc_stats(
         fields.release_tmp(fld_prime);
         fields.release_tmp(w_prime);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_diff(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Diffusive Flux
     name = varname + "_diff";
@@ -1801,6 +1853,18 @@ void Stats<TF>::calc_stats(
 
         fields.release_tmp(diff_flux);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_flux(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Total Flux
     name = varname + "_flux";
@@ -1820,6 +1884,17 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_grad(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Gradient
     name = varname + "_grad";
@@ -1856,6 +1931,17 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_path(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Integrated Path
     name = varname + "_path";
@@ -1880,6 +1966,17 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = path.first / path.second;
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_cover(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Cover
     name = varname + "_cover";
@@ -1906,6 +2003,18 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
         }
     }
+
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_frac(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Fraction
     name = varname + "_frac";
