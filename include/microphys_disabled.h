@@ -23,6 +23,7 @@
 #ifndef MICROPHYS_DISABLED_H
 #define MICROPHYS_DISABLED_H
 
+#include <stdexcept>
 #include "microphys.h"
 
 class Master;
