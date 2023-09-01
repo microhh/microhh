@@ -146,7 +146,6 @@ void Boundary_surface_bulk<TF>::create_cold_start(Netcdf_handle& input_nc)
 template<typename TF>
 void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
-        std::cout << "Boundary_surface_bulk" << std::endl;
 
     // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);

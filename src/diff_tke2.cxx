@@ -512,7 +512,7 @@ Diff_tke2<TF>::Diff_tke2(
     sw_mason = inputin.get_item<bool>("diff", "swmason", "", true);
 
     // Initialize field of SGS TKE
-    fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc);
+    fields.init_prognostic_field("sgstke", "SGS TKE", "m2 s-2", group_name, gd.sloc, false);
 
     fields.sp.at("sgstke")->visc = inputin.get_item<TF>("fields", "svisc", "sgstke");
 
