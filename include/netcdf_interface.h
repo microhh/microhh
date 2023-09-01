@@ -104,7 +104,8 @@ class Netcdf_handle
                 std::vector<T>&,
                 const std::string&,
                 const std::vector<int>&,
-                const std::vector<int>&);
+                const std::vector<int>&,
+                const bool required_read = true);
 
         template<typename T>
         void insert(

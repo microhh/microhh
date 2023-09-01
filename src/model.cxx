@@ -189,7 +189,7 @@ void Model<TF>::init()
 
     fft->init();
 
-    boundary->init(*input, *thermo);
+    boundary->init(*input, *thermo, sim_mode);
     ib->init(*input, *cross);
     buffer->init();
     diff->init();

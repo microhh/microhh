@@ -719,7 +719,7 @@ template<typename TF>
 void Fields<TF>::init_prognostic_field(
         const std::string& fldname, const std::string& longname,
         const std::string& unit, const std::string& groupname,
-        const std::array<int,3>& loc)
+        const std::array<int,3>& loc, const bool& required)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -741,6 +741,10 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+
+    // Record whether a WARNING needs to be thrown if the field does not exist in the input
+    required_read[fldname] = required;
+    
 }
 
 template<typename TF>
@@ -961,7 +965,7 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
 
     for (auto& f : sp)
     {
-        group_nc.get_variable(prof, f.first, start, count);
+        group_nc.get_variable(prof, f.first, start, count, required_read[f.first]);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);

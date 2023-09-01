@@ -54,7 +54,7 @@ template<typename TF>
 class Thermo_moist : public Thermo<TF>
 {
     public:
-        Thermo_moist(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the moist thermodynamics class.
+        Thermo_moist(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode); ///< Constructor of the moist thermodynamics class.
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
