@@ -518,19 +518,23 @@ void Boundary_surface<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    auto buoy = fields.get_tmp_g();
-    thermo.get_buoyancy_fluxbot_g(*buoy);
+    // If thermo is enabled, calc the buoyancy gradient near the surface
+    if (thermo.get_switch() != Thermo_type::Disabled)
+    {
+        auto buoy = fields.get_tmp_g();
+        thermo.get_buoyancy_fluxbot_g(*buoy);
 
-    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
-            dbdz_mo_g, buoy->flux_bot_g,
-            ustar_g, obuk_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
+        bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
+                dbdz_mo_g, buoy->flux_bot_g,
+                ustar_g, obuk_g,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
 
-    fields.release_tmp_g(buoy);
+        fields.release_tmp_g(buoy);
+    }
 }
 
 template<typename TF>
