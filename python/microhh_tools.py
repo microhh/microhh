@@ -1042,35 +1042,46 @@ def run_restart(
             return 1
     return 0
 
-def copy_radfiles(srcdir=None, destdir=None, gpt='128_112'):
+def copy_or_link(src, dst, link = False):
+    if os.path.exists(dst):
+        os.remove(dst)
+    if link:
+        os.symlink(src, dst)
+        print("Linking ",end="")
+    else:
+        shutil.copy(src, dst)
+        print("Copying ",end="")
+    print(src," to ",dst)
+
+def copy_radfiles(srcdir = None, destdir = None, gpt = '128_112', link = False):
     if srcdir is None:
         srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rrtmgp-data/' 
     if destdir is None:
         destdir = os.getcwd()
     if gpt == '128_112':
-        shutil.copy(srcdir+'rrtmgp-gas-lw-g128.nc', destdir+'/coefficients_lw.nc')
-        shutil.copy(srcdir+'rrtmgp-gas-sw-g112.nc', destdir+'/coefficients_sw.nc')
+        copy_or_link(srcdir + 'rrtmgp-gas-lw-g128.nc', destdir + '/coefficients_lw.nc', link = link)
+        copy_or_link(srcdir + 'rrtmgp-gas-sw-g112.nc', destdir + '/coefficients_sw.nc', link = link)
     elif gpt == '256_224':
-        shutil.copy(srcdir+'rrtmgp-gas-lw-g256.nc', destdir+'/coefficients_lw.nc')
-        shutil.copy(srcdir+'rrtmgp-gas-sw-g224.nc', destdir+'/coefficients_sw.nc')
+        copy_or_link(srcdir + 'rrtmgp-gas-lw-g256.nc', destdir + '/coefficients_lw.nc', link = link)
+        copy_or_link(srcdir + 'rrtmgp-gas-sw-g224.nc', destdir + '/coefficients_sw.nc', link = link)
     else:
         raise ValueError('gpt should be in {\'128_112\', \'256_224\'}')
 
-    shutil.copy(srcdir+'rrtmgp-clouds-lw.nc', destdir+'/cloud_coefficients_lw.nc')
-    shutil.copy(srcdir+'rrtmgp-clouds-sw.nc', destdir+'/cloud_coefficients_sw.nc')
+    copy_or_link(srcdir + 'rrtmgp-clouds-lw.nc', destdir + '/cloud_coefficients_lw.nc', link = link)
+    copy_or_link(srcdir + 'rrtmgp-clouds-sw.nc', destdir + '/cloud_coefficients_sw.nc', link = link)
 
-def copy_aerosolfiles(srcdir=None, destdir=None):
+def copy_aerosolfiles(srcdir = None, destdir = None, link = False):
     if srcdir is None:
-        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/data/' 
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe())) + '/../rte-rrtmgp-cpp/data/' 
     if destdir is None:
         destdir = os.getcwd()
 
-    shutil.copy(srcdir+'aerosol_optics.nc', destdir+ 'aerosol_optics.nc')
+    copy_or_link(srcdir + 'aerosol_optics.nc', destdir + 'aerosol_optics.nc', link = link)
 
-def copy_lsmfiles(srcdir=None, destdir=None):
+def copy_lsmfiles(srcdir = None, destdir = None, link = False):
     if srcdir is None:
         srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../misc/'
     if destdir is None:
         destdir = os.getcwd()
-    shutil.copy(srcdir+'van_genuchten_parameters.nc', destdir)
+    copy_or_link(srcdir+'van_genuchten_parameters.nc', destdir, link = link)
     
