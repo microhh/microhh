@@ -439,22 +439,23 @@ void Model<TF>::exec()
                     const int iter = timeloop->get_iteration();
                     const double time = timeloop->get_time();
                     const unsigned long itime = timeloop->get_itime();
+                    const unsigned long idt  = timeloop->get_idt();
                     const int iotime = timeloop->get_iotime();
                     const double dt = timeloop->get_dt();
 
                     // Write cross and dump messages here, as they don't have an `exec()` function...
                     if (cross->do_cross(itime))
                         master.print_message("Saving cross-sections for time %f\n", time);
-                    if (dump->do_dump(itime))
+                    if (dump->do_dump(itime, idt))
                         master.print_message("Saving field dumps for time %f\n", time);
 
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
-                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime)))
+                    if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt)))
                     {
                         radiation->exec_individual_column_stats(*column, *thermo, *microphys, *timeloop, *stats, *aerosol, *background);
                     }
 
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime))
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt))
                     {
                         #ifdef USECUDA
                         #pragma omp taskwait
@@ -471,7 +472,7 @@ void Model<TF>::exec()
                                 itime, iotime);
 
                         #pragma omp task default(shared)
-                        calculate_statistics(iter, time, itime, iotime, dt);
+                        calculate_statistics(iter, time, itime, idt, iotime, dt);
                     }
 
                     if (column->do_column(itime))
@@ -618,7 +619,7 @@ void Model<TF>::clear_gpu()
 
 // Calculate the statistics for all classes that have a statistics function.
 template<typename TF>
-void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, int iotime, double dt)
+void Model<TF>::calculate_statistics(int iteration, double time, unsigned long itime, unsigned long idt, int iotime, double dt)
 {
     // Do the statistics.
     if (stats->do_statistics(itime))
@@ -648,7 +649,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
     // Save the 3d dumps to disk.
-    if (dump->do_dump(itime))
+    if (dump->do_dump(itime, idt))
     {
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
