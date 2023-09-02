@@ -122,7 +122,7 @@ class Model
 
         void delete_objects();
         void print_status();
-        void calculate_statistics(int, double, unsigned long, int, double);
+        void calculate_statistics(int, double, unsigned long, unsigned long, int, double);
         void setup_stats();
         void calc_masks();
         void set_time_step();
