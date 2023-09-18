@@ -3,7 +3,6 @@
  * Copyright (c) 2011-2023 Chiel van Heerwaarden
  * Copyright (c) 2011-2023 Thijs Heus
  * Copyright (c) 2014-2023 Bart van Stratum
- * Copyright (c) 2018-2023 Elynn Wu
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
