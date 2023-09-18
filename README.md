@@ -123,4 +123,4 @@ If you are planning to contribute code to MicroHH, first of all: thanks! But ple
 - We like to keep our code structured and clean, so please stick to the [MicroHH coding conventions](https://github.com/microhh/microhh/blob/main/doc/coding_conventions.cxx).
 - Be careful with what you add and commit to Git. Accidentally adding/committing some large binaries or MicroHH executables is an easy mistake, but even if you later remove the files in a new commit, the files will stay in the history of the repository, making the repository unnecessary bloaty.
  
-Current and previous contributors to MicroHH can be found [here][CONTRIBUTORS.md] 
+Current and previous contributors to MicroHH can be found [here](CONTRIBUTORS.md)
