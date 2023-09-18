@@ -522,8 +522,8 @@ void Radiation_gcss<TF>::exec_all_stats(
 {
     const bool do_stats = stats.do_statistics(itime);
     const bool do_cross = cross.do_cross(itime);
-    const bool do_dump = dump.do_dump(itime);
-
+    const unsigned long idt = timeloop.get_idt();
+    const bool do_dump = dump.do_dump(itime, idt);
     // Return in case of no stats or cross section.
     if ( !(do_stats || do_cross || do_dump) )
         return;

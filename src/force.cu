@@ -160,6 +160,30 @@ namespace
         }
     }
 
+
+    template<typename TF> __global__
+    void advec_wls_2nd_local_w_g(
+            TF* const __restrict__ st, const TF* const __restrict__ s,
+            const TF* const __restrict__ wls, const TF* const __restrict__ dzi,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int jj,     const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart + 1;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            if (interp2( wls[k-1], wls[k] ) > 0.)
+                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
+            else
+                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
+        }
+    }
+
     template<typename TF> __global__
     void large_scale_source_g(TF* const __restrict__ st, TF* const __restrict__ sls,
                               const int istart, const int jstart, const int kstart,
@@ -448,7 +472,30 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         if (swwls_mom)
-            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g,
+                fields.mp.at("u")->fld_mean_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g,
+                fields.mp.at("v")->fld_mean_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+
 
         for (auto& it : fields.st)
         {
@@ -468,7 +515,41 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     else if (swwls == Large_scale_subsidence_type::Local_field)
     {
         if (swwls_mom)
-            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g,
+                fields.mp.at("u")->fld_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g,
+                fields.mp.at("v")->fld_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+
+            advec_wls_2nd_local_w_g<<<gridGPU, blockGPU>>>(
+                fields.mt.at("w")->fld_g,
+                fields.mp.at("w")->fld_g,
+                wls_g, gd.dzi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
 
         for (auto& it : fields.st)
         {
