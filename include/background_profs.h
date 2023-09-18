@@ -44,6 +44,8 @@ public:
     void get_gasses(Gas_concs&);
     void get_aerosols(Aerosol_concs&);
 
+    int get_n_era_levels() const { return n_era_levels; }
+
 private:
     Master& master;
     Grid<TF>& grid;
