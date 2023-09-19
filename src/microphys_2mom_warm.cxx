@@ -648,7 +648,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     // Get cloud liquid water specific humidity from thermodynamics
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql_qi", false, false);
+    thermo.get_thermo_field(*ql, "qlqi", false, false);
 
     // Get pressure and exner function from thermodynamics
     std::vector<TF> p     = thermo.get_basestate_vector("p");

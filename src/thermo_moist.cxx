@@ -1476,7 +1476,7 @@ bool Thermo_moist<TF>::has_mask(std::string mask_name)
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)
 {
-    if (name == "b" || name == "ql" || name == "T" || name == "qi")
+    if (name == "b" || name == "ql" || name == "T" || name == "qi" || name == "qlqi")
         return true;
     else
         return false;
@@ -1548,7 +1548,7 @@ void Thermo_moist<TF>::get_thermo_field(
         calc_ice(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
-    else if (name == "ql_qi")
+    else if (name == "qlqi")
     {
         calc_condensate(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
@@ -2076,7 +2076,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     auto qlqi = fields.get_tmp();
     qlqi->loc = gd.sloc;
 
-    get_thermo_field(*qlqi, "ql_qi", true, true);
+    get_thermo_field(*qlqi, "qlqi", true, true);
     stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
 
     fields.release_tmp(qlqi);
@@ -2223,7 +2223,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 
     if (swcross_qlqi)
-        get_thermo_field(*output, "ql_qi", false, true);
+        get_thermo_field(*output, "qlqi", false, true);
 
     for (auto& it : crosslist)
     {
@@ -2264,7 +2264,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         auto qlqi = fields.get_tmp();
         auto thv  = fields.get_tmp();
 
-        get_thermo_field(*qlqi, "ql_qi", false, true);
+        get_thermo_field(*qlqi, "qlqi", false, true);
         get_thermo_field(*thv,  "thv", false, true);
 
         field3d_operators.calc_mean_profile(thv->fld_mean.data(), thv->fld.data());

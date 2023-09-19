@@ -24,7 +24,7 @@ dy = ysize / jmax
 dz = zsize / kmax
 
 # Bubble position (m)
-xbub = 20000.
+xbub = 38400.
 ybub = 0.5*ysize
 zbub = 1400.
 
