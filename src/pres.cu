@@ -119,6 +119,8 @@ namespace
                 cdata[ijc].x = ddata[ij];
                 if (i > 0 && i < imax-1)
                     cdata[ijc].y = ddata[ij2];
+                else
+                    cdata[ijc].y = TF(0.);
             }
         }
     }
@@ -149,6 +151,8 @@ namespace
                 cdata[ijc].x = ddata[ij];
                 if (j > 0 && j < jmax-1)
                     cdata[ijc].y = ddata[ij2];
+                else
+                    cdata[ijc].y = TF(0.);
             }
         }
     }
@@ -513,5 +517,9 @@ void Pres<TF>::check_cufft_memory()
 }
 #endif
 
-template class Pres<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres<float>;
+#else
+template class Pres<double>;
+#endif

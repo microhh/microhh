@@ -422,5 +422,9 @@ TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restr
 }
 #endif
 
-template class Pres_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_2<float>;
+#else
+template class Pres_2<double>;
+#endif

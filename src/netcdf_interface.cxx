@@ -552,8 +552,8 @@ template<typename TF>
 TF Netcdf_handle::get_variable(
         const std::string& name)
 {
-    std::string message = "Retrieving from NetCDF (single value): " + name;
-    master.print_message(message);
+    // std::string message = "Retrieving from NetCDF (single value): " + name;
+    // master.print_message(message);
 
     int nc_check_code = 0;
     int var_id;
@@ -580,8 +580,8 @@ std::vector<TF> Netcdf_handle::get_variable(
         const std::string& name,
         const std::vector<int>& i_count)
 {
-    std::string message = "Retrieving from NetCDF (full array): " + name;
-    master.print_message(message);
+    // std::string message = "Retrieving from NetCDF (full array): " + name;
+    // master.print_message(message);
 
     const std::vector<size_t> i_start_size_t(i_count.size());
     const std::vector<size_t> i_count_size_t(i_count.begin(), i_count.end());
@@ -611,11 +611,10 @@ void Netcdf_handle::get_variable(
         std::vector<TF>& values,
         const std::string& name,
         const std::vector<int>& i_start,
-        const std::vector<int>& i_count)
+        const std::vector<int>& i_count, const bool required_read)
 {
-    std::string message = "Retrieving from NetCDF: " + name;
-    master.print_message(message);
-
+    // std::string message = "Retrieving from NetCDF: " + name;
+    // master.print_message(message);
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
@@ -631,8 +630,11 @@ void Netcdf_handle::get_variable(
     }
     catch (std::runtime_error& e)
     {
-        std::string warning = "Netcdf variable " + name + " not found, filling with zeros";
-        master.print_warning(warning);
+        if (required_read)
+        {
+            std::string warning = "Netcdf variable " + name + " not found, filling with zeros";
+            master.print_warning(warning);
+        }
         zero_fill = true;
     }
 
@@ -735,9 +737,9 @@ template int    Netcdf_handle::get_variable<int>   (const std::string&);
 template char   Netcdf_handle::get_variable<char>  (const std::string&);
 template signed char Netcdf_handle::get_variable<signed char>(const std::string&);
 
-template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&);
-template void Netcdf_handle::get_variable<float> (std::vector<float>&,  const std::string&, const std::vector<int>&, const std::vector<int>&);
-template void Netcdf_handle::get_variable<int>   (std::vector<int>&,    const std::string&, const std::vector<int>&, const std::vector<int>&);
+template void Netcdf_handle::get_variable<double>(std::vector<double>&, const std::string&, const std::vector<int>&, const std::vector<int>&, bool);
+template void Netcdf_handle::get_variable<float> (std::vector<float>&,  const std::string&, const std::vector<int>&, const std::vector<int>&, bool);
+template void Netcdf_handle::get_variable<int>   (std::vector<int>&,    const std::string&, const std::vector<int>&, const std::vector<int>&, bool);
 
 template void Netcdf_handle::insert<double>(const std::vector<double>&, const int, const std::vector<int>&, const std::vector<int>&);
 template void Netcdf_handle::insert<float> (const std::vector<float>&,  const int, const std::vector<int>&, const std::vector<int>&);

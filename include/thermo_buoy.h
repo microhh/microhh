@@ -23,6 +23,7 @@
 #ifndef THERMO_BUOY_H
 #define THERMO_BUOY_H
 
+#include <stdexcept>
 #include "thermo.h"
 
 class Master;
@@ -73,6 +74,8 @@ class Thermo_buoy : public Thermo<TF>
             { throw std::runtime_error("Function get_temperature_bot not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
@@ -107,6 +110,8 @@ class Thermo_buoy : public Thermo<TF>
         TF* get_basestate_fld_g(std::string)
             { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
+        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const
             { throw std::runtime_error("Function get_radiation_columns_g not implemented"); }

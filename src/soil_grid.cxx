@@ -143,5 +143,9 @@ const Soil_grid_data<TF>& Soil_grid<TF>::get_grid_data()
     return gd;
 }
 
-template class Soil_grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_grid<float>;
+#else
+template class Soil_grid<double>;
+#endif

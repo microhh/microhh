@@ -282,5 +282,9 @@ void Immersed_boundary<TF>::clear_device()
     }
 }
 
-template class Immersed_boundary<double>;
+
+#ifdef FLOAT_SINGLE
 template class Immersed_boundary<float>;
+#else
+template class Immersed_boundary<double>;
+#endif

@@ -24,6 +24,8 @@
 #include <memory>
 #include <vector>
 #include "field3d_operators.h"
+#include "aerosol.h"
+#include "background_profs.h"
 
 class Master;
 class Input;
@@ -31,6 +33,7 @@ class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Thermo;
+template<typename> class Microphys;
 template<typename> class Stats;
 template<typename> class Column;
 template<typename> class Dump;
@@ -53,7 +56,7 @@ class Radiation
         virtual void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&) = 0;
-        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&) = 0;
+        virtual void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long) = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
@@ -61,6 +64,8 @@ class Radiation
         virtual bool check_field_exists(const std::string& name) = 0;
         virtual void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&) = 0;
         virtual std::vector<TF>& get_surface_radiation(const std::string&) = 0;
+        virtual std::vector<TF>& get_surface_emissivity(const std::string&) = 0;
+        virtual std::vector<TF>& get_surface_albedo(const std::string&) = 0;
 
         // virtual void exec_stats(Stats<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
         // virtual void exec_cross(Cross<TF>&, unsigned long, Thermo<TF>&, Timeloop<TF>&) = 0;
@@ -70,7 +75,9 @@ class Radiation
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&,
                 const unsigned long, const int) = 0;
-        virtual void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
+        virtual void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&) = 0;
         virtual void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) = 0;
 
         #ifdef USECUDA

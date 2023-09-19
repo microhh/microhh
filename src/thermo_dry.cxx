@@ -335,7 +335,7 @@ Thermo_dry<TF>::Thermo_dry(
 {
     auto& gd = grid.get_grid_data();
 
-    swthermo = "dry";
+    swthermo = Thermo_type::Dry;
 
     const std::string group_name = "thermo";
 
@@ -366,7 +366,7 @@ Thermo_dry<TF>::Thermo_dry(
     // Flag the options that are not read in init mode.
     if (bs.swbasestate == Basestate_type::boussinesq && sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "thref0", "");
-    else if (bs.swbasestate == Basestate_type::anelastic && sim_mode == Sim_mode::Init)
+    if (sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "pbot", "");
 }
 
@@ -833,17 +833,21 @@ void Thermo_dry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     {
         if (it == "b")
             cross.cross_simple(b->fld.data(), no_offset, "b", iotime, gd.sloc);
-        else if (it == "blngrad")
-            cross.cross_lngrad(b->fld.data(), "blngrad", iotime);
-        else if (it == "bbot")
-            cross.cross_plane(b->fld_bot.data(), no_offset, "bbot", iotime);
-        else if (it == "bfluxbot")
-            cross.cross_plane(b->flux_bot.data(), no_offset, "bfluxbot", iotime);
-        else if (it == "thlngrad")
-            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "thlngrad", iotime);
+        else if (it == "b_lngrad")
+            cross.cross_lngrad(b->fld.data(), "b_lngrad", iotime);
+        else if (it == "b_bot")
+            cross.cross_plane(b->fld_bot.data(), no_offset, "b_bot", iotime);
+        else if (it == "b_fluxbot")
+            cross.cross_plane(b->flux_bot.data(), no_offset, "b_fluxbot", iotime);
+        else if (it == "th_lngrad")
+            cross.cross_lngrad(fields.sp.at("th")->fld.data(), "th_lngrad", iotime);
     }
     fields.release_tmp(b);
 }
 
-template class Thermo_dry<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_dry<float>;
+#else
+template class Thermo_dry<double>;
+#endif

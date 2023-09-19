@@ -73,7 +73,7 @@ void Diff_smag2<TF>::clear_device()
 
 #ifdef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
+void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
     using namespace diff_smag2;
     auto& gd = grid.get_grid_data();
@@ -113,7 +113,7 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
             gd.dzi_g, gd.dzhi_g,
             gd.dxi, gd.dyi);
 
-        if (thermo.get_switch() == "0")
+        if (thermo.get_switch() == Thermo_type::Disabled)
         {
             // Start with retrieving the stability information
             evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
@@ -163,11 +163,12 @@ void Diff_smag2<TF>::exec_viscosity(Thermo<TF>& thermo)
             gd.dxi, gd.dyi);
 
         // start with retrieving the stability information
-        if (thermo.get_switch() == "0")
+        if (thermo.get_switch() == Thermo_type::Disabled)
         {
             evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
+                fields.mp.at("u")->fld_g,
+                fields.mp.at("v")->fld_g,
                 mlen_g, gd.z_g, gd.dzhi_g,
                 gd.zsize, fields.visc,
                 gd.istart, gd.jstart, gd.kstart,
@@ -363,5 +364,9 @@ double Diff_smag2<TF>::get_dn(double dt)
 }
 #endif
 
-template class Diff_smag2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_smag2<float>;
+#else
+template class Diff_smag2<double>;
+#endif

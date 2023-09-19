@@ -578,5 +578,9 @@ void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const in
 //         prof[k] /= n;
 // }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif

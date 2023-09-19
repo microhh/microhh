@@ -186,5 +186,9 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     }
 }
 
-template class Decay<double>;
+
+#ifdef FLOAT_SINGLE
 template class Decay<float>;
+#else
+template class Decay<double>;
+#endif

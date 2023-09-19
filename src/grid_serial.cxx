@@ -86,30 +86,41 @@ void Grid<TF>::load_grid()
 
     int nerror = 0;
     if (pFile == NULL)
-    {
-        master.print_message("FAILED\n");
         nerror++;
-    }
-    else
-        master.print_message("OK\n");
+
+    if (fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
+        ++nerror;
+    if (fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile) != (unsigned)gd.itot )
+        ++nerror;
+    if (fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
+        ++nerror;
+    if (fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile) != (unsigned)gd.jtot )
+        ++nerror;
+    if (fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
+        ++nerror;
+    if (fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile) != (unsigned)gd.ktot )
+        ++nerror;
+    fclose(pFile);
 
     master.sum(&nerror, 1);
 
     if (nerror)
+    {
+        master.print_message("FAILED\n");
         throw std::runtime_error("Error in grid");
-
-    fread(&gd.x [gd.istart], sizeof(TF), gd.itot, pFile);
-    fread(&gd.xh[gd.istart], sizeof(TF), gd.itot, pFile);
-    fread(&gd.y [gd.jstart], sizeof(TF), gd.jtot, pFile);
-    fread(&gd.yh[gd.jstart], sizeof(TF), gd.jtot, pFile);
-    fread(&gd.z [gd.kstart], sizeof(TF), gd.ktot, pFile);
-    fread(&gd.zh[gd.kstart], sizeof(TF), gd.ktot, pFile);
-    fclose(pFile);
+    }
+    else
+        master.print_message("OK\n");
 
     // calculate the missing coordinates
     calculate();
 }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif
+
 #endif

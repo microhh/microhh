@@ -81,5 +81,9 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats)
 }
 #endif
 
-template class Decay<double>;
+
+#ifdef FLOAT_SINGLE
 template class Decay<float>;
+#else
+template class Decay<double>;
+#endif

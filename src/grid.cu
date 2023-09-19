@@ -73,5 +73,9 @@ void Grid<TF>::clear_device()
     gd.dzhi4_g.free();
 }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif

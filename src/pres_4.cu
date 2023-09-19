@@ -657,5 +657,9 @@ TF Pres_4<TF>::check_divergence()
 }
 #endif
 
-template class Pres_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_4<float>;
+#else
+template class Pres_4<double>;
+#endif

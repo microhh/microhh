@@ -221,7 +221,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
@@ -357,6 +357,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
     }
 }
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;

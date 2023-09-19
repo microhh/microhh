@@ -655,7 +655,10 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     }
 
     if (swtimedep_outflow)
-        throw std::runtime_error("Time dependent outflow is not (yet) supported on the GPU...");
+    {
+        for (auto& it : tdep_outflow)
+            it.second->update_time_dependent_prof_g(inflow_profiles_g.at(it.first), timeloop);
+    }
 }
 
 template<typename TF>
@@ -704,7 +707,7 @@ cuda_vector<TF>& Boundary<TF>::get_dbdz_g()
 }
 
 template<typename TF>
-void Boundary<TF>::prepare_device()
+void Boundary<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -735,7 +738,7 @@ void Boundary<TF>::prepare_device()
 }
 
 template<typename TF>
-void Boundary<TF>::clear_device()
+void Boundary<TF>::clear_device(Thermo<TF>& thermo)
 {
     for(auto& it : tdep_bc)
         it.second->clear_device();
@@ -754,15 +757,19 @@ void Boundary<TF>::clear_device()
 }
 
 template<typename TF>
-void Boundary<TF>::forward_device()
+void Boundary<TF>::forward_device(Thermo<TF>& thermo)
 {
 }
 
 template<typename TF>
-void Boundary<TF>::backward_device()
+void Boundary<TF>::backward_device(Thermo<TF>& thermo)
 {
 }
 #endif
 
-template class Boundary<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary<float>;
+#else
+template class Boundary<double>;
+#endif

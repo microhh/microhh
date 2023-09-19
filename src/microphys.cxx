@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdexcept>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -66,5 +68,9 @@ std::shared_ptr<Microphys<TF>> Microphys<TF>::factory(Master& masterin, Grid<TF>
     }
 }
 
-template class Microphys<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys<float>;
+#else
+template class Microphys<double>;
+#endif

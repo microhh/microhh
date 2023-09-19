@@ -490,5 +490,9 @@ void Advec_2i4<TF>::exec(Stats<TF>& stats)
 }
 #endif
 
-template class Advec_2i4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Advec_2i4<float>;
+#else
+template class Advec_2i4<double>;
+#endif

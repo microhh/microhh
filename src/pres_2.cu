@@ -370,5 +370,9 @@ TF Pres_2<TF>::check_divergence()
 }
 #endif
 
-template class Pres_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_2<float>;
+#else
+template class Pres_2<double>;
+#endif

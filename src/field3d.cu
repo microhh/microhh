@@ -55,5 +55,9 @@ void Field3d<TF>::clear_device()
     fld_mean_g.free();
 }
 
-template class Field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d<float>;
+#else
+template class Field3d<double>;
+#endif

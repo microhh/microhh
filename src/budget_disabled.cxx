@@ -45,5 +45,9 @@ template<typename TF>
 void Budget_disabled<TF>::exec_stats(Stats<TF>&)
 {}
 
-template class Budget_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_disabled<float>;
+#else
+template class Budget_disabled<double>;
+#endif

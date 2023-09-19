@@ -148,5 +148,9 @@ void Diff_2<TF>::exec(Stats<TF>& stats)
 }
 #endif
 
-template class Diff_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_2<float>;
+#else
+template class Diff_2<double>;
+#endif

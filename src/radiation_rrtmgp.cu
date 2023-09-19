@@ -26,7 +26,9 @@
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
+#include "timedep.h"
 #include "thermo.h"
+#include "microphys.h"
 #include "stats.h"
 #include "netcdf_interface.h"
 #include "constants.h"
@@ -36,7 +38,7 @@
 
 #include "Array.h"
 #include "Fluxes.h"
-#include "subset_kernel_launcher_cuda.h"
+#include "subset_kernels_cuda.h"
 
 using namespace Radiation_rrtmgp_functions;
 
@@ -110,6 +112,34 @@ namespace
     }
 
     __global__
+    void set_to_value(Float* __restrict__ fld, const int nsize, const Float value)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+        if (n < nsize)
+            fld[n] = value;
+    }
+
+    __global__
+    void add_profile(
+            Float* __restrict__ fld,
+            const Float* __restrict__ profile,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if ((i < iend) && (j < jend) && (k < kend))
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] += profile[k];
+        }
+    }
+
+    __global__
     void effective_radius_and_ciwp_to_gm2(
             Float* __restrict__ rel, Float* __restrict__ rei,
             Float* __restrict__ clwp, Float* __restrict__ ciwp,
@@ -156,6 +186,41 @@ namespace
 
             out[ijk] = in[ijk_nogc];
         }
+    }
+
+    __global__
+    void sum_tau_kernel(
+            const int ncol, const int nlev, const int col_s_in,
+            const Float* __restrict__ tau, const int ibnd, Float* __restrict__ aod)
+    {
+        const int icol = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if ( icol < ncol)
+        {
+            Float aod_s = 0;
+            for (int ilev=0; ilev < nlev; ++ilev)
+            {
+                const int idx_in = icol + ilev*ncol + ibnd*nlev*ncol;
+                aod_s += tau[idx_in];
+            }
+            aod[col_s_in + icol - 1] = aod_s;
+        }
+    }
+
+    void sum_tau(
+            int ncol, int nlev, int col_s_in,
+            const Float* tau, const int ibnd, Float* aod)
+    {
+        const int block_lev = 16;
+        const int block_col = 16;
+
+        const int grid_col = ncol/block_col + (ncol%block_col > 0);
+        const int grid_lev = nlev/block_lev + (nlev%block_lev > 0);
+
+        dim3 grid_gpu(grid_col);
+        dim3 block_gpu(block_col);
+
+        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd, aod);
     }
 
     std::vector<std::string> get_variable_string(
@@ -454,6 +519,44 @@ namespace
                 lut_extice, lut_ssaice, lut_asyice);
     }
 
+    Aerosol_optics_gpu load_and_init_aerosol_optics(
+            Master& master,
+            const std::string& coef_file)
+    {
+        // READ THE COEFFICIENTS FOR THE OPTICAL SOLVER.
+        Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
+
+        // Read look-up table coefficient dimensions
+        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_hum      = coef_nc.get_dimension_size("relative_humidity");
+        int n_philic = coef_nc.get_dimension_size("hydrophilic");
+        int n_phobic = coef_nc.get_dimension_size("hydrophobic");
+
+        Array<Float,2> band_lims_wvn({2, n_band});
+
+        Array<Float,2> mext_phobic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> ssa_phobic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+        Array<Float,2> g_phobic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+
+        Array<Float,3> mext_philic(
+                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> ssa_philic(
+                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+        Array<Float,3> g_philic(
+                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+
+        Array<Float,1> rh_upper(
+                coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
+
+        return Aerosol_optics_gpu(
+                band_lims_wvn, rh_upper,
+                mext_phobic, ssa_phobic, g_phobic,
+                mext_philic, ssa_philic, g_philic);
+    }
+
     void configure_memory_pool(int nlays, int ncols, int nchunks, int ngpts, int nbnds)
     {
         #ifdef RTE_RRTMGP_GPU_MEMPOOL_OWN
@@ -506,8 +609,22 @@ void Radiation_rrtmgp<TF>::prepare_device()
 
     configure_memory_pool(gd.ktot, gd.imax*gd.jmax, 512, ngpt_pool, nbnd_pool);
 
+    // Transfer the surface properties to the GPU
+    emis_sfc_g = emis_sfc;
+    sfc_alb_dir_g = sfc_alb_dir;
+    sfc_alb_dif_g = sfc_alb_dif;
+
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
+    this->aerosol_concs_gpu = std::make_unique<Aerosol_concs_gpu>(aerosol_concs);
+
+    const int nlaysize  = gd.ktot*sizeof(TF);
+    for (auto& it : gaslist)
+    {
+        gasprofs_g.emplace(it, nullptr);
+        cuda_safe_call(cudaMalloc(&gasprofs_g.at(it), nlaysize));
+        cuda_safe_call(cudaMemcpy(gasprofs_g.at(it), gasprofs.at(it).data(), nlaysize, cudaMemcpyHostToDevice));
+    }
 
     if (sw_longwave)
     {
@@ -535,6 +652,13 @@ void Radiation_rrtmgp<TF>::prepare_device()
         this->cloud_sw_gpu = std::make_unique<Cloud_optics_gpu>(
                 load_and_init_cloud_optics(master, "cloud_coefficients_sw.nc"));
 
+        if (sw_aerosol)
+        {
+            this->aerosol_sw_gpu = std::make_unique<Aerosol_optics_gpu>(
+                    load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+            cuda_safe_call(cudaMalloc(&aod550_g, gd.imax*gd.jmax*sizeof(Float)));
+        }
+
         const int nsfcsize = gd.ijcells*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
@@ -553,7 +677,7 @@ void Radiation_rrtmgp<TF>::prepare_device()
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_longwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
@@ -596,10 +720,6 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
     auto p_lev = Array_gpu<Float,2>(thermo.get_basestate_fld_g("prefh") + gd.kstart, {1, n_lev});
 
-    // CvH: this can be improved by creating a fill function for the GPU.
-    Array<Float,2> emis_sfc_cpu(std::vector<Float>(n_bnd, this->emis_sfc), {n_bnd, 1});
-    Array_gpu<Float,2> emis_sfc(emis_sfc_cpu);
-
     gas_concs_gpu->set_vmr("h2o", h2o);
 
     // CvH: This can be done better: we now allocate a complete array.
@@ -610,8 +730,8 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -697,7 +817,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_net().ptr());
     };
@@ -707,7 +827,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = (b-1) * n_col_block + 1;
         const int col_e =  b    * n_col_block;
 
-        Array_gpu<Float,2> emis_sfc_subset = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_subset = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_subset = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -731,7 +851,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
         const int col_s = n_col - n_col_block_residual + 1;
         const int col_e = n_col;
 
-        Array_gpu<Float,2> emis_sfc_residual = emis_sfc.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> emis_sfc_residual = emis_sfc_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> lw_flux_dn_inc_residual = lw_flux_dn_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
@@ -755,10 +875,12 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 #ifdef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
-        Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
+        Array<Float, 1>&aod550,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
-        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
+        const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
         const bool compute_clouds, const int n_col)
 {
     constexpr int n_col_block = 1024;
@@ -775,17 +897,24 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     const int n_bnd = this->kdist_sw_gpu->get_nband();
 
     const Bool top_at_1 = 0;
+    const bool do_radiation_stats = timeloop.is_stats_step();
 
     // Define the pointers for the subsetting.
     std::unique_ptr<Optical_props_arry_gpu> optical_props_subset =
             std::make_unique<Optical_props_2str_gpu>(n_col_block, n_lay, *kdist_sw_gpu);
     std::unique_ptr<Optical_props_2str_gpu> cloud_optical_props_subset =
             std::make_unique<Optical_props_2str_gpu>(n_col_block, n_lay, *cloud_sw_gpu);
+    std::unique_ptr<Optical_props_2str_gpu> aerosol_optical_props_subset;
+    if (sw_aerosol)
+        aerosol_optical_props_subset = std::make_unique<Optical_props_2str_gpu>(n_col_block, n_lay, *aerosol_sw_gpu);
 
     std::unique_ptr<Optical_props_arry_gpu> optical_props_residual =
             std::make_unique<Optical_props_2str_gpu>(n_col_block_residual, n_lay, *kdist_sw_gpu);
     std::unique_ptr<Optical_props_2str_gpu> cloud_optical_props_residual =
             std::make_unique<Optical_props_2str_gpu>(n_col_block_residual, n_lay, *cloud_sw_gpu);
+    std::unique_ptr<Optical_props_2str_gpu> aerosol_optical_props_residual;
+    if (sw_aerosol)
+        aerosol_optical_props_residual = std::make_unique<Optical_props_2str_gpu>(n_col_block_residual, n_lay, *aerosol_sw_gpu);
 
     // Make views to the base state pointer.
     auto p_lay = Array_gpu<Float,2>(thermo.get_basestate_fld_g("pref") + gd.kstart, {1, n_lay});
@@ -798,10 +927,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     // Create the boundary conditions
     Array<Float,1> mu0_cpu(std::vector<Float>(1, this->mu0), {1});
     Array_gpu<Float,1> mu0(mu0_cpu);
-    Array<Float,2> sfc_alb_dir_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dir), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dir(sfc_alb_dir_cpu);
-    Array<Float,2> sfc_alb_dif_cpu(std::vector<Float>(n_bnd, this->sfc_alb_dif), {n_bnd, 1});
-    Array_gpu<Float,2> sfc_alb_dif(sfc_alb_dif_cpu);
 
     gas_concs_gpu->set_vmr("h2o", h2o);
 
@@ -813,8 +938,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     const Float sig_g = 1.34;
     const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
 
-    const Float Nc0 = 100.e6;
-    const Float Ni0 = 1.e5;
+    const TF Nc0 = microphys.get_Nc0();
+    const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
     const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
@@ -832,6 +957,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const int col_s_in, const int col_e_in,
             std::unique_ptr<Optical_props_arry_gpu>& optical_props_subset_in,
             std::unique_ptr<Optical_props_2str_gpu>& cloud_optical_props_subset_in,
+            std::unique_ptr<Optical_props_2str_gpu>& aerosol_optical_props_subset_in,
             const Array_gpu<Float,1>& mu0_subset_in,
             const Array_gpu<Float,2>& sw_flux_dn_dir_inc_subset_in,
             const Array_gpu<Float,2>& sfc_alb_dir_subset_in,
@@ -876,10 +1002,35 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rei,
                     *cloud_optical_props_subset_in);
 
+            if (sw_delta_cloud)
+                cloud_optical_props_subset_in->delta_scale();
+
             // Add the cloud optical props to the gas optical properties.
             add_to(
                     dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_2str_gpu&>(*cloud_optical_props_subset_in));
+        }
+
+        if (sw_aerosol)
+        {
+            Aerosol_concs_gpu aerosol_concs_subset(*aerosol_concs_gpu, col_s_in, n_col_in);
+            aerosol_sw_gpu->aerosol_optics(
+                    aerosol_concs_subset,
+                    rh.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}),
+                    p_lev_subset,
+                    *aerosol_optical_props_subset_in);
+
+            if (sw_delta_aer)
+                aerosol_optical_props_subset_in->delta_scale();
+
+            // Add the cloud optical props to the gas optical properties.
+            add_to(
+                    dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
+                    dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
+
+            if (do_radiation_stats)
+            sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550-1, aod550_g);
+
         }
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
@@ -901,10 +1052,16 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
         fluxes.reduce(gpt_flux_up, gpt_flux_dn, gpt_flux_dn_dir, optical_props_subset_in, top_at_1);
 
         // Copy the data to the output.
-        subset_kernel_launcher_cuda::get_from_subset(
+        Subset_kernels_cuda::get_from_subset(
                 n_col, n_lev, n_col_in, col_s_in, flux_up.ptr(), flux_dn.ptr(), flux_dn_dir.ptr(), flux_net.ptr(),
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
     };
+
+    if (sw_aerosol && do_radiation_stats)
+    {
+        const int nmemsize = gd.imax*gd.jmax * sizeof(TF);
+        cuda_safe_call(cudaMemcpy(aod550.ptr(), aod550_g, nmemsize, cudaMemcpyDeviceToHost));
+    }
 
     for (int b=1; b<=n_blocks; ++b)
     {
@@ -913,8 +1070,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_subset = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_subset = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_subset = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_subset = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_subset = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
@@ -925,6 +1082,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_s, col_e,
                 optical_props_subset,
                 cloud_optical_props_subset,
+                aerosol_optical_props_subset,
                 mu0_subset,
                 sw_flux_dn_dir_inc_subset,
                 sfc_alb_dir_subset,
@@ -942,8 +1100,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
         Array_gpu<Float,1> mu0_residual = mu0.subset({{ {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dir_inc_residual = sw_flux_dn_dir_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
-        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir.subset({{ {1, n_bnd}, {col_s, col_e} }});
-        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dir_residual = sfc_alb_dir_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
+        Array_gpu<Float,2> sfc_alb_dif_residual = sfc_alb_dif_g.subset({{ {1, n_bnd}, {col_s, col_e} }});
         Array_gpu<Float,2> sw_flux_dn_dif_inc_residual = sw_flux_dn_dif_inc_local.subset({{ {col_s, col_e}, {1, n_gpt} }});
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
@@ -955,6 +1113,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 col_s, col_e,
                 optical_props_residual,
                 cloud_optical_props_residual,
+                aerosol_optical_props_residual,
                 mu0_residual,
                 sw_flux_dn_dir_inc_residual,
                 sfc_alb_dir_residual,
@@ -968,7 +1127,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
 #ifdef USECUDA
 template <typename TF>
-void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+void Radiation_rrtmgp<TF>::exec(
+        Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
 
@@ -987,17 +1148,29 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
     if (do_radiation)
     {
+        auto homogenize = [&](TF* const __restrict__ field)
+        {
+            // Lambda function to homogenize 2D field
+            const int blockGPU = 256;
+            const int gridGPU = gd.ijcells/blockGPU + (gd.ijcells%blockGPU > 0);
+
+            const TF mean_value = field3d_operators.calc_mean_2d_g(field);
+            set_to_value<<<gridGPU, blockGPU>>>(field, gd.ijcells, mean_value);
+        };
+
         // Set the tendency to zero.
+        // std::fill(fields.sd.at("thlt_rad")->fld.begin(), fields.sd.at("thlt_rad")->fld.end(), Float(0.));
         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
 
         auto t_lay = fields.get_tmp_g();
         auto t_lev = fields.get_tmp_g();
         auto h2o   = fields.get_tmp_g(); // This is the volume mixing ratio, not the specific humidity of vapor.
+        auto rh    = fields.get_tmp_g();
         auto clwp  = fields.get_tmp_g();
         auto ciwp  = fields.get_tmp_g();
 
         // Set the input to the radiation on a 3D grid without ghost cells.
-        thermo.get_radiation_fields_g(*t_lay, *t_lev, *h2o, *clwp, *ciwp);
+        thermo.get_radiation_fields_g(*t_lay, *t_lev, *h2o, *rh, *clwp, *ciwp);
 
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
         const int ijmax = gd.imax*gd.jmax;
@@ -1007,6 +1180,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         Array_gpu<Float,2> t_lev_a(t_lev->fld_g, {gd.imax*gd.jmax, gd.ktot+1});
         Array_gpu<Float,1> t_sfc_a(t_lev->fld_bot_g, {gd.imax*gd.jmax});
         Array_gpu<Float,2> h2o_a(h2o->fld_g, {gd.imax*gd.jmax, gd.ktot});
+        Array_gpu<Float,2> rh_a(rh->fld_g, {gd.imax*gd.jmax, gd.ktot});
         Array_gpu<Float,2> clwp_a(clwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
         Array_gpu<Float,2> ciwp_a(ciwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
 
@@ -1017,28 +1191,96 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
 
         const bool compute_clouds = true;
 
+        // get aerosol mixing ratios
+        if (sw_aerosol && sw_aerosol_timedep)
+        {
+            aerosol.get_radiation_fields(aerosol_concs_gpu);
+        }
+
         try
         {
+            if (sw_update_background)
+            {
+                // Temperature, pressure and moisture
+                background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
+                Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+                // gasses
+                background.get_gasses(gas_concs_col);
+                // aerosols
+                if (sw_aerosol && sw_aerosol_timedep)
+                {
+                    background.get_aerosols(aerosol_concs_col);
+                }
+            }
+
             if (sw_longwave)
             {
+                if (sw_update_background)
+                {
+                    // Calculate new background column (on the CPU).
+                    Float* ph_g = thermo.get_basestate_fld_g("prefh");
+                    Float p_top;
+                    cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+                    set_background_column_longwave(p_top);
+
+                    // Copy TOD flux to GPU
+                    const int n_gpt = kdist_lw->get_ngpt();
+                    const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+                    cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+                }
+
                 const int n_col = gd.imax*gd.jmax;
                 exec_longwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_net,
                         t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                         compute_clouds, n_col);
 
-                calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
-                        fields.sd.at("thlt_rad")->fld_g,
-                        flux_up.ptr(), flux_dn.ptr(),
-                        fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                        gd.dz_g,
-                        gd.istart, gd.jstart, gd.kstart,
-                        gd.iend, gd.jend, gd.kend,
-                        gd.igc, gd.jgc, gd.kgc,
-                        gd.icells, gd.ijcells,
-                        gd.imax, gd.imax*gd.jmax);
-                cuda_check_error();
+                if (sw_homogenize_hr_lw)
+                {
+                    auto thlt = fields.get_tmp_g();
+                    cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
+
+                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                            thlt->fld_g,
+                            flux_up.ptr(), flux_dn.ptr(),
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
+                            gd.istart, gd.jstart, gd.kstart,
+                            gd.iend, gd.jend, gd.kend,
+                            gd.igc, gd.jgc, gd.kgc,
+                            gd.icells, gd.ijcells,
+                            gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
+
+                    field3d_operators.calc_mean_profile_g(thlt->fld_mean_g, thlt->fld_g);
+
+                    add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                            fields.sd.at("thlt_rad")->fld_g,
+                            thlt->fld_mean_g,
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+                    cuda_check_error();
+
+                    fields.release_tmp_g(thlt);
+                }
+                else
+                {
+                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                            fields.sd.at("thlt_rad")->fld_g,
+                            flux_up.ptr(), flux_dn.ptr(),
+                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                            gd.dz_g,
+                            gd.istart, gd.jstart, gd.kstart,
+                            gd.iend, gd.jend, gd.kend,
+                            gd.igc, gd.jgc, gd.kgc,
+                            gd.icells, gd.ijcells,
+                            gd.imax, gd.imax*gd.jmax);
+                    cuda_check_error();
+                }
 
                 store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                         lw_flux_up_sfc_g, lw_flux_dn_sfc_g,
@@ -1049,6 +1291,12 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         gd.icells, gd.ijcells,
                         gd.imax);
                 cuda_check_error();
+
+                if (sw_homogenize_sfc_lw)
+                {
+                    homogenize(lw_flux_up_sfc_g);
+                    homogenize(lw_flux_dn_sfc_g);
+                }
 
                 if (do_radiation_stats)
                 {
@@ -1071,7 +1319,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                     {
                         const int n_col = gd.imax*gd.jmax;
                         exec_longwave(
-                                thermo, timeloop, stats,
+                                thermo, microphys, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
                                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                                 !compute_clouds, n_col);
@@ -1091,6 +1339,10 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 {
                     // Update the solar zenith angle and sun-earth distance.
                     set_sun_location(timeloop);
+                }
+
+                if (!sw_fixed_sza || sw_update_background)
+                {
 
                     if (is_day(this->mu0) || !sw_is_tuned)
                     {
@@ -1115,22 +1367,56 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                 {
                     const int n_col = gd.imax*gd.jmax;
                     exec_shortwave(
-                            thermo, timeloop, stats,
+                            thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
-                            t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                            aod550,
+                            t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                             compute_clouds, n_col);
 
-                    calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
-                            fields.sd.at("thlt_rad")->fld_g,
-                            flux_up.ptr(), flux_dn.ptr(),
-                            fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
-                            gd.dz_g,
-                            gd.istart, gd.jstart, gd.kstart,
-                            gd.iend, gd.jend, gd.kend,
-                            gd.igc, gd.jgc, gd.kgc,
-                            gd.icells, gd.ijcells,
-                            gd.imax, gd.imax*gd.jmax);
-                    cuda_check_error();
+                    if (sw_homogenize_hr_sw)
+                    {
+                        auto thlt = fields.get_tmp_g();
+                        cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
+
+                        calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                                thlt->fld_g,
+                                flux_up.ptr(), flux_dn.ptr(),
+                                fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                                gd.dz_g,
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend,
+                                gd.igc, gd.jgc, gd.kgc,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                        cuda_check_error();
+
+                        field3d_operators.calc_mean_profile_g(thlt->fld_mean_g, thlt->fld_g);
+
+                        add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                                fields.sd.at("thlt_rad")->fld_g,
+                                thlt->fld_mean_g,
+                                gd.istart, gd.iend,
+                                gd.jstart, gd.jend,
+                                gd.kstart, gd.kend,
+                                gd.icells, gd.ijcells);
+                        cuda_check_error();
+
+                        fields.release_tmp_g(thlt);
+                    }
+                    else
+                    {
+                        calc_tendency<<<gridGPU_3d, blockGPU_3d>>>(
+                                fields.sd.at("thlt_rad")->fld_g,
+                                flux_up.ptr(), flux_dn.ptr(),
+                                fields.rhoref_g, thermo.get_basestate_fld_g("exner"),
+                                gd.dz_g,
+                                gd.istart, gd.jstart, gd.kstart,
+                                gd.iend, gd.jend, gd.kend,
+                                gd.igc, gd.jgc, gd.kgc,
+                                gd.icells, gd.ijcells,
+                                gd.imax, gd.imax*gd.jmax);
+                        cuda_check_error();
+                    }
 
                     store_surface_fluxes<<<gridGPU_2d, blockGPU_2d>>>(
                             sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
@@ -1141,23 +1427,29 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                             gd.icells, gd.ijcells,
                             gd.imax);
                     cuda_check_error();
+
+                    if (sw_homogenize_sfc_sw)
+                    {
+                        homogenize(sw_flux_up_sfc_g);
+                        homogenize(sw_flux_dn_sfc_g);
+                    }
                 }
 
                 // Note: keep this as a separate `if()` instead of an `else`,
-                // we still want to zero everything if radiation was just calculated to tune the model. 
+                // we still want to zero everything if radiation was just calculated to tune the model.
                 if(!is_day(this->mu0))
                 {
                     // Set the surface fluxes to zero, for (e.g.) the land-surface model.
                     cudaMemset(sw_flux_dn_sfc_g, 0, gd.ijcells*sizeof(Float));
                     cudaMemset(sw_flux_up_sfc_g, 0, gd.ijcells*sizeof(Float));
 
-		    // Set tendency to zero if sw was calculated just for tuning..
-		    if (!sw_is_tuned)
+                    // Set tendency to zero if sw was calculated just for tuning..
+                    if (!sw_is_tuned)
                         cudaMemset(fields.sd.at("thlt_rad")->fld_g, 0, gd.ncells*sizeof(Float));
                 }
 
-		if (!sw_is_tuned)
-		    sw_is_tuned = true;
+                if (!sw_is_tuned)
+                    sw_is_tuned = true;
 
                 if (do_radiation_stats)
                 {
@@ -1190,9 +1482,10 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
                         {
                             const int n_col = gd.imax*gd.jmax;
                             exec_shortwave(
-                                    thermo, timeloop, stats,
+                                    thermo, microphys, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
-                                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                                    aod550,
+                                    t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                                     !compute_clouds, n_col);
                         }
 
@@ -1216,6 +1509,7 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
         fields.release_tmp_g(t_lay);
         fields.release_tmp_g(t_lev);
         fields.release_tmp_g(h2o);
+        fields.release_tmp_g(rh);
         fields.release_tmp_g(clwp);
         fields.release_tmp_g(ciwp);
     }
@@ -1233,6 +1527,20 @@ void Radiation_rrtmgp<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& t
     stats.calc_tend(*fields.st.at("thl"), tend_name);
 }
 
+#ifdef USECUDA
+template <typename TF>
+void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+
+    for (auto& it : tdep_gases)
+    {
+        it.second->update_time_dependent_prof_g(gasprofs_g.at(it.first), timeloop, gd.ktot);
+        Array_gpu<Float,2> tmp_array(gasprofs_g.at(it.first), {1, int(gd.ktot)});
+        gas_concs_gpu->set_vmr(it.first, tmp_array);
+    }
+}
+#endif
 
 template <typename TF>
 std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& name)
@@ -1267,12 +1575,16 @@ void Radiation_rrtmgp<TF>::clear_device()
     cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
     cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
+
+    for (auto& it : gasprofs_g)
+        cuda_safe_call(cudaFree(it.second));
 }
 
 
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec_individual_column_stats(
-        Column<TF>& column, Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Column<TF>& column, Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
+        Aerosol<TF>& aerosol, Background<TF>& background)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1302,6 +1614,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     Array_gpu<Float,2> t_lev_a(&tmp_g->fld_g[offset], {n_stat_col, gd.ktot+1}); offset += n_stat_col * (gd.ktot+1);
     Array_gpu<Float,1> t_sfc_a(&tmp_g->fld_g[offset], {n_stat_col           }); offset += n_stat_col;
     Array_gpu<Float,2> h2o_a  (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
+    Array_gpu<Float,2> rh_a   (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
     Array_gpu<Float,2> clwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  }); offset += n_stat_col * gd.ktot;
     Array_gpu<Float,2> ciwp_a (&tmp_g->fld_g[offset], {n_stat_col, gd.ktot  });
 
@@ -1335,10 +1648,40 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         }
     };
 
+    if (sw_update_background)
+    {
+        // Temperature and pressure
+        background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col,  gas_concs_col);
+        Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+        // gasses
+        background.get_gasses(gas_concs_col);
+        // aerosols
+        if (sw_aerosol && sw_aerosol_timedep)
+        {
+            background.get_aerosols(aerosol_concs_col);
+        }
+    }
+
     if (sw_longwave)
     {
+        if (sw_update_background)
+        {
+            // Calculate new background column (on the CPU).
+            Float* ph_g = thermo.get_basestate_fld_g("prefh");
+            Float p_top;
+            cudaMemcpy(&p_top, &ph_g[gd.kend], sizeof(TF), cudaMemcpyDeviceToHost);
+
+            set_background_column_longwave(p_top);
+
+            // Copy TOD flux to GPU
+            const int n_gpt = kdist_lw->get_ngpt();
+            const int ncolgptsize = n_col * n_gpt * sizeof(Float);
+            cuda_safe_call(cudaMemcpy(lw_flux_dn_inc_g, lw_flux_dn_inc.ptr(), ncolgptsize, cudaMemcpyHostToDevice));
+
+        }
+
         exec_longwave(
-                thermo, timeloop, stats,
+                thermo, microphys, timeloop, stats,
                 flux_up, flux_dn, flux_net,
                 t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                 compute_clouds, n_stat_col);
@@ -1349,7 +1692,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         if (sw_clear_sky_stats)
         {
             exec_longwave(
-                    thermo, timeloop, stats,
+                    thermo, microphys, timeloop, stats,
                     flux_up, flux_dn, flux_net,
                     t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
                     !compute_clouds, n_stat_col);
@@ -1362,13 +1705,17 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     if (sw_shortwave)
     {
         Array_gpu<Float,2> flux_dn_dir({n_stat_col, gd.ktot+1});
+        Array<Float,1> aod550_column_stats;
+        aod550_column_stats.set_dims({n_col});
 
         // Single column solve of background profile for TOA conditions
         if (!sw_fixed_sza)
         {
             // Update the solar zenith angle and sun-earth distance.
             set_sun_location(timeloop);
-
+        }
+        if (!sw_fixed_sza || sw_update_background)
+        {
             if (is_day(this->mu0))
             {
                 const int n_bnd = kdist_sw->get_nband();
@@ -1391,9 +1738,10 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         if (is_day(this->mu0))
         {
             exec_shortwave(
-                    thermo, timeloop, stats,
+                    thermo, microphys, timeloop, stats,
                     flux_up, flux_dn, flux_dn_dir, flux_net,
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                    aod550_column_stats,
+                    t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                     compute_clouds, n_stat_col);
         }
         else
@@ -1413,9 +1761,10 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             if (is_day(this->mu0))
             {
                 exec_shortwave(
-                        thermo, timeloop, stats,
+                        thermo, microphys, timeloop, stats,
                         flux_up, flux_dn, flux_dn_dir, flux_net,
-                        t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a,
+                        aod550_column_stats,
+                        t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                         !compute_clouds, n_stat_col);
             }
 
@@ -1429,6 +1778,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     fields.release_tmp(tmp);
 }
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_rrtmgp<float>;

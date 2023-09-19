@@ -83,5 +83,9 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(
     }
 }
 
-template class Pres<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres<float>;
+#else
+template class Pres<double>;
+#endif

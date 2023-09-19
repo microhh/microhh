@@ -53,5 +53,9 @@ void Soil_field3d<TF>::clear_device()
 }
 #endif
 
-template class Soil_field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_field3d<float>;
+#else
+template class Soil_field3d<double>;
+#endif

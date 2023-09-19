@@ -38,7 +38,7 @@ def convert_to_nc(variables):
         for mode in modes:
             try:
                 otime = int(round(starttime / 10**iotimeprec))
-                if os.path.isfile("{0}.xy.{1:07d}".format(variable, otime)):
+                if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
                     if mode != 'xy':
                         continue
                     at_surface = True
@@ -46,9 +46,10 @@ def convert_to_nc(variables):
                     at_surface = False
 
                 filename = "{0}.{1}.nc".format(variable, mode)
+                halflevel = '000'
                 if not at_surface:
                     if indexes is None:
-                        indexes_local = mht.get_cross_indices(variable, mode)
+                        indexes_local,halflevel = mht.get_cross_indices(variable, mode)
                     else:
                         indexes_local = indexes
 
@@ -73,13 +74,12 @@ def convert_to_nc(variables):
                     dim.update({'x': indexes_local})
                     n = ktot * jtot
 
-                if variable == 'u':
+                if halflevel[0] == '1':
                     dim['xh'] = dim.pop('x')
-                if variable == 'v':
+                if halflevel[1] == '1':
                     dim['yh'] = dim.pop('y')
-                if variable == 'w':
+                if halflevel[2] == '1':
                     dim['zh'] = dim.pop('z')
-
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
 
@@ -90,11 +90,11 @@ def convert_to_nc(variables):
                             round(
                                 (starttime + t * sampletime) / 10**iotimeprec))
                         if at_surface:
-                            f_in = "{0}.{1}.{2:07d}".format(
-                                variable, mode, otime)
+                            f_in = "{0}.{1}.{2}.{3:07d}".format(
+                                variable, mode, halflevel, otime)
                         else:
-                            f_in = "{0:}.{1}.{2:05d}.{3:07d}".format(
-                                variable, mode, index, otime)
+                            f_in = "{0:}.{1}.{2}.{3:05d}.{4:07d}".format(
+                                variable, mode, halflevel, index, otime)
                         try:
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:

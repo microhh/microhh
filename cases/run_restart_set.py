@@ -48,7 +48,7 @@ for prec in precs:
         #
         # Dry convective boundary layer
         mht.run_restart('drycblles',
-                drycblles.opt_small, drycblles.opt_mpi, None,
+                drycblles.opt_small, drycblles.opt_mpi, drycblles.dict_opts,
                 microhh_exec, mode, 'drycblles', experiment)
 
         # GABLS1 LES intercomparison
@@ -64,4 +64,4 @@ for prec in precs:
         # RICO LES intercomparison
         mht.run_restart('rico',
                 rico.opt_small, rico.opt_mpi, rico.dict_opts,
-                microhh_exec, mode, 'rico', experiment)
+               microhh_exec, mode, 'rico', experiment)

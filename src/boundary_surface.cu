@@ -260,12 +260,12 @@ namespace
 }
 
 template<typename TF>
-void Boundary_surface<TF>::prepare_device()
+void Boundary_surface<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     // Prepare base boundary, for inflow profiles.
-    Boundary<TF>::prepare_device();
+    Boundary<TF>::prepare_device(thermo);
 
     const int dmemsize2d = gd.ijcells*sizeof(TF);
     const int imemsize2d = gd.ijcells*sizeof(int);
@@ -277,7 +277,9 @@ void Boundary_surface<TF>::prepare_device()
     z0h_g.allocate(gd.ijcells);
     dudz_mo_g.allocate(gd.ijcells);
     dvdz_mo_g.allocate(gd.ijcells);
-    dbdz_mo_g.allocate(gd.ijcells);
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+        dbdz_mo_g.allocate(gd.ijcells);
 
     // Lookuk table:
     if (sw_constant_z0)
@@ -288,11 +290,11 @@ void Boundary_surface<TF>::prepare_device()
     }
 
     // Copy data to GPU:
-    forward_device();
+    forward_device(thermo);
 }
 
 template<typename TF>
-void Boundary_surface<TF>::forward_device()
+void Boundary_surface<TF>::forward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -307,7 +309,9 @@ void Boundary_surface<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(z0h_g,     z0h.data(),     dmemsize2d, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(dudz_mo_g, dudz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(dvdz_mo_g, dvdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(dbdz_mo_g, dbdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+        cuda_safe_call(cudaMemcpy(dbdz_mo_g, dbdz_mo.data(), dmemsize2d, cudaMemcpyHostToDevice));
 
     if (sw_constant_z0)
     {
@@ -319,7 +323,7 @@ void Boundary_surface<TF>::forward_device()
 }
 
 template<typename TF>
-void Boundary_surface<TF>::backward_device()
+void Boundary_surface<TF>::backward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -330,13 +334,15 @@ void Boundary_surface<TF>::backward_device()
     cuda_safe_call(cudaMemcpy(ustar.data(),   ustar_g,   dmemsize2d, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(dudz_mo.data(), dudz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(dvdz_mo.data(), dvdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy(dbdz_mo.data(), dbdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+        cuda_safe_call(cudaMemcpy(dbdz_mo.data(), dbdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
 }
 
 template<typename TF>
-void Boundary_surface<TF>::clear_device()
+void Boundary_surface<TF>::clear_device(Thermo<TF>& thermo)
 {
-    Boundary<TF>::clear_device();
+    Boundary<TF>::clear_device(thermo);
 
     if (sw_constant_z0)
     {
@@ -388,7 +394,7 @@ void Boundary_surface<TF>::exec(
     boundary_cyclic.exec_2d_g(dutot->fld_g);
 
     // start with retrieving the stability information
-    if (thermo.get_switch() == "0")
+    if (thermo.get_switch() == Thermo_type::Disabled)
     {
         // Calculate ustar and Obukhov length, including ghost cells
         stability_neutral_g<TF><<<gridGPU2, blockGPU2>>>(
@@ -499,19 +505,23 @@ void Boundary_surface<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    auto buoy = fields.get_tmp_g();
-    thermo.get_buoyancy_fluxbot_g(*buoy);
+    // If thermo is enabled, calc the buoyancy gradient near the surface
+    if (thermo.get_switch() != Thermo_type::Disabled)
+    {
+        auto buoy = fields.get_tmp_g();
+        thermo.get_buoyancy_fluxbot_g(*buoy);
 
-    bsk::calc_dbdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
-            dbdz_mo_g, buoy->flux_bot_g,
-            ustar_g, obuk_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
+        bsk::calc_dbdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
+                dbdz_mo_g, buoy->flux_bot_g,
+                ustar_g, obuk_g,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
 
-    fields.release_tmp_g(buoy);
+        fields.release_tmp_g(buoy);
+    }
 }
 
 template<typename TF>
@@ -523,5 +533,9 @@ void Boundary_surface<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-template class Boundary_surface<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface<float>;
+#else
+template class Boundary_surface<double>;
+#endif

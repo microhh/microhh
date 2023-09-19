@@ -298,5 +298,9 @@ void Timeloop<TF>::exec()
 }
 #endif
 
-template class Timeloop<double>;
+
+#ifdef FLOAT_SINGLE
 template class Timeloop<float>;
+#else
+template class Timeloop<double>;
+#endif

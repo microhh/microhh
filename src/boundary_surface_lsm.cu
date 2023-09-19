@@ -883,13 +883,13 @@ void Boundary_surface_lsm<TF>::print_ij(
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::prepare_device()
+void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
     // Prepare base boundary, for inflow profiles.
-    Boundary<TF>::prepare_device();
+    Boundary<TF>::prepare_device(thermo);
 
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
     const int int_memsize_ij = gd.ijcells*sizeof(int);
@@ -975,11 +975,11 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&rho_C_g, memsize_vg_lut));
 
     // Copy data from host to device
-    forward_device();
+    forward_device(thermo);
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::forward_device()
+void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
@@ -1068,12 +1068,12 @@ void Boundary_surface_lsm<TF>::forward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::backward_device()
+void Boundary_surface_lsm<TF>::backward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
-//    const int int_memsize_ij = gd.ijcells*sizeof(int);
+    const int int_memsize_ij = gd.ijcells*sizeof(int);
 
     // NOTE: only copy back the required/useful data...
     cuda_safe_call(cudaMemcpy(obuk.data(),  obuk_g,  tf_memsize_ij, cudaMemcpyDeviceToHost));
@@ -1090,7 +1090,7 @@ void Boundary_surface_lsm<TF>::backward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::clear_device()
+void Boundary_surface_lsm<TF>::clear_device(Thermo<TF>& thermo)
 {
     //
     // De-llocate fields on GPU
@@ -1105,9 +1105,63 @@ void Boundary_surface_lsm<TF>::clear_device()
         cuda_safe_call(cudaFree(zL_sl_g));
         cuda_safe_call(cudaFree(f_sl_g));
     }
-    // Land-surface stuff:
+
+    // Land-surface:
+    for (auto& tile : tiles)
+        lsmk::clear_tile(tile.second);
+
+    cuda_safe_call(cudaFree(gD_coeff_g));
+    cuda_safe_call(cudaFree(c_veg_g));
+    cuda_safe_call(cudaFree(lai_g));
+    cuda_safe_call(cudaFree(rs_veg_min_g));
+    cuda_safe_call(cudaFree(rs_soil_min_g));
+    cuda_safe_call(cudaFree(lambda_stable_g));
+    cuda_safe_call(cudaFree(lambda_unstable_g));
+    cuda_safe_call(cudaFree(cs_veg_g));
+
+    if (sw_water)
+    {
+        cuda_safe_call(cudaFree(water_mask_g));
+        cuda_safe_call(cudaFree(t_bot_water_g));
+    }
+
+    cuda_safe_call(cudaFree(interception_g));
+    cuda_safe_call(cudaFree(throughfall_g));
+    cuda_safe_call(cudaFree(infiltration_g));
+    cuda_safe_call(cudaFree(runoff_g));
+
+    cuda_safe_call(cudaFree(soil_index_g));
+    cuda_safe_call(cudaFree(diffusivity_g));
+    cuda_safe_call(cudaFree(diffusivity_h_g));
+    cuda_safe_call(cudaFree(conductivity_g));
+    cuda_safe_call(cudaFree(conductivity_h_g));
+    cuda_safe_call(cudaFree(source_g));
+    cuda_safe_call(cudaFree(root_fraction_g));
+
+    cuda_safe_call(cudaFree(theta_res_g));
+    cuda_safe_call(cudaFree(theta_wp_g));
+    cuda_safe_call(cudaFree(theta_fc_g));
+    cuda_safe_call(cudaFree(theta_sat_g));
+
+    cuda_safe_call(cudaFree(gamma_theta_sat_g));
+
+    cuda_safe_call(cudaFree(vg_a_g));
+    cuda_safe_call(cudaFree(vg_l_g));
+    cuda_safe_call(cudaFree(vg_n_g));
+    cuda_safe_call(cudaFree(vg_m_g));
+
+    cuda_safe_call(cudaFree(kappa_theta_max_g));
+    cuda_safe_call(cudaFree(kappa_theta_min_g));
+    cuda_safe_call(cudaFree(gamma_theta_max_g));
+    cuda_safe_call(cudaFree(gamma_theta_min_g));
+    cuda_safe_call(cudaFree(gamma_T_dry_g));
+    cuda_safe_call(cudaFree(rho_C_g));
 }
 #endif
 
-template class Boundary_surface_lsm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_lsm<float>;
+#else
+template class Boundary_surface_lsm<double>;
+#endif

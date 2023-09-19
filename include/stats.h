@@ -31,12 +31,14 @@ class Input;
 class Netcdf_file;
 template<typename> class Grid;
 template<typename> class Soil_grid;
+template<typename> class Background;
 template<typename> class Fields;
 template<typename> class Field3d;
 template<typename> class Advec;
 template<typename> class Diff;
 template<typename> class Timeloop;
 template<typename> class Netcdf_variable;
+template<typename> class Field3d;
 
 // Struct for profiles
 enum class Level_type {Full, Half};
@@ -80,6 +82,7 @@ struct Mask
     std::unique_ptr<Netcdf_variable<TF>> time_var;
     Prof_map<TF> profs;
     Prof_map<TF> soil_profs;
+    Prof_map<TF> background_profs;
     Time_series_map<TF> tseries;
 };
 
@@ -93,7 +96,7 @@ template<typename TF>
 class Stats
 {
     public:
-        Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
+        Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Background<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
         void init(double);
@@ -159,6 +162,7 @@ class Stats
                              const std::string&, const Field3d<TF>&, const TF, const TF, const int);
         void calc_tend(Field3d<TF>&, const std::string&);
         void set_prof(const std::string&, const std::vector<TF>&);
+        void set_prof_background(const std::string&, const std::vector<TF>&);
         void set_time_series(const std::string&, const TF);
 
         Mask_map<TF>& get_masks() { return masks; }
@@ -167,6 +171,7 @@ class Stats
         Master& master;
         Grid<TF>& grid;
         Soil_grid<TF>& soil_grid;
+        Background<TF>& background;
         Fields<TF>& fields;
         Advec<TF>& advec;
         Diff<TF>& diff;
@@ -179,6 +184,7 @@ class Stats
         std::vector<std::regex> blacklist;
         std::vector<std::string> varlist;
         std::vector<std::string> varlist_soil;
+        std::vector<std::string> varlist_background;
         
         void add_operation(std::vector<std::string>&, const std::string&, const std::string&);
         void sanitize_operations_vector(const std::string&, std::vector<std::string>&);

@@ -37,6 +37,7 @@ template<typename> class Field3d;
 template<typename> class Timeloop;
 
 enum class Sim_mode;
+enum class Thermo_type {Buoy, Dry, Moist, Disabled};
 
 /**
  * Base class for the thermo scheme. This class is abstract and only
@@ -50,7 +51,7 @@ class Thermo
         Thermo(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Thermo();
         static std::shared_ptr<Thermo> factory(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode);
-        const std::string& get_switch() const;
+        Thermo_type get_switch();
 
         // Below are the functions that the derived class has to implement.
         virtual void init() = 0;
@@ -82,6 +83,8 @@ class Thermo
 
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
         virtual void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
@@ -109,6 +112,8 @@ class Thermo
 
         virtual void get_radiation_fields_g(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         virtual void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const = 0;
         #endif
 
@@ -117,6 +122,6 @@ class Thermo
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        std::string swthermo;
+        Thermo_type swthermo;
 };
 #endif

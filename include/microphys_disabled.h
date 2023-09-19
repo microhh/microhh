@@ -23,6 +23,7 @@
 #ifndef MICROPHYS_DISABLED_H
 #define MICROPHYS_DISABLED_H
 
+#include <stdexcept>
 #include "microphys.h"
 
 class Master;
@@ -58,6 +59,9 @@ class Microphys_disabled : public Microphys<TF>
         void get_surface_rain_rate(std::vector<TF>&);
 
         unsigned long get_time_limit(unsigned long, double);
+
+        TF get_Nc0() { throw std::runtime_error("Microphys_disabled cannot provide Nc0"); };
+        TF get_Ni0() { throw std::runtime_error("Microphys_disabled cannot provide Ni0"); };
 
         #ifdef USECUDA
         void get_surface_rain_rate_g(TF*);

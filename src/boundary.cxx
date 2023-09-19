@@ -273,7 +273,7 @@ void Boundary<TF>::process_bcs(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
+void Boundary<TF>::init(Input& input, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
@@ -286,6 +286,11 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+    if (sim_mode == Sim_mode::Init)
+    {
+        input.flag_as_used("boundary", "swtimedep", "");
+        input.flag_as_used("boundary", "timedeplist", "");
+    }
 }
 
 template<typename TF>
@@ -340,7 +345,7 @@ void Boundary<TF>::process_time_dependent(
                     tmplist.erase(ittmp);
             }
         }
-
+        
         // Display a warning for the non-supported.
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
@@ -414,23 +419,8 @@ void Boundary<TF>::process_inflow(
     auto& gd = grid.get_grid_data();
 
     swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
-
-    Netcdf_group& init_group = input_nc.get_group("init");
-    for (auto& scalar : scalar_outflow)
-    {
-        std::vector<TF> prof = std::vector<TF>(gd.kcells);
-        if (!swtimedep_outflow)
-            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
-        std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
-        inflow_profiles.emplace(scalar, prof);
-    }
-
     if (swtimedep_outflow)
     {
-        #ifdef USECUDA
-        throw std::runtime_error("Time dependent outflow profiles are not (yet) implemented on the GPU.");
-        #endif
-
         Netcdf_group& tdep_group = input_nc.get_group("timedep");
         const TF offset = 0;
 
@@ -438,6 +428,19 @@ void Boundary<TF>::process_inflow(
         {
             tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
             tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+            inflow_profiles[scalar] = std::vector<TF>(gd.kcells);
+        }
+    }
+    else
+    {
+        Netcdf_group& init_group = input_nc.get_group("init");
+        for (auto& scalar : scalar_outflow)
+        {
+            std::vector<TF> prof = std::vector<TF>(gd.kcells);
+            if (!swtimedep_outflow)
+                init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+            std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+            inflow_profiles.emplace(scalar, prof);
         }
     }
 }
@@ -1161,5 +1164,9 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
     }
 }
 
-template class Boundary<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary<float>;
+#else
+template class Boundary<double>;
+#endif

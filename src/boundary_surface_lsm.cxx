@@ -629,8 +629,6 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d(ustar.data());
     boundary_cyclic.exec_2d(obuk.data());
 
-
-
     // Redistribute ustar over `uw` and `vw`.
     set_bcs_momentum(
             fields.mp.at("u")->flux_bot.data(),
@@ -943,7 +941,7 @@ void Boundary_surface_lsm<TF>::exec(
 #endif
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
@@ -957,6 +955,13 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
+
 }
 
 template<typename TF>
@@ -1802,5 +1807,8 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(
 }
 
 
-template class Boundary_surface_lsm<double>;
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_lsm<float>;
+#else
+template class Boundary_surface_lsm<double>;
+#endif

@@ -35,7 +35,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         Boundary_surface_bulk(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface_bulk();
 
-        void init(Input&, Thermo<TF>&);
+        void init(Input&, Thermo<TF>&, const Sim_mode);
         void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
@@ -55,10 +55,10 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS
+        void prepare_device(Thermo<TF>&);
+        void forward_device(Thermo<TF>&);
+        void backward_device(Thermo<TF>&);
+        void clear_device(Thermo<TF>&);
 
         cuda_vector<TF>& get_z0m_g()  { return z0m_g; };
         cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };

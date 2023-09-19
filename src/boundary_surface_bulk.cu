@@ -124,12 +124,12 @@ namespace
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::prepare_device()
+void Boundary_surface_bulk<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     // Prepare base boundary, for inflow profiles.
-    Boundary<TF>::prepare_device();
+    Boundary<TF>::prepare_device(thermo);
 
     const int dmemsize2d = gd.ijcells*sizeof(TF);
     const int dimemsize  = gd.icells*sizeof(TF);
@@ -141,21 +141,24 @@ void Boundary_surface_bulk<TF>::prepare_device()
 
     dudz_mo_g.allocate(gd.ijcells);
     dvdz_mo_g.allocate(gd.ijcells);
-    dbdz_mo_g.allocate(gd.ijcells);
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy2D(z0m_g, dimemsize, z0m.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-
     cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, dudz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, dvdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+    {
+        dbdz_mo_g.allocate(gd.ijcells);
+        cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+    }
 }
 
 // TMP BVS
 template<typename TF>
-void Boundary_surface_bulk<TF>::forward_device()
+void Boundary_surface_bulk<TF>::forward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -166,12 +169,14 @@ void Boundary_surface_bulk<TF>::forward_device()
 
     cuda_safe_call(cudaMemcpy2D(dudz_mo_g, dimemsize, dudz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(dvdz_mo_g, dimemsize, dvdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+        cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
 template<typename TF>
-void Boundary_surface_bulk<TF>::backward_device()
+void Boundary_surface_bulk<TF>::backward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -182,11 +187,13 @@ void Boundary_surface_bulk<TF>::backward_device()
 
     cuda_safe_call(cudaMemcpy2D(dudz_mo.data(), dimemsize, dudz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy2D(dvdz_mo.data(), dimemsize, dvdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy2D(dbdz_mo.data(), dimemsize, dbdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
+
+    if (thermo.get_switch() != Thermo_type::Disabled)
+        cuda_safe_call(cudaMemcpy2D(dbdz_mo.data(), dimemsize, dbdz_mo_g, dimemsize, dimemsize, gd.jcells, cudaMemcpyDeviceToHost));
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::clear_device()
+void Boundary_surface_bulk<TF>::clear_device(Thermo<TF>& thermo)
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
@@ -323,5 +330,9 @@ void Boundary_surface_bulk<TF>::exec(
 }
 #endif
 
-template class Boundary_surface_bulk<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_bulk<float>;
+#else
+template class Boundary_surface_bulk<double>;
+#endif
