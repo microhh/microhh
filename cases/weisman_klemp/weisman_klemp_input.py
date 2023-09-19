@@ -92,8 +92,8 @@ p_tr = p0 * pow( T_tr/ theta_tr, cprd)
 
 # Calculate theta and rh arrays and velocity
 for k in range(k_tr):
-    thl[k] = theta_0 + (theta_tr - theta_0) *pow( z[k] / z_tr ,5/4)
-    rh[k]  = max(1. - 0.75 * pow( z[k] / z_tr ,5/4), 0.95)
+    thl[k] = theta_0 + (theta_tr - theta_0) *pow( z[k] / z_tr, 5/4)
+    rh[k]  = min(1. - 0.75*(z[k]/z_tr)**1.25, .95)
 
 for k in range(k_tr,kmax):
     thl[k] = theta_tr * np.exp( grav/cp/T_tr * (z[k] - z_tr) )
