@@ -1957,7 +1957,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
         const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top"};
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
-        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi_path", "qlqi_base", "qlqi_top"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
