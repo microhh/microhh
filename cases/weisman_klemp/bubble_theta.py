@@ -43,8 +43,9 @@ kminbub = int(round((zbub - lzbub)/dz))
 kmaxbub = int(round((zbub + lzbub)/dz))  + 1
 
 # Open the file
-thl = np.fromfile("thl.0000000")
-thl.shape = (kmax, jmax, imax)
+float_type = np.float32
+
+thl = np.fromfile("thl.0000000", dtype=float_type).reshape(kmax, jmax, imax)
 
 for k in range(kminbub,kmaxbub):
     for j in range(jminbub,jmaxbub):
