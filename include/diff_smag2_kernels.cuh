@@ -26,13 +26,13 @@
 #include "cuda_tiling.h"
 #include "fast_math.h"
 #include "monin_obukhov.h"
+#include "boundary.h"
 
 namespace diff_smag2 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
-    enum class Surface_model {Enabled, Disabled};
-
+    //enum class Surface_model {Enabled, Disabled};
 
     template<typename TF, Surface_model surface_model>
     struct calc_strain2_g {

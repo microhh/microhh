@@ -609,7 +609,7 @@ namespace
 
     template<typename TF> __global__
     void calc_radiation_columns_g(
-            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o,
+            TF* const restrict T, TF* const restrict T_h, TF* const restrict vmr_h2o, TF* const restrict rh,
             TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
             const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
             const TF* const restrict p, const TF* const restrict ph,

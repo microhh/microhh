@@ -414,7 +414,7 @@ unsigned long Diff_tke2<TF>::get_time_limit(const unsigned long idt, const doubl
         : fields.sd.at("eviscs")->fld_g;
 
     // Calculate dnmul in tmp1 field
-    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
             tmp1->fld_g,
             evisc_g,
             gd.dzi_g,
@@ -462,7 +462,7 @@ double Diff_tke2<TF>::get_dn(const double dt)
         ? fields.sd.at("evisc")->fld_g
         : fields.sd.at("eviscs")->fld_g;
 
-    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
             dnmul_tmp->fld_g,
             evisc_g,
             gd.dzi_g,

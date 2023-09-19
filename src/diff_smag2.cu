@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "master.h"
 #include "diff_smag2.h"
+#include "boundary.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
