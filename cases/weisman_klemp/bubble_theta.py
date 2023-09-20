@@ -2,29 +2,30 @@ import numpy as np
 import netCDF4 as nc
 import math
 import matplotlib.pyplot as plt
+import os
 
 # Get grid information from .ini file
 with open('weisman_klemp.ini') as f:
     for line in f:
         if(line.split('=')[0]=='ktot'):
-            kmax = int(line.split('=')[1])
+            ktot = int(line.split('=')[1])
         if(line.split('=')[0]=='zsize'):
             zsize = float(line.split('=')[1])
         if(line.split('=')[0]=='jtot'):
-            jmax = int(line.split('=')[1])
+            jtot = int(line.split('=')[1])
         if(line.split('=')[0]=='ysize'):
             ysize = float(line.split('=')[1])
         if(line.split('=')[0]=='itot'):
-            imax = int(line.split('=')[1])
+            itot = int(line.split('=')[1])
         if(line.split('=')[0]=='xsize'):
             xsize = float(line.split('=')[1])
 
-dx = xsize / imax
-dy = ysize / jmax
-dz = zsize / kmax
+dx = xsize / itot
+dy = ysize / jtot
+dz = zsize / ktot
 
 # Bubble position (m)
-xbub = 20000.
+xbub = 38400.
 ybub = 0.5*ysize
 zbub = 1400.
 
@@ -43,13 +44,14 @@ kminbub = int(round((zbub - lzbub)/dz))
 kmaxbub = int(round((zbub + lzbub)/dz))  + 1
 
 # Open the file
-float_type = np.float32
+filename = "thl.0000000"
+float_type = np.float64 if os.path.getsize(filename) // (2*itot + 2*jtot + 2*ktot) == 8 else np.float32
 
-thl = np.fromfile("thl.0000000", dtype=float_type).reshape(kmax, jmax, imax)
+thl = np.fromfile(filename, dtype=float_type).reshape(ktot, jtot, itot)
 
-for k in range(kminbub,kmaxbub):
-    for j in range(jminbub,jmaxbub):
-        for i in range(iminbub,imaxbub):
+for k in range(kminbub, kmaxbub):
+    for j in range(jminbub, jmaxbub):
+        for i in range(iminbub, imaxbub):
             dist = math.sqrt( ((xbub - i*dx)/lxybub)**2 + ((ybub - j*dy)/lxybub)**2 + ((zbub - k*dz)/lzbub)**2)
             if (dist < 1.0):
                 thl[k, j, i] = thl[k, j, i] + bubamp * np.cos(dist*np.pi/2)**2 + bubamp * 0.01*(np.random.rand() - 0.5)
