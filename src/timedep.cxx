@@ -91,7 +91,6 @@ void Timedep<TF>::create_timedep(Netcdf_handle& input_nc, const std::string time
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(data, varname,  {0}, {time_dim_length});
 
-
     #ifdef USECUDA
     prepare_device();
     #endif

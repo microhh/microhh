@@ -366,7 +366,7 @@ Thermo_dry<TF>::Thermo_dry(
     // Flag the options that are not read in init mode.
     if (bs.swbasestate == Basestate_type::boussinesq && sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "thref0", "");
-    else if (bs.swbasestate == Basestate_type::anelastic && sim_mode == Sim_mode::Init)
+    if (sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "pbot", "");
 }
 

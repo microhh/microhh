@@ -45,6 +45,14 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
 
         // Get list of dump variables.
         dumplist = inputin.get_list<std::string>("dump", "dumplist", "", std::vector<std::string>());
+        
+        // Whether to do two consecutive dumps in time
+        swdoubledump = inputin.get_item<bool>("dump", "swdoubledump", "", false);
+        if (swdoubledump && sampletime != inputin.get_item<double>("time", "savetime", ""))
+        {
+            std::string msg = "Double dump only works if sampletime is equal to savetime";
+            throw std::runtime_error(msg);
+        }
 
         // Crash on empty list.
         if (dumplist.empty())
@@ -53,6 +61,12 @@ Dump<TF>::Dump(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
             throw std::runtime_error(msg);
         }
     }
+    else
+    {
+        inputin.flag_as_used("dump", "dumplist", "");
+        inputin.flag_as_used("dump", "sampletime", "");
+    }
+
 }
 
 template<typename TF>
@@ -91,17 +105,21 @@ unsigned long Dump<TF>::get_time_limit(unsigned long itime)
 }
 
 template<typename TF>
-bool Dump<TF>::do_dump(unsigned long itime)
+bool Dump<TF>::do_dump(unsigned long itime, unsigned long idt)
 {
     // Check if dump is enabled.
     if (!swdump)
         return false;
-
     // Check if current time step is dump time.
     if (itime % isampletime != 0)
-        return false;
+    {
+        if (((itime + idt) % isampletime == 0) && swdoubledump)
+            return true;
+        else
+            return false;
+    }
 
-    // Return true such that column are computed
+    // Return true such that dumps are created
     return true;
 }
 

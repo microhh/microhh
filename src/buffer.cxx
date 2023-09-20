@@ -146,7 +146,7 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
 
             for (auto& it : fields.sp)
             {
-                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count);
+                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count, fields.required_read.at(it.first));
                 std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
             }
         }

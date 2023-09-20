@@ -1070,7 +1070,7 @@ namespace
 
 
 template<typename TF>
-Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const Sim_mode sim_mode) :
     Thermo<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(masterin, gridin),
     field3d_operators(master, grid, fieldsin),
@@ -1119,6 +1119,13 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
     available_masks.insert(available_masks.end(), {"ql", "qlcore", "bplus", "bmin"});
+
+    // Flag the options that are not read in init mode.
+    if (sim_mode == Sim_mode::Init)
+        inputin.flag_as_used("thermo", "pbot", "");
+    // if (sim_mode == Sim_mode::Run)
+    
+
 }
 
 template<typename TF>

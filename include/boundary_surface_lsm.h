@@ -87,7 +87,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         Boundary_surface_lsm(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface_lsm();
 
-        void init(Input&, Thermo<TF>&);
+        void init(Input&, Thermo<TF>&, const Sim_mode);
         void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
