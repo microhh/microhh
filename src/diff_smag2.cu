@@ -76,7 +76,6 @@ void Diff_smag2<TF>::clear_device()
 template<typename TF>
 void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
-    using namespace diff_smag2;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -104,7 +103,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         auto& dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
-        launch_grid_kernel<calc_strain2_g<TF, Surface_model::Enabled>>(
+        launch_grid_kernel<diff_smag2::calc_strain2_g<TF, true>>(
             gd,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
@@ -117,7 +116,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
             // Start with retrieving the stability information
-            evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
+            diff_smag2::evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 z0m_g, gd.z_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
@@ -137,7 +136,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            launch_grid_kernel<evisc_g<TF, Surface_model::Enabled>>(
+            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
                 gd,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, dbdz_g,
@@ -153,7 +152,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     else
     {
         // Calculate total strain rate
-        launch_grid_kernel<calc_strain2_g<TF, Surface_model::Disabled>>(
+        launch_grid_kernel<diff_smag2::calc_strain2_g<TF, false>>(
             gd,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
@@ -166,7 +165,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         // start with retrieving the stability information
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
-            evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
+            diff_smag2::evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 fields.mp.at("u")->fld_g,
                 fields.mp.at("v")->fld_g,
@@ -189,7 +188,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            launch_grid_kernel<evisc_g<TF, Surface_model::Enabled>>(
+            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
                 gd,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, nullptr,
@@ -200,7 +199,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         }
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
-        calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
+        diff_smag2::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 gd.icells, gd.jcells,
                 gd.kstart, gd.kend,
@@ -215,7 +214,6 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 template<typename TF>
 void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
-    using namespace diff_smag2;
     auto& gd = grid.get_grid_data();
 
     const TF dxidxi = TF(1)/(gd.dx * gd.dx);
@@ -225,7 +223,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Do not use surface model.
     if (boundary.get_switch() == "default")
     {
-        launch_grid_kernel<diff_uvw_g<TF, Surface_model::Disabled>>(
+        launch_grid_kernel<diff_smag2::diff_uvw_g<TF, false>>(
                 gd,
                 fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
@@ -239,7 +237,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            launch_grid_kernel<diff_c_g<TF, Surface_model::Disabled>>(
+            launch_grid_kernel<diff_smag2::diff_c_g<TF, false>>(
                     gd,
                     it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
@@ -252,7 +250,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Use surface model.
     else
     {
-        launch_grid_kernel<diff_uvw_g<TF, Surface_model::Enabled>>(
+        launch_grid_kernel<diff_smag2::diff_uvw_g<TF, true>>(
                 gd,
                 fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
@@ -265,7 +263,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.visc);
 
         for (auto it : fields.st)
-            launch_grid_kernel<diff_c_g<TF, Surface_model::Enabled>>(
+            launch_grid_kernel<diff_smag2::diff_c_g<TF, true>>(
                     gd,
                     it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,

@@ -26,15 +26,12 @@
 #include "cuda_tiling.h"
 #include "fast_math.h"
 #include "monin_obukhov.h"
-#include "boundary.h"
 
 namespace diff_smag2 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
-    //enum class Surface_model {Enabled, Disabled};
-
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, bool surface_model_enabled>
     struct calc_strain2_g {
         DEFINE_GRID_KERNEL("diff_smag2::calc_strain2", 1)
 
@@ -58,7 +55,7 @@ namespace diff_smag2 {
             const int ij  = i*ii + j*jj;
             const int ijk = i*ii + j*jj + k*kk;
 
-            if (level.distance_to_start() == 0 && surface_model == Surface_model::Enabled)
+            if (level.distance_to_start() == 0 && surface_model_enabled)
             {
                 strain2[ijk] = TF(2.)*(
                         // du/dx + du/dx
@@ -124,9 +121,9 @@ namespace diff_smag2 {
         }
     };
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, bool surface_model_enabled>
     struct evisc_g {
-        DEFINE_GRID_KERNEL("diff_smag2::evisc", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::evisc", surface_model_enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE
@@ -147,7 +144,7 @@ namespace diff_smag2 {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (surface_model == Surface_model::Enabled)
+            if (surface_model_enabled)
             {
 //                TF RitPrratio;
 //
@@ -288,9 +285,9 @@ namespace diff_smag2 {
         }
     }
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, bool surface_model_enabled>
     struct diff_uvw_g {
-        DEFINE_GRID_KERNEL("diff_smag2::diff_uvw", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::diff_uvw", surface_model_enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE
@@ -336,7 +333,7 @@ namespace diff_smag2 {
             const TF evisctw = evisc[ijk   ] + visc;
             const TF eviscbw = evisc[ijk-kk] + visc;
 
-            if (level.distance_to_start() == 0 && surface_model == Surface_model::Enabled)
+            if (level.distance_to_start() == 0 && surface_model_enabled)
             {
                 ut[ijk] +=
                         // du/dx + du/dx
@@ -360,7 +357,7 @@ namespace diff_smag2 {
                         + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                              + rhorefh[k  ] * fluxbotv[ij] ) * rhorefi[k] * dzi[k];
             }
-            else if (level.distance_to_end() == 0 && surface_model == Surface_model::Enabled)
+            else if (level.distance_to_end() == 0 && surface_model_enabled)
             {
                 ut[ijk] +=
                         // du/dx + du/dx
@@ -433,9 +430,9 @@ namespace diff_smag2 {
         }
     };
 
-    template<typename TF, Surface_model surface_model>
+    template<typename TF, bool surface_model_enabled>
     struct diff_c_g {
-        DEFINE_GRID_KERNEL("diff_smag2::diff_c", surface_model == Surface_model::Enabled ? 1 : 0)
+        DEFINE_GRID_KERNEL("diff_smag2::diff_c", surface_model_enabled ? 1 : 0)
 
         template <typename Level>
         CUDA_DEVICE
@@ -454,7 +451,7 @@ namespace diff_smag2 {
             const int ij  = i*ii + j*jj;
             const int ijk = i*ii + j*jj + k*kk;
 
-            if (level.distance_to_start() == 0 && surface_model == Surface_model::Enabled)
+            if (level.distance_to_start() == 0 && surface_model_enabled)
             {
                 const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri + visc;
                 const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri + visc;
@@ -470,7 +467,7 @@ namespace diff_smag2 {
                         + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                              + rhorefh[k  ] * fluxbot[ij] ) * rhorefi[k] * dzi[k];
             }
-            else if (level.distance_to_end() == 0 && surface_model == Surface_model::Enabled)
+            else if (level.distance_to_end() == 0 && surface_model_enabled)
             {
                 const TF evisce = TF(0.5)*(evisc[ijk   ]+evisc[ijk+ii])*tPri + visc;
                 const TF eviscw = TF(0.5)*(evisc[ijk-ii]+evisc[ijk   ])*tPri + visc;

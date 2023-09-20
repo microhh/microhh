@@ -25,6 +25,7 @@
 
 #include <type_traits>
 #include <functional>
+#include <iostream>
 
 #include "tools.h"
 #include "cuda_buffer.h"
