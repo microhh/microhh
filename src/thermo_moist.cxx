@@ -2227,6 +2227,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : crosslist)
     {
+        if (it == "qlqi")
+            cross.cross_simple(output->fld.data(), no_offset, "qlqi", iotime, gd.sloc);
         if (it == "qlqi_path")
             cross.cross_path(output->fld.data(), "qlqi_path", iotime);
         if (it == "qlqi_base")
