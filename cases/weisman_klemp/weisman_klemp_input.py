@@ -116,12 +116,12 @@ p_up = p_tr
 for k in range(k_tr-1, -2, -1):
     # First guess no humidity
     pfg   = pow(pow(p_up, rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
-    Ttemp = thl[k] * pow(pfg/p0, rdcp)
+    Ttemp = thl[k] * pow(pfg/p0, rdcp) if k > -1 else theta_0 * pow(pfg/p0, rdcp)
     qfg   = min(qv0, qv_rh(pfg, Ttemp,rh[k]))
 
     # Second guess with humidity
     p_up  = pow(pow(p_up,rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
-    Ttemp = thl[k] * pow(p_up/p0, rdcp)
+    Ttemp = thl[k] * pow(p_up/p0, rdcp) if k > -1 else theta_0 * pow(p_up/p0, rdcp)
     if ( k > -1):
         qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))	
         #print(z[k], p_up/1.e5, Ttemp, qt[k])
