@@ -2756,7 +2756,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
     stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh", group_name);
     stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh", group_name);
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" , group_name);
@@ -2779,7 +2779,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
     }
 
     /*
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         // Add the profiles for the potential energy budget to the statistics.
         stats.add_prof("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
@@ -2987,7 +2987,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(uw_rdstr);
 
         // Calculate the buoyancy term of the TKE budget.
-        if (thermo.get_switch() != "0")
+        if (thermo.get_switch() != Thermo_type::Disabled)
         {
             auto b = fields.get_tmp();
 
@@ -3100,5 +3100,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     }
 }
 
-template class Budget_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_4<float>;
+#else
+template class Budget_4<double>;
+#endif

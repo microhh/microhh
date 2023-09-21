@@ -766,5 +766,9 @@ TF Pres_4<TF>::calc_divergence(
     return divmax;
 }
 
-template class Pres_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_4<float>;
+#else
+template class Pres_4<double>;
+#endif

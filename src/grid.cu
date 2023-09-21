@@ -73,5 +73,9 @@ void Grid<TF>::clear_device()
     cuda_safe_call(cudaFree(gd.dzhi4_g));
 }
 
-template class Grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Grid<float>;
+#else
+template class Grid<double>;
+#endif

@@ -54,7 +54,7 @@ template<typename TF>
 class Thermo_moist : public Thermo<TF>
 {
     public:
-        Thermo_moist(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the moist thermodynamics class.
+        Thermo_moist(Master&, Grid<TF>&, Fields<TF>&, Input&, const Sim_mode); ///< Constructor of the moist thermodynamics class.
         virtual ~Thermo_moist(); ///< Destructor of the moist thermodynamics class.
 
         void init();
@@ -76,6 +76,8 @@ class Thermo_moist : public Thermo<TF>
         void get_thermo_field(Field3d<TF>&, const std::string&, const bool, const bool);
         void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_radiation_fields(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const;
         void get_land_surface_fields(
             std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
@@ -108,6 +110,8 @@ class Thermo_moist : public Thermo<TF>
 
         void get_radiation_fields_g(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_radiation_fields_g(
+                Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const;
         void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*);
         #endif

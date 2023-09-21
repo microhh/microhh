@@ -1,10 +1,8 @@
 MicroHH
 -------
-[![Travis](https://api.travis-ci.org/microhh/microhh.svg?branch=master)](https://travis-ci.org/microhh/microhh) [![Documentation Status](https://readthedocs.org/projects/microhh/badge/?version=latest)](https://microhh.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/microhh/badge/?version=latest)](https://microhh.readthedocs.io/en/latest/?badge=latest)
 
 MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer. The code is written in C++.
-
-MicroHH is hosted on GitHub (http://github.com/microhh). Here, the latest version of the source code can be found, as well as all releases. Bug notifications and fixes are always welcome.
 
 A tutorial and documentation is available at: https://microhh.readthedocs.io/en/latest/.
 
@@ -31,7 +29,7 @@ Downloading the code
 --------------------
 Check out the code from GitHub using
 
-    git clone --recurse-submodules git@github.com:microhh/microhh
+    git clone --recurse-submodules https://github.com/microhh/microhh.git
 
 In case you had already checked out the repository without checking out the submodules, use:
 
@@ -44,9 +42,9 @@ First, enter the config directory:
 
     cd config
 
-Here, you find a potential series of settings with the extension .cmake for different systems. Check whether your system is there. If not, create a file with the correct compiler settings and the proper location for all libraries. Then, copy your system file to default.cmake. Let us assume your system is Ubuntu:
+Here, you find a potential series of settings with the extension `.cmake` for different systems. Check whether your system is there. If not, you can try the generic configuration (`generic.cmake`), or create a file with the correct compiler settings and the proper location for all libraries on your system. Then, copy your system file to default.cmake, for example:
 
-    cp ubuntu.cmake default.cmake
+    cp generic.cmake default.cmake
 
 Then, go back to the main directory and create a subdirectory with an arbitrary name in which you will compile the code. Let us assume this directory is called "build":
 
@@ -54,11 +52,11 @@ Then, go back to the main directory and create a subdirectory with an arbitrary 
     mkdir build  
     cd build   
 
-From this directory, run cmake with the suffix .. to point to the parent directory where the CMakeLists.txt is found. This builds the model without Message Passing Interface (MPI) and CUDA support.
+From this directory, run cmake with the suffix .. to point to the parent directory where the CMakeLists.txt is found. This builds the model without Message Passing Interface (MPI) and CUDA support, using double precision floating point numbers.
 
     cmake ..
 
-In case you prefer to enable either MPI or CUDA, run INSTEAD of the previous command:
+In case you prefer to enable either MPI, CUDA, or single precision (4 byte) floating point numbers, run `cmake` with the following flags:
     
     cmake .. -DUSEMPI=TRUE
 
@@ -66,11 +64,21 @@ or
 
     cmake .. -DUSECUDA=TRUE
 
-(Note that once the build has been configured and you wish to change the `USECUDA` or `USEMPI` setting, you must delete the build directory or create an additional empty directory from which `cmake` is run.)
+or 
 
-With the previous command you have triggered the build system and created the make files, if the `default.cmake` file contains the correct settings. Now, you can start the compilation of the code and create the microhh executable with:
+    cmake .. -DUSESP=TRUE
 
-    make -j
+Some combinations are possible, such as:
+
+    cmake .. -DUSEMPI=TRUE -DUSESP=TRUE
+
+However, the combination of `-DUSEMPI` with `-DUSECUDA` is not (yet) supported.
+
+NOTE: once the build has been configured and you wish to change the `USECUDA`, `USEMPI`, or `USESP` setting, you must delete the content of the build directory, or create an additional empty directory from which `cmake` is run.)
+
+With the previous command you have triggered the build system and created the make files, if the `default.cmake` file contains the correct settings. Now, you can start the compilation of the code and create the `microhh` executable with:
+
+    make -j 2
 
 Your directory should contain a file named `microhh` now. This is the main executable.
 
@@ -106,3 +114,11 @@ This should show you a set of basic plots. Congratulations, you have just comple
 
 Happy MicroHHing!
 
+Contributing
+------------
+
+If you are planning to contribute code to MicroHH, first of all: thanks! But please consider a few things:
+- For eventual merging of contributions into the main code, we use the [pull request](https://github.com/microhh/microhh/pulls) feature of Github. For this, [you need to make of fork](https://github.com/microhh/microhh/fork) of the MicroHH repository in your own Github account, and commit the changes there, before creating a pull request.
+- If you plan to make major changes to the code or code structure, it might be wise to discuss them with the main MicroHH devs, for example by [opening an issue on Github](https://github.com/microhh/microhh/issues).
+- We like to keep our code structured and clean, so please stick to the [MicroHH coding conventions](https://github.com/microhh/microhh/blob/main/doc/coding_conventions.cxx).
+- Be careful with what you add and commit to Git. Accidentally adding/committing some large binaries or MicroHH executables is an easy mistake, but even if you later remove the files in a new commit, the files will stay in the history of the repository, making the repository unnecessary bloaty.

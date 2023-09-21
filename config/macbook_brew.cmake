@@ -1,39 +1,83 @@
-# MacBook
-if(USEMPI) 
-  set(ENV{CC}  mpicc ) # C compiler for parallel build
-  set(ENV{CXX} mpicxx) # C++ compiler for parallel build
-  set(ENV{FC}  mpif90) # Fortran compiler for parallel build
+# Generic CMake file that should work on many systems, provided that the environmental variables are set properly
+# Provides pathways for Intel and GCC compilers
+# Make sure to set the following variables: CPLUS_INCLUDE_PATH and LIBRARY_PATH (depending on the system configuriation, they may be called differently)
+# The following libraries should be included: netcdf fftw3 fftw3f hdf5
+#
+# Tested on the following systems:
+# ARM Cumulus with GCC CUDA/MPICH (RedHat)
+# Cleveland State with GCC CUDA/MPICH (Ubuntu 22.04)
+
+# Switch between Intel and GCC:
+set(USEINTEL FALSE)
+
+# GPU builds are always with GCC:
+if(USECUDA)
+    set(USEINTEL FALSE)
+endif()
+# Select correct compilers for Intel/GCC + parallel/serial:
+if(USEMPI)
+    if(USEINTEL)
+        set(ENV{CC} mpiicc )
+        set(ENV{CXX} mpiicpc)
+        set(ENV{FC} mpiifort)
+    else()
+        set(ENV{CC} mpicc )
+        set(ENV{CXX} mpicxx)
+        set(ENV{FC} mpif90)
+    endif()
 else()
-  set(ENV{CC}  clang   ) # C compiler for serial build
-  set(ENV{CXX} clang++ ) # C++ compiler for serial build
-  set(ENV{FC}  gfortran) # Fortran compiler for serial build
+    if(USEINTEL)
+        set(ENV{CC} icc )
+        set(ENV{CXX} icpc)
+        set(ENV{FC} ifort)
+    else()
+        set(ENV{CC} gcc )
+        set(ENV{CXX} g++)
+        set(ENV{FC} gfortran)
+    endif()
 endif()
 
-set(GNU_SED "gsed")
+# Set compiler flags / options:
+if(USECUDA)
+    set(USER_CXX_FLAGS "-std=c++17 -fopenmp")
+    set(USER_CXX_FLAGS_RELEASE "-O3")
+    add_definitions(-DRESTRICTKEYWORD=__restrict__)
+else()
+    if(USEINTEL)
+        set(USER_CXX_FLAGS "-std=c++17 -restrict")
+        set(USER_CXX_FLAGS_RELEASE "-O3 -march=native")
+        set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+        add_definitions(-DRESTRICTKEYWORD=restrict)
+    else()
+        set(USER_CXX_FLAGS "-std=c++17")
+        set(USER_CXX_FLAGS_RELEASE "-O3 -march=native")
+        set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
-set(USER_CXX_FLAGS "-std=c++14")
-set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
-set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
-set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
-set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
-set(USER_FC_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+        set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
+        set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3 -march=native")
 
-set(FFTW_INCLUDE_DIR   "/usr/local/include")
-set(FFTW_LIB           "/usr/local/lib/libfftw3.dylib")
-set(FFTWF_LIB          "/usr/local/lib/libfftw3f.dylib")
-set(NETCDF_INCLUDE_DIR "/usr/local/include")
-set(NETCDF_LIB_C       "/usr/local/lib/libnetcdf.dylib")
-set(HDF5_LIB_1         "/usr/local/lib/libhdf5.dylib")
-set(HDF5_LIB_2         "/usr/local/lib/libhdf5_hl.dylib")
-set(SZIP_LIB           "/usr/local/lib/libsz.dylib")
-set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
-set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
+        add_definitions(-DRESTRICTKEYWORD=__restrict__)
+    endif()
+endif()
+
+# Add these as CMake removes the /usr/local from the search paths.
+include_directories("/usr/local/include")
+link_directories("/usr/local/lib")
+
+set(NETCDF_LIB_C "netcdf")
+set(FFTW_LIB "fftw3")
+set(FFTWF_LIB "fftw3f")
+set(HDF5_LIB "hdf5")
+set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necessary to add m z curl sz if necessary
 
 if(USECUDA)
-  set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib/libcufft.dylib)
-  set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
+    set(CMAKE_CUDA_ARCHITECTURES 70)
+    set(USER_CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
+    set(USER_CUDA_NVCC_FLAGS_RELEASE "-DNDEBUG")
+    set(USER_CUDA_NVCC_FLAGS_DEBUG "-O0 -g -DCUDACHECKS")
+    add_definitions(-DRTE_RRTMGP_GPU_MEMPOOL_CUDA)
 endif()
 
-add_definitions(-DRESTRICTKEYWORD=__restrict__)
+# Disable MPI-IO for cross-sections on GPFS file systems. This may or may not be necessary, depending on the system
+add_definitions(-DDISABLE_2D_MPIIO=1)
 add_definitions(-DRTE_USE_CBOOL)

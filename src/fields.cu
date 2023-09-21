@@ -632,5 +632,9 @@ void Fields<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-template class Fields<double>;
+
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif

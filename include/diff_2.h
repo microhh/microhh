@@ -36,14 +36,14 @@ class Diff_2 : public Diff<TF>
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
-        void create(Stats<TF>&);
+        void create(Stats<TF>&, const bool);
         void init() {};
         void exec(Stats<TF>&);
 
         // Empty functions, these are allowed to pass.
-        void exec_viscosity(Thermo<TF>&) {}
+        void exec_viscosity(Stats<TF>&, Thermo<TF>&) {}
         void diff_flux(Field3d<TF>&, const Field3d<TF>&);
-        void exec_stats(Stats<TF>&) {};
+        void exec_stats(Stats<TF>&, Thermo<TF>&) {};
 
         #ifdef USECUDA
         void prepare_device(Boundary<TF>&) {};

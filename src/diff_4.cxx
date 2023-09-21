@@ -227,8 +227,11 @@ double Diff_4<TF>::get_dn(const double dt)
 }
 
 template<typename TF>
-void Diff_4<TF>::create(Stats<TF>& stats)
+void Diff_4<TF>::create(Stats<TF>& stats, const bool cold_start)
 {
+    if (cold_start)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // Get the maximum viscosity
@@ -313,5 +316,9 @@ void Diff_4<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& in)
             gd.icells, gd.ijcells);
 }
 
-template class Diff_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Diff_4<float>;
+#else
+template class Diff_4<double>;
+#endif

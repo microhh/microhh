@@ -482,18 +482,18 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
         for (auto& it : ap)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, cross_path);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "_top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "_path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
@@ -719,7 +719,7 @@ template<typename TF>
 void Fields<TF>::init_prognostic_field(
         const std::string& fldname, const std::string& longname,
         const std::string& unit, const std::string& groupname,
-        const std::array<int,3>& loc)
+        const std::array<int,3>& loc, const bool& required)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -741,6 +741,10 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+
+    // Record whether a WARNING needs to be thrown if the field does not exist in the input
+    required_read[fldname] = required;
+    
 }
 
 template<typename TF>
@@ -961,7 +965,7 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
 
     for (auto& f : sp)
     {
-        group_nc.get_variable(prof, f.first, start, count);
+        group_nc.get_variable(prof, f.first, start, count, required_read[f.first]);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1236,13 +1240,13 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
     }
     for (auto& it : cross_lngrad)
-        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
+        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"_lngrad", iotime);
 
     for (auto& it : cross_fluxbot)
-        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"fluxbot", iotime);
+        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"_fluxbot", iotime);
 
     for (auto& it : cross_fluxtop)
-        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"fluxtop", iotime);
+        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"_fluxtop", iotime);
 
     for (auto& it : cross_bot)
     {
@@ -1252,7 +1256,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"bot", iotime);
+        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"_bot", iotime);
     }
 
     for (auto& it : cross_top)
@@ -1263,11 +1267,11 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"top", iotime);
+        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
     }
     
     for (auto& it : cross_path)
-        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }
 
 template<typename TF>
@@ -1398,5 +1402,8 @@ void Fields<TF>::reset_tendencies()
 }
 
 
-template class Fields<double>;
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif

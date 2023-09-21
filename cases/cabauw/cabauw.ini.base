@@ -52,6 +52,10 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
+swhomogenizesfcrad=0
+
+[aerosol]
+swaerosol=1
 
 [boundary]
 swboundary=None
@@ -97,7 +101,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=mean
+swwls=local
 swtimedep_wls=1
 
 [fields]

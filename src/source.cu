@@ -170,5 +170,9 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
 }
 #endif
 
-template class Source<double>;
+
+#ifdef FLOAT_SINGLE
 template class Source<float>;
+#else
+template class Source<double>;
+#endif

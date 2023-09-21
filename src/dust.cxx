@@ -134,5 +134,8 @@ void Dust<TF>::exec(Stats<TF>& stats)
 }
 #endif
 
-template class Dust<double>;
+#ifdef FLOAT_SINGLE
 template class Dust<float>;
+#else
+template class Dust<double>;
+#endif

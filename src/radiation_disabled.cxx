@@ -19,6 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdexcept>
+
 #include "radiation_disabled.h"
 #include "constants.h"
 
@@ -45,6 +47,7 @@ bool Radiation_disabled<TF>::check_field_exists(const std::string& name)
 {
     return false;  // always returns error
 }
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_disabled<float>;

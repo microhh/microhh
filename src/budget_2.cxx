@@ -1384,7 +1384,7 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         }
     }
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" , group_name);
@@ -1691,7 +1691,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             fields.release_tmp(vw_cor);
         }
 
-        if (thermo.get_switch() != "0")
+        if (thermo.get_switch() != Thermo_type::Disabled)
         {
             // Get the buoyancy diffusivity from the thermo class
             const TF diff_b = thermo.get_buoyancy_diffusivity();
@@ -1817,5 +1817,9 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     }
 }
 
-template class Budget_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_2<float>;
+#else
+template class Budget_2<double>;
+#endif
