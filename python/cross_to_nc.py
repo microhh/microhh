@@ -53,6 +53,12 @@ def convert_to_nc(variables):
                     else:
                         indexes_local = indexes
 
+                        files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
+                                variable, mode, indexes_local[0], starttime))
+                        if len(files) == 0:
+                            raise Exception('Cannot find any cross-section')
+                        halflevel = files[0].split('.')[-3]
+
                 #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
                 dim = collections.OrderedDict()
                 dim['time'] = range(niter)
