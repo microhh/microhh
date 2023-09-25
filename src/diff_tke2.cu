@@ -36,6 +36,10 @@
 #include "diff_tke2.h"
 #include "diff_kernels.cuh"
 
+// Kernel Launcher
+#include "cuda_launcher.h"
+#include "diff_les_kl_kernels.cuh"
+
 namespace
 {
     namespace most = Monin_obukhov;
@@ -502,10 +506,11 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
     // Dummy tPr value for `diff_c`.
     const TF tPr_i_dummy = 1;
 
-    dk::diff_uvw_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-            fields.mt.at("u")->fld_g,
-            fields.mt.at("v")->fld_g,
-            fields.mt.at("w")->fld_g,
+    launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
+            gd,
+            fields.mt.at("u")->fld_g.view(),
+            fields.mt.at("v")->fld_g.view(),
+            fields.mt.at("w")->fld_g.view(),
             fields.sd.at("evisc")->fld_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -514,17 +519,11 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
             fields.mp.at("u")->flux_top_g,
             fields.mp.at("v")->flux_bot_g,
             fields.mp.at("v")->flux_top_g,
-            gd.dzi_g,
-            gd.dzhi_g,
-            fields.rhoref_g,
-            fields.rhorefh_g,
-            gd.dxi,
-            gd.dyi,
-            fields.visc,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+            gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+            fields.rhoref_g, fields.rhorefh_g,
+            fields.rhorefi_g, fields.rhorefhi_g,
+            fields.visc);
+
     cuda_check_error();
 
     for (auto it : fields.st)
@@ -541,24 +540,19 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
                 evisc_ptr = fields.sd.at("eviscs")->fld_g;
         }
 
-        dk::diff_c_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                it.second->fld_g,
+        launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
+                gd,
+                it.second->fld_g.view(),
                 fields.sp.at(it.first)->fld_g,
                 evisc_ptr,
                 fields.sp.at(it.first)->flux_bot_g,
                 fields.sp.at(it.first)->flux_top_g,
-                gd.dzi_g,
-                gd.dzhi_g,
-                fields.rhoref_g,
+                gd.dzi_g, gd.dzhi_g,
+                dxidxi, dyidyi,
+                fields.rhorefi_g,
                 fields.rhorefh_g,
-                dxidxi,
-                dyidyi,
                 tPr_i_dummy,
-                fields.sp.at(it.first)->visc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                fields.sp.at(it.first)->visc);
     }
     cuda_check_error();
 

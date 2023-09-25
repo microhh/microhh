@@ -38,8 +38,9 @@
 #include "stats.h"
 #include "monin_obukhov.h"
 #include "fast_math.h"
-#include "cuda_launcher.h"
 
+// Kernel Launcher
+#include "cuda_launcher.h"
 #include "diff_smag2_kl_kernels.cuh"
 #include "diff_les_kl_kernels.cuh"
 
@@ -229,52 +230,82 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     {
         launch_grid_kernel<diff_les::diff_uvw_g<TF, false>>(
                 gd,
-                fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
+                fields.mt.at("u")->fld_g.view(),
+                fields.mt.at("v")->fld_g.view(),
+                fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
-                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
-                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+                fields.mp.at("u")->fld_g,
+                fields.mp.at("v")->fld_g,
+                fields.mp.at("w")->fld_g,
+                fields.mp.at("u")->flux_bot_g,
+                fields.mp.at("u")->flux_top_g,
+                fields.mp.at("v")->flux_bot_g,
+                fields.mp.at("v")->flux_top_g,
+                gd.dzi_g, gd.dzhi_g,
+                gd.dxi, gd.dyi,
                 fields.rhoref_g, fields.rhorefh_g,
                 fields.rhorefi_g, fields.rhorefhi_g,
                 fields.visc);
+
+        cuda_check_error();
 
         for (auto it : fields.st)
         {
             launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
                     gd,
-                    it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
-                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
-                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
+                    it.second->fld_g.view(),
+                    fields.sp.at(it.first)->fld_g,
+                    fields.sd.at("evisc")->fld_g,
+                    fields.sp.at(it.first)->flux_bot_g,
+                    fields.sp.at(it.first)->flux_top_g,
+                    gd.dzi_g, gd.dzhi_g,
+                    dxidxi, dyidyi,
                     fields.rhorefi_g, fields.rhorefh_g,
                     tPri, fields.sp.at(it.first)->visc);
+
+            cuda_check_error();
         }
-        cuda_check_error();
     }
     // Use surface model.
     else
     {
         launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
                 gd,
-                fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
+                fields.mt.at("u")->fld_g.view(),
+                fields.mt.at("v")->fld_g.view(),
+                fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-                fields.mp.at("u")->flux_bot_g, fields.mp.at("u")->flux_top_g,
-                fields.mp.at("v")->flux_bot_g, fields.mp.at("v")->flux_top_g,
-                gd.dzi_g, gd.dzhi_g, gd.dxi, gd.dyi,
+                fields.mp.at("u")->fld_g,
+                fields.mp.at("v")->fld_g,
+                fields.mp.at("w")->fld_g,
+                fields.mp.at("u")->flux_bot_g,
+                fields.mp.at("u")->flux_top_g,
+                fields.mp.at("v")->flux_bot_g,
+                fields.mp.at("v")->flux_top_g,
+                gd.dzi_g, gd.dzhi_g,
+                gd.dxi, gd.dyi,
                 fields.rhoref_g, fields.rhorefh_g,
                 fields.rhorefi_g, fields.rhorefhi_g,
                 fields.visc);
 
+            cuda_check_error();
+
         for (auto it : fields.st)
-            launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
+        {
+            launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
                     gd,
-                    it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
-                    fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
-                    gd.dzi_g, gd.dzhi_g, dxidxi, dyidyi,
+                    it.second->fld_g.view(),
+                    fields.sp.at(it.first)->fld_g,
+                    fields.sd.at("evisc")->fld_g,
+                    fields.sp.at(it.first)->flux_bot_g,
+                    fields.sp.at(it.first)->flux_top_g,
+                    gd.dzi_g, gd.dzhi_g,
+                    dxidxi, dyidyi,
                     fields.rhorefi_g, fields.rhorefh_g,
                     tPri, fields.sp.at(it.first)->visc);
-        cuda_check_error();
+
+            cuda_check_error();
+        }
     }
 
     cudaDeviceSynchronize();
@@ -283,7 +314,6 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("w"), tend_name);
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
-
 }
 #endif
 
