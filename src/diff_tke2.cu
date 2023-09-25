@@ -450,9 +450,9 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         throw std::runtime_error("Resolved wall not supported in Deardorff SGSm.");
 
     // Get MO gradients velocity and roughness length:
-    TF* dudz_g  = boundary.get_dudz_g();
-    TF* dvdz_g  = boundary.get_dvdz_g();
-    TF* z0m_g   = boundary.get_z0m_g();
+    auto& dudz_g  = boundary.get_dudz_g();
+    auto& dvdz_g  = boundary.get_dvdz_g();
+    auto& z0m_g   = boundary.get_z0m_g();
 
     auto str2_tmp = fields.get_tmp_g();
 
@@ -529,7 +529,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         thermo.get_thermo_field_g(*buoy_tmp, "N2", false);
 
         // Get MO gradient buoyancy:
-        TF* dbdz_g  = boundary.get_dbdz_g();
+        auto& dbdz_g = boundary.get_dbdz_g();
 
         // Note BvS: templated lambda functions are not (yet?) allowed by NVCC :-(
         if (sw_mason)
@@ -663,15 +663,13 @@ void Diff_tke2<TF>::prepare_device(Boundary<TF>& boundary)
     for (int k=0; k<gd.kcells; ++k)
         mlen0[k] = std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.));
 
-    const int nmemsize = gd.kcells*sizeof(TF);
-    cuda_safe_call(cudaMalloc(&mlen0_g, nmemsize));
-    cuda_safe_call(cudaMemcpy(mlen0_g, mlen0.data(), nmemsize, cudaMemcpyHostToDevice));
+    mlen0_g.allocate(gd.kcells);
+    cuda_safe_call(cudaMemcpy(mlen0_g, mlen0.data(), mlen0_g.size_in_bytes(), cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
 void Diff_tke2<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(mlen0_g));
 }
 #endif
 
