@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -127,10 +127,10 @@ namespace
             const TF alpha_i = TF(1.) - alpha_w;
 
             qs = qsat(p, tnr);
-            const TF ql_qi = fmax(TF(0.), qt - qs);
+            const TF qlqi = fmax(TF(0.), qt - qs);
 
-            ans.ql = alpha_w*ql_qi;
-            ans.qi = alpha_i*ql_qi;
+            ans.ql = alpha_w*qlqi;
+            ans.qi = alpha_i*qlqi;
             ans.t  = tnr;
             ans.qs = qs;
         }
@@ -1037,7 +1037,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
-    else if (name == "ql_qi")
+    else if (name == "qlqi")
     {
         calc_liquid_and_ice_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g,
@@ -1049,7 +1049,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
-    else if (name == "ql_qi")
+    else if (name == "qlqi")
     {
         calc_condensate_g<TF><<<gridGPU2, blockGPU2>>>(
             fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,

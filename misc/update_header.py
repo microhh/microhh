@@ -22,9 +22,9 @@ for n in lines:
 # Delete the three lines of this header.
 del(lines[nline:nline + 3])
 
-newlines = ['{0}Copyright (c) 2011-2020 Chiel van Heerwaarden\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2011-2020 Thijs Heus\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2014-2020 Bart van Stratum\n'.format(left_of_copyright)]
+newlines = ['{0}Copyright (c) 2011-2023 Chiel van Heerwaarden\n'.format(left_of_copyright),
+            '{0}Copyright (c) 2011-2023 Thijs Heus\n'.format(left_of_copyright),
+            '{0}Copyright (c) 2014-2023 Bart van Stratum\n'.format(left_of_copyright)]
 
 # Insert the new header.
 lines[nline:nline] = newlines[:]
