@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MICROHHC_DIFF_LES_KERNELS_CUH
-#define MICROHHC_DIFF_LES_KERNELS_CUH
+#ifndef MICROHHC_DIFF_KL_KERNELS_CUH
+#define MICROHHC_DIFF_KL_KERNELS_CUH
 
 #include "cuda_tiling.h"
 #include "fast_math.h"
@@ -340,49 +340,6 @@ namespace diff_les {
             }
         }
     };
-
-
-    template<typename TF> __global__
-    void calc_ghostcells_evisc(
-            TF* __restrict__ evisc,
-            const int icells, const int jcells,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-        if (i < icells && j < jcells)
-        {
-            const int kb = kstart;
-            const int kt = kend-1;
-
-            const int ijkb = i + j*jj + kb*kk;
-            const int ijkt = i + j*jj + kt*kk;
-
-            evisc[ijkb-kk] = evisc[ijkb];
-            evisc[ijkt+kk] = evisc[ijkt];
-        }
-    }
-
-
-    template<typename TF> __global__
-    void calc_dnmul_g(TF* __restrict__ dnmul, TF* __restrict__ evisc,
-                      const TF* __restrict__ dzi, TF tPrfac_i, const TF dxidxi, const TF dyidyi,
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend,
-                      const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            dnmul[ijk] = fabs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k]));
-        }
-    }
 }
 
 #endif //MICROHHC_DIFF_SMAG2_KERNELS_CUH

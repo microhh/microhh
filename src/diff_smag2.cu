@@ -28,7 +28,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
-#include "diff_smag2.h"
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "defines.h"
@@ -39,11 +38,13 @@
 #include "monin_obukhov.h"
 #include "fast_math.h"
 
+#include "diff_smag2.h"
+#include "diff_kernels.cuh"
+
 // Kernel Launcher
 #include "cuda_launcher.h"
 #include "diff_smag2_kl_kernels.cuh"
-#include "diff_les_kl_kernels.cuh"
-
+#include "diff_kl_kernels.cuh"
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
@@ -80,6 +81,7 @@ void Diff_smag2<TF>::clear_device()
 template<typename TF>
 void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -204,7 +206,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
 
-        diff_les::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
+        dk::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 gd.icells, gd.jcells,
                 gd.kstart, gd.kend,
@@ -321,6 +323,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -338,12 +341,17 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     auto tmp1 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
-    diff_les::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
-            tmp1->fld_g, fields.sd.at("evisc")->fld_g,
-            gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
-            gd.istart, gd.jstart, gd.kstart,
-            gd.iend,   gd.jend,   gd.kend,
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
+            tmp1->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            gd.dzi_g,
+            tPrfac_i,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
     cuda_check_error();
 
     // Get maximum from tmp1 field
@@ -362,6 +370,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 template<typename TF>
 double Diff_smag2<TF>::get_dn(double dt)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -379,12 +388,17 @@ double Diff_smag2<TF>::get_dn(double dt)
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();
 
-    diff_les::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
-        dnmul_tmp->fld_g, fields.sd.at("evisc")->fld_g,
-        gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.iend,   gd.jend,   gd.kend,
-        gd.icells, gd.ijcells);
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
+            dnmul_tmp->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            gd.dzi_g,
+            tPrfac_i,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
     cuda_check_error();
 
     // Get maximum from tmp1 field

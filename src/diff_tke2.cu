@@ -38,7 +38,7 @@
 
 // Kernel Launcher
 #include "cuda_launcher.h"
-#include "diff_les_kl_kernels.cuh"
+#include "diff_kl_kernels.cuh"
 
 namespace
 {
