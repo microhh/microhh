@@ -292,7 +292,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
+            launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
                     gd,
                     it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
