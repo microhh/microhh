@@ -39,7 +39,10 @@
 #include "monin_obukhov.h"
 #include "fast_math.h"
 #include "cuda_launcher.h"
-#include "diff_smag2_kernels.cuh"
+
+#include "diff_smag2_kl_kernels.cuh"
+#include "diff_les_kl_kernels.cuh"
+
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
@@ -103,7 +106,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         auto& dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
-        launch_grid_kernel<diff_smag2::calc_strain2_g<TF, true>>(
+        launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
             gd,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
@@ -152,7 +155,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     else
     {
         // Calculate total strain rate
-        launch_grid_kernel<diff_smag2::calc_strain2_g<TF, false>>(
+        launch_grid_kernel<diff_les::calc_strain2_g<TF, false>>(
             gd,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
@@ -199,7 +202,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         }
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
-        diff_smag2::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
+
+        diff_les::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 gd.icells, gd.jcells,
                 gd.kstart, gd.kend,
@@ -223,7 +227,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Do not use surface model.
     if (boundary.get_switch() == "default")
     {
-        launch_grid_kernel<diff_smag2::diff_uvw_g<TF, false>>(
+        launch_grid_kernel<diff_les::diff_uvw_g<TF, false>>(
                 gd,
                 fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
@@ -237,7 +241,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            launch_grid_kernel<diff_smag2::diff_c_g<TF, false>>(
+            launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
                     gd,
                     it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
@@ -250,7 +254,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Use surface model.
     else
     {
-        launch_grid_kernel<diff_smag2::diff_uvw_g<TF, true>>(
+        launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
                 gd,
                 fields.mt.at("u")->fld_g.view(), fields.mt.at("v")->fld_g.view(), fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
@@ -263,7 +267,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.visc);
 
         for (auto it : fields.st)
-            launch_grid_kernel<diff_smag2::diff_c_g<TF, true>>(
+            launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
                     gd,
                     it.second->fld_g.view(), fields.sp.at(it.first)->fld_g, fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g, fields.sp.at(it.first)->flux_top_g,
@@ -304,7 +308,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     auto tmp1 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
-    diff_smag2::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
+    diff_les::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
             tmp1->fld_g, fields.sd.at("evisc")->fld_g,
             gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
             gd.istart, gd.jstart, gd.kstart,
@@ -345,7 +349,7 @@ double Diff_smag2<TF>::get_dn(double dt)
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();
 
-    diff_smag2::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
+    diff_les::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
         dnmul_tmp->fld_g, fields.sd.at("evisc")->fld_g,
         gd.dzi_g, tPrfac_i, dxidxi, dyidyi,
         gd.istart, gd.jstart, gd.kstart,
