@@ -39,6 +39,7 @@
 // Kernel Launcher
 #include "cuda_launcher.h"
 #include "diff_kl_kernels.cuh"
+#include "diff_tke2_kl_kernels.cuh"
 
 namespace
 {
@@ -88,130 +89,6 @@ namespace
 
                 // Calculate eddy diffusivity for momentum.
                 evisc[ijk] = cm * fac * sqrt(sgstke[ijk]);
-            }
-        }
-    }
-
-    template<typename TF, Surface_model surface_model, bool sw_mason> __global__
-    void calc_evisc_g(
-            TF* const restrict evisc,
-            const TF* const restrict sgstke,
-            const TF* const restrict N2,
-            const TF* const restrict bgradbot,
-            const TF* const restrict z,
-            const TF* const restrict z0m,
-            const TF* const restrict mlen0,
-            const TF cn, const TF cm,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int jj = icells;
-        const int kk = ijcells;
-
-        // Variables for the wall damping and length scales
-        const TF n_mason = TF(2.);
-        TF mlen;
-        TF fac;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + k*kk;
-
-            if (surface_model == Surface_model::Disabled)
-                asm("trap;");
-            else
-            {
-                mlen = mlen0[k];
-
-                if (k == kstart)
-                {
-                    if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
-                }
-                else
-                {
-                    if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
-                }
-
-                fac  = min(mlen0[k], mlen);
-
-                if (sw_mason) // Apply Mason's wall correction here
-                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                            (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-
-                // Calculate eddy diffusivity for momentum.
-                evisc[ijk] = cm * fac * sqrt(sgstke[ijk]);
-            }
-        }
-    }
-
-    template<typename TF, Surface_model surface_model, bool sw_mason> __global__
-    void calc_evisc_heat_g(
-            TF* const restrict evisch,
-            const TF* __restrict__ evisc,
-            const TF* __restrict__ sgstke,
-            const TF* __restrict__ N2,
-            const TF* __restrict__ bgradbot,
-            const TF* __restrict__ z,
-            const TF* __restrict__ z0m,
-            const TF* __restrict__ mlen0,
-            const TF cn, const TF ch1, const TF ch2,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int jj = icells;
-        const int kk = ijcells;
-
-        // Variables for the wall damping and length scales
-        const TF n_mason = TF(2.);
-        TF mlen;
-        TF fac;
-
-        if (i < iend && j < jend && k < kend)
-        {
-
-            if (surface_model == Surface_model::Disabled)
-                asm("trap;");
-            else
-            {
-                const int ij = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-
-                mlen = mlen0[k];
-
-                if (k == kstart)
-                {
-                    if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
-                }
-                else
-                {
-                    if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
-                }
-
-                fac  = min(mlen0[k], mlen);
-
-                if (sw_mason) // Apply Mason's wall correction here
-                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-
-                // Calculate eddy diffusivity for momentum.
-                evisch[ijk] = (ch1 + ch2 * fac / mlen0[k]) * evisc[ijk];
             }
         }
     }
@@ -656,58 +533,50 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
         // Note BvS: templated lambda functions are not (yet?) allowed by NVCC :-(
         if (sw_mason)
-            calc_evisc_g<TF, Surface_model::Enabled, true><<<gridGPU, blockGPU>>>(
-                    fields.sd.at("evisc")->fld_g,
+            launch_grid_kernel<diff_tke2::evisc_g<TF, true, true>>(
+                    gd,
+                    fields.sd.at("evisc")->fld_g.view(),
                     fields.sp.at("sgstke")->fld_g,
-                    buoy_tmp->fld_g, dbdz_g,
+                    buoy_tmp->fld_g,
+                    dbdz_g,
                     gd.z_g,
-                    z0m_g, mlen0_g,
-                    this->cn, this->cm,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells,
-                    gd.ijcells);
+                    z0m_g,
+                    mlen0_g,
+                    this->cn,
+                    this->cm);
         else
-            calc_evisc_g<TF, Surface_model::Enabled, false><<<gridGPU, blockGPU>>>(
-                    fields.sd.at("evisc")->fld_g,
+            launch_grid_kernel<diff_tke2::evisc_g<TF, true, false>>(
+                    gd,
+                    fields.sd.at("evisc")->fld_g.view(),
                     fields.sp.at("sgstke")->fld_g,
-                    buoy_tmp->fld_g, dbdz_g,
+                    buoy_tmp->fld_g,
+                    dbdz_g,
                     gd.z_g,
-                    z0m_g, mlen0_g,
-                    this->cn, this->cm,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells,
-                    gd.ijcells);
+                    z0m_g,
+                    mlen0_g,
+                    this->cn,
+                    this->cm);
 
         if (sw_mason)
-            calc_evisc_heat_g<TF, Surface_model::Enabled, true><<<gridGPU, blockGPU>>>(
-                    fields.sd.at("eviscs")->fld_g,
+            launch_grid_kernel<diff_tke2::evisc_heat_g<TF, true, true>>(
+                    gd,
+                    fields.sd.at("eviscs")->fld_g.view(),
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
                     gd.z_g,
                     z0m_g, mlen0_g,
-                    this->cn, this->ch1, this->ch2,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    this->cn, this->ch1, this->ch2);
         else
-            calc_evisc_heat_g<TF, Surface_model::Enabled, false><<<gridGPU, blockGPU>>>(
-                    fields.sd.at("eviscs")->fld_g,
+            launch_grid_kernel<diff_tke2::evisc_heat_g<TF, true, false>>(
+                    gd,
+                    fields.sd.at("eviscs")->fld_g.view(),
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g, dbdz_g,
                     gd.z_g,
                     z0m_g, mlen0_g,
-                    this->cn, this->ch1, this->ch2,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    this->cn, this->ch1, this->ch2);
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
         boundary_cyclic.exec_g(fields.sd.at("eviscs")->fld_g);
