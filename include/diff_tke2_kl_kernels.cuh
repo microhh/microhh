@@ -33,7 +33,8 @@ namespace diff_tke2
     namespace fm = Fast_math;
 
     template<typename TF, bool sw_surface_model, bool sw_mason>
-    struct evisc_g {
+    struct evisc_g
+    {
         DEFINE_GRID_KERNEL("diff_tke2::evisc", sw_surface_model ? 1 : 0)
 
         template <typename Level>
@@ -88,7 +89,8 @@ namespace diff_tke2
 
 
     template<typename TF, bool sw_surface_model, bool sw_mason>
-    struct evisc_heat_g {
+    struct evisc_heat_g
+    {
         DEFINE_GRID_KERNEL("diff_tke2::evisc_heat", sw_surface_model ? 1 : 0)
 
         template <typename Level>
@@ -144,7 +146,8 @@ namespace diff_tke2
 
 
     template<typename TF, bool sw_mason>
-    struct sgstke_diss_tend_g {
+    struct sgstke_diss_tend_g
+    {
         DEFINE_GRID_KERNEL("diff_tke2::sgstke_diss_tend", 1)
 
         template <typename Level>
@@ -196,7 +199,8 @@ namespace diff_tke2
 
 
     template<typename TF>
-    struct sgstke_buoy_tend_g {
+    struct sgstke_buoy_tend_g
+    {
         DEFINE_GRID_KERNEL("diff_tke2::sgstke_buoy_tend", 1)
 
         template <typename Level>
@@ -224,7 +228,8 @@ namespace diff_tke2
 
 
     template<typename TF>
-    struct sgstke_shear_tend_g {
+    struct sgstke_shear_tend_g
+    {
         DEFINE_GRID_KERNEL("diff_tke2::sgstke_shear_tend", 0)
 
         template <typename Level>

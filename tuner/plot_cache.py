@@ -4,7 +4,8 @@ import numpy as np
 
 pl.close('all')
 
-cache_file = '../captures/diff_tke2__evisc_heat_float_128x128x128.cache'
+#cache_file = '../captures/diff_tke2__sgstke_buoy_tend_float_128x128x128.cache.json'
+cache_file = '../captures/diff_tke2__sgstke_diss_tend_float_128x128x128.cache.json'
 
 with open (cache_file, 'r') as f:
     data = json.load(f)

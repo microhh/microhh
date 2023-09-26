@@ -27,12 +27,14 @@
 #include "fast_math.h"
 #include "monin_obukhov.h"
 
-namespace diff_smag2 {
+namespace diff_smag2
+{
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
     template<typename TF, bool surface_model_enabled>
-    struct evisc_g {
+    struct evisc_g
+    {
         DEFINE_GRID_KERNEL("diff_smag2::evisc", surface_model_enabled ? 1 : 0)
 
         template <typename Level>

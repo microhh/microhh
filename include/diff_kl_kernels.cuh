@@ -32,7 +32,8 @@ namespace diff_les {
     namespace fm = Fast_math;
 
     template<typename TF, bool surface_model_enabled>
-    struct calc_strain2_g {
+    struct calc_strain2_g
+    {
         DEFINE_GRID_KERNEL("diff_les::calc_strain2", 1)
 
         template <typename Level>
@@ -123,7 +124,8 @@ namespace diff_les {
 
 
     template<typename TF, bool surface_model_enabled>
-    struct diff_uvw_g {
+    struct diff_uvw_g
+    {
         DEFINE_GRID_KERNEL("diff_les::diff_uvw", surface_model_enabled ? 1 : 0)
 
         template <typename Level>
@@ -269,7 +271,8 @@ namespace diff_les {
 
 
     template<typename TF, bool surface_model_enabled>
-    struct diff_c_g {
+    struct diff_c_g
+    {
         DEFINE_GRID_KERNEL("diff_les::diff_c", surface_model_enabled ? 1 : 0)
 
         template <typename Level>
