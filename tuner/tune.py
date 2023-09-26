@@ -24,7 +24,7 @@ def device_name(device=0):
 def tune_kernel(filename, args):
     print(f"parsing file: {filename}")
 
-    cache_filename = filename.replace('.json', '.cache.json')
+    cache_filename = filename.replace('.json', '.cache')
 
     problem = kl.load_tuning_problem(filename, data_dir=args.data_dir)
     options = dict(

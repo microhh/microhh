@@ -4,7 +4,7 @@ import numpy as np
 
 pl.close('all')
 
-cache_file = '../captures/advec_2i5__advec_s_float_128x128x128.cache.json'
+cache_file = '../captures/diff_tke2__evisc_heat_float_128x128x128.cache'
 
 with open (cache_file, 'r') as f:
     data = json.load(f)
@@ -20,6 +20,7 @@ iters = np.arange(time.size)
 pl.figure()
 pl.plot(iters, time)
 pl.scatter(iters[i_best], time[i_best], label='Best')
+pl.plot(iters, np.ones_like(iters)*time[i_best], 'k:')
 pl.ylabel('Kernel execution time (s)')
 pl.xlabel('Optimization iteration (-)')
 pl.legend()
