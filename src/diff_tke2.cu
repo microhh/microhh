@@ -40,6 +40,7 @@
 #include "cuda_launcher.h"
 #include "diff_kl_kernels.cuh"
 #include "diff_tke2_kl_kernels.cuh"
+#include "cuda_buffer.h"
 
 namespace
 {
@@ -271,23 +272,23 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
 
     for (auto it : fields.st)
     {
-        TF* evisc_ptr;
+        cuda_vector<TF>* evisc_ptr;
 
         if (it.first == "sgstke")  // sgstke diffuses with eddy viscosity for momentum
-            evisc_ptr = fields.sd.at("evisc")->fld_g;
+            evisc_ptr = &fields.sd.at("evisc")->fld_g;
         else  // all other scalars, normally diffuse with eddy viscosity for heat/scalars
         {
             if (!sw_buoy) // but not if there is no buoyancy (then eviscs not defined)
-                evisc_ptr = fields.sd.at("evisc")->fld_g;
+                evisc_ptr = &fields.sd.at("evisc")->fld_g;
             else
-                evisc_ptr = fields.sd.at("eviscs")->fld_g;
+                evisc_ptr = &fields.sd.at("eviscs")->fld_g;
         }
 
         launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
                 gd,
                 it.second->fld_g.view(),
                 fields.sp.at(it.first)->fld_g,
-                evisc_ptr,
+                *evisc_ptr,
                 fields.sp.at(it.first)->flux_bot_g,
                 fields.sp.at(it.first)->flux_top_g,
                 gd.dzi_g, gd.dzhi_g,
