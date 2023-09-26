@@ -93,125 +93,6 @@ namespace
         }
     }
 
-    template<typename TF> __global__
-    void sgstke_shear_tend_g(
-            TF* const __restrict__ at,
-            const TF* __restrict__ a,
-            const TF* __restrict__ evisc,
-            const TF* __restrict__ strain2,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int jj = icells;
-        const int kk = ijcells;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            // Calculate shear production of SGS TKE based on Deardorff (1980)
-            // NOTE: `strain2` is defined/calculated as:
-            // S^2 = 0.5 * (dui/dxj + duj/dxi)^2 = dui/dxj * (dui/dxj + duj/dxi)
-            at[ijk] += evisc[ijk] * strain2[ijk];
-        }
-    }
-
-    template<typename TF> __global__
-    void sgstke_buoy_tend_g(
-            TF* const __restrict__ at,
-            const TF* __restrict__ a,
-            const TF* __restrict__ evisch,
-            const TF* __restrict__ N2,
-            const TF* __restrict__ bgradbot,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int jj = icells;
-        const int kk = ijcells;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + k*kk;
-
-            // Calculate buoyancy destruction of SGS TKE based on Deardorff (1980)
-            if (k == kstart)
-                at[ijk] -= evisch[ijk] * bgradbot[ij];
-            else
-                at[ijk] -= evisch[ijk] * N2[ijk];
-
-        }
-    }
-
-    template<typename TF, bool sw_mason> __global__
-    void sgstke_diss_tend_g(
-            TF* const __restrict__ at,
-            const TF* const __restrict__ a,
-            const TF* const __restrict__ N2,
-            const TF* const __restrict__ bgradbot,
-            const TF* const __restrict__ z,
-            const TF* const __restrict__ z0m,
-            const TF* const __restrict__ mlen0,
-            const TF cn, const TF ce1, const TF ce2,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const TF n_mason = TF(2.);
-        TF mlen;
-        TF fac;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + k*kk;
-
-            // Calculate geometric filter width, based on Deardorff (1980)
-            mlen = mlen0[k];
-
-            // Only if stably stratified, adapt length scale
-            if (k == kstart)
-            {
-                if (bgradbot[ij] > 0)
-                    mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
-            }
-            else
-            {
-                if (N2[ijk] > 0)
-                    mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
-            }
-
-            fac  = min(mlen0[k], mlen);
-
-            // Apply Mason's wall correction here
-            if (sw_mason)
-                fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                        (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-
-            // Calculate dissipation of SGS TKE based on Deardorff (1980)
-            at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac;
-        }
-    }
 
     template<typename TF,  bool sw_mason> __global__
     void sgstke_diss_tend_neutral_g(
@@ -457,19 +338,15 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
     auto str2_tmp = fields.get_tmp_g();
 
     // Calculate total strain rate
-    dk::calc_strain2_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-            str2_tmp->fld_g,
+    launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
+            gd,
+            str2_tmp->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
             fields.mp.at("w")->fld_g,
             dudz_g, dvdz_g,
             gd.dzi_g, gd.dzhi_g,
-            gd.dxi, gd.dyi,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-    cuda_check_error();
+            gd.dxi, gd.dyi);
 
     // Start with retrieving the stability information
     if (!sw_buoy)
@@ -583,52 +460,43 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
         // Calculate tendencies here, to prevent having to
         // re-calculate `strain2` in diffusion->exec()`.
-        sgstke_buoy_tend_g<TF><<<gridGPU, blockGPU>>>(
-               fields.st.at("sgstke")->fld_g,
-               fields.sp.at("sgstke")->fld_g,
-               fields.sd.at("eviscs")->fld_g,
-               buoy_tmp->fld_g,
-               dbdz_g,
-               gd.istart, gd.iend,
-               gd.jstart, gd.jend,
-               gd.kstart, gd.kend,
-               gd.icells, gd.ijcells);
+        launch_grid_kernel<diff_tke2::sgstke_buoy_tend_g<TF>>(
+                gd,
+                fields.st.at("sgstke")->fld_g.view(),
+                fields.sp.at("sgstke")->fld_g,
+                fields.sd.at("eviscs")->fld_g,
+                buoy_tmp->fld_g,
+                dbdz_g);
 
         cudaDeviceSynchronize();
         stats.calc_tend(*fields.st.at("sgstke"), tend_name_buoy);
 
         if (sw_mason)
-            sgstke_diss_tend_g<TF, true><<<gridGPU, blockGPU>>>(
-                   fields.st.at("sgstke")->fld_g,
-                   fields.sp.at("sgstke")->fld_g,
-                   buoy_tmp->fld_g,
-                   dbdz_g,
-                   gd.z_g,
-                   z0m_g,
-                   mlen0_g,
-                   this->cn,
-                   this->ce1,
-                   this->ce2,
-                   gd.istart, gd.iend,
-                   gd.jstart, gd.jend,
-                   gd.kstart, gd.kend,
-                   gd.icells, gd.ijcells);
+            launch_grid_kernel<diff_tke2::sgstke_diss_tend_g<TF, true>>(
+                gd,
+                fields.st.at("sgstke")->fld_g.view(),
+                fields.sp.at("sgstke")->fld_g,
+                buoy_tmp->fld_g,
+                dbdz_g,
+                gd.z_g,
+                z0m_g,
+                mlen0_g,
+                this->cn,
+                this->ce1,
+                this->ce2);
         else
-            sgstke_diss_tend_g<TF, false><<<gridGPU, blockGPU>>>(
-                    fields.st.at("sgstke")->fld_g,
-                    fields.sp.at("sgstke")->fld_g,
-                    buoy_tmp->fld_g,
-                    dbdz_g,
-                    gd.z_g,
-                    z0m_g,
-                    mlen0_g,
-                    this->cn,
-                    this->ce1,
-                    this->ce2,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+            launch_grid_kernel<diff_tke2::sgstke_diss_tend_g<TF, false>>(
+                gd,
+                fields.st.at("sgstke")->fld_g.view(),
+                fields.sp.at("sgstke")->fld_g,
+                buoy_tmp->fld_g,
+                dbdz_g,
+                gd.z_g,
+                z0m_g,
+                mlen0_g,
+                this->cn,
+                this->ce1,
+                this->ce2);
 
         cudaDeviceSynchronize();
         stats.calc_tend(*fields.st.at("sgstke"), tend_name_diss);
@@ -636,15 +504,12 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         fields.release_tmp_g(buoy_tmp);
     }
 
-    sgstke_shear_tend_g<TF><<<gridGPU, blockGPU>>>(
-           fields.st.at("sgstke")->fld_g,
-           fields.sp.at("sgstke")->fld_g,
-           fields.sd.at("evisc")->fld_g,
-           str2_tmp->fld_g,
-           gd.istart, gd.iend,
-           gd.jstart, gd.jend,
-           gd.kstart, gd.kend,
-           gd.icells, gd.ijcells);
+    launch_grid_kernel<diff_tke2::sgstke_shear_tend_g<TF>>(
+            gd,
+            fields.st.at("sgstke")->fld_g.view(),
+            fields.sp.at("sgstke")->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            str2_tmp->fld_g);
 
     cudaDeviceSynchronize();
     stats.calc_tend(*fields.st.at("sgstke"), tend_name_shear);
