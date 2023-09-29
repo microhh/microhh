@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -385,11 +385,12 @@ def get_cross_indices(variable, mode):
 
     # Get a list with all the cross-section files for one time
     time = files[0].split('.')[-1]
-    files = glob.glob('{}.{}.*.{}'.format(variable, mode, time))
+    halflevel = files[0].split('.')[-3]
+    files = glob.glob('{}.{}.*.*.{}'.format(variable, mode, time))
 
     # Get the indices
-    indices = sorted([int(f.split('.')[-2]) for f in files])
-    return indices
+    indices   = sorted([int(f.split('.')[-2]) for f in files])
+    return indices, halflevel
 
 
 _opts = {
