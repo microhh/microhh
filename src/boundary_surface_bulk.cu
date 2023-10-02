@@ -324,14 +324,17 @@ void Boundary_surface_bulk<TF>::exec(
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
-        dbdz_mo_g, b->flux_bot_g,
-        ustar_g, obuk_g,
-        gd.z[gd.kstart],
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.icells);
-    cuda_check_error();
+    if (thermo.get_switch() != Thermo_type::Disabled)
+    {
+        bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
+            dbdz_mo_g, b->flux_bot_g,
+            ustar_g, obuk_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+        cuda_check_error();
+    }
 
     fields.release_tmp_g(b);
     fields.release_tmp_g(dutot);
