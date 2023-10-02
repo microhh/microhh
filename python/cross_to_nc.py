@@ -59,9 +59,8 @@ def convert_to_nc(variables):
                             raise Exception('Cannot find any cross-section')
                         halflevel = files[0].split('.')[-3]
 
-                #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
                 dim = collections.OrderedDict()
-                dim['time'] = range(niter)
+                dim['time'] = []
                 dim['z'] = range(ktot)
                 dim['y'] = range(jtot)
                 dim['x'] = range(itot)
@@ -71,13 +70,13 @@ def convert_to_nc(variables):
                     n = itot * jtot
                     indexes_local = [-1]
                 elif mode == 'xy':
-                    dim.update({'z': indexes_local})
+                    dim.update({'z': []})
                     n = itot * jtot
                 elif mode == 'xz':
-                    dim.update({'y': indexes_local})
+                    dim.update({'y': []})
                     n = itot * ktot
                 elif mode == 'yz':
-                    dim.update({'x': indexes_local})
+                    dim.update({'x': []})
                     n = ktot * jtot
 
                 if halflevel[0] == '1':
@@ -89,12 +88,12 @@ def convert_to_nc(variables):
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
 
-                for t in range(niter):
+                for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
                         index = indexes_local[k]
                         otime = int(
                             round(
-                                (starttime + t * sampletime) / 10**iotimeprec))
+                                (time) / 10**iotimeprec))
                         if at_surface:
                             f_in = "{0}.{1}.{2}.{3:07d}".format(
                                 variable, mode, halflevel, otime)
@@ -105,14 +104,13 @@ def convert_to_nc(variables):
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:
                             print (ex)
-                            raise Exception(
-                                'Stopping: cannot find file {}'.format(f_in))
+                            break
 
                         print(
                             "Processing %8s, time=%7i, index=%4i" %
                             (variable, otime, index))
 
-                        ncfile.dimvar['time'][t] = otime * 10**iotimeprec
+                        ncfile.dimvar['time'][t] = time
 
                         if at_surface:
                             ncfile.var[t, :, :] = fin.read(n)
@@ -217,14 +215,6 @@ precision = args.precision
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
 # End option parsing
-
-# Calculate the number of iterations
-for time in np.arange(starttime, endtime, sampletime):
-    otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime)):
-        endtime = time - sampletime
-        break
-niter = int((endtime - starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
 
