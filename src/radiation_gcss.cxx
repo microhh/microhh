@@ -1,9 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
- * Copyright (c) 2018-2019 Elynn Wu
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -522,8 +521,8 @@ void Radiation_gcss<TF>::exec_all_stats(
 {
     const bool do_stats = stats.do_statistics(itime);
     const bool do_cross = cross.do_cross(itime);
-    const bool do_dump = dump.do_dump(itime);
-
+    const unsigned long idt = timeloop.get_idt();
+    const bool do_dump = dump.do_dump(itime, idt);
     // Return in case of no stats or cross section.
     if ( !(do_stats || do_cross || do_dump) )
         return;

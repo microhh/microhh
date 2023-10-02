@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -61,8 +61,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     gd.utrans = input.get_item<TF>("grid", "utrans", "", 0.);
     gd.vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    gd.lat = input.get_item<TF>("grid", "lat", "",  input.get_item<TF>("radiation", "lat", "", 0.)); //As a legacy option, the latitude can be read from the radiation section
-    gd.lon = input.get_item<TF>("grid", "lon", "",  input.get_item<TF>("radiation", "lon", "", 0.)); //As a legacy option, the longitude can be read from the radiation section
+    gd.lat = input.get_item<TF>("grid", "lat", "",  0.); 
+    gd.lon = input.get_item<TF>("grid", "lon", "",  0.); 
 
     std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
