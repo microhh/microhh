@@ -129,23 +129,23 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create_diffuse_filter();
 
 
-    void solve_shortwave_column(
-            std::unique_ptr<Optical_props_arry>&,
-            std::unique_ptr<Optical_props_2str>&,
-            Array<Float,2>&, Array<Float,2>&,
-            Array<Float,2>&, Array<Float,2>&,
-            Array<Float,2>&, Array<Float,2>&, const Float,
-            const Gas_concs&,
-            const Gas_optics_rrtmgp&,
-            const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            Aerosol_concs&,
-            const Array<Float,1>&,
-            const Array<Float,2>&, const Array<Float,2>&,
-            const Float,
-            const int
-            );
+        void solve_shortwave_column(
+                std::unique_ptr<Optical_props_arry>&,
+                std::unique_ptr<Optical_props_2str>&,
+                Array<Float,2>&, Array<Float,2>&,
+                Array<Float,2>&, Array<Float,2>&,
+                Array<Float,2>&, Array<Float,2>&, const Float,
+                const Gas_concs&,
+                const Gas_optics_rrtmgp&,
+                const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                Aerosol_concs&,
+                const Array<Float,1>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Float,
+                const int
+                );
 
         void solve_longwave_column(
                 std::unique_ptr<Optical_props_arry>&,
@@ -194,6 +194,7 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const bool, const int);
         #endif
 
+        TF eclipse_factor(Timeloop<TF>&);
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
         void set_background_column_longwave(const TF);
@@ -216,6 +217,11 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_homogenize_sfc_lw;
         bool sw_homogenize_hr_sw;
         bool sw_homogenize_hr_lw;
+
+        bool sw_eclipse;
+        TF eclipse_start;
+        TF eclipse_end;
+        TF eclipse_magnitude;
 
         // Make sure that the sw radiation is tuned at the first `exec()`. This
         // ensures that sw is tuned for the full 3D field, and not for the column stats.

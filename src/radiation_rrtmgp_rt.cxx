@@ -1322,21 +1322,21 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
     }
 }
 
-template<typename TF>
-void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
-{
-    auto& gd = grid.get_grid_data();
+// template<typename TF>
+// void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
+// {
+//     auto& gd = grid.get_grid_data();
 
-    // Update the solar zenith angle.
-    const int day_of_year = int(timeloop.calc_day_of_year());
-    const int year = timeloop.get_year();
-    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
+//     // Update the solar zenith angle.
+//     const int day_of_year = int(timeloop.calc_day_of_year());
+//     const int year = timeloop.get_year();
+//     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+//     std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
 
-    // Calculate correction factor for impact Sun's distance on the solar "constant"
-    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
-    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
-}
+//     // Calculate correction factor for impact Sun's distance on the solar "constant"
+//     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+//     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+// }
 
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::set_background_column_longwave(Thermo<TF>& thermo)

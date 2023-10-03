@@ -749,6 +749,15 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         fields.init_diagnostic_field("sw_flux_dn_clear", "Clear-sky shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
         fields.init_diagnostic_field("sw_flux_dn_dir_clear", "Clear-sky shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
     }
+
+    sw_eclipse = inputin.get_item<bool>("radiation", "sweclipse", "", false);
+    if (sw_eclipse)
+    {
+        eclipse_start     = inputin.get_item<TF>("radiation", "eclipse_start", "");
+        eclipse_end       = inputin.get_item<TF>("radiation", "eclipse_end", "");
+        eclipse_magnitude = inputin.get_item<TF>("radiation", "eclipse_magnitude", "");
+    }
+
 }
 
 
@@ -1527,6 +1536,26 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
 }
 
 template<typename TF>
+TF Radiation_rrtmgp<TF>::eclipse_factor(Timeloop<TF>& timeloop)
+{
+
+    // Calculate the eclipse factor
+    if (sw_eclipse == 0)
+        return 1.0;
+    const int day_of_year = int(timeloop.calc_day_of_year());
+    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+    if (frac_day_of_year < eclipse_start || frac_day_of_year > eclipse_end)
+        return 1.0;
+    TF eclipse_factor = 0.5 * eclipse_magnitude * std::cos(2 * M_PI / (eclipse_end - eclipse_start) * (frac_day_of_year - eclipse_start)) + 0.5 * (1 - eclipse_magnitude);
+
+    if (eclipse_factor < 0.0)
+        return 0.0;
+    
+    return eclipse_factor;
+}
+
+template<typename TF>
 void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
 {
     // Update the solar zenith angle.
@@ -1542,6 +1571,7 @@ void Radiation_rrtmgp<TF>::set_sun_location(Timeloop<TF>& timeloop)
     // Calculate correction factor for impact Sun's distance on the solar "constant"
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+    this->tsi_scaling *= eclipse_factor(timeloop);
 }
 
 template<typename TF>
