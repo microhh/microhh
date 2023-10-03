@@ -1143,7 +1143,11 @@ void Radiation_rrtmgp<TF>::exec(
     dim3 gridGPU_2d (gridi, gridj, 1);
     dim3 blockGPU_2d(blocki, blockj, 1);
 
-    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
+    bool do_radiation = !(timeloop.in_substep());
+    if (dt_rad > 0)
+        if (timeloop.get_itime() % idt_rad != 0)
+            do_radiation = false;
+            
     const bool do_radiation_stats = timeloop.is_stats_step();
 
     if (do_radiation)

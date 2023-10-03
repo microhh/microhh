@@ -207,6 +207,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const bool, const bool);
         #endif
 
+        TF eclipse_factor(Timeloop<TF>&);
+
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
         void set_background_column_shortwave(Thermo<TF>&);
@@ -231,6 +233,11 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_homogenize_sfc_lw;
         bool sw_homogenize_hr_sw;
         bool sw_homogenize_hr_lw;
+
+        bool sw_eclipse;
+        TF eclipse_start;
+        TF eclipse_end;
+        TF eclipse_magnitude;
 
         // Make sure that the sw radiation is tuned at the first `exec()`. This
         // ensures that sw is tuned for the full 3D field, and not for the column stats.

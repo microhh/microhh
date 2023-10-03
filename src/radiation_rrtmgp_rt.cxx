@@ -505,6 +505,15 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_homogenize_hr_sw = inputin.get_item<bool>("radiation", "swhomogenizehr_sw", "", false);
     sw_homogenize_hr_lw = inputin.get_item<bool>("radiation", "swhomogenizehr_lw", "", false);
 
+    sw_eclipse = inputin.get_item<bool>("radiation", "sweclipse", "", false);
+    if (sw_eclipse)
+    {
+        eclipse_start     = inputin.get_item<TF>("radiation", "eclipse_start", "");
+        eclipse_end       = inputin.get_item<TF>("radiation", "eclipse_end", "");
+        eclipse_magnitude = inputin.get_item<TF>("radiation", "eclipse_magnitude", "");
+    }
+
+
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
     t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
@@ -585,11 +594,14 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
-    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+    if (dt_rad > 0)
+    {
+        idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
 
-    // Check if restarttime is dividable by dt_rad
-    if (timeloop.get_isavetime() % idt_rad != 0)
-        throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
+        // Check if restarttime is dividable by dt_rad
+        if (timeloop.get_isavetime() % idt_rad != 0)
+            throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
+    }
 
     // Resize surface radiation fields
     lw_flux_dn_sfc.resize(gd.ijcells);
@@ -615,6 +627,9 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Radiation_rrtmgp_rt<TF>::get_time_limit(unsigned long itime)
 {
+    if (dt_rad < 0)
+        return 1e9;
+
     unsigned long idtlim = idt_rad - itime % idt_rad;
     return idtlim;
 }
@@ -1322,21 +1337,43 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
     }
 }
 
-// template<typename TF>
-// void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
-// {
-//     auto& gd = grid.get_grid_data();
+template<typename TF>
+TF Radiation_rrtmgp_rt<TF>::eclipse_factor(Timeloop<TF>& timeloop)
+{
 
-//     // Update the solar zenith angle.
-//     const int day_of_year = int(timeloop.calc_day_of_year());
-//     const int year = timeloop.get_year();
-//     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-//     std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
+    // Calculate the eclipse factor
+    if (sw_eclipse == 0)
+        return 1.0;
+    const int day_of_year = int(timeloop.calc_day_of_year());
+    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+    if (frac_day_of_year < eclipse_start || frac_day_of_year > eclipse_end)
+        return 1.0;
+    TF eclipse_factor = 0.5 * eclipse_magnitude * std::cos(2 * M_PI / (eclipse_end - eclipse_start) * (frac_day_of_year - eclipse_start)) + 0.5 * (1 - eclipse_magnitude);
 
-//     // Calculate correction factor for impact Sun's distance on the solar "constant"
-//     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
-//     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
-// }
+    if (eclipse_factor < 0.0)
+        return 0.0;
+    
+    return eclipse_factor;
+}
+
+template<typename TF>
+void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+
+    // Update the solar zenith angle.
+    const int day_of_year = int(timeloop.calc_day_of_year());
+    const int year = timeloop.get_year();
+    const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
+    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
+
+    // Calculate correction factor for impact Sun's distance on the solar "constant"
+    const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+    this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
+    this->tsi_scaling *= eclipse_factor(timeloop);
+
+}
 
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::set_background_column_longwave(Thermo<TF>& thermo)

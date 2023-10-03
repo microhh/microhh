@@ -765,13 +765,14 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+    if (dt_rad > 0)
+    {
+        idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
 
-    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
-
-    // Check if restarttime is dividable by dt_rad
-    if (timeloop.get_isavetime() % idt_rad != 0)
-        throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
-
+        // Check if restarttime is dividable by dt_rad
+        if (timeloop.get_isavetime() % idt_rad != 0)
+            throw std::runtime_error("Restart \"savetime\" is not an (integer) multiple of \"dt_rad\"");
+    }
     // Resize surface radiation fields
     lw_flux_dn_sfc.resize(gd.ijcells);
     lw_flux_up_sfc.resize(gd.ijcells);
@@ -801,6 +802,8 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Radiation_rrtmgp<TF>::get_time_limit(unsigned long itime)
 {
+    if (dt_rad < 0)
+        return 1e9;
     unsigned long idtlim = idt_rad - itime % idt_rad;
     return idtlim;
 }
@@ -1661,7 +1664,11 @@ void Radiation_rrtmgp<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
 
-    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
+    bool do_radiation = !(timeloop.in_substep());
+    if (dt_rad > 0)
+        if (timeloop.get_itime() % idt_rad != 0)
+            do_radiation = false;
+            
     const bool do_radiation_stats = timeloop.is_stats_step();
 
     if (do_radiation)
