@@ -1766,22 +1766,33 @@ void Stats<TF>::calc_stats_w(
             calc_mean(
                     w_prime->fld_mean.data(),
                     fields.mp.at("w")->fld.data(),
-                    mfield.data(), flag, nmask,
+                    mfield.data(),
+                    flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-
             master.sum(w_prime->fld_mean.data(), gd.kcells);
+
+            calc_mean(
+                    fld_prime->fld_mean.data(),
+                    fld.fld.data(),
+                    mfield.data(),
+                    flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            master.sum(fld_prime->fld_mean.data(), gd.kcells);
 
             // Subtract mean from `var` and `w` to get turbulent fluctuations.
             subtract_mean(
                     fld_prime->fld.data(),
                     fld.fld.data(),
-                    m.second.profs.at(varname).data.data(),
+                    fld_prime->fld_mean.data(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
             subtract_mean(
@@ -1793,6 +1804,7 @@ void Stats<TF>::calc_stats_w(
                     gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
+            fld_prime->loc = gd.wloc;
             advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
             // Switch flag to flux location of `fld`.

@@ -2065,6 +2065,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     auto ql = fields.get_tmp();
     ql->loc = gd.sloc;
 
+    for (int n=0; n<gd.ncells; ++n)
+        ql->fld[n] = 0.;
+
+    for (int n=0; n<gd.ijcells; ++n)
+    {
+        ql->flux_bot[n] = 0.;
+        ql->flux_top[n] = 0.;
+    }
+
     get_thermo_field(*ql, "ql", true, true);
     stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
@@ -2085,6 +2094,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
         ql->flux_top[n] = 0.;
     }
 
+    ql->loc = gd.wloc;
     get_thermo_field(*ql, "ql_h", true, true);
     stats.calc_stats_w("ql", *ql, no_offset);
     stats.calc_stats_flux("ql", *ql, no_offset);
