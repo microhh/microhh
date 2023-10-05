@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -1325,11 +1325,13 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
 template<typename TF>
 void Radiation_rrtmgp_rt<TF>::set_sun_location(Timeloop<TF>& timeloop)
 {
+    auto& gd = grid.get_grid_data();
+
     // Update the solar zenith angle.
     const int day_of_year = int(timeloop.calc_day_of_year());
     const int year = timeloop.get_year();
     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
-    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(lat, lon, day_of_year, seconds_after_midnight, year);
+    std::tie(this->mu0, this->azimuth) = calc_cos_zenith_angle(gd.lat, gd.lon, day_of_year, seconds_after_midnight, year);
 
     // Calculate correction factor for impact Sun's distance on the solar "constant"
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
