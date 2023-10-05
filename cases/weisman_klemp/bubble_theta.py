@@ -25,8 +25,8 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Bubble position (m)
-xbub = 38400.
-ybub = 0.5*ysize
+xbub = (1./3.) * xsize
+ybub = (1./2.) * ysize
 zbub = 1400.
 
 # Bubble size (m)
