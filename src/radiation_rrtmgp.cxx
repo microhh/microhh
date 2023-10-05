@@ -685,6 +685,11 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
     sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
 
+    #ifndef USECUDA
+    if (sw_homogenize_sfc_sw || sw_homogenize_sfc_lw || sw_homogenize_hr_sw || sw_homogenize_hr_lw)
+        throw std::runtime_error("Radiation homogenization is not (yet) implemented on the CPU.");
+    #endif
+
     if (sw_fixed_sza)
     {
         const Float sza = inputin.get_item<Float>("radiation", "sza", "");
@@ -1665,15 +1670,6 @@ void Radiation_rrtmgp<TF>::exec(
 
         const bool compute_clouds = true;
 
-        // Lambda function for homogenizing surface radiation fields.
-        // NOTE BvS: this function is not tested on the CPU, as this branch currently
-        //           does not compile without CUDA.
-        //auto homogenize = [&](std::vector<TF>& field)
-        //{
-        //    const TF mean_value = field3d_operators.calc_mean_2d(field.data());
-        //    std::fill(field.begin(), field.end(), mean_value);
-        //};
-
         // get aerosol mixing ratios
         if (sw_aerosol && sw_aerosol_timedep)
             aerosol.get_radiation_fields(aerosol_concs);
@@ -1727,12 +1723,6 @@ void Radiation_rrtmgp<TF>::exec(
                         gd.igc, gd.jgc,
                         gd.icells, gd.ijcells,
                         gd.imax);
-
-                //if (sw_homogenize_sfc_rad)
-                //{
-                //    homogenize(lw_flux_up_sfc);
-                //    homogenize(lw_flux_dn_sfc);
-                //}
 
                 if (do_radiation_stats)
                 {
@@ -1811,12 +1801,6 @@ void Radiation_rrtmgp<TF>::exec(
                             gd.igc, gd.jgc,
                             gd.icells, gd.ijcells,
                             gd.imax);
-
-                    //if (sw_homogenize_sfc_rad)
-                    //{
-                    //    homogenize(sw_flux_up_sfc);
-                    //    homogenize(sw_flux_dn_sfc);
-                    //}
 
                     if (sw_diffuse_filter)
                     {
