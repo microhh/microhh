@@ -34,6 +34,9 @@ Microphys_disabled<TF>::Microphys_disabled(Master& masterin, Grid<TF>& gridin, F
     Microphys<TF>(masterin, gridin, fieldsin, inputin)
 {
     swmicrophys = Microphys_type::Disabled;
+
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "", -1);
+    Ni0 = inputin.get_item<TF>("micro", "Ni0", "", -1);
 }
 
 template<typename TF>
@@ -53,6 +56,23 @@ void Microphys_disabled<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::fill(field.begin(), field.end(), TF(0));
 }
 
+template<typename TF>
+TF Microphys_disabled<TF>::get_Nc0()
+{
+    if (this->Nc0 > 0)
+        return this->Nc0;
+    else
+        throw std::runtime_error("Requested uninitialised Nc0!");
+}
+
+template<typename TF>
+TF Microphys_disabled<TF>::get_Ni0()
+{
+    if (this->Ni0 > 0)
+        return this->Ni0;
+    else
+        throw std::runtime_error("Requested uninitialised Ni0!");
+}
 
 #ifdef FLOAT_SINGLE
 template class Microphys_disabled<float>;
