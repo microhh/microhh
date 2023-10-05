@@ -74,14 +74,6 @@ Limiter<TF>::~Limiter()
 template <typename TF>
 void Limiter<TF>::create(Stats<TF>& stats)
 {
-    // Check if all limit fields are valid.
-    for (auto& name : limit_list)
-        if (fields.at.find(name) == fields.at.end())
-        {
-            std::string error = "Non-existing prognostic field \"" + name + "\" in limiter!";
-            throw std::runtime_error(error);
-        }
-
     for (const std::string& s : limit_list)
         stats.add_tendency(*fields.at.at(s), "z", tend_name, tend_longname);
 
