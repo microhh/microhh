@@ -2479,12 +2479,14 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     if (cross.get_switch())
     {
+        const TF no_offset = 0.;
+
         for (auto& it : crosslist)
         {
             // Yikes (BvS), this is easy to break.... Any better ideas? Should we stick to
             // using the full name, like e.g. `rain_rate` or `qr_flux` or ...?
             const std::string letter = it.substr(1,1);
-            cross.cross_plane(hydro_types.at("q" + letter).precip_rate.data(), it, iotime);
+            cross.cross_plane(hydro_types.at("q" + letter).precip_rate.data(), no_offset, it, iotime);
         }
     }
 }
@@ -2528,5 +2530,8 @@ void Microphys_sb06<TF>::get_surface_rain_rate(std::vector<TF>& field)
     }
 }
 
-template class Microphys_sb06<double>;
+#ifdef FLOAT_SINGLE
 template class Microphys_sb06<float>;
+#else
+template class Microphys_sb06<double>;
+#endif

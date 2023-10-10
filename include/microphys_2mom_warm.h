@@ -195,8 +195,6 @@ class Microphys_2mom_warm : public Microphys<TF>
         std::vector<std::string> crosslist;                  // Cross-sections handled by this class
         std::vector<std::string> available_masks = {"qr"};   // Vector with the masks that fields can provide
 
-        TF Nc0; // Cloud droplet number concentration.
-
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)
 

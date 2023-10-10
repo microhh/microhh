@@ -317,6 +317,9 @@ class Microphys_sb06 : public Microphys<TF>
 
         void get_surface_rain_rate(std::vector<TF>&);
 
+        TF get_Nc0() { return this->Nc0; }
+        TF get_Ni0() { return static_cast<TF>(1e5); }
+
         unsigned long get_time_limit(unsigned long, double);
 
         //#ifdef USECUDA

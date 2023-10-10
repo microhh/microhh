@@ -514,7 +514,6 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                 }
-        }
     }
 
     template<typename TF, Satadjust_type sw_satadjust>
@@ -546,8 +545,6 @@ namespace
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                 }
-        }
-    }
 
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -795,6 +792,7 @@ namespace
             TF* restrict T,
             TF* restrict T_h,
             TF* restrict vmr_h2o,
+            TF* restrict rh,
             TF* restrict clwp,
             TF* restrict ciwp,
             TF* restrict T_sfc,
@@ -882,6 +880,7 @@ namespace
             TF* const restrict T,
             TF* const restrict T_h,
             TF* const restrict vmr_h2o,
+            TF* const restrict rh,
             TF* const restrict clwp,
             TF* const restrict ciwp,
             TF* const restrict T_sfc,
@@ -1013,7 +1012,7 @@ namespace
 
 
 template<typename TF>
-Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const Sim_mode sim_mode) :
     Thermo<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(masterin, gridin),
     field3d_operators(master, grid, fieldsin),
@@ -1137,7 +1136,7 @@ void Thermo_moist<TF>::save(const int iotime)
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
         TF no_offset = 0.;
-        
+
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
                 field, no_offset, tmp1->fld.data(), filename, kslice))
@@ -1826,7 +1825,8 @@ void Thermo_moist<TF>::get_thermo_field(
 
 template<typename TF>
 void Thermo_moist<TF>::get_radiation_fields(
-        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv, Field3d<TF>& clwp, Field3d<TF>& ciwp) const
+        Field3d<TF>& T, Field3d<TF>& T_h, Field3d<TF>& qv,
+        Field3d<TF>& rh, Field3d<TF>& clwp, Field3d<TF>& ciwp) const
 {
     auto& gd = grid.get_grid_data();
 
@@ -1836,6 +1836,7 @@ void Thermo_moist<TF>::get_radiation_fields(
                 T.fld.data(),
                 T_h.fld.data(),
                 qv.fld.data(),
+                rh.fld.data(),
                 clwp.fld.data(),
                 ciwp.fld.data(),
                 T_h.fld_bot.data(),
@@ -1875,13 +1876,14 @@ void Thermo_moist<TF>::get_radiation_columns(
     TF* t_lev_a = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot+1);
     TF* t_sfc_a = &tmp.fld.data()[offset]; offset += n_cols;
     TF* h2o_a   = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
+    TF* rh_a    = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* clwp_a  = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* ciwp_a  = &tmp.fld.data()[offset];
 
     auto calc_radiation_columns_wrapper = [&]<Satadjust_type sw_satadjust>()
     {
         calc_radiation_columns<TF, sw_satadjust>(
-                    t_lay_a, t_lev_a, h2o_a, clwp_a, ciwp_a, t_sfc_a,
+                    t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a, t_sfc_a,
                     fields.sp.at("thl")->fld.data(),
                     fields.sp.at("qt")->fld.data(),
                     fields.sp.at("thl")->fld_bot.data(),
@@ -2211,12 +2213,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
         std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
         std::vector<std::string> qlqivars = cross.get_enabled_variables(allowed_crossvars_qlqi);
+        std::vector<std::string> qlqithvvars = cross.get_enabled_variables(allowed_crossvars_qlqithv);
         std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
         std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
-
-        std::vector<std::string> qlqithvvars = cross.get_enabled_variables(allowed_crossvars_qlqithv);
-        std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
-        std::vector<std::string> qlqivars = cross.get_enabled_variables(allowed_crossvars_qlqi);
 
         if (bvars.size() > 0)
             swcross_b  = true;
@@ -2224,26 +2223,35 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         if (qlvars.size() > 0)
             swcross_ql = true;
 
-        if (qivars.size() > 0)
-            swcross_qi = true;
+        if (sw_satadjust == Satadjust_type::Liquid_ice)
+        {
+            if (qivars.size() > 0)
+                swcross_qi = true;
 
-        if (qlqivars.size() > 0)
-            swcross_qlqi = true;
+            if (qlqivars.size() > 0)
+                swcross_qlqi = true;
+
+            if (qlqithvvars.size() > 0)
+                swcross_qlqithv = true;
+        }
 
         if (qsatvars.size() > 0)
             swcross_qsat = true;
 
-        if (qlqithvvars.size() > 0)
-            swcross_qlqithv = true;
 
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
-        crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
-        crosslist.insert(crosslist.end(), qlqivars.begin(), qlqivars.end());
+
+        if (sw_satadjust == Satadjust_type::Liquid_ice)
+        {
+            crosslist.insert(crosslist.end(), qivars.begin(), qivars.end());
+            crosslist.insert(crosslist.end(), qlqivars.begin(), qlqivars.end());
+            crosslist.insert(crosslist.end(), qlqithvvars.begin(), qlqithvvars.end());
+        }
+
         crosslist.insert(crosslist.end(), qsatvars.begin(), qsatvars.end());
         crosslist.insert(crosslist.end(), miscvars.begin(), miscvars.end());
-        crosslist.insert(crosslist.end(), qlqithvvars.begin(), qlqithvvars.end());
     }
 }
 
