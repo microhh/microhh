@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -104,7 +104,8 @@ class Netcdf_handle
                 std::vector<T>&,
                 const std::string&,
                 const std::vector<int>&,
-                const std::vector<int>&);
+                const std::vector<int>&,
+                const bool required_read = true);
 
         template<typename T>
         void insert(

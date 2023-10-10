@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -2756,7 +2756,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
     stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh", group_name);
     stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh", group_name);
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" , group_name);
@@ -2779,7 +2779,7 @@ void Budget_4<TF>::create(Stats<TF>& stats)
     }
 
     /*
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         // Add the profiles for the potential energy budget to the statistics.
         stats.add_prof("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
@@ -2826,7 +2826,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         calc_ke(ke->fld.data(), tke->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 umodel.data(), vmodel.data(), wmodel.data(),
-                grid.utrans, grid.vtrans,
+                gd.utrans, gd.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -2987,7 +2987,7 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         fields.release_tmp(uw_rdstr);
 
         // Calculate the buoyancy term of the TKE budget.
-        if (thermo.get_switch() != "0")
+        if (thermo.get_switch() != Thermo_type::Disabled)
         {
             auto b = fields.get_tmp();
 
@@ -3100,5 +3100,9 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
     }
 }
 
-template class Budget_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_4<float>;
+#else
+template class Budget_4<double>;
+#endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -273,7 +273,7 @@ void Boundary<TF>::process_bcs(Input& input)
 }
 
 template<typename TF>
-void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
+void Boundary<TF>::init(Input& input, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Read the boundary information from the ini files, it throws at error.
     process_bcs(input);
@@ -286,6 +286,11 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+    if (sim_mode == Sim_mode::Init)
+    {
+        input.flag_as_used("boundary", "swtimedep", "");
+        input.flag_as_used("boundary", "timedeplist", "");
+    }
 }
 
 template<typename TF>
@@ -340,7 +345,7 @@ void Boundary<TF>::process_time_dependent(
                     tmplist.erase(ittmp);
             }
         }
-
+        
         // Display a warning for the non-supported.
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
             master.print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
@@ -395,8 +400,8 @@ void Boundary<TF>::process_time_dependent(
 
         for (auto& fld : sbot_2d_list)
         {
-            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot", iotime0);
-            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot", iotime1);
+            load_2d_field(sbot_2d_prev.at(fld).data(), fld+"_bot_in", iotime0);
+            load_2d_field(sbot_2d_next.at(fld).data(), fld+"_bot_in", iotime1);
         }
 
         master.sum(&nerror, 1);
@@ -414,23 +419,8 @@ void Boundary<TF>::process_inflow(
     auto& gd = grid.get_grid_data();
 
     swtimedep_outflow = input.get_item<bool>("boundary", "swtimedep_outflow", "", false);
-
-    Netcdf_group& init_group = input_nc.get_group("init");
-    for (auto& scalar : scalar_outflow)
-    {
-        std::vector<TF> prof = std::vector<TF>(gd.kcells);
-        if (!swtimedep_outflow)
-            init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
-        std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
-        inflow_profiles.emplace(scalar, prof);
-    }
-
     if (swtimedep_outflow)
     {
-        #ifdef USECUDA
-        throw std::runtime_error("Time dependent outflow profiles are not (yet) implemented on the GPU.");
-        #endif
-
         Netcdf_group& tdep_group = input_nc.get_group("timedep");
         const TF offset = 0;
 
@@ -438,6 +428,19 @@ void Boundary<TF>::process_inflow(
         {
             tdep_outflow.emplace(scalar, new Timedep<TF>(master, grid, scalar+"_inflow", true));
             tdep_outflow.at(scalar)->create_timedep_prof(input_nc, offset, "time_ls");
+            inflow_profiles[scalar] = std::vector<TF>(gd.kcells);
+        }
+    }
+    else
+    {
+        Netcdf_group& init_group = input_nc.get_group("init");
+        for (auto& scalar : scalar_outflow)
+        {
+            std::vector<TF> prof = std::vector<TF>(gd.kcells);
+            if (!swtimedep_outflow)
+                init_group.get_variable(prof, scalar+"_inflow", {0}, {gd.ktot});
+            std::rotate(prof.rbegin(), prof.rbegin() + gd.kstart, prof.rend());
+            inflow_profiles.emplace(scalar, prof);
         }
     }
 }
@@ -503,7 +506,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
                 // Read new time step
                 char filename[256];
-                std::string name = fld + "_bot";
+                std::string name = fld + "_bot_in";
                 std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
                 master.print_message("Loading \"%s\" ... ", filename);
 
@@ -605,17 +608,17 @@ void Boundary<TF>::set_values()
     const bool set_flux_grad = (swboundary == "default");
 
     set_bc<TF, true>(fields.mp.at("u")->fld_bot.data(), fields.mp.at("u")->grad_bot.data(), fields.mp.at("u")->flux_bot.data(),
-           mbcbot, ubot, fields.visc, grid.utrans,
+           mbcbot, ubot, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_bot.data(), fields.mp.at("v")->grad_bot.data(), fields.mp.at("v")->flux_bot.data(),
-           mbcbot, vbot, fields.visc, grid.vtrans,
+           mbcbot, vbot, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     set_bc<TF, true>(fields.mp.at("u")->fld_top.data(), fields.mp.at("u")->grad_top.data(), fields.mp.at("u")->flux_top.data(),
-           mbctop, utop, fields.visc, grid.utrans,
+           mbctop, utop, fields.visc, gd.utrans,
            gd.icells, gd.jcells);
     set_bc<TF, true>(fields.mp.at("v")->fld_top.data(), fields.mp.at("v")->grad_top.data(), fields.mp.at("v")->flux_top.data(),
-           mbctop, vtop, fields.visc, grid.vtrans,
+           mbctop, vtop, fields.visc, gd.vtrans,
            gd.icells, gd.jcells);
 
     const TF no_offset = 0.;
@@ -627,10 +630,15 @@ void Boundary<TF>::set_values()
             // The time dependent 2D bc's are set in `update_time_dependent()`.
             continue;
         }
+        else if (swboundary == "surface_lsm" && (it.first == "thl" || it.first == "qt"))
+        {
+            // Temperature/moisture are prognostic (well, not really, but they are read in from restart files...)
+            continue;
+        }
         else if (std::find(sbot_2d_list.begin(), sbot_2d_list.end(), it.first) != sbot_2d_list.end())
         {
             // Load 2D fields for bottom boundary from disk.
-            std::string filename = it.first + "_bot.0000000";
+            std::string filename = it.first + "_bot_in.0000000";
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();
@@ -1156,5 +1164,9 @@ std::shared_ptr<Boundary<TF>> Boundary<TF>::factory(
     }
 }
 
-template class Boundary<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary<float>;
+#else
+template class Boundary<double>;
+#endif

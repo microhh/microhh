@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -339,7 +339,7 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
-        b.fld_g, b.flux_bot_g,
+        b.fld_g, b.fld_bot_g,
         fields.sp.at("th")->fld_g, fields.sp.at("th")->fld_bot_g,
         bs.thref_g, bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
@@ -366,5 +366,10 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     fields.release_tmp_g(output);
 }
 #endif
-template class Thermo_dry<double>;
+
+
+#ifdef FLOAT_SINGLE
 template class Thermo_dry<float>;
+#else
+template class Thermo_dry<double>;
+#endif

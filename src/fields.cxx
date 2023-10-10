@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -482,18 +482,18 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
         for (auto& it : ap)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, cross_path);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "_top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "_path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
@@ -647,12 +647,14 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 template<typename TF>
 void Fields<TF>::exec_stats(Stats<TF>& stats)
 {
+    auto& gd = grid.get_grid_data();
+
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
     stats.calc_stats("w", *mp.at("w"), no_offset, no_threshold);
-    stats.calc_stats("u", *mp.at("u"), grid.utrans, no_threshold);
-    stats.calc_stats("v", *mp.at("v"), grid.vtrans, no_threshold);
+    stats.calc_stats("u", *mp.at("u"), gd.utrans, no_threshold);
+    stats.calc_stats("v", *mp.at("v"), gd.vtrans, no_threshold);
 
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
@@ -717,7 +719,7 @@ template<typename TF>
 void Fields<TF>::init_prognostic_field(
         const std::string& fldname, const std::string& longname,
         const std::string& unit, const std::string& groupname,
-        const std::array<int,3>& loc)
+        const std::array<int,3>& loc, const bool& required)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -739,6 +741,10 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+
+    // Record whether a WARNING needs to be thrown if the field does not exist in the input
+    required_read[fldname] = required;
+    
 }
 
 template<typename TF>
@@ -849,8 +855,8 @@ void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
     add_mean_profs(input_nc);
 
     /*
-    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, grid.utrans);
-    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, grid.vtrans);
+    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, gd.utrans);
+    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, gd.vtrans);
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
@@ -887,7 +893,7 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
 
     // Look up the specific randomizer variables.
     rndamp = input.get_item<TF>("fields", "rndamp", fld, 0.);
-    rndz   = input.get_item<TF>("fields", "rndz"  , fld, 0.);
+    rndz   = input.get_item<TF>("fields", "rndz"  , fld, gd.zsize);
     rndexp = input.get_item<TF>("fields", "rndexp", fld, 0.);
 
     if (rndz > gd.zsize)
@@ -900,11 +906,9 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
     int kendrnd = gd.kstart;
     while (gd.z[kendrnd] < rndz)
         ++kendrnd;
-
     // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
     if (kendrnd == gd.kstart && rndz > 0.)
         master.print_warning("randomization depth is less than the height of the first model level\n");
-
     for (int k=gd.kstart; k<kendrnd; ++k)
     {
         const TF rndfac = std::pow((rndz-gd.z[k])/rndz, rndexp);
@@ -950,18 +954,18 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
-    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
+    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), gd.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     group_nc.get_variable(prof, "v", start, count);
-    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), grid.vtrans,
+    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        group_nc.get_variable(prof, f.first, start, count);
+        group_nc.get_variable(prof, f.first, start, count, required_read[f.first]);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1148,7 +1152,7 @@ void Fields<TF>::load(int n)
     for (auto& mask : xymasks)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", mask.first.c_str(), n);
+        std::sprintf(filename, "%s.%07d", mask.first.c_str(), 0);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -1220,26 +1224,54 @@ TF Fields<TF>::check_mass()
 template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
+    auto& gd = grid.get_grid_data();
 
+    TF no_offset = 0.;
+    TF offset;
+    for (auto& it : cross_simple)
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        
+        cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
+    }
     for (auto& it : cross_lngrad)
-        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
+        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"_lngrad", iotime);
 
     for (auto& it : cross_fluxbot)
-        cross.cross_plane(a.at(it)->flux_bot.data(), a.at(it)->name+"fluxbot", iotime);
+        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"_fluxbot", iotime);
 
     for (auto& it : cross_fluxtop)
-        cross.cross_plane(a.at(it)->flux_top.data(), a.at(it)->name+"fluxtop", iotime);
+        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"_fluxtop", iotime);
 
     for (auto& it : cross_bot)
-        cross.cross_plane(a.at(it)->fld_bot.data(), a.at(it)->name+"bot", iotime);
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"_bot", iotime);
+    }
 
     for (auto& it : cross_top)
-        cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
-
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
+    }
+    
     for (auto& it : cross_path)
-        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }
 
 template<typename TF>
@@ -1254,9 +1286,10 @@ template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
+    auto& gd = grid.get_grid_data();
 
-    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
-    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("u", mp.at("u")->fld.data(), gd.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), gd.vtrans);
     column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
@@ -1369,5 +1402,8 @@ void Fields<TF>::reset_tendencies()
 }
 
 
-template class Fields<double>;
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif

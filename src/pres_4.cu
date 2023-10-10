@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -657,5 +657,9 @@ TF Pres_4<TF>::check_divergence()
 }
 #endif
 
-template class Pres_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_4<float>;
+#else
+template class Pres_4<double>;
+#endif

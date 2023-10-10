@@ -6,10 +6,10 @@ import microhh_tools as mht
 #import taylorgreen.taylorgreenconv as tg
 #import conservation.run_conservation as conv
 
-modes = ['cpu', 'cpumpi', 'gpu']
-precs = ['dp', 'sp']
+modes = ['gpu']
+precs = ['dp']
 
-les_cases   = ['bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip']  # dycoms+lasso missing
+les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip', 'dycoms']  # cabauw+lasso missing
 dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
 
 # Cases which require an additional preprocessing script.
@@ -32,8 +32,8 @@ for prec in precs:
     for mode in modes:
         # Likely MicroHH binary locations:
         ex1 = 'microhh_{}_{}'.format(prec, mode)
-        ex2 = '../build_{}_{}/microhh'.format(prec, mode)
-
+        ex2 = '../build_{}_{}/microhh'.format(mode, prec)
+        print(ex2)
         if os.path.exists(ex1):
             microhh_exec = ex1
         elif os.path.exists(ex2):

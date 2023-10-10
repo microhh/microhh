@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,6 +30,8 @@
 template<typename TF>
 void Soil_grid<TF>::prepare_device()
 {
+    if (!sw_land_surface)
+        return;
     const int kmemsize = gd.kcells*sizeof(TF);
     const int khmemsize = gd.kcellsh*sizeof(TF);
 
@@ -53,6 +55,8 @@ void Soil_grid<TF>::prepare_device()
 template<typename TF>
 void Soil_grid<TF>::clear_device()
 {
+    if (!sw_land_surface)
+        return;
     cuda_safe_call(cudaFree(gd.z_g));
     cuda_safe_call(cudaFree(gd.dz_g));
     cuda_safe_call(cudaFree(gd.dzi_g));
@@ -63,5 +67,9 @@ void Soil_grid<TF>::clear_device()
 }
 #endif
 
-template class Soil_grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_grid<float>;
+#else
+template class Soil_grid<double>;
+#endif

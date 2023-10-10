@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -144,8 +144,9 @@ void Boundary_surface_bulk<TF>::create_cold_start(Netcdf_handle& input_nc)
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
+
     // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
 
@@ -157,6 +158,13 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
+
 }
 
 template<typename TF>
@@ -255,7 +263,8 @@ void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
-
+    TF offset = 0.;
+    
     auto save_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -265,7 +274,7 @@ void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -408,5 +417,9 @@ void Boundary_surface_bulk<TF>::update_slave_bcs()
     // the fields are computed by the surface model in update_bcs.
 }
 
-template class Boundary_surface_bulk<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_bulk<float>;
+#else
+template class Boundary_surface_bulk<double>;
+#endif

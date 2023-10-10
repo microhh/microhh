@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,7 +32,7 @@ template<typename> class Boundary;
 template<typename> class Thermo;
 template<typename> class Stats;
 
-enum class Diffusion_type {Disabled, Diff_2, Diff_4, Diff_smag2};
+enum class Diffusion_type {Disabled, Diff_2, Diff_4, Diff_smag2, Diff_tke2};
 
 template <typename TF>
 class Diff
@@ -43,11 +43,11 @@ class Diff
 
         // Pure virtual functions below which have to be implemented by the derived class
         virtual Diffusion_type get_switch() const = 0;
-        virtual void create(Stats<TF>&) = 0;
-        virtual void exec_viscosity(Thermo<TF>&) = 0;
+        virtual void create(Stats<TF>&, const bool) = 0;
+        virtual void exec_viscosity(Stats<TF>&, Thermo<TF>&) = 0;
         virtual void init() = 0;
         virtual void exec(Stats<TF>&) = 0;
-        virtual void exec_stats(Stats<TF>&) = 0;
+        virtual void exec_stats(Stats<TF>&, Thermo<TF>&) = 0;
         virtual void diff_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
 
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
@@ -58,6 +58,7 @@ class Diff
         #ifdef USECUDA
         // GPU functions and variables
         virtual void prepare_device(Boundary<TF>&) = 0;
+        virtual void clear_device() = 0;
         #endif
 
         TF tPr;

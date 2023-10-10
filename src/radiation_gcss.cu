@@ -1,9 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
- * Copyright (c) 2018-2019 Elynn Wu
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
@@ -221,7 +220,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
@@ -252,7 +251,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
         gd.dzi_g, gd.istart,  gd.jstart, gd.kstart,
         gd.iend,  gd.jend,   gd.kend-1, gd.icells, gd.ijcells);
 
-    TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
+    TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
 
     if (mu > mu_min)
     {
@@ -327,7 +326,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
 
     else if (name == "sflx")
     {
-        TF mu = calc_zenith(lat, lon, timeloop.calc_day_of_year());
+        TF mu = calc_zenith(gd.lat, gd.lon, timeloop.calc_day_of_year());
         if (mu > mu_min) //if daytime, call SW (make a function for day/night determination)
         {
             auto ql  = fields.get_tmp_g();
@@ -355,6 +354,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
     }
 }
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_gcss<float>;

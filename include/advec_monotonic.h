@@ -1,3 +1,24 @@
+/*
+ * MicroHH
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
+ *
+ * This file is part of MicroHH
+ *
+ * MicroHH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * MicroHH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef ADVEC_MONOTONIC_H
 #define ADVEC_MONOTONIC_H
 
@@ -188,7 +209,25 @@ namespace Advec_monotonic
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
 
-        for (int k=kstart; k<kend+1; ++k)
+        int k = kstart;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = TF(0.);
+            }
+
+        k = kstart+1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = flux_lim_bot(w[ijk], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
+            }
+
+        for (int k=kstart+2; k<kend-1; ++k)
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -196,6 +235,24 @@ namespace Advec_monotonic
                     const int ijk = i + j*jj + k*kk;
                     st[ijk] = flux_lim(w[ijk], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
                 }
+
+        k = kend-1;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = flux_lim_top(w[ijk], s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
+            }
+
+        k = kend;
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                st[ijk] = TF(0.);
+            }
     }
 }
 #endif

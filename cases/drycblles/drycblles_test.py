@@ -23,8 +23,11 @@ opt_nostats = {
 # Case configuration dicts with name label for permutations.
 dict_opts = {
         'default': {},
-        'advec_2i3': {'advec': {'swadvec': '2i3'}},
-        'advec_2i4': {'advec': {'swadvec': '2i4'}}}
+        'advec_2i5': {'advec': {'swadvec': '2i5'}},
+        'deardorff': {
+            'diff': {'swdiff': 'tke2'},
+            'boundary': {'sbot[sgstke]': 0, 'stop[sgstke]': 0},
+            'advec': {'swadvec': '2i5', 'fluxlimit_list': 'sgstke'}}}
 
 
 if __name__ == '__main__':

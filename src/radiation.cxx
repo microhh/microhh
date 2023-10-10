@@ -1,9 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
- * Copyright (c) 2018-2019 Elynn Wu
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,6 +22,7 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <stdexcept>
 
 #include "master.h"
 #include "input.h"
@@ -34,6 +34,9 @@
 #include "radiation_disabled.h"
 #include "radiation_gcss.h"
 #include "radiation_rrtmgp.h"
+// #ifdef __CUDACC
+#include "radiation_rrtmgp_rt.h"
+// #endif
 #include "radiation_prescribed.h"
 
 #include "Optical_props.h"
@@ -64,6 +67,8 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
         return std::make_shared<Radiation_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "rrtmgp")
         return std::make_shared<Radiation_rrtmgp<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (swradiation == "rrtmgp_rt")
+        return std::make_shared<Radiation_rrtmgp_rt<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "gcss") // gcss - for Sc clouds.
         return std::make_shared<Radiation_gcss<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swradiation == "prescribed")
@@ -74,6 +79,7 @@ std::shared_ptr<Radiation<TF>> Radiation<TF>::factory(
         throw std::runtime_error(error_message);
     }
 }
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation<float>;

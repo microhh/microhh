@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,6 +23,8 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+
 #include <fftw3.h>
 #include "master.h"
 #include "input.h"
@@ -41,6 +43,8 @@ Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>
     field3d_operators(master, grid, fields)
 {
     #ifdef USECUDA
+    force_FFT_per_slice = inputin.get_item<bool>("pres", "sw_fft_per_slice", "", false);
+
     iplanf = 0;
     jplanf = 0;
     iplanb = 0;
@@ -79,5 +83,9 @@ std::shared_ptr<Pres<TF>> Pres<TF>::factory(
     }
 }
 
-template class Pres<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres<float>;
+#else
+template class Pres<double>;
+#endif

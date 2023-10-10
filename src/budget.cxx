@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -69,5 +69,9 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
     }
 }
 
-template class Budget<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget<float>;
+#else
+template class Budget<double>;
+#endif

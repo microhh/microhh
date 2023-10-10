@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,6 +23,7 @@
 #ifndef THERMO_BUOY_H
 #define THERMO_BUOY_H
 
+#include <stdexcept>
 #include "thermo.h"
 
 class Master;
@@ -51,7 +52,7 @@ class Thermo_buoy : public Thermo<TF>
         virtual ~Thermo_buoy(); ///< Destructor of the dry thermodynamics class.
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
@@ -72,6 +73,8 @@ class Thermo_buoy : public Thermo<TF>
         void get_temperature_bot(Field3d<TF>&, bool)
             { throw std::runtime_error("Function get_temperature_bot not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
@@ -107,6 +110,8 @@ class Thermo_buoy : public Thermo<TF>
         TF* get_basestate_fld_g(std::string)
             { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
+        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const
             { throw std::runtime_error("Function get_radiation_columns_g not implemented"); }

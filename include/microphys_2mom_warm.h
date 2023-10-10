@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -169,6 +169,9 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         void get_surface_rain_rate(std::vector<TF>&);
 
+        TF get_Nc0() { return this->Nc0; }
+        TF get_Ni0() { return static_cast<TF>(1e5); } // CvH: this is a temporary fix with previous default value, Ni0 is 3D in tomita!
+
         unsigned long get_time_limit(unsigned long, double);
 
         #ifdef USECUDA
@@ -191,6 +194,8 @@ class Microphys_2mom_warm : public Microphys<TF>
 
         std::vector<std::string> crosslist;                  // Cross-sections handled by this class
         std::vector<std::string> available_masks = {"qr"};   // Vector with the masks that fields can provide
+
+        TF Nc0; // Cloud droplet number concentration.
 
         // Surface precipitation statistics
         std::vector<TF> rr_bot;   // 2D surface sedimentation flux (kg m-2 s-1 == mm s-1)

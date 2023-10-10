@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,6 +23,7 @@
 #ifndef MICROPHYS_DISABLED_H
 #define MICROPHYS_DISABLED_H
 
+#include <stdexcept>
 #include "microphys.h"
 
 class Master;
@@ -58,8 +59,10 @@ class Microphys_disabled : public Microphys<TF>
         bool has_mask(std::string) {return false;};
 
         void get_surface_rain_rate(std::vector<TF>&);
-
         unsigned long get_time_limit(unsigned long, double);
+
+        TF get_Nc0();
+        TF get_Ni0();
 
         #ifdef USECUDA
         void get_surface_rain_rate_g(TF*);
@@ -71,5 +74,8 @@ class Microphys_disabled : public Microphys<TF>
     private:
         using Microphys<TF>::swmicrophys;
         using Microphys<TF>::grid;
+
+        TF Nc0;
+        TF Ni0;
 };
 #endif

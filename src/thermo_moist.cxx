@@ -449,6 +449,51 @@ namespace
     }
 
     template<typename TF>
+    void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
+                             TF* restrict ph, TF* restrict thlh, TF* restrict qth,
+                             const int istart, const int iend,
+                             const int jstart, const int jend,
+                             const int kstart, const int kend,
+                             const int jj, const int kk)
+    {
+        using Finite_difference::O2::interp2;
+
+        for (int k=kstart+1; k<kend+1; k++)
+        {
+            const TF exnh = exner(ph[k]);
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+
+                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+                }
+
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk  = i + j*jj+k*kk;
+
+                    qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
+                }
+        }
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk  = i + j*jj+kstart*kk;
+                qlh[ijk] = 0.;
+            }
+    }
+
+    template<typename TF>
     void calc_N2(
             TF* restrict N2,
             const TF* const restrict thl,
@@ -459,6 +504,7 @@ namespace
             const int kstart, const int kend,
             const int jj, const int kk)
     {
+        // Calculate the ql field
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -468,6 +514,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     N2[ijk] = grav<TF>/thvref[k]*TF(0.5)*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
                 }
+        }
     }
 
     template<typename TF, Satadjust_type sw_satadjust>
@@ -499,6 +546,8 @@ namespace
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                 }
+        }
+    }
 
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
@@ -786,7 +835,7 @@ namespace
 
                     const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                     vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
-
+                    rh[ijk_nogc] = std::min(qt[ijk] / ssa.qs, TF(1.));
                     T[ijk_nogc] = ssa.t;
                 }
         }
@@ -850,6 +899,8 @@ namespace
         // This routine strips off the ghost cells, because of the data handling in radiation.
         using Finite_difference::O2::interp2;
 
+        const int ktot = kend-kstart;
+
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
@@ -873,6 +924,7 @@ namespace
 
                 const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                 vmr_h2o[ijk_out] = qv / (ep<TF> - ep<TF>*qv);
+                rh[ijk_out]= std::min(qt[ijk] / ssa.qs, TF(1.));
                 T[ijk_out] = ssa.t;
             }
         }
@@ -956,6 +1008,7 @@ namespace
                 dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
             }
     }
+
 }
 
 
@@ -968,7 +1021,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
 {
     auto& gd = grid.get_grid_data();
 
-    swthermo = "moist";
+    swthermo = Thermo_type::Moist;
 
     // 4th order code is not implemented in thermo_moist
     if (grid.get_spatial_order() == Grid_order::Fourth)
@@ -998,6 +1051,7 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
         bs.swbasestate = Basestate_type::anelastic;
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
+
 
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
@@ -1082,10 +1136,11 @@ void Thermo_moist<TF>::save(const int iotime)
         char filename[256];
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
-
+        TF no_offset = 0.;
+        
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -1129,9 +1184,10 @@ void Thermo_moist<TF>::load(const int iotime)
         else
         {
             master.print_message("OK\n");
-
-            fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
-            fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+            if (fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
+                ++nerror;
+            if (fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot + 1)
+                ++nerror;
             fclose(pFile);
         }
     }
@@ -1253,13 +1309,16 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
+void Thermo_moist<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
+        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
-    create_basestate(inputin, input_nc);
-
-    // 7. Process the time dependent surface pressure
+    // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+
+    create_basestate(inputin, input_nc);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -1437,7 +1496,7 @@ bool Thermo_moist<TF>::has_mask(std::string mask_name)
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)
 {
-    if (name == "b" || name == "ql" || name == "T" || name == "qi")
+    if (name == "b" || name == "ql" || name == "T" || name == "qi" || name == "qlqi")
         return true;
     else
         return false;
@@ -1461,6 +1520,8 @@ void Thermo_moist<TF>::get_thermo_field(
     else
         base = bs;
 
+    // BvS: get_thermo_field() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
+    // Pass dummy as rhoref,bs.thvref to prevent overwriting base state
     if (bs.swupdatebasestate)
     {
         // BvS: get_thermo_field() is called from subgrid-model, before thermo(),
@@ -1625,7 +1686,7 @@ void Thermo_moist<TF>::get_thermo_field(
         else
             calc_satadjust_fld_wrapper.template operator()<Satadjust_type::Disabled, satadjust_field>();
     }
-    else if (name == "ql_qi")
+    else if (name == "qlqi")
     {
         const Satadjust_field satadjust_field = Satadjust_field::Liquid_ice;
 
@@ -2113,6 +2174,7 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
         // Vertical profiles
         column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+        column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
 
         column.add_time_series("ql_path", "Liquid water path", "kg m-2");
 
@@ -2137,16 +2199,18 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_qlqithv = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water.
-        const std::vector<std::string> allowed_crossvars_b = {"b", "bbot", "bfluxbot"};
-        const std::vector<std::string> allowed_crossvars_ql = {"ql", "qlpath", "qlbase", "qltop"};
-        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qipath"};
-        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqipath", "qlqibase", "qlqitop"};
-        const std::vector<std::string> allowed_crossvars_qsat = {"qsatpath"};
+        const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
+        const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top"};
+        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
+        const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
+        std::vector<std::string> qivars = cross.get_enabled_variables(allowed_crossvars_qi);
+        std::vector<std::string> qlqivars = cross.get_enabled_variables(allowed_crossvars_qlqi);
         std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
         std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
 
@@ -2262,8 +2326,8 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
         auto qlqi = fields.get_tmp();
         qlqi->loc = gd.sloc;
 
-        get_thermo_field(*qlqi, "ql_qi", true, true);
-        stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
+    get_thermo_field(*qlqi, "qlqi", true, true);
+    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
 
         fields.release_tmp(qlqi);
     }
@@ -2360,6 +2424,7 @@ template<typename TF>
 void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
+    TF no_offset = 0.;
 
     #ifndef USECUDA
     bs_stats = bs;
@@ -2376,13 +2441,13 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "b")
-            cross.cross_simple(output->fld.data(), "b", iotime, gd.sloc);
-        else if (it == "blngrad")
-            cross.cross_lngrad(output->fld.data(), "blngrad", iotime);
-        else if (it == "bbot")
-            cross.cross_plane(output->fld_bot.data(), "bbot", iotime);
-        else if (it == "bfluxbot")
-            cross.cross_plane(output->flux_bot.data(), "bfluxbot", iotime);
+            cross.cross_simple(output->fld.data(), no_offset, "b", iotime, gd.sloc);
+        else if (it == "b_lngrad")
+            cross.cross_lngrad(output->fld.data(), "b_lngrad", iotime);
+        else if (it == "b_bot")
+            cross.cross_plane(output->fld_bot.data(), no_offset, "b_bot", iotime);
+        else if (it == "b_fluxbot")
+            cross.cross_plane(output->flux_bot.data(), no_offset, "b_fluxbot", iotime);
     }
 
     if (swcross_ql)
@@ -2391,13 +2456,13 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "ql")
-            cross.cross_simple(output->fld.data(), "ql", iotime, gd.sloc);
-        if (it == "qlpath")
-            cross.cross_path(output->fld.data(), "qlpath", iotime);
-        if (it == "qlbase")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlbase", iotime);
-        if (it == "qltop")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qltop", iotime);
+            cross.cross_simple(output->fld.data(), no_offset, "ql", iotime, gd.sloc);
+        if (it == "ql_path")
+            cross.cross_path(output->fld.data(), "ql_path", iotime);
+        if (it == "ql_base")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "ql_base", iotime);
+        if (it == "ql_top")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "ql_top", iotime);
     }
 
     if (swcross_qi)
@@ -2406,22 +2471,24 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& it : crosslist)
     {
         if (it == "qi")
-            cross.cross_simple(output->fld.data(), "qi", iotime, gd.sloc);
+            cross.cross_simple(output->fld.data(), no_offset, "qi", iotime, gd.sloc);
         if (it == "qipath")
-            cross.cross_path(output->fld.data(), "qipath", iotime);
+            cross.cross_path(output->fld.data(), "qi_path", iotime);
     }
 
     if (swcross_qlqi)
-        get_thermo_field(*output, "ql_qi", false, true);
+        get_thermo_field(*output, "qlqi", false, true);
 
     for (auto& it : crosslist)
     {
-        if (it == "qlqipath")
-            cross.cross_path(output->fld.data(), "qlqipath", iotime);
-        if (it == "qlqibase")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqibase", iotime);
-        if (it == "qlqitop")
-            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqitop", iotime);
+        if (it == "qlqi")
+            cross.cross_simple(output->fld.data(), no_offset, "qlqi", iotime, gd.sloc);
+        if (it == "qlqi_path")
+            cross.cross_path(output->fld.data(), "qlqi_path", iotime);
+        if (it == "qlqi_base")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqi_base", iotime);
+        if (it == "qlqi_top")
+            cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqi_top", iotime);
     }
 
     if (swcross_qsat)
@@ -2429,8 +2496,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : crosslist)
     {
-        if (it == "qsatpath")
-            cross.cross_path(output->fld.data(), "qsatpath", iotime);
+        if (it == "qsat_path")
+            cross.cross_path(output->fld.data(), "qsat_path", iotime);
     }
 
     for (auto& it : crosslist)
@@ -2442,7 +2509,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
-            cross.cross_plane(output->fld_bot.data(), "w500hpa", iotime);
+            cross.cross_plane(output->fld_bot.data(), no_offset, "w500hpa", iotime);
         }
     }
 
@@ -2453,7 +2520,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         auto qlqi = fields.get_tmp();
         auto thv  = fields.get_tmp();
 
-        get_thermo_field(*qlqi, "ql_qi", false, true);
+        get_thermo_field(*qlqi, "qlqi", false, true);
         get_thermo_field(*thv,  "thv", false, true);
 
         field3d_operators.calc_mean_profile(thv->fld_mean.data(), thv->fld.data());
@@ -2470,7 +2537,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                cross.cross_plane(thv->fld_bot.data(), "qlqicore_max_thv_prime", iotime);
+                cross.cross_plane(thv->fld_bot.data(), no_offset, "qlqicore_max_thv_prime", iotime);
             }
         }
 
@@ -2504,5 +2571,9 @@ void Thermo_moist<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
     fields.release_tmp(output);
 }
 
-template class Thermo_moist<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_moist<float>;
+#else
+template class Thermo_moist<double>;
+#endif

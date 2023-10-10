@@ -564,8 +564,8 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
 
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc, false);
+    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc, false);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -659,8 +659,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, S
 
     // Get cloud liquid water specific humidity from thermodynamics
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql", false, false);
-    //thermo.get_thermo_field(*ql, "ql_qi", false, false);
+    thermo.get_thermo_field(*ql, "qlqi", false, false);
 
     auto T = fields.get_tmp();
     thermo.get_thermo_field(*T, "T", false, false);
@@ -1011,12 +1010,13 @@ void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    TF no_offset = 0.;
     if (cross.get_switch())
     {
         for (auto& it : crosslist)
         {
             if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+                cross.cross_plane(rr_bot.data(), no_offset, "rr_bot", iotime);
         }
     }
 }
@@ -1086,5 +1086,9 @@ void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
     field = rr_bot;
 }
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

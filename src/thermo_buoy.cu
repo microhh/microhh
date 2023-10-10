@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -358,7 +358,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
             calc_buoyancy_tend_b_2nd_g<<<gridGPU, blockGPU>>>(
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
-                grid.utrans, bs.n2, sinalpha, cosalpha,
+                gd.utrans, bs.n2, sinalpha, cosalpha,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -410,7 +410,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
             calc_buoyancy_tend_b_4th_g<<<gridGPU, blockGPU>>>(
                 fields.st.at("b")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("w")->fld_g,
-                grid.utrans, bs.n2, sinalpha, cosalpha,
+                gd.utrans, bs.n2, sinalpha, cosalpha,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells);
@@ -529,5 +529,9 @@ void Thermo_buoy<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 }
 #endif
 
-template class Thermo_buoy<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_buoy<float>;
+#else
+template class Thermo_buoy<double>;
+#endif

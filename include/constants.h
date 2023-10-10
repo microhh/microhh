@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,6 +30,7 @@ namespace Constants
 {
     template<typename TF> constexpr TF kappa = 0.4;           // von Karman constant
     template<typename TF> constexpr TF grav  = 9.81;          // Gravitational acceleration [m s-2]
+    template<typename TF> constexpr TF e_rot = 7.2921e-5;     // Earth rotation rate [s-1]
     template<typename TF> constexpr TF Rd    = 287.04;        // Gas constant for dry air [J K-1 kg-1]
     template<typename TF> constexpr TF Rv    = 461.5;         // Gas constant for water vapor [J K-1 kg-1]
     template<typename TF> constexpr TF cp    = 1005;          // Specific heat of air at constant pressure [J kg-1 K-1]
@@ -41,10 +42,10 @@ namespace Constants
     template<typename TF> constexpr TF ep    = Rd<TF>/Rv<TF>;
     template<typename TF> constexpr TF rho_w = 1.e3;          // Density of water [kg m-3]
     template<typename TF> constexpr TF rho_i = 7.e2;          // Density of ice   [kg m-3]
-
     template<typename TF> constexpr TF mu0_min = 1e-6;        // Minimum value used for cos(sza)
     template<typename TF> constexpr TF sigma_b = 5.67e-8;     // Boltzmann constant [W m-1 K-1]
     template<typename TF> constexpr TF xmair = 28.9647;       // Molar mass of dry air [kg kmol-1]
+    template<typename TF> constexpr TF xmh2o = 18.01528;      // Molar mass of h2o [kg kmol-1]    
     template<typename TF> constexpr TF pi = 3.14159265358979; // Pi
 
     // Soil / land-surface specific constants
@@ -57,6 +58,9 @@ namespace Constants
     // Limits on Obukhov length:
     template<typename TF> constexpr TF zL_max = 10.;
     template<typename TF> constexpr TF zL_min = -1.e4;
+
+    // NOTE: we need to keep `sgstke_min` around epsilon<float>, which is ~1e-7.
+    template<typename TF> constexpr TF sgstke_min = 1e-7;   // Minimum value SGS TKE [m2 s-2]
 
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)

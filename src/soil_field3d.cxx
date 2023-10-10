@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -73,5 +73,9 @@ int Soil_field3d<TF>::init()
     return 0;
 }
 
-template class Soil_field3d<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_field3d<float>;
+#else
+template class Soil_field3d<double>;
+#endif

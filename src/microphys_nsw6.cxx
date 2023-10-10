@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -917,9 +917,9 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
 
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc);
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc, false);
+    fields.init_prognostic_field("qs", "Snow specific humidity", "kg kg-1", group_name, gd.sloc, false);
+    fields.init_prognostic_field("qg", "Graupel specific humidity", "kg kg-1", group_name, gd.sloc, false);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -1099,18 +1099,19 @@ void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    TF no_offset = 0.;
     if (cross.get_switch())
     {
         for (auto& it : crosslist)
         {
             if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+                cross.cross_plane(rr_bot.data(), no_offset, "rr_bot", iotime);
 
             if (it == "rs_bot")
-                cross.cross_plane(rs_bot.data(), "rs_bot", iotime);
+                cross.cross_plane(rs_bot.data(), no_offset, "rs_bot", iotime);
 
             if (it == "rg_bot")
-                cross.cross_plane(rg_bot.data(), "rg_bot", iotime);
+                cross.cross_plane(rg_bot.data(), no_offset, "rg_bot", iotime);
         }
     }
 }
@@ -1202,5 +1203,9 @@ void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)
     std::transform(field.begin(), field.end(), rg_bot.begin(), field.begin(), std::plus<TF>());
 }
 
-template class Microphys_nsw6<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_nsw6<float>;
+#else
+template class Microphys_nsw6<double>;
+#endif

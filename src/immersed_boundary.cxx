@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -950,6 +950,7 @@ template<typename TF>
 void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
+    TF no_offset = 0.;
 
     if (cross.get_switch())
     {
@@ -975,7 +976,7 @@ void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
-                cross.cross_plane(tmp->flux_bot.data(), scalar+"fluxbot_ib", iotime);
+                cross.cross_plane(tmp->flux_bot.data(), no_offset, scalar+"_fluxbot_ib", iotime);
 
                 fields.release_tmp(tmp);
             }
@@ -984,5 +985,8 @@ void Immersed_boundary<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 }
 
 
-template class Immersed_boundary<double>;
+#ifdef FLOAT_SINGLE
 template class Immersed_boundary<float>;
+#else
+template class Immersed_boundary<double>;
+#endif

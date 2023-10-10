@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -1384,7 +1384,7 @@ void Budget_2<TF>::create(Stats<TF>& stats)
         }
     }
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh", group_name);
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" , group_name);
@@ -1441,7 +1441,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
                 ke->fld.data(), tke->fld.data(),
                 fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
                 umodel.data(), vmodel.data(), wmodel.data(),
-                grid.utrans, grid.vtrans,
+                gd.utrans, gd.vtrans,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -1691,7 +1691,7 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
             fields.release_tmp(vw_cor);
         }
 
-        if (thermo.get_switch() != "0")
+        if (thermo.get_switch() != Thermo_type::Disabled)
         {
             // Get the buoyancy diffusivity from the thermo class
             const TF diff_b = thermo.get_buoyancy_diffusivity();
@@ -1817,5 +1817,9 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
     }
 }
 
-template class Budget_2<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_2<float>;
+#else
+template class Budget_2<double>;
+#endif

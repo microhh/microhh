@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -615,10 +615,12 @@ void Fields<TF>::backward_field_device(TF* field, TF* field_g, int ncells)
 template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
+    auto& gd = grid.get_grid_data();
+
     const TF no_offset = 0.;
 
-    column.calc_column("u",mp.at("u")->fld_g, grid.utrans);
-    column.calc_column("v",mp.at("v")->fld_g, grid.vtrans);
+    column.calc_column("u",mp.at("u")->fld_g, gd.utrans);
+    column.calc_column("v",mp.at("v")->fld_g, gd.vtrans);
     column.calc_column("w",mp.at("w")->fld_g, no_offset);
 
     for (auto& it : sp)
@@ -630,5 +632,9 @@ void Fields<TF>::exec_column(Column<TF>& column)
 }
 #endif
 
-template class Fields<double>;
+
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif

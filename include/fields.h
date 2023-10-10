@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -98,7 +98,7 @@ class Fields
         void init_prognostic_field(
                 const std::string&, const std::string&,
                 const std::string&, const std::string&,
-                const std::array<int,3>&);
+                const std::array<int,3>&, const bool& required = true);
 
         void init_diagnostic_field(
                 const std::string&, const std::string&,
@@ -163,6 +163,8 @@ class Fields
         // TODO remove these to and bring them to diffusion model
         TF visc;
 
+        std::map<std::string, bool> required_read;
+
         /*
          *Device (GPU) functions and variables
          */
@@ -200,7 +202,6 @@ class Fields
         std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
 
         std::mutex tmp_fld_mutex;
-
         // cross sections
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
         std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.

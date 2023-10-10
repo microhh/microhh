@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -109,9 +109,9 @@ void Field3d_operators<TF>::calc_mean_profile_g(TF* const restrict prof, const T
     */
 
     // Optimized reduction method. This gives slightly different results compared to the CPU...
+    // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     auto tmp = fields.get_tmp_g();
 
-    // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
     reduce_interior<TF>(
         fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot,
         gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
@@ -181,6 +181,7 @@ TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
     cuda_safe_call(cudaMemcpy(&mean_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
 
     fields.release_tmp_g(tmp);
+
     return mean_value;
 }
 
@@ -210,5 +211,9 @@ TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)
 }
 #endif
 
-template class Field3d_operators<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_operators<float>;
+#else
+template class Field3d_operators<double>;
+#endif
