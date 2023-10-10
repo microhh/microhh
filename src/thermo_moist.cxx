@@ -449,51 +449,6 @@ namespace
     }
 
     template<typename TF>
-    void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
-                             TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                             const int istart, const int iend,
-                             const int jstart, const int jend,
-                             const int kstart, const int kend,
-                             const int jj, const int kk)
-    {
-        using Finite_difference::O2::interp2;
-
-        for (int k=kstart+1; k<kend+1; k++)
-        {
-            const TF exnh = exner(ph[k]);
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    const int ij  = i + j*jj;
-
-                    thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
-                    qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij  = i + j*jj;
-                    const int ijk  = i + j*jj+k*kk;
-
-                    qlh[ijk] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                }
-        }
-
-        for (int j=jstart; j<jend; j++)
-            #pragma ivdep
-            for (int i=istart; i<iend; i++)
-            {
-                const int ijk  = i + j*jj+kstart*kk;
-                qlh[ijk] = 0.;
-            }
-    }
-
-    template<typename TF>
     void calc_N2(
             TF* restrict N2,
             const TF* const restrict thl,
@@ -2159,9 +2114,6 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         fields.release_tmp(rh);
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
-
-        stats.add_time_series("thl_bot", "Surface liquid water potential temperature", "K", group_name);
-        stats.add_time_series("qt_bot", "Surface specific humidity", "kg kg-1", group_name);
 
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
     }
