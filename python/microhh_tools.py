@@ -152,7 +152,7 @@ class Read_namelist:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
                     if isinstance(value, list):
-                        value = ','.join(value)
+                        value = ','.join(str(n) for n in value)
                     elif isinstance(value, bool):
                         value = '1' if value else '0'
                     f.write('{}={}\n'.format(variable, value))
@@ -1059,5 +1059,5 @@ def copy_lsmfiles(srcdir = None, destdir = None, link = False):
         srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../misc/'
     if destdir is None:
         destdir = os.getcwd()
-    copy_or_link(srcdir+'van_genuchten_parameters.nc', destdir, link = link)
+    copy_or_link(srcdir + 'van_genuchten_parameters.nc', destdir + 'van_genuchten_parameters.nc', link = link)
     
