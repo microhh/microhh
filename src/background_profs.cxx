@@ -210,7 +210,10 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (!sw_update_background)
         return;
 
-    const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
+    bool do_radiation = !(timeloop.in_substep());
+    if (dt_rad > 0)
+        if (timeloop.get_itime() % idt_rad != 0)
+            do_radiation = false;
 
     if (do_radiation)
     {

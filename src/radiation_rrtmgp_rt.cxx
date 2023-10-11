@@ -627,7 +627,7 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Radiation_rrtmgp_rt<TF>::get_time_limit(unsigned long itime)
 {
-    if (dt_rad < 0)
+    if (dt_rad == 0)
         return 1e9;
 
     unsigned long idtlim = idt_rad - itime % idt_rad;

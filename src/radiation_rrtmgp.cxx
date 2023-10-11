@@ -802,8 +802,8 @@ void Radiation_rrtmgp<TF>::init(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Radiation_rrtmgp<TF>::get_time_limit(unsigned long itime)
 {
-    if (dt_rad < 0)
-        return 1e9;
+    if (dt_rad <= 0)
+        return Constants::ulhuge;
     unsigned long idtlim = idt_rad - itime % idt_rad;
     return idtlim;
 }
@@ -1548,9 +1548,10 @@ TF Radiation_rrtmgp<TF>::eclipse_factor(Timeloop<TF>& timeloop)
     const int day_of_year = int(timeloop.calc_day_of_year());
     const TF seconds_after_midnight = TF(timeloop.calc_hour_of_day()*3600);
     const TF frac_day_of_year = TF(day_of_year) + seconds_after_midnight / TF(86400);
+
     if (frac_day_of_year < eclipse_start || frac_day_of_year > eclipse_end)
         return 1.0;
-    TF eclipse_factor = 0.5 * eclipse_magnitude * std::cos(2 * M_PI / (eclipse_end - eclipse_start) * (frac_day_of_year - eclipse_start)) + 0.5 * (1 - eclipse_magnitude);
+    TF eclipse_factor = 0.5 * eclipse_magnitude * std::cos(2 * M_PI / (eclipse_end - eclipse_start) * (frac_day_of_year - eclipse_start)) + 1 - 0.5 * eclipse_magnitude;
 
     if (eclipse_factor < 0.0)
         return 0.0;
