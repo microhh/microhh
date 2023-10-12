@@ -59,8 +59,6 @@ namespace Sb_cold
     template<typename TF> constexpr TF N_avo = 6.02214179e23;          // Avogadro constant [1/mo]
     template<typename TF> constexpr TF k_b = 1.3806504e-23;            // Boltzmann constant [J/K]
 
-
-
     // Various parameters for collision and conversion rates
     template<typename TF> constexpr TF ecoll_min = 0.01;               // min. eff. for graupel_cloud, ice_cloud and snow_cloud
     template<typename TF> constexpr TF ecoll_gg = 0.10;                // collision efficiency for graupel selfcollection
@@ -460,7 +458,7 @@ namespace Sb_cold
     void autoconversionSB(
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qv_to_ql,
+            TF* const restrict qct,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qc,
@@ -501,7 +499,7 @@ namespace Sb_cold
 
                     nrt[ij] += au * x_s_i;
                     qrt[ij] += au;
-                    qv_to_ql[ij] += au;
+                    qct[ij] -= au;
 
                     //au  = MAX(MIN(q_c,au),0.0_wp)
                     //sc  = cloud_coeffs%k_sc * q_c**2 * dt * cloud%rho_v(i,k)
@@ -517,7 +515,7 @@ namespace Sb_cold
     template<typename TF>
     void accretionSB(
             TF* const restrict qrt,
-            TF* const restrict qv_to_ql,
+            TF* const restrict qct,
             const TF* const restrict qr,
             const TF* const restrict qc,
             const int istart, const int iend,
@@ -541,14 +539,13 @@ namespace Sb_cold
 
                 if (qc[ij] > TF(0) && qr[ij] > TF(0))
                 {
-
                     // ..accretion rate of SB2001
                     const TF tau = std::min(std::max(TF(1) - qc[ij] / (qc[ij] + qr[ij] + eps), eps), TF(1));
                     const TF phi = fm::pow4(tau/(tau+k_1));
                     const TF ac  = k_r *  qc[ij] * qr[ij] * phi;  // NOTE: `*dt` in ICON..
 
                     qrt[ij] += ac;
-                    qv_to_ql[ij] += ac;
+                    qct[ij] -= ac;
 
                     //ac = MIN(q_c,ac)
                     //x_c = particle_meanmass(cloud, q_c,n_c)
@@ -609,7 +606,7 @@ namespace Sb_cold
     void rain_evaporation(
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qv_to_ql,
+            TF* const restrict qvt,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qv,
@@ -723,7 +720,7 @@ namespace Sb_cold
 
                     qrt[ij] -= eva_q;
                     nrt[ij] -= gamma_eva * eva_q / x_r;
-                    qv_to_ql[ij] -= eva_q;
+                    qvt[ij] += eva_q;
 
                     //const TF eva_q = MAX(-eva_q,0.0_wp)
                     //const TF eva_n = MAX(-eva_n,0.0_wp)

@@ -340,7 +340,6 @@ class Microphys_sb06 : public Microphys<TF>
         void init_2mom_scheme();
         void init_2mom_scheme_once();
 
-        bool sw_warm;           // Switch between warm (true, old `2mom_warm`) and full (false) SB06 scheme
         bool sw_prognostic_ice; // Switch between prognostic (calculated by SB06) or diagnostic (satadjust) ice.
         bool sw_microbudget;    // Output full microphysics budget terms
         bool sw_debug;          // Print debug info.

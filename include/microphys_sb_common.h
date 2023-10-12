@@ -227,9 +227,10 @@ namespace Sb_common
     void calc_thermo_tendencies_cloud_ice(
             TF* const restrict thlt,
             TF* const restrict qtt,
-            const TF* const restrict qv_to_ql,
-            const TF* const restrict qv_to_qf,
-            const TF* const restrict ql_to_qf,
+            const TF* const restrict qrt,
+            const TF* const restrict qit,
+            const TF* const restrict qvt,
+            const TF* const restrict qct,
             const TF* const restrict rho,
             const TF* const restrict exner,
             const int istart, const int iend,
@@ -238,6 +239,8 @@ namespace Sb_common
             const int k)
     {
         const TF rho_i = TF(1) / rho[k];
+        const TF Ls_cp_rho_i = Ls<TF>/(cp<TF>*exner[k]) * rho_i;
+        const TF Lf_cp_rho_i = Lf<TF>/(cp<TF>*exner[k]) * rho_i;
 
         for (int j = jstart; j < jend; j++)
                 #pragma ivdep
@@ -246,15 +249,24 @@ namespace Sb_common
                     const int ij  = i + j * jstride;
                     const int ijk = i + j * jstride + k*kstride;
 
-                    if (sw_prognostic_ice)
-                        qtt[ijk] -= rho_i * qv_to_ql[ij];
-                    else
-                        qtt[ijk] -= rho_i * (qv_to_ql[ij] + qv_to_qf[ij]);
+                    // ICON/UCLA method:
+                    TF qtt_mcr = qvt[ij] + qct[ij];
+                    if (!sw_prognostic_ice)
+                        qtt_mcr += qit[ij];
 
-                    thlt[ijk] +=
-                            ((rho_i * Lv<TF> / (cp<TF> * exner[k]) * qv_to_ql[ij]) +
-                             (rho_i * Lf<TF> / (cp<TF> * exner[k]) * ql_to_qf[ij]) +
-                             (rho_i * Ls<TF> / (cp<TF> * exner[k]) * qv_to_qf[ij]));
+                    qtt[ijk] += rho_i * qtt_mcr;
+                    thlt[ijk] += - Ls_cp_rho_i * qtt_mcr - Lf_cp_rho_i * qrt[ij];
+
+                    // Old manual method (which was likely incorrect).
+                    //if (sw_prognostic_ice)
+                    //    qtt[ijk] -= rho_i * qv_to_ql[ij];
+                    //else
+                    //    qtt[ijk] -= rho_i * (qv_to_ql[ij] + qv_to_qf[ij]);
+
+                    //thlt[ijk] +=
+                    //        ((rho_i * Lv<TF> / (cp<TF> * exner[k]) * qv_to_ql[ij]) +
+                    //         (rho_i * Lf<TF> / (cp<TF> * exner[k]) * ql_to_qf[ij]) +
+                    //         (rho_i * Ls<TF> / (cp<TF> * exner[k]) * qv_to_qf[ij]));
                 }
     }
 
