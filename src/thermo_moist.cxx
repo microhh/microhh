@@ -126,7 +126,7 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
+                    wt[ijk] += buoyancy<TF, sw_satadjust>(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
@@ -181,7 +181,7 @@ namespace
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
+                    b[ijk] = buoyancy<TF, sw_satadjust>(ex, thl[ijk], qt[ijk], ql[ijk], qi[ijk], thvref[k]);
                 }
         }
     }
@@ -253,7 +253,7 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
 
-                    bh[ijk] = buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
+                    bh[ijk] = buoyancy<TF, sw_satadjust>(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
@@ -598,7 +598,7 @@ namespace
                     Struct_sat_adjust<TF> ssa =
                             sat_adjust<TF, sw_satadjust>(thl[ijk], qt[ijk], p[k], ex);
 
-                    thv[ijk] = virtual_temperature(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
+                    thv[ijk] = virtual_temperature<TF, sw_satadjust>(ex, thl[ijk], qt[ijk], ssa.ql, ssa.qi);
                 }
         }
     }

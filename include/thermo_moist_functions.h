@@ -44,23 +44,35 @@ namespace Thermo_moist_functions
     using Fast_math::pow2;
 
     // INLINE FUNCTIONS
-    template<typename TF>
+    template<typename TF, Satadjust_type sw_satadjust>
     CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi)
     {
-        const TF th = thl + Lv<TF>*ql/(cp<TF>*exn) + Ls<TF>*qi/(cp<TF>*exn);
-        return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi));
-    }
-
-    template<typename TF>
-    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF thvref)
-    {
-        return grav<TF> * (virtual_temperature(exn, thl, qt, ql, qi) - thvref) / thvref;
+        if (sw_satadjust == Satadjust_type::Disabled)
+        {
+            return thl * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt);
+        }
+        else if (sw_satadjust == Satadjust_type::Liquid)
+        {
+            const TF th = thl + Lv<TF>*ql/(cp<TF>*exn);
+            return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql));
+        }
+        else if (sw_satadjust == Satadjust_type::Liquid_ice)
+        {
+            const TF th = thl + Lv<TF>*ql/(cp<TF>*exn) + Ls<TF>*qi/(cp<TF>*exn);
+            return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi));
+        }
     }
 
     template<typename TF>
     CUDA_MACRO inline TF virtual_temperature_no_ql(const TF thl, const TF qt)
     {
         return thl * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt);
+    }
+
+    template<typename TF, Satadjust_type sw_satadjust>
+    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF thvref)
+    {
+        return grav<TF> * (virtual_temperature<TF, sw_satadjust>(exn, thl, qt, ql, qi) - thvref) / thvref;
     }
 
     template<typename TF>
@@ -318,7 +330,7 @@ namespace Thermo_moist_functions
         Struct_sat_adjust<TF> ssa =
             sat_adjust<TF, sw_satadjust>(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
 
-        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ssa.ql, ssa.qi);
+        thvh[kstart] = virtual_temperature<TF, sw_satadjust>(exh[kstart], thlsurf, qtsurf, ssa.ql, ssa.qi);
         rhoh[kstart] = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
@@ -329,7 +341,7 @@ namespace Thermo_moist_functions
             // 1. Calculate remaining values (thv and rho) at full-level[k-1]
             ex[k-1]  = exner(pref[k-1]);
             ssa = sat_adjust<TF, sw_satadjust>(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
-            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ssa.ql, ssa.qi);
+            thv[k-1] = virtual_temperature<TF, sw_satadjust>(ex[k-1], thlmean[k-1], qtmean[k-1], ssa.ql, ssa.qi);
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
@@ -342,7 +354,7 @@ namespace Thermo_moist_functions
 
             ssa = sat_adjust<TF, sw_satadjust>(thli, qti, prefh[k], exh[k]);
 
-            thvh[k] = virtual_temperature(exh[k], thli, qti, ssa.ql, ssa.qi);
+            thvh[k] = virtual_temperature<TF, sw_satadjust>(exh[k], thli, qti, ssa.ql, ssa.qi);
             rhoh[k] = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
@@ -377,7 +389,7 @@ namespace Thermo_moist_functions
         // Calculate the values at the surface (half level == kstart)
         prefh[kstart] = pbot;
         exh[kstart]   = exner(prefh[kstart]);
-        thvh[kstart]  = virtual_temperature_no_ql(thlsurf, qtsurf);
+        thvh[kstart]  = virtual_temperature<TF, Satadjust_type::Disabled>(thlsurf, qtsurf);
         rhoh[kstart]  = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
@@ -387,7 +399,7 @@ namespace Thermo_moist_functions
         {
             // 1. Calculate remaining values (thv and rho) at full-level[k-1]
             ex[k-1]  = exner(pref[k-1]);
-            thv[k-1] = virtual_temperature_no_ql(thlmean[k-1], qtmean[k-1]);
+            thv[k-1] = virtual_temperature<TF, Satadjust_type::Disabled>(thlmean[k-1], qtmean[k-1]);
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
@@ -398,7 +410,7 @@ namespace Thermo_moist_functions
             const TF thli = TF(0.5)*(thlmean[k-1] + thlmean[k]);
             const TF qti  = TF(0.5)*(qtmean [k-1] + qtmean [k]);
 
-            thvh[k]  = virtual_temperature_no_ql(thli, qti);
+            thvh[k]  = virtual_temperature<TF, Satadjust_type::Disabled>(thli, qti);
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
