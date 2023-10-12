@@ -19,6 +19,32 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+"""
+Convert MicroHH input and output to a netCDF input file for the standalone version of the ray tracer (see /rte-rrtmgp-cpp/src_test)
+
+How to use:
+run 'python microhh_to_raytracing_input.nc --name <simulation name> --time <time step to convert> --path <path to simulation files (defaults to "./")>'
+
+Required input:
+- <name>.ini
+- <name>_input.nc
+- <name>.default.0000000.nc
+- T.<time> (binary 3D field of absolute temperature)
+- qt.<time> (binary 3D field of specific humidity)
+
+Optional input:
+- ql.<time> (binary 3D field of liquid water specific humidity, if omitted, no liquid clouds are assumed to be present)
+- qi.<time> (binary 3D field of ice specific humidity, if omitted, no ice clouds are assumed to be present)
+
+To output these required 3D fields, add the following to <name>.ini
+[dump]
+swdump = 1
+sampletime= <desired output time step>
+dumplist = T,qt,ql,qi
+
+"""
+
 import microhh_tools as mht  # available in microhh/python directory
 import numpy as np
 import netCDF4 as nc
@@ -87,16 +113,17 @@ def read_if_exists(var, t, dims):
         return np.zeros(dims)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--time", type=int)
-parser.add_argument("--path", type=str, default="./")
-parser.add_argument("--name", type=str, default="")
+parser.add_argument("-n","--name", type=str, help="simulating name, that is, name of the .ini file")
+parser.add_argument("-t","--time", type=int, help="simulation time step to convert")
+parser.add_argument("-p","--path", type=str, help="Path to simulation files, defaults to current directory",default="./")
 args = parser.parse_args()
 
+# some constants
 ep = 0.622
 TF = np.float32
 g = 9.81
 
-#ngrid:
+# size of null-collision grid:
 ng_x = 48
 ng_y = 48
 ng_z = 32
@@ -110,6 +137,11 @@ path = args.path
 # read namelist
 nl = mht.Read_namelist(path+"{}.ini".format(name))
 
+# precision of timestep in microhh output
+iotimeprec = nl['time']['iotimeprec'] if 'iotimeprec' in nl['time'] else 0
+iotime = int(round(time / 10**iotimeprec))
+
+# convert simulation to local time
 lon = nl['radiation']['lon']
 lat = nl['radiation']['lat']
 dt_utc = nl['time']['datetime_utc']
@@ -117,8 +149,10 @@ year = int(dt_utc[:4])
 day_of_year = int((np.datetime64(dt_utc[:10]) - np.datetime64("{}-01-01".format(year))) / np.timedelta64(1, 'D')) + 1
 seconds_since_midnight = int(dt_utc[11:13])*3600 + int(dt_utc[14:16])*60 + int(dt_utc[17:19]) + time
 
+# compute solar angles
 mu0, azi = solar_angles(lon, lat, day_of_year, year, seconds_since_midnight)
-print(mu0)
+
+# scale top-of-atmosphere irradiance based on distance to sun at time of year
 tsi_scaling = calc_sun_distance_factor(day_of_year, seconds_since_midnight)
 
 # read stats
@@ -146,21 +180,18 @@ zlay = grid.dim['z']
 zlev = grid.dim['zh']
 
 # read temperature, humidity
-qt = np.fromfile(path+"qt.{:07d}".format(time),TF).reshape(dims)
-tlay = np.fromfile(path+"T.{:07d}".format(time),TF).reshape(dims)
+qt = np.fromfile(path+"qt.{:07d}".format(iotime),TF).reshape(dims)
+tlay = np.fromfile(path+"T.{:07d}".format(iotime),TF).reshape(dims)
 
 # convert qt from kg/kg to vmr
 h2o = qt / (ep - ep*qt)
 
 # cloud properties and effective radius
-ql = read_if_exists(path+"ql", time, dims)
+ql = read_if_exists(path+"ql", iotime, dims)
 lwp = ql * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
 
-qi = read_if_exists(path+"qi", time, dims)
+qi = read_if_exists(path+"qi", iotime, dims)
 iwp = qi * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
-
-qr = read_if_exists(path+"qr", time, dims)
-rwp = qr * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
 
 ftpnr_w = (4./3) * np.pi * 100e6 * 1e3
 ftpnr_i = (4./3) * np.pi * 1e5 * 7e2
@@ -177,9 +208,6 @@ iwp *= 1e3 # g/m2
 nz = ktot
 grid_z = grid.dim['z']
 grid_zh = grid.dim['zh']
-
-rel = np.where(np.logical_and(rwp>1e-5,lwp+iwp==0),100,rel)
-lwp = np.where(np.logical_and(rwp>1e-5,lwp+iwp==0),rwp,lwp)
 
 # ozone profile
 o3 = nc_inp['init']['o3']
