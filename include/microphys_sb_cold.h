@@ -277,16 +277,11 @@ namespace Sb_cold
         return qh * TF(6) / (Constants::pi<TF> * rhob_hail * std::exp(std::log(Dmean)*TF(3)) );
     }
 
+
     template<typename TF>
-    void set_default_n(
-            TF* const restrict qi,
-            TF* const restrict ni,
+    void set_default_n_warm(
             TF* const restrict qr,
             TF* const restrict nr,
-            TF* const restrict qs,
-            TF* const restrict ns,
-            TF* const restrict qg,
-            TF* const restrict ng,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -314,11 +309,36 @@ namespace Sb_cold
                 {
                     const int ijk = i + j*jstride + k*kstride;
 
-                    if (qi[ijk] > TF(0) && ni[ijk] < eps)
-                        ni[ijk] = set_qni(qi[ijk]);
-
                     if (qr[ijk] > TF(0) && nr[ijk] < eps)
                         nr[ijk] = set_qnr(qr[ijk]);
+                }
+    }
+
+    template<typename TF>
+    void set_default_n_cold(
+            TF* const restrict qi,
+            TF* const restrict ni,
+            TF* const restrict qs,
+            TF* const restrict ns,
+            TF* const restrict qg,
+            TF* const restrict ng,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        // Set to a default number concentration in places with qnx = 0 and qx !=0
+
+        const TF eps = TF(1e-3);
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    if (qi[ijk] > TF(0) && ni[ijk] < eps)
+                        ni[ijk] = set_qni(qi[ijk]);
 
                     if (qs[ijk] > TF(0) && ns[ijk] < eps)
                         ns[ijk] = set_qns(qs[ijk]);
@@ -326,7 +346,8 @@ namespace Sb_cold
                     if (qg[ijk] > TF(0) && ng[ijk] < eps)
                         ng[ijk] = set_qng(qg[ijk]);
 
-                    // BvS: What about qh/nh? There is a `set_qng()` functions..
+                    // BvS: What about qh/nh? There is a `set_qnh()` function,
+                    //      but is never called in ICON.
                 }
     }
 

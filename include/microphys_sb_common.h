@@ -223,7 +223,7 @@ namespace Sb_common
     }
 
 
-    template<typename TF, bool sw_prognostic_ice>
+    template<typename TF, bool sw_prognostic_ice, bool sw_ice>
     void calc_thermo_tendencies_cloud_ice(
             TF* const restrict thlt,
             TF* const restrict qtt,
@@ -251,7 +251,7 @@ namespace Sb_common
 
                     // ICON/UCLA method:
                     TF qtt_mcr = qvt[ij] + qct[ij];
-                    if (!sw_prognostic_ice)
+                    if (sw_ice && !sw_prognostic_ice)
                         qtt_mcr += qit[ij];
 
                     qtt[ijk] += rho_i * qtt_mcr;

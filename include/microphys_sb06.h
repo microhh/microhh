@@ -340,6 +340,7 @@ class Microphys_sb06 : public Microphys<TF>
         void init_2mom_scheme();
         void init_2mom_scheme_once();
 
+        bool sw_ice;            // Switch to enable the ice/snow/graupel/hail part of SB06.
         bool sw_prognostic_ice; // Switch between prognostic (calculated by SB06) or diagnostic (satadjust) ice.
         bool sw_microbudget;    // Output full microphysics budget terms
         bool sw_debug;          // Print debug info.
@@ -368,7 +369,7 @@ class Microphys_sb06 : public Microphys<TF>
 
         // Variables for microphysics.
         TF Nc0;  // Number concentration of cloud water (cm-3)
-        TF Ni0;  // Number concentration of cloud ice (cm-3)
+        TF Ni0;  // Number concentration of cloud ice (only when qi is not prognostic) (cm-3)
 
         //#ifdef USECUDA
         //TF* rr_bot_g;

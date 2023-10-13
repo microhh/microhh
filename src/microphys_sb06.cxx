@@ -65,10 +65,17 @@ Microphys_sb06<TF>::Microphys_sb06(
     sw_debug = inputin.get_item<bool>("micro", "swdebug", "", false);
     sw_integrate = inputin.get_item<bool>("micro", "swintegrate", "", false);
     sw_prognostic_ice = inputin.get_item<bool>("micro", "swprognosticice", "", true);
+    sw_ice = inputin.get_item<bool>("micro", "swice", "", true);
 
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
     if (!sw_prognostic_ice)
         Ni0 = inputin.get_item<TF>("micro", "Ni0", "");
+
+    // Checks.
+    if (sw_prognostic_ice && !sw_ice)
+        throw std::runtime_error("swprognosticice=true with swice=false is an invalid combination.");
+    if (!sw_ice)
+        sw_prognostic_ice = false;
 
     auto add_type = [&](
             const std::string& symbol,
@@ -88,20 +95,23 @@ Microphys_sb06<TF>::Microphys_sb06(
     add_type("qr", "rain", "rain specific humidity", "kg kg-1", is_mass);
     add_type("nr", "rain", "number density rain", "kg-1", !is_mass);
 
-    // NOTE: we always add ice as a prognostic field. In case of diagnosed ice
-    //       (`swprognosticice=false`), the prognostic field is overwritten
-    //       with the diagnosed `qi` at the start of `exec()`.
-    add_type("qi", "ice", "ice specific humidity", "kg kg-1", is_mass);
-    add_type("ni", "ice", "number density ice", "kg-1", !is_mass);
+    if (sw_ice)
+    {
+        // NOTE: we always add ice as a prognostic field. In case of diagnosed ice
+        //       (`swprognosticice=false`), the prognostic field is overwritten
+        //       with the diagnosed `qi` at the start of `exec()`.
+        add_type("qi", "ice", "ice specific humidity", "kg kg-1", is_mass);
+        add_type("ni", "ice", "number density ice", "kg-1", !is_mass);
 
-    add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
-    add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
+        add_type("qs", "snow", "snow specific humidity", "kg kg-1", is_mass);
+        add_type("ns", "snow", "number density snow", "kg-1", !is_mass);
 
-    add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
-    add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
+        add_type("qg", "graupel", "graupel specific humidity", "kg kg-1", is_mass);
+        add_type("ng", "graupel", "number density graupel", "kg-1", !is_mass);
 
-    add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
-    add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
+        add_type("qh", "hail", "hail specific humidity", "kg kg-1", is_mass);
+        add_type("nh", "hail", "number density hail", "kg-1", !is_mass);
+    }
 
     if (sw_prognostic_ice)
     {
@@ -939,7 +949,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     timer.start("exec_total");
 
-    // Get thermodynamic variables
+    // Get (saturation adjusted) ql (=qc), and absolute temperature.
     bool cyclic = false;
     bool is_stat = false;
 
@@ -949,7 +959,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
     thermo.get_thermo_field(*T, "T", cyclic, is_stat);
 
-    if (!sw_prognostic_ice)
+    if (sw_ice && !sw_prognostic_ice)
     {
         // Overwrite prognostic ice field with sat_adjust values from thermodynamics.
         thermo.get_thermo_field(*fields.ap.at("qi"), "qi", cyclic, is_stat);
@@ -979,8 +989,12 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     // Setup 2D slices for implicit solver
     const int n_slices = hydro_types.size() * 9;
     if (n_slices > gd.kcells)
-        throw std::runtime_error("TODO.... :-)");
+    {
+        std::string error = "SB06 requires ktot >= " + std::to_string(n_slices - 2*gd.kgc);
+        throw std::runtime_error(error);
+    }
 
+    // Get `hydro_type` slices from `tmp` field, to save some memory...
     auto tmp_slices = fields.get_tmp();
     std::fill(tmp_slices->fld.begin(), tmp_slices->fld.end(), TF(0));
     int n = 0;
@@ -1075,6 +1089,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     const bool to_kgm3 = true;
     convert_units_short(ql->fld.data(), to_kgm3);
     convert_units_short(fields.ap.at("qt")->fld.data(), to_kgm3);
+
     if (sw_prognostic_ice)
         convert_units_short(fields.ap.at("ina")->fld.data(), to_kgm3);
 
@@ -1083,19 +1098,26 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     // Set to default values where qnx=0 and qx0>0
     timer.start("set_default_n");
-    Sb_cold::set_default_n(
-            fields.ap.at("qi")->fld.data(),
-            fields.ap.at("ni")->fld.data(),
+    Sb_cold::set_default_n_warm(
             fields.ap.at("qr")->fld.data(),
             fields.ap.at("nr")->fld.data(),
-            fields.ap.at("qs")->fld.data(),
-            fields.ap.at("ns")->fld.data(),
-            fields.ap.at("qg")->fld.data(),
-            fields.ap.at("ng")->fld.data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
+    if (sw_ice)
+        Sb_cold::set_default_n_cold(
+                fields.ap.at("qi")->fld.data(),
+                fields.ap.at("ni")->fld.data(),
+                fields.ap.at("qs")->fld.data(),
+                fields.ap.at("ns")->fld.data(),
+                fields.ap.at("qg")->fld.data(),
+                fields.ap.at("ng")->fld.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
     timer.stop("set_default_n");
 
     // NOTE BvS: in ICON, the size limits are set at the end of the chain of micro routines.
@@ -1125,10 +1147,13 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     timer.start("limit_sizes");
     limit_sizes_wrapper(fields.ap.at("nr")->fld.data(), fields.ap.at("qr")->fld.data(), rain);
-    limit_sizes_wrapper(fields.ap.at("ni")->fld.data(), fields.ap.at("qi")->fld.data(), ice);
-    limit_sizes_wrapper(fields.ap.at("ns")->fld.data(), fields.ap.at("qs")->fld.data(), snow);
-    limit_sizes_wrapper(fields.ap.at("ng")->fld.data(), fields.ap.at("qg")->fld.data(), graupel);
-    limit_sizes_wrapper(fields.ap.at("nh")->fld.data(), fields.ap.at("qh")->fld.data(), hail);
+    if (sw_ice)
+    {
+        limit_sizes_wrapper(fields.ap.at("ni")->fld.data(), fields.ap.at("qi")->fld.data(), ice);
+        limit_sizes_wrapper(fields.ap.at("ns")->fld.data(), fields.ap.at("qs")->fld.data(), snow);
+        limit_sizes_wrapper(fields.ap.at("ng")->fld.data(), fields.ap.at("qg")->fld.data(), graupel);
+        limit_sizes_wrapper(fields.ap.at("nh")->fld.data(), fields.ap.at("qh")->fld.data(), hail);
+    }
     timer.stop("limit_sizes");
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
@@ -1138,18 +1163,24 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         // Without "       "    qv = qt - ql - qi.
         auto diagnose_qv_wrapper = [&]<bool prognostic_ice>()
         {
+            TF* qi_fld;
+            if (sw_ice)
+                qi_fld = fields.ap.at("qi")->fld.data();
+            else
+                qi_fld = nullptr;
+
             Sb_cold::diagnose_qv<TF, prognostic_ice>(
                     (*qv).data(),
                     fields.ap.at("qt")->fld.data(),
                     ql->fld.data(),
-                    fields.ap.at("qi")->fld.data(),
+                    qi_fld,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells,
                     k);
         };
 
-        if (sw_prognostic_ice)
+        if (sw_prognostic_ice || !sw_ice)
             diagnose_qv_wrapper.template operator()<true>();
         else
             diagnose_qv_wrapper.template operator()<false>();
@@ -1284,8 +1315,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
         check("start", k);
 
-        zero_tmp_xy(dep_rate_ice);
-        zero_tmp_xy(dep_rate_snow);
+        //zero_tmp_xy(dep_rate_ice);
+        //zero_tmp_xy(dep_rate_snow);
 
                 //IF (isdebug) CALL message(TRIM(routine),'cloud_nucleation')
 
@@ -2091,13 +2122,19 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
         // Calculate thermodynamic tendencies `thl` and `qt`,
         // from microphysics tendencies excluding sedimentation.
-        auto thermo_tendency_wrapper = [&]<bool prognostic_ice>()
+        auto thermo_tendency_wrapper = [&]<bool sw_prognostic_ice, bool sw_ice>()
         {
-            Sb_common::calc_thermo_tendencies_cloud_ice<TF, prognostic_ice>(
+            TF* qi_tend;
+            if (sw_ice)
+                qi_tend = hydro_types.at("qi").conversion_tend;
+            else
+                qi_tend = nullptr;
+
+            Sb_common::calc_thermo_tendencies_cloud_ice<TF, sw_prognostic_ice, sw_ice>(
                     fields.st.at("thl")->fld.data(),
                     fields.st.at("qt")->fld.data(),
                     hydro_types.at("qr").conversion_tend,
-                    hydro_types.at("qi").conversion_tend,
+                    qi_tend,
                     (*qv_conversion_tend).data(),
                     (*qc_conversion_tend).data(),
                     rho.data(),
@@ -2108,10 +2145,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     k);
         };
 
-        if (sw_prognostic_ice)
-            thermo_tendency_wrapper.template operator()<true>();
+        if (sw_ice && sw_prognostic_ice)
+            thermo_tendency_wrapper.template operator()<true, true>();
         else
-            thermo_tendency_wrapper.template operator()<false>();
+            thermo_tendency_wrapper.template operator()<false, false>();
     }
 
     for (auto& it : hydro_types)
