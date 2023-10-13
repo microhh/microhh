@@ -36,16 +36,17 @@ swbasestate=anelastic
 swupdatebasestate=1
 swtimedep_pbot=1
 swsatadjust_ql=1
-swsatadjust_qi=1
+swsatadjust_qi=0
 pbot=1e5
 
 [micro]
 swmicro=sb06
+swice=1
 swprognosticice=0
 swintegrate=0
-swdebug=0
-Nc0=200000000
-Ni0=200000000
+swdebug=1
+Nc0=200e6
+Ni0=50e4
 
 [radiation]
 swradiation=None
@@ -106,7 +107,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=1
+swwls=local
 swtimedep_wls=1
 
 [fields]
@@ -155,3 +156,6 @@ coordinates[y]=1600
 
 [limiter]
 limitlist=None
+
+[timer]
+swtimer=1

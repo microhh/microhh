@@ -2082,22 +2082,22 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         stats.add_profs(*ql, "z", {"mean", "frac", "path", "cover"}, group_name);
         fields.release_tmp(ql);
 
-        if (sw_satadjust == Satadjust_type::Liquid_ice)
-        {
-            auto qi = fields.get_tmp();
-            qi->name = "qi";
-            qi->longname = "Ice";
-            qi->unit = "kg kg-1";
-            stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
-            fields.release_tmp(qi);
+        //if (sw_satadjust == Satadjust_type::Liquid_ice)
+        //{
+        //    auto qi = fields.get_tmp();
+        //    qi->name = "qi";
+        //    qi->longname = "Ice";
+        //    qi->unit = "kg kg-1";
+        //    stats.add_profs(*qi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        //    fields.release_tmp(qi);
 
-            auto qlqi = fields.get_tmp();
-            qlqi->name = "qlqi";
-            qlqi->longname = "Liquid water and ice";
-            qlqi->unit = "kg kg-1";
-            stats.add_profs(*qlqi, "z", {"mean", "frac", "path", "cover"}, group_name);
-            fields.release_tmp(qlqi);
-        }
+        //    auto qlqi = fields.get_tmp();
+        //    qlqi->name = "qlqi";
+        //    qlqi->longname = "Liquid water and ice";
+        //    qlqi->unit = "kg kg-1";
+        //    stats.add_profs(*qlqi, "z", {"mean", "frac", "path", "cover"}, group_name);
+        //    fields.release_tmp(qlqi);
+        //}
 
         auto qsat = fields.get_tmp();
         qsat->name = "qsat";

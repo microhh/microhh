@@ -78,7 +78,8 @@ if __name__ == '__main__':
     use_rrtmgp = False           # False = prescribed radiation from ERA5.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
-    single_column = True
+    single_column = True         # Run 1x1 grid, strongly nudged to ERA5 profile.
+    use_prognostic_ice = False   # Switch between diagnostic (satadjust) and prognostic (SB06) ice.
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
@@ -162,6 +163,9 @@ if __name__ == '__main__':
         ini['radiation']['swtimedep_prescribed'] = True
     else:
         ini['radiation']['swradiation'] = '0'
+
+    ini['thermo']['swsatadjust_qi'] = not use_prognostic_ice
+    ini['micro']['swprognosticice'] = use_prognostic_ice
 
     ini['time']['endtime'] = (end-start).total_seconds()
     datetime_utc = '{0:04d}-{1:02d}-{2:02d} {3:02d}:{4:02d}:{5:02d}'.format(

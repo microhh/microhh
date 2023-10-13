@@ -38,10 +38,10 @@ if __name__ == '__main__':
     sp = 1
 
     pl.subplot(nrows, ncols, sp); sp+=1
-    pl.plot(ds.time, ds.rr*3600)
+    pl.plot(ds.time, ds.rain_rate*3600)
     pl.ylabel(r'rain rate (mm h$^{-1}$)')
 
-    step = 3*36
+    step = 6*3600//300
     ysize = 7000
     nt = ds.time.size//step+1
     cc = pl.cm.turbo(np.linspace(0, 1, nt))
