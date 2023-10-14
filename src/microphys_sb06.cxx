@@ -1029,7 +1029,6 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     auto dep_rate_ice  = fields.get_tmp_xy();
     auto dep_rate_snow = fields.get_tmp_xy();
 
-
     // Tmp slices for rime rates
     auto rime_rate_qc = fields.get_tmp_xy();
     auto rime_rate_nc = fields.get_tmp_xy();
@@ -1204,7 +1203,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     gd.jstart, gd.jend,
                     gd.icells, gd.ijcells, k);
 
-            // Zero slice which gathers the conversion tendencies
+            // Zero slice which gathers the conversion tendencies.
             for (int n=0; n<gd.ijcells; ++n)
                 it.second.conversion_tend[n] = TF(0);
         }
@@ -1212,6 +1211,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         // Zero diagnostic qx tendencies.
         zero_tmp_xy(qv_conversion_tend);
         zero_tmp_xy(qc_conversion_tend);
+        zero_tmp_xy(nc_conversion_tend);
 
         // Density correction fall speeds
         // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
@@ -1352,31 +1352,31 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 const bool use_prog_in=false;  // Only used with prognostic CCN and IN.
 
                 // Homogeneous and heterogeneous ice nucleation
-                //timer.start("ice_nucleation");
-                //Sb_cold::ice_nucleation_homhet(
-                //        hydro_types.at("qi").conversion_tend,
-                //        hydro_types.at("ni").conversion_tend,
-                //        (*qtt_ice).data(),
-                //        &fields.st.at("ina")->fld.data()[k*gd.ijcells],
-                //        hydro_types.at("qi").slice,
-                //        hydro_types.at("ni").slice,
-                //        (*qv).data(),
-                //        &ql->fld.data()[k*gd.ijcells],
-                //        &T->fld.data()[k*gd.ijcells],
-                //        &fields.mp.at("w")->fld.data()[k*gd.ijcells],
-                //        afrac_dust.data(),
-                //        afrac_soot.data(),
-                //        afrac_orga.data(),
-                //        ice,
-                //        use_prog_in,
-                //        nuc_i_typ,
-                //        p[k], TF(dt),
-                //        dim1_afrac,
-                //        gd.istart, gd.iend,
-                //        gd.jstart, gd.jend,
-                //        gd.icells);
-                //timer.stop("ice_nucleation");
-                //check("ice_nucleation", k);
+                timer.start("ice_nucleation");
+                Sb_cold::ice_nucleation_homhet(
+                        hydro_types.at("qi").conversion_tend,
+                        hydro_types.at("ni").conversion_tend,
+                        (*qv_conversion_tend).data(),
+                        &fields.st.at("ina")->fld.data()[k*gd.ijcells],
+                        hydro_types.at("qi").slice,
+                        hydro_types.at("ni").slice,
+                        (*qv).data(),
+                        &ql->fld.data()[k*gd.ijcells],
+                        &T->fld.data()[k*gd.ijcells],
+                        &fields.mp.at("w")->fld.data()[k*gd.ijcells],
+                        afrac_dust.data(),
+                        afrac_soot.data(),
+                        afrac_orga.data(),
+                        ice,
+                        use_prog_in,
+                        nuc_i_typ,
+                        p[k], TF(dt),
+                        dim1_afrac,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells);
+                timer.stop("ice_nucleation");
+                check("ice_nucleation", k);
 
                 // Homogeneous freezing of cloud droplets
                 //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)

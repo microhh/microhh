@@ -2856,7 +2856,7 @@ namespace Sb_cold
     void ice_nucleation_het_philips(
             TF* const restrict qit,
             TF* const restrict nit,
-            TF* const restrict qtt_ice,
+            TF* const restrict qvt,
             TF* const restrict n_inact,
             const TF* const restrict qv,
             const TF* const restrict ql,
@@ -2978,9 +2978,9 @@ namespace Sb_cold
                     nuc_n *= zdt;
 
                     // Store tendencies.
-                    nit[ij] += nuc_n;
                     qit[ij] += nuc_q;
-                    qtt_ice[ij] -= nuc_q;
+                    nit[ij] += nuc_n;
+                    qvt[ij] -= nuc_q;
                     n_inact[ij] += nuc_n;
 
                     //lwrite_n_inpot = use_prog_in && ndiag .GT. 1.0e-12_wp;
@@ -3005,7 +3005,7 @@ namespace Sb_cold
     void ice_nucleation_homhet(
             TF* const restrict qit,
             TF* const restrict nit,
-            TF* const restrict qtt_ice,
+            TF* const restrict qvt,
             TF* const restrict n_inact,
             //TF* const restrict n_inpot,
             const TF* const restrict qi,
@@ -3153,7 +3153,7 @@ namespace Sb_cold
             }
 
             ice_nucleation_het_philips(
-                qit, nit, qtt_ice,
+                qit, nit, qvt,
                 n_inact,
                 qv, ql, Ta,
                 afrac_dust, afrac_soot, afrac_orga,
@@ -3261,9 +3261,9 @@ namespace Sb_cold
                             nuc_n *= zdt;
                             nuc_q *= zdt;
 
-                            nit[ij] += nuc_n;
                             qit[ij] += nuc_q;
-                            qtt_ice[ij] -= nuc_q;
+                            nit[ij] += nuc_n;
+                            qvt[ij] -= nuc_q;
                         }
                     }
                 } // loop

@@ -79,7 +79,7 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
     single_column = True         # Run 1x1 grid, strongly nudged to ERA5 profile.
-    use_prognostic_ice = False   # Switch between diagnostic (satadjust) and prognostic (SB06) ice.
+    use_prognostic_ice = True    # Switch between diagnostic (satadjust) and prognostic (SB06) ice.
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
