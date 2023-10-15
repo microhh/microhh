@@ -39,10 +39,11 @@
 
 #include "microphys.h"
 
-#include "microphys_sb06.h"         // Class definition
-#include "microphys_sb_common.h"    // Warm/cold common kernels
-#include "microphys_sb_cold.h"      // Kernels from ICON
-#include "microphys_sb_init.h"      // Initialisation code.
+#include "microphys_sb06.h"       // Class definition
+#include "microphys_sb_common.h"  // Warm/cold common kernels
+#include "microphys_sb_cold.h"    // Kernels from ICON
+#include "microphys_sb_init.h"    // Initialisation code.
+#include "microphys_sb_budget.h"  // Conversion tendency budgets.
 
 namespace
 {
@@ -833,6 +834,7 @@ void Microphys_sb06<TF>::create(
         Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop,
         Stats<TF>& stats, Cross<TF>& cross, Dump<TF>& dump, Column<TF>& column, const std::string& sim_name)
 {
+    auto& gd = grid.get_grid_data();
     const std::string group_name = "thermo";
 
     // Add variables to the statistics
@@ -850,29 +852,16 @@ void Microphys_sb06<TF>::create(
 
             // Tendencies
             stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
+        }
 
-            // Microphysics budget
-            if (sw_microbudget)
-            {
-                const std::string group_name_budget = "micro_budget";
-
-                /*
-                 * Warm processes
-                */
-                stats.add_prof("auto_qr" , "Autoconversion tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
-                stats.add_prof("auto_nr" , "Autoconversion tendency nr",  "kg-1 s-1", "z", group_name_budget);
-
-                stats.add_prof("accr_qr" , "Accretion tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
-
-                stats.add_prof("scbr_nr" , "Selfcollection/breakup tendency nr",  "kg-1 s-1", "z", group_name_budget);
-
-                stats.add_prof("evap_qr" , "Evaporation tendency qr",  "kg kg-1 s-1", "z", group_name_budget);
-                stats.add_prof("evap_nr" , "Evaporation tendency nr",  "kg-1 s-1", "z", group_name_budget);
-
-                /*
-                 * Ice cold processes.
-                */
-            }
+        // Microphysics budget
+        if (sw_microbudget)
+        {
+            micro_budget.create(gd.kcells);
+            micro_budget.add_process(stats, "autoconversion", {"qc", "qr", "nr"});
+            micro_budget.add_process(stats, "accretion", {"qc", "qr"});
+            micro_budget.add_process(stats, "selfcollection", {"nr"});
+            micro_budget.add_process(stats, "evaporation", {"qv", "qr", "nr"});
         }
 
         // Thermo tendencies
@@ -1074,6 +1063,42 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         }
     };
 
+    // Lambda function to process the tendencies.
+    auto tendencies = [&](
+            const std::string& name,
+            std::vector<std::string> species,
+            const int k)
+    {
+        if (!sw_microbudget)
+            return;
+
+        for (auto& specie : species)
+        {
+            TF* tend;
+            if (specie == "qv")
+                tend = (*qv_conversion_tend).data();
+            else if (specie == "qc")
+                tend = (*qc_conversion_tend).data();
+            else if (specie == "nc")
+                tend = (*nc_conversion_tend).data();
+            else
+                tend = hydro_types.at(specie).conversion_tend;
+
+            // Calculate time integrated sum over xy slice.
+            TF sum = TF(0);
+            for (int j=gd.jstart; j<gd.jend; ++j)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ij = i + j*gd.icells;
+                    sum += tend[ij] * dt;
+                }
+
+            // Sum over all MPI tasks, and set in budget class.
+            master.sum(&sum, 1);
+            micro_budget.set(name, specie, sum, k);
+        }
+    };
+
     // Convert all units from `kg kg-1` to `kg m-3` (mass) and `kg-1` to `m-3` (density).
     auto convert_units_short = [&](TF* data_ptr, const bool is_to_kgm3)
     {
@@ -1212,6 +1237,10 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         zero_tmp_xy(qv_conversion_tend);
         zero_tmp_xy(qc_conversion_tend);
         zero_tmp_xy(nc_conversion_tend);
+
+        // Reset conversion tendencies.
+        if (sw_microbudget)
+            micro_budget.reset_tendencies(k);
 
         // Density correction fall speeds
         // In ICON, `rhocorr` is written into the cloud/rain/etc particle types as `rho_v`.
@@ -2008,6 +2037,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     k);
             timer.stop("qr_auto");
             check("autoconversionSB", k);
+            tendencies("autoconversion", {"qc", "qr", "nr"}, k);
 
             timer.start("qr_accr");
             Sb_cold::accretionSB(
@@ -2021,6 +2051,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     k);
             timer.stop("qr_accr");
             check("accretionSB", k);
+            tendencies("accretion", {"qc", "qr"}, k);
 
             timer.start("qr_selfc");
             Sb_cold::rain_selfcollectionSB(
@@ -2035,6 +2066,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     k);
             timer.stop("qr_selfc");
             check("rain_selfcollectionSB", k);
+            tendencies("selfcollection", {"nr"}, k);
         }
 
         // Evaporation of rain following Seifert (2008)
@@ -2061,6 +2093,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 k);
         timer.stop("qr_evap");
         check("rain_evaporation", k);
+        tendencies("evaporation", {"qv", "qr", "nr"}, k);
 
 
         for (auto& it : hydro_types)
@@ -2262,210 +2295,12 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
     stats.calc_stats("vqs", *vq, no_offset, no_threshold);
     stats.calc_stats("vns", *vn, no_offset, no_threshold);
 
-
     fields.release_tmp(vq);
     fields.release_tmp(vn);
 
-    //if (sw_microbudget)
-    //{
-    //    auto qrt = fields.get_tmp();
-    //    auto nrt = fields.get_tmp();
-    //    auto qtt = fields.get_tmp();
-
-    //    auto qt_xy = fields.get_tmp_xy();
-    //    auto qr_xy = fields.get_tmp_xy();
-    //    auto nr_xy = fields.get_tmp_xy();
-
-    //    auto ql = fields.get_tmp();
-    //    auto qi = fields.get_tmp();
-    //    auto T = fields.get_tmp();
-
-    //    thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
-    //    thermo.get_thermo_field(*qi, "qi", cyclic, is_stat);
-    //    thermo.get_thermo_field(*T, "T", cyclic, is_stat);
-
-    //    // Transform ql en qi from `kg kg-1` to `kg m-3`.
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //        for (int j=gd.jstart; j<gd.jend; ++j)
-    //            for (int i=gd.istart; i<gd.iend; ++i)
-    //            {
-    //                const int ijk = i + j*gd.icells + k*gd.ijcells;
-    //                ql->fld[ijk] *= rho[k];
-    //                qi->fld[ijk] *= rho[k];
-    //            }
-
-    //    const std::vector<TF>& p = thermo.get_basestate_vector("p");
-    //    const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
-
-    //    // TMP/HACK BvS
-    //    //const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
-    //    const std::vector<TF>& rho = fields.rhoref;
-
-    //    auto zero_fields = [&]()
-    //    {
-    //        std::fill(qrt->fld.begin(), qrt->fld.end(), TF(0));
-    //        std::fill(nrt->fld.begin(), nrt->fld.end(), TF(0));
-    //        std::fill(qtt->fld.begin(), qtt->fld.end(), TF(0));
-    //    };
-
-    //    auto set_moisture_slices = [&](const int k)
-    //    {
-    //         // Copy xy slices moisture, and transform from
-    //         // `kg kg-1` to `kg m-3` and from `kg-1` to `m-3`.
-    //        for (int j=gd.jstart; j<gd.jend; ++j)
-    //            for (int i=gd.istart; i<gd.iend; ++i)
-    //            {
-    //                const int ij  = i + j * gd.icells;
-    //                const int ijk = ij + k * gd.ijcells;
-
-    //                (*qt_xy)[ij] = fields.sp.at("qt")->fld[ijk] * rho[k];
-    //                (*qr_xy)[ij] = fields.sp.at("qr")->fld[ijk] * rho[k];
-    //                (*nr_xy)[ij] = fields.sp.at("nr")->fld[ijk] * rho[k];
-    //            }
-    //    };
-
-    //    auto to_kgkg = [&](std::shared_ptr<Field3d<TF>>& fld)
-    //    {
-    //        for (int k=gd.kstart; k<gd.kend; ++k)
-    //            for (int j=gd.jstart; j<gd.jend; ++j)
-    //                for (int i=gd.istart; i<gd.iend; ++i)
-    //                {
-    //                    const int ijk = i + j * gd.icells + k * gd.ijcells;
-    //                    fld->fld[ijk] /= rho[k];
-    //                }
-    //    };
-
-    //    std::vector<TF> rho_corr(gd.kcells);
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //    {
-    //        const TF hlp = std::log(std::max(rho[k], TF(1e-6)) / Sb_cold::rho_0<TF>);
-    //        rho_corr[k] = std::exp(-Sb_cold::rho_vel<TF>*hlp);
-    //    }
-
-    //    // Autoconversion.
-    //    zero_fields();
-
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //    {
-    //        set_moisture_slices(k);
-
-    //        Sb_cold::autoconversionSB(
-    //                &qrt->fld.data()[k*gd.ijcells],
-    //                &nrt->fld.data()[k*gd.ijcells],
-    //                &qtt->fld.data()[k*gd.ijcells],
-    //                (*qr_xy).data(),
-    //                (*nr_xy).data(),
-    //                &ql->fld.data()[k*gd.ijcells],
-    //                cloud_coeffs,
-    //                cloud, rain,
-    //                rho_corr[k],
-    //                Nc0,
-    //                gd.istart, gd.iend,
-    //                gd.jstart, gd.jend,
-    //                gd.icells, gd.ijcells,
-    //                k);
-    //    }
-
-    //    to_kgkg(qrt);
-    //    to_kgkg(nrt);
-
-    //    stats.calc_stats("auto_qr", *qrt, no_offset, no_threshold);
-    //    stats.calc_stats("auto_nr", *nrt, no_offset, no_threshold);
-
-    //    // Accretion
-    //    zero_fields();
-
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //    {
-    //        set_moisture_slices(k);
-
-    //        Sb_cold::accretionSB(
-    //                &qrt->fld.data()[k*gd.ijcells],
-    //                &qtt->fld.data()[k*gd.ijcells],
-    //                (*qr_xy).data(),
-    //                &ql->fld.data()[k*gd.ijcells],
-    //                gd.istart, gd.iend,
-    //                gd.jstart, gd.jend,
-    //                gd.icells, gd.ijcells,
-    //                k);
-    //    }
-
-    //    to_kgkg(qrt);
-    //    stats.calc_stats("accr_qr", *qrt, no_offset, no_threshold);
-
-    //    // Selfcollection and breakup
-    //    zero_fields();
-
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //    {
-    //        set_moisture_slices(k);
-
-    //        Sb_cold::rain_selfcollectionSB(
-    //                &nrt->fld.data()[k*gd.ijcells],
-    //                (*qr_xy).data(),
-    //                (*nr_xy).data(),
-    //                rain,
-    //                rho_corr[k],
-    //                gd.istart, gd.iend,
-    //                gd.jstart, gd.jend,
-    //                gd.icells, gd.ijcells,
-    //                k);
-    //    }
-
-    //    to_kgkg(nrt);
-    //    stats.calc_stats("scbr_nr", *nrt, no_offset, no_threshold);
-
-    //    // Evaporation
-    //    zero_fields();
-
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //    {
-    //        set_moisture_slices(k);
-
-    //        Sb_cold::rain_evaporation(
-    //                &qrt->fld.data()[k*gd.ijcells],
-    //                &nrt->fld.data()[k*gd.ijcells],
-    //                &qtt->fld.data()[k*gd.ijcells],
-    //                (*qr_xy).data(),
-    //                (*nr_xy).data(),
-    //                (*qt_xy).data(),
-    //                &ql->fld.data()[k*gd.ijcells],
-    //                &qi->fld.data()[k*gd.ijcells],
-    //                &T->fld.data()[k*gd.ijcells],
-    //                p.data(),
-    //                rain_coeffs,
-    //                cloud,
-    //                rain,
-    //                t_cfg_2mom,
-    //                rain_gfak,
-    //                rho_corr[k],
-    //                gd.istart, gd.iend,
-    //                gd.jstart, gd.jend,
-    //                gd.icells, gd.ijcells,
-    //                k);
-    //    }
-
-    //    to_kgkg(qrt);
-    //    to_kgkg(nrt);
-
-    //    stats.calc_stats("evap_qr", *qrt, no_offset, no_threshold);
-    //    stats.calc_stats("evap_nr", *nrt, no_offset, no_threshold);
-
-
-
-
-    //    fields.release_tmp(qrt);
-    //    fields.release_tmp(nrt);
-    //    fields.release_tmp(qtt);
-
-    //    fields.release_tmp_xy(qt_xy);
-    //    fields.release_tmp_xy(qr_xy);
-    //    fields.release_tmp_xy(nr_xy);
-
-    //    fields.release_tmp(ql);
-    //    fields.release_tmp(qi);
-    //    fields.release_tmp(T);
-    //}
+    // Tendency budgets.
+    if (sw_microbudget)
+        micro_budget.set_stats(stats);
 }
 
 #ifndef USECUDA

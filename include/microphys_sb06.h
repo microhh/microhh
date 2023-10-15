@@ -35,6 +35,7 @@
 
 #include "microphys.h"
 #include "field3d_operators.h"
+#include "microphys_sb_budget.h"
 
 class Master;
 class Input;
@@ -366,6 +367,9 @@ class Microphys_sb06 : public Microphys<TF>
 
         const std::string tend_name = "micro";
         const std::string tend_longname = "Microphysics";
+
+        // `Micro_budget` object to gather conversion tendencies.
+        Micro_budget<TF> micro_budget;
 
         // Variables for microphysics.
         TF Nc0;  // Number concentration of cloud water (cm-3)

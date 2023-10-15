@@ -1056,7 +1056,8 @@ bool Stats<TF>::is_blacklisted(const std::string& name, Stats_whitelist_type wlt
 template<typename TF>
 void Stats<TF>::add_prof(
         const std::string& name, const std::string& longname,
-        const std::string& unit, const std::string& zloc, const std::string& group_name,
+        const std::string& unit, const std::string& zloc,
+        const std::string& group_name,
         Stats_whitelist_type wltype)
 {
     auto& agd = grid.get_grid_data();
@@ -1179,7 +1180,6 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& group_name,
         const std::vector<TF>& prof)
 {
-    
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
 

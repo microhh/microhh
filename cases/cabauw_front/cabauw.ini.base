@@ -45,6 +45,7 @@ swice=1
 swprognosticice=0
 swintegrate=0
 swdebug=1
+swmicrobudget=1
 Nc0=200e6
 Ni0=50e4
 
