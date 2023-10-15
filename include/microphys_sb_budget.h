@@ -56,7 +56,7 @@ class Micro_budget {
 
                 // Register in statistics.
                 const std::string unit = full_name.at(0) == 'q' ? "kg kg-1 s" : "m-3 s";
-                stats.add_prof(full_name, "Integrated tendency " + full_name, unit, "z" , group_name);
+                stats.add_prof(full_name, "Tendency " + full_name, unit, "z" , group_name);
             }
         }
 

@@ -865,7 +865,11 @@ void Microphys_sb06<TF>::create(
 
             if (sw_ice)
             {
-                micro_budget.add_process(stats, "nucleation_ice", {"qv", "qi", "ni"});
+                if (sw_prognostic_ice)
+                {
+                    micro_budget.add_process(stats, "nucleation_ice", {"qv", "qi", "ni"});
+                }
+
                 micro_budget.add_process(stats, "vapor_deposition", {"qv", "qi", "ni", "qs", "ns", "qg", "ng", "qh", "nh"});
                 micro_budget.add_process(stats, "selfcollection_ice", {"qi", "ni", "qs", "ns"});
                 micro_budget.add_process(stats, "selfcollection_snow", {"ns"});
@@ -1114,13 +1118,15 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
             else
                 tend = hydro_types.at(specie).conversion_tend;
 
-            // Calculate time integrated sum over xy slice.
+            const TF rho_i = TF(1)/rho[k];
+
+            // Calculate sum over xy slice.
             TF sum = TF(0);
             for (int j=gd.jstart; j<gd.jend; ++j)
                 for (int i=gd.istart; i<gd.iend; ++i)
                 {
                     const int ij = i + j*gd.icells;
-                    sum += tend[ij]/rho[k];// * dt;
+                    sum += tend[ij] * rho_i;
                 }
 
             // Sum over all MPI tasks, and set in budget class.
