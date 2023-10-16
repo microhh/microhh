@@ -3308,8 +3308,8 @@ namespace Sb_cold
                     {
                         if (T_c < TF(-50))
                         {
-                            fr_q = qc[ij] * dti;  //..instantaneous freezing
-                            fr_n = nc[ij] * dti;  //..below -50 C
+                            fr_q = qc[ij];  //..instantaneous freezing
+                            fr_n = nc[ij];  //..below -50 C
                         }
                         else
                         {
