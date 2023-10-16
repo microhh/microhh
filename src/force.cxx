@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
 // #include <math.h>
 #include <iostream>
 #include "master.h"

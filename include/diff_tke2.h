@@ -68,7 +68,7 @@ class Diff_tke2 : public Diff<TF>
         void create_stats(Stats<TF>&);
 
         #ifdef USECUDA
-        TF* mlen0_g;
+        cuda_vector<TF> mlen0_g;
         #endif
 
         double dnmax;

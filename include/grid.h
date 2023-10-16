@@ -34,15 +34,14 @@
 #include "transpose.h"
 class Netcdf_handle;
 #include "timedep.h"
-
+#include "cuda_buffer.h"
 
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Timeloop;
 template<typename> class Timedep;
 template<typename> class Stats;
-
-
 
 enum class Grid_order { Second, Fourth };
 
@@ -115,16 +114,16 @@ struct Grid_data
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 
-    TF* x_g;
-    TF* y_g;
-    TF* z_g;
-    TF* zh_g;
-    TF* dz_g;
-    TF* dzh_g;
-    TF* dzi_g;
-    TF* dzhi_g;
-    TF* dzi4_g;
-    TF* dzhi4_g;
+    cuda_vector<TF> x_g;
+    cuda_vector<TF> y_g;
+    cuda_vector<TF> z_g;
+    cuda_vector<TF> zh_g;
+    cuda_vector<TF> dz_g;
+    cuda_vector<TF> dzh_g;
+    cuda_vector<TF> dzi_g;
+    cuda_vector<TF> dzhi_g;
+    cuda_vector<TF> dzi4_g;
+    cuda_vector<TF> dzhi4_g;
 
     const std::array<int,3> uloc  = {{1,0,0}}; // Location of the u-velocity on the staggered grid
     const std::array<int,3> vloc  = {{0,1,0}}; // Location of the v-velocity on the staggered grid
@@ -156,7 +155,7 @@ class Grid
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void exec_stats(Stats<TF>&);
 
-        const Grid_data<TF>& get_grid_data();
+        const Grid_data<TF>& get_grid_data() const;
         Grid_order get_spatial_order() const { return spatial_order; }
 
         void set_minimum_ghost_cells(int, int, int);

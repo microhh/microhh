@@ -28,7 +28,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
-#include "diff_smag2.h"
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "defines.h"
@@ -39,157 +38,13 @@
 #include "monin_obukhov.h"
 #include "fast_math.h"
 
+#include "diff_smag2.h"
 #include "diff_kernels.cuh"
 
-namespace
-{
-    namespace most = Monin_obukhov;
-    namespace fm = Fast_math;
-    namespace dk = Diff_kernels_g;
-
-    template<typename TF, Surface_model surface_model> __global__
-    void evisc_g(
-            TF* __restrict__ evisc,
-            TF* __restrict__ N2,
-            TF* __restrict__ bgradbot,
-            TF* __restrict__ mlen0,
-            TF* __restrict__ z0m,
-            TF* __restrict__ z,
-            const TF tPri,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const TF n_mason = TF(2);
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + k*kk;
-
-            if (k == kstart && surface_model == Surface_model::Enabled)
-            {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                TF RitPrratio = bgradbot[ij] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
-
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
-            }
-            else if (surface_model == Surface_model::Enabled)
-            {
-                // Add the buoyancy production to the TKE
-                TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
-
-                // Mason mixing length
-                const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-                evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
-            }
-            else
-            {
-                // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                TF RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio = fmin(RitPrratio, TF(1.-Constants::dsmall));
-                evisc[ijk] = fm::pow2(mlen0[k]) * sqrt(evisc[ijk] * (TF(1.)-RitPrratio));
-            }
-        }
-    }
-
-    template<typename TF> __global__
-    void evisc_neutral_g(
-            TF* __restrict__ evisc,
-            TF* __restrict__ z0m,
-            TF* __restrict__ z,
-            TF* __restrict__ mlen0,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend,
-            const int jj, const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const TF n_mason = TF(2);
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            const int ij = i + j*jj;
-
-            const TF mlen = std::pow(TF(1.)/(TF(1.)/mlen0[k] + TF(1.)/(std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
-            evisc[ijk] = fm::pow2(mlen) * sqrt(evisc[ijk]);
-        }
-    }
-
-    template<typename TF> __global__
-    void evisc_neutral_vandriest_g(
-            TF* __restrict__ evisc,
-            const TF* __restrict__ u, const TF* __restrict__ v,
-            const TF* __restrict__ mlen_smag,
-            const TF* __restrict__ z, const TF* __restrict__ dzhi,
-            const TF zsize, const TF visc,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend,
-            const int jj, const int kk)
-
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        const TF A_vandriest = TF(26.);
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            const int ijk_bot = i + j*jj + kstart*kk;
-            const int ijk_top = i + j*jj + kend*kk;
-
-            const TF u_tau_bot = pow(
-                    fm::pow2( visc*(u[ijk_bot] - u[ijk_bot-kk] )*dzhi[kstart] )
-                  + fm::pow2( visc*(v[ijk_bot] - v[ijk_bot-kk] )*dzhi[kstart] ), TF(0.25) );
-            const TF u_tau_top = pow(
-                    fm::pow2( visc*(u[ijk_top] - u[ijk_top-kk] )*dzhi[kend] )
-                  + fm::pow2( visc*(v[ijk_top] - v[ijk_top-kk] )*dzhi[kend] ), TF(0.25) );
-
-            const TF fac_bot = TF(1.) - exp( -(       z[k] *u_tau_bot) / (A_vandriest*visc) );
-            const TF fac_top = TF(1.) - exp( -((zsize-z[k])*u_tau_top) / (A_vandriest*visc) );
-
-            const TF fac = min(fac_bot, fac_top);
-
-            evisc[ijk] = fm::pow2(fac * mlen_smag[k]) * sqrt(evisc[ijk]);
-        }
-    }
-
-    template<typename TF> __global__
-    void calc_ghostcells_evisc(
-            TF* __restrict__ evisc,
-            const int icells, const int jcells,
-            const int kstart, const int kend,
-            const int jj, const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-        if (i < icells && j < jcells)
-        {
-            const int kb = kstart;
-            const int kt = kend-1;
-
-            const int ijkb = i + j*jj + kb*kk;
-            const int ijkt = i + j*jj + kt*kk;
-
-            evisc[ijkb-kk] = evisc[ijkb];
-            evisc[ijkt+kk] = evisc[ijkt];
-        }
-    }
-}
+// Kernel Launcher
+#include "cuda_launcher.h"
+#include "diff_smag2_kl_kernels.cuh"
+#include "diff_kl_kernels.cuh"
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
@@ -212,15 +67,13 @@ void Diff_smag2<TF>::prepare_device(Boundary<TF>& boundary)
             mlen[k] = std::pow(cs * std::pow(gd.dx*gd.dy*gd.dz[k], TF(1./3.)), n_mason);
     }
 
-    const int nmemsize = gd.kcells*sizeof(TF);
-    cuda_safe_call(cudaMalloc(&mlen_g, nmemsize));
-    cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), nmemsize, cudaMemcpyHostToDevice));
+    mlen_g.allocate(gd.kcells);
+    cuda_safe_call(cudaMemcpy(mlen_g, mlen.data(), mlen_g.size_in_bytes(), cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
 void Diff_smag2<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(mlen_g));
 }
 #endif
 
@@ -228,6 +81,7 @@ void Diff_smag2<TF>::clear_device()
 template<typename TF>
 void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -248,31 +102,27 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     // Use surface model.
     if (boundary.get_switch() != "default")
     {
-        TF* z0m_g   = boundary.get_z0m_g();
+        auto& z0m_g   = boundary.get_z0m_g();
 
         // Get MO gradients velocity:
-        TF* dudz_g  = boundary.get_dudz_g();
-        TF* dvdz_g  = boundary.get_dvdz_g();
+        auto& dudz_g  = boundary.get_dudz_g();
+        auto& dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
-        dk::calc_strain2_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-            fields.sd.at("evisc")->fld_g,
+        launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
+            gd,
+            fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
             fields.mp.at("w")->fld_g,
             dudz_g, dvdz_g,
             gd.dzi_g, gd.dzhi_g,
-            gd.dxi, gd.dyi,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
+            gd.dxi, gd.dyi);
 
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
             // Start with retrieving the stability information
-            evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
+            diff_smag2::evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 z0m_g, gd.z_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
@@ -287,21 +137,17 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             thermo.get_thermo_field_g(*tmp1, "N2", false);
 
             // Get MO gradient buoyancy:
-            TF* dbdz_g  = boundary.get_dbdz_g();
+            auto& dbdz_g  = boundary.get_dbdz_g();
 
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            evisc_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g,
+            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
+                gd,
+                fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, dbdz_g,
                 mlen_g, z0m_g, gd.z_g,
-                tPri,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+                tPri);
 
             fields.release_tmp_g(tmp1);
         }
@@ -312,24 +158,20 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     else
     {
         // Calculate total strain rate
-        dk::calc_strain2_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
-            fields.sd.at("evisc")->fld_g,
+        launch_grid_kernel<diff_les::calc_strain2_g<TF, false>>(
+            gd,
+            fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
             fields.mp.at("w")->fld_g,
             nullptr, nullptr,
             gd.dzi_g, gd.dzhi_g,
-            gd.dxi, gd.dyi,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
-        cuda_check_error();
+            gd.dxi, gd.dyi);
 
         // start with retrieving the stability information
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
-            evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
+            diff_smag2::evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 fields.mp.at("u")->fld_g,
                 fields.mp.at("v")->fld_g,
@@ -352,28 +194,26 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            evisc_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.sd.at("evisc")->fld_g,
+            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
+                gd,
+                fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, nullptr,
                 mlen_g, nullptr, gd.z_g,
-                tPri,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-            cuda_check_error();
+                tPri);
 
             fields.release_tmp_g(tmp1);
         }
 
         boundary_cyclic.exec_g(fields.sd.at("evisc")->fld_g);
-        calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
+
+        dk::calc_ghostcells_evisc<TF><<<grid2dGPU, block2dGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 gd.icells, gd.jcells,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
+
+    cuda_check_error();
 }
 #endif
 
@@ -383,14 +223,6 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kmax);
-    dim3 blockGPU(blocki, blockj, 1);
-
     const TF dxidxi = TF(1)/(gd.dx * gd.dx);
     const TF dyidyi = TF(1)/(gd.dy * gd.dy);
     const TF tPri = TF(1)/tPr;
@@ -398,10 +230,11 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Do not use surface model.
     if (boundary.get_switch() == "default")
     {
-        dk::diff_uvw_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mt.at("v")->fld_g,
-                fields.mt.at("w")->fld_g,
+        launch_grid_kernel<diff_les::diff_uvw_g<TF, false>>(
+                gd,
+                fields.mt.at("u")->fld_g.view(),
+                fields.mt.at("v")->fld_g.view(),
+                fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
                 fields.mp.at("u")->fld_g,
                 fields.mp.at("v")->fld_g,
@@ -410,50 +243,39 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.mp.at("u")->flux_top_g,
                 fields.mp.at("v")->flux_bot_g,
                 fields.mp.at("v")->flux_top_g,
-                gd.dzi_g,
-                gd.dzhi_g,
-                fields.rhoref_g,
-                fields.rhorefh_g,
-                gd.dxi,
-                gd.dyi,
-                fields.visc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+                gd.dzi_g, gd.dzhi_g,
+                gd.dxi, gd.dyi,
+                fields.rhoref_g, fields.rhorefh_g,
+                fields.rhorefi_g, fields.rhorefhi_g,
+                fields.visc);
 
         cuda_check_error();
 
         for (auto it : fields.st)
         {
-            dk::diff_c_g<TF, Surface_model::Disabled><<<gridGPU, blockGPU>>>(
-                    it.second->fld_g,
+            launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
+                    gd,
+                    it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g,
                     fields.sp.at(it.first)->flux_top_g,
-                    gd.dzi_g,
-                    gd.dzhi_g,
-                    fields.rhoref_g,
-                    fields.rhorefh_g,
-                    dxidxi,
-                    dyidyi,
-                    tPri,
-                    fields.sp.at(it.first)->visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
+                    gd.dzi_g, gd.dzhi_g,
+                    dxidxi, dyidyi,
+                    fields.rhorefi_g, fields.rhorefh_g,
+                    tPri, fields.sp.at(it.first)->visc);
+
+            cuda_check_error();
         }
-        cuda_check_error();
     }
     // Use surface model.
     else
     {
-        dk::diff_uvw_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mt.at("v")->fld_g,
-                fields.mt.at("w")->fld_g,
+        launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
+                gd,
+                fields.mt.at("u")->fld_g.view(),
+                fields.mt.at("v")->fld_g.view(),
+                fields.mt.at("w")->fld_g.view(),
                 fields.sd.at("evisc")->fld_g,
                 fields.mp.at("u")->fld_g,
                 fields.mp.at("v")->fld_g,
@@ -462,39 +284,30 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 fields.mp.at("u")->flux_top_g,
                 fields.mp.at("v")->flux_bot_g,
                 fields.mp.at("v")->flux_top_g,
-                gd.dzi_g,
-                gd.dzhi_g,
-                fields.rhoref_g,
-                fields.rhorefh_g,
-                gd.dxi,
-                gd.dyi,
-                fields.visc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-        cuda_check_error();
+                gd.dzi_g, gd.dzhi_g,
+                gd.dxi, gd.dyi,
+                fields.rhoref_g, fields.rhorefh_g,
+                fields.rhorefi_g, fields.rhorefhi_g,
+                fields.visc);
+
+            cuda_check_error();
 
         for (auto it : fields.st)
-            dk::diff_c_g<TF, Surface_model::Enabled><<<gridGPU, blockGPU>>>(
-                    it.second->fld_g,
+        {
+            launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
+                    gd,
+                    it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at(it.first)->flux_bot_g,
                     fields.sp.at(it.first)->flux_top_g,
-                    gd.dzi_g,
-                    gd.dzhi_g,
-                    fields.rhoref_g,
-                    fields.rhorefh_g,
-                    dxidxi,
-                    dyidyi,
-                    tPri,
-                    fields.sp.at(it.first)->visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        cuda_check_error();
+                    gd.dzi_g, gd.dzhi_g,
+                    dxidxi, dyidyi,
+                    fields.rhorefi_g, fields.rhorefh_g,
+                    tPri, fields.sp.at(it.first)->visc);
+
+            cuda_check_error();
+        }
     }
 
     cudaDeviceSynchronize();
@@ -503,7 +316,6 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("w"), tend_name);
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
-
 }
 #endif
 
@@ -511,6 +323,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 template<typename TF>
 unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -528,7 +341,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     auto tmp1 = fields.get_tmp_g();
 
     // Calculate dnmul in tmp1 field
-    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
             tmp1->fld_g,
             fields.sd.at("evisc")->fld_g,
             gd.dzi_g,
@@ -538,6 +351,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
             gd.jstart, gd.jend,
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
+
     cuda_check_error();
 
     // Get maximum from tmp1 field
@@ -556,6 +370,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
 template<typename TF>
 double Diff_smag2<TF>::get_dn(double dt)
 {
+    namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
     const int blocki = gd.ithread_block;
@@ -573,16 +388,17 @@ double Diff_smag2<TF>::get_dn(double dt)
     // Calculate dnmul in tmp1 field
     auto dnmul_tmp = fields.get_tmp_g();
 
-    dk::calc_dnmul_g<<<gridGPU, blockGPU>>>(
-        dnmul_tmp->fld_g,
-        fields.sd.at("evisc")->fld_g,
-        gd.dzi_g,
-        tPrfac_i,
-        dxidxi, dyidyi,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+    dk::calc_dnmul_g<TF><<<gridGPU, blockGPU>>>(
+            dnmul_tmp->fld_g,
+            fields.sd.at("evisc")->fld_g,
+            gd.dzi_g,
+            tPrfac_i,
+            dxidxi, dyidyi,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
     cuda_check_error();
 
     // Get maximum from tmp1 field
