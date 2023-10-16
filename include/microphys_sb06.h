@@ -347,8 +347,10 @@ class Microphys_sb06 : public Microphys<TF>
         bool sw_debug;          // Print debug info.
         bool sw_integrate;      // Pre-integrate water species in implicit solver.
 
-        const int cloud_type = 2673;
+        //const int cloud_type = 2673;
+        const int cloud_type = 2603;
         int nuc_i_typ;
+        int nuc_c_typ;
         int auto_typ;
 
         const int mu_Dm_rain_typ = 1;

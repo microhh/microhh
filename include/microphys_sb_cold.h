@@ -3270,4 +3270,84 @@ namespace Sb_cold
         } // if
     } // function
 
+    template<typename TF>
+    void cloud_freeze(
+            TF* const restrict qct,
+            TF* const restrict nct,
+            TF* const restrict qit,
+            TF* const restrict nit,
+            const TF* const restrict qc,
+            const TF* const restrict nc,
+            const TF* const restrict ni,
+            const TF* const restrict Ta,
+            const int nuc_c_typ,
+            const TF dt,
+            Particle<TF>& cloud,
+            Particle_cloud_coeffs<TF>& cloud_coeffs,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF log_10 = std::log(10);
+        const TF rhow_i = TF(1)/Constants::rho_w<TF>;
+        const TF dti = TF(1)/dt;
+
+        TF fr_q, fr_n, j_hom;
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                if (Ta[ij] < Constants::T0<TF>)
+                {
+                    const TF T_c = Ta[ij] - Constants::T0<TF>;
+
+                    if (qc[ij] > TF(0) && T_c < TF(-30))
+                    {
+                        if (T_c < TF(-50))
+                        {
+                            fr_q = qc[ij] * dti;  //..instantaneous freezing
+                            fr_n = nc[ij] * dti;  //..below -50 C
+                        }
+                        else
+                        {
+                            const TF x_c = particle_meanmass(cloud, qc[ij], nc[ij]);
+
+                            //..Hom. freezing based on Jeffrey und Austin (1997), see also Cotton und Field (2001)
+                            //  (note that log in Cotton and Field is log10, not ln)
+                            if (T_c > TF(-30.0))
+                            {
+                                // j_hom = 1.0e6_wp/rho_w * 10**(-7.63-2.996*(T_c+30.0))           !..J in 1/(kg s)
+                                j_hom = TF(1.0e6) * rhow_i * std::exp((TF(-7.63) - TF(2.996) * (T_c+TF(30)))*log_10);
+                            }
+                            else
+                            {
+                                //j_hom = 1.0e6_wp/rho_w &
+                                //     &  * 10**(-243.4-14.75*T_c-0.307*T_c**2-0.00287*T_c**3-0.0000102*T_c**4)
+                                j_hom = TF(1.0e6) * rhow_i * std::exp((TF(-243.4) - TF(14.75) * T_c - TF(0.307) *
+                                    fm::pow2(T_c) - TF(0.00287) * fm::pow3(T_c) - TF(0.0000102) * fm::pow4(T_c))*log_10);
+                            }
+
+                            fr_n  = j_hom * qc[ij] * dt;
+                            fr_q  = j_hom * qc[ij] * dt * x_c * cloud_coeffs.c_z;
+                            fr_q  = std::min(fr_q, qc[ij]);
+                            fr_n  = std::min(fr_n, nc[ij]);
+                        }
+
+                        qct[ij] -= fr_q * dti;
+                        nct[ij] -= fr_n * dti;
+
+                        fr_n = std::max(fr_n, fr_q/cloud.x_max);
+                        // Special treatment for constant drop number; Force upper bound in cloud_freeze
+                        if (nuc_c_typ == 0)
+                            fr_n = std::max(std::min(fr_n, nc[ij]-ni[ij]), TF(0));
+
+                        qit[ij] += fr_q * dti;
+                        nit[ij] += fr_n * dti;
+                    }
+                }
+            }
+    }
 } // namespace

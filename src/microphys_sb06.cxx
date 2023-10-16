@@ -601,14 +601,16 @@ void Microphys_sb06<TF>::init_2mom_scheme_once()
 
     //ice_typ = cloud_type/1000            // (0) no ice, (1) no hail (2) with hail
     nuc_i_typ = (cloud_type/100) % 10;     // choice of ice nucleation, see ice_nucleation_homhet()
-    //nuc_c_typ = MOD(cloud_type/10,10)    // choice of CCN assumptions, see cloud_nucleation()
+    nuc_c_typ = (cloud_type/10) % 10;      // choice of CCN assumptions, see cloud_nucleation()
     auto_typ  = cloud_type%10;             // choice of warm rain scheme, see clouds_twomoment()
 
-    master.print_message("nuc_i_typ=%d, auto_typ=%d\n", nuc_i_typ, auto_typ);
+    master.print_message("nuc_i_typ=%d, nuc_c_typ=%d, auto_typ=%d\n", nuc_i_typ, nuc_c_typ, auto_typ);
 
     // Our implemented options are very limited at the moment....
     if (nuc_i_typ != 6)
         throw std::runtime_error("Invalid ice nucleation option in \"cloud_type\"");
+    if (nuc_c_typ != 0)
+        throw std::runtime_error("Invalid CCN option in \"cloud_type\"");
     if (auto_typ != 3)
         throw std::runtime_error("Invalid warm micro option in \"cloud_type\"");
 
@@ -868,6 +870,7 @@ void Microphys_sb06<TF>::create(
                 if (sw_prognostic_ice)
                 {
                     micro_budget.add_process(stats, "nucleation_ice", {"qv", "qi", "ni"});
+                    micro_budget.add_process(stats, "cloud_freeze", {"qc", "nc", "qi", "ni"});
                 }
 
                 micro_budget.add_process(stats, "vapor_deposition", {"qv", "qi", "ni", "qs", "ns", "qg", "ng", "qh", "nh"});
@@ -960,6 +963,7 @@ void Microphys_sb06<TF>::create(
     timer.add_timing("qr_accr");
     timer.add_timing("qr_selfc");
     timer.add_timing("ice_nucleation");
+    timer.add_timing("cloud_freeze");
 }
 
 #ifndef USECUDA
@@ -1040,8 +1044,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     auto nc_conversion_tend = fields.get_tmp_xy();
 
     // Dummy fields for qcloud number density.
-    auto nc_dummy = fields.get_tmp_xy();
-    std::fill((*nc_dummy).begin(), (*nc_dummy).end(), this->Nc0);
+    auto nc_fld = fields.get_tmp_xy();
 
     // More tmp slices :-)
     auto tmpxy1 = fields.get_tmp_xy();
@@ -1384,33 +1387,29 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
         */
         check("start", k);
 
+        if (nuc_c_typ == 0)
+            std::fill((*nc_fld).begin(), (*nc_fld).end(), this->Nc0);
+
+        //ELSEIF (nuc_c_typ < 6) THEN
+        //   IF (PRESENT(n_cn)) THEN
+        //      CALL finish(TRIM(routine),&
+        //           & 'Error in two_moment_mcrph: Hande et al activation not supported for progn. aerosol')
+        //   ELSE
+        //      CALL ccn_activation_hdcp2(ik_slice,atmo,cloud)
+        //   END IF
+        //ELSE
+        //        & '  ... CCN activation using look-up tables according to Segal& Khain')
+        //   IF (PRESENT(n_cn)) THEN
+        //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud,n_cn)
+        //   ELSE
+        //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud)
+        //   END IF
+        //END IF
+
         if (sw_ice)
         {
             zero_tmp_xy(dep_rate_ice);
             zero_tmp_xy(dep_rate_snow);
-
-            //IF (isdebug) CALL message(TRIM(routine),'cloud_nucleation')
-            //IF (nuc_c_typ .EQ. 0) THEN
-            //   IF (isdebug) CALL message(TRIM(routine),'  ... force constant cloud droplet number')
-            //   cloud%n(:,:) = qnc_const
-            //ELSEIF (nuc_c_typ < 6) THEN
-            //   IF (isdebug) CALL message(TRIM(routine),'  ... Hande et al CCN activation')
-            //   IF (PRESENT(n_cn)) THEN
-            //      CALL finish(TRIM(routine),&
-            //           & 'Error in two_moment_mcrph: Hande et al activation not supported for progn. aerosol')
-            //   ELSE
-            //      CALL ccn_activation_hdcp2(ik_slice,atmo,cloud)
-            //   END IF
-            //ELSE
-            //   IF (isdebug) CALL message(TRIM(routine), &
-            //        & '  ... CCN activation using look-up tables according to Segal& Khain')
-            //   IF (PRESENT(n_cn)) THEN
-            //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud,n_cn)
-            //   ELSE
-            //      CALL ccn_activation_sk_4d(ik_slice,ccn_coeffs,atmo,cloud)
-            //   END IF
-            //END IF
-            //IF (ischeck) CALL check(ik_slice,'start',cloud,rain,ice,snow,graupel,hail)
 
             if (sw_prognostic_ice)
             {
@@ -1445,8 +1444,24 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                 tendencies("nucleation_ice", {"qv", "qi", "ni"}, k);
 
                 // Homogeneous freezing of cloud droplets
-                //CALL cloud_freeze(ik_slice, dt, cloud_coeffs, qnc_const, atmo, cloud, ice)
-                //IF (ischeck) CALL check(ik_slice,'cloud_freeze', cloud, rain, ice, snow, graupel,hail)
+                timer.start("cloud_freeze");
+                Sb_cold::cloud_freeze(
+                        (*qc_conversion_tend).data(),
+                        (*nc_conversion_tend).data(),
+                        hydro_types.at("qi").conversion_tend,
+                        hydro_types.at("ni").conversion_tend,
+                        &ql->fld.data()[k * gd.ijcells],
+                        (*nc_fld).data(),
+                        hydro_types.at("ni").slice,
+                        &T->fld.data()[k * gd.ijcells],
+                        nuc_c_typ, dt,
+                        cloud, cloud_coeffs,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells);
+                timer.stop("cloud_freeze");
+                check("cloud_freeze", k);
+                tendencies("cloud_freeze", {"qc", "nc", "qi", "ni"}, k);
             }
 
             // Depositional growth of all ice particles.
@@ -1711,7 +1726,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     hydro_types.at("qi").slice,
                     hydro_types.at("ni").slice,
                     &ql->fld.data()[k*gd.ijcells],
-                    (*nc_dummy).data(),
+                    (*nc_fld).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
                     &T->fld.data()[k*gd.ijcells],
@@ -1749,7 +1764,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     hydro_types.at("qs").slice,
                     hydro_types.at("ns").slice,
                     &ql->fld.data()[k*gd.ijcells],
-                    (*nc_dummy).data(),
+                    (*nc_fld).data(),
                     hydro_types.at("qr").slice,
                     hydro_types.at("nr").slice,
                     &T->fld.data()[k*gd.ijcells],
@@ -1777,7 +1792,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
                     &ql->fld.data()[k*gd.ijcells],
-                    (*nc_dummy).data(),
+                    (*nc_fld).data(),
                     hydro_types.at("qh").slice,
                     hydro_types.at("nh").slice,
                     &T->fld.data()[k*gd.ijcells],
@@ -1831,7 +1846,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
                     hydro_types.at("qr").conversion_tend,
                     hydro_types.at("nr").conversion_tend,
                     &ql->fld.data()[k*gd.ijcells],
-                    (*nc_dummy).data(),
+                    (*nc_fld).data(),
                     hydro_types.at("qg").slice,
                     hydro_types.at("ng").slice,
                     &T->fld.data()[k*gd.ijcells],
@@ -2269,7 +2284,7 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
     fields.release_tmp_xy(qv_conversion_tend);
     fields.release_tmp_xy(qc_conversion_tend);
     fields.release_tmp_xy(nc_conversion_tend);
-    fields.release_tmp_xy(nc_dummy);
+    fields.release_tmp_xy(nc_fld);
 
     fields.release_tmp_xy(qv);
 
