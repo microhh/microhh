@@ -477,9 +477,9 @@ namespace Sb_cold
 
     template<typename TF>
     void autoconversionSB(
+            TF* const restrict qct,
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qct,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qc,
@@ -535,8 +535,8 @@ namespace Sb_cold
 
     template<typename TF>
     void accretionSB(
-            TF* const restrict qrt,
             TF* const restrict qct,
+            TF* const restrict qrt,
             const TF* const restrict qr,
             const TF* const restrict qc,
             const int istart, const int iend,
@@ -625,9 +625,9 @@ namespace Sb_cold
 
     template<typename TF>
     void rain_evaporation(
+            TF* const restrict qvt,
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qvt,
             const TF* const restrict qr,
             const TF* const restrict nr,
             const TF* const restrict qv,
@@ -942,6 +942,7 @@ namespace Sb_cold
     template<typename TF>
     void vapor_dep_relaxation(
             // 2D Output tendencies:
+            TF* const restrict qvt,
             TF* const restrict qit,
             TF* const restrict nit,
             TF* const restrict qst,
@@ -950,7 +951,6 @@ namespace Sb_cold
             TF* const restrict ngt,
             TF* const restrict qht,
             TF* const restrict nht,
-            TF* const restrict qvt,
             // Integrated deposition (so *dt):
             TF* const restrict dep_rate_ice,
             TF* const restrict dep_rate_snow,
@@ -1938,10 +1938,10 @@ namespace Sb_cold
 
     template<typename TF>
     void particle_cloud_riming(
-            TF* const restrict qpt,
-            TF* const restrict npt,
             TF* const restrict qct,
             TF* const restrict nct,
+            TF* const restrict qpt,
+            TF* const restrict npt,
             TF* const restrict qit,
             TF* const restrict nit,
             TF* const restrict qrt,
@@ -2609,12 +2609,12 @@ namespace Sb_cold
 
     template<typename TF>
     void ice_melting(
+            TF* const restrict qct,
+            TF* const restrict nct,
             TF* const restrict qit,
             TF* const restrict nit,
             TF* const restrict qrt,
             TF* const restrict nrt,
-            TF* const restrict qct,
-            TF* const restrict nct,
             const TF* const restrict qi,
             const TF* const restrict ni,
             const TF* const restrict Ta,
@@ -3003,9 +3003,9 @@ namespace Sb_cold
 
     template<typename TF>
     void ice_nucleation_homhet(
+            TF* const restrict qvt,
             TF* const restrict qit,
             TF* const restrict nit,
-            TF* const restrict qvt,
             TF* const restrict n_inact,
             //TF* const restrict n_inpot,
             const TF* const restrict qi,
