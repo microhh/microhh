@@ -142,8 +142,8 @@ iotimeprec = nl['time']['iotimeprec'] if 'iotimeprec' in nl['time'] else 0
 iotime = int(round(time / 10**iotimeprec))
 
 # convert simulation to local time
-lon = nl['radiation']['lon']
-lat = nl['radiation']['lat']
+lon = nl['grid']['lon']
+lat = nl['grid']['lat']
 dt_utc = nl['time']['datetime_utc']
 year = int(dt_utc[:4])
 day_of_year = int((np.datetime64(dt_utc[:10]) - np.datetime64("{}-01-01".format(year))) / np.timedelta64(1, 'D')) + 1
