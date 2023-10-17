@@ -19,6 +19,32 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+"""
+Convert MicroHH input and output to a netCDF input file for the standalone version of the ray tracer (see /rte-rrtmgp-cpp/src_test)
+
+How to use:
+run 'python microhh_to_raytracing_input.nc --name <simulation name> --time <time step to convert> --path <path to simulation files (defaults to "./")>'
+
+Required input:
+- <name>.ini
+- <name>_input.nc
+- <name>.default.0000000.nc
+- T.<time> (binary 3D field of absolute temperature)
+- qt.<time> (binary 3D field of specific humidity)
+
+Optional input:
+- ql.<time> (binary 3D field of liquid water specific humidity, if omitted, no liquid clouds are assumed to be present)
+- qi.<time> (binary 3D field of ice specific humidity, if omitted, no ice clouds are assumed to be present)
+
+To output these required 3D fields, add the following to <name>.ini
+[dump]
+swdump = 1
+sampletime= <desired output time step>
+dumplist = T,qt,ql,qi
+
+"""
+
 import microhh_tools as mht  # available in microhh/python directory
 import numpy as np
 import netCDF4 as nc
@@ -26,6 +52,9 @@ from scipy.interpolate import interp1d
 import argparse
 
 def solar_angles(lon, lat, day_of_year, year, seconds_since_midnight):
+    #Based on: Paltridge, G. W. and Platt, C. M. R. (1976).
+    #                 Radiative Processes in Meteorology and Climatology.
+    #                 Elsevier, New York, 318 pp.
 
     if (year%4 == 0) and ((year%100 != 0) or (year%400 == 0)):
         days_per_year = 366
@@ -61,9 +90,10 @@ def solar_angles(lon, lat, day_of_year, year, seconds_since_midnight):
 
     azimuth = np.arccos(cos_azimuth) if hour_angle <= 0. else 2.*np.pi - np.arccos(cos_azimuth)
 
-    return cos_zenith, azimuth #np.rad2deg(np.arccos(cos_zenith)),np.rad2deg(azimuth))
+    return cos_zenith, azimuth
 
 def calc_sun_distance_factor(day_of_year, seconds_since_midnight):
+    # Based on: An Introduction to Atmospheric Radiation, Liou, Eq. 2.2.9.
     an = [1.000110, 0.034221, 0.000719]
     bn = [0,        0.001280, 0.000077]
     day_of_year = 228.3
@@ -83,28 +113,17 @@ def read_if_exists(var, t, dims):
         return np.zeros(dims)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--time", type=int)
-parser.add_argument("--path", type=str, default="./")
-parser.add_argument("--name", type=str, default="")
-parser.add_argument("--merge_bg", action='store_true')
-parser.add_argument("--ztilt", type=float, default=-1)
-parser.add_argument("--regrid", action='store_true')
-parser.add_argument("--zmax", type=float, default=4000)
-parser.add_argument("--dz", type=float, default=25)
+parser.add_argument("-n","--name", type=str, help="simulating name, that is, name of the .ini file")
+parser.add_argument("-t","--time", type=int, help="simulation time step to convert")
+parser.add_argument("-p","--path", type=str, help="Path to simulation files, defaults to current directory",default="./")
 args = parser.parse_args()
 
-### example usage:
-# First: make sure that grid.0000000 is in folder
-# For ray tracing:
-# python mhh_to_raytracer.py --regrid --zmax 2500 --dz 25
-# For tilted column:
-# python mhh_to_raytracer --merge_bg --ztilt 4000
-# constants
+# some constants
 ep = 0.622
 TF = np.float32
 g = 9.81
 
-#ngrid:
+# size of null-collision grid:
 ng_x = 48
 ng_y = 48
 ng_z = 32
@@ -113,27 +132,27 @@ ng_z = 32
 name = args.name
 time = args.time
 path = args.path
-merge_bg = args.merge_bg
-z_tilt = args.ztilt
-f_regrid = args.regrid
-regrid_zmax = args.zmax
-regrid_dz = args.dz
-
-if merge_bg & f_regrid:
-    raise "nope, can't do both"
 
 ### open all necessary files
 # read namelist
 nl = mht.Read_namelist(path+"{}.ini".format(name))
 
-lon = nl['radiation']['lon']
-lat = nl['radiation']['lat']
+# precision of timestep in microhh output
+iotimeprec = nl['time']['iotimeprec'] if 'iotimeprec' in nl['time'] else 0
+iotime = int(round(time / 10**iotimeprec))
+
+# convert simulation to local time
+lon = nl['grid']['lon']
+lat = nl['grid']['lat']
 dt_utc = nl['time']['datetime_utc']
 year = int(dt_utc[:4])
 day_of_year = int((np.datetime64(dt_utc[:10]) - np.datetime64("{}-01-01".format(year))) / np.timedelta64(1, 'D')) + 1
 seconds_since_midnight = int(dt_utc[11:13])*3600 + int(dt_utc[14:16])*60 + int(dt_utc[17:19]) + time
 
+# compute solar angles
 mu0, azi = solar_angles(lon, lat, day_of_year, year, seconds_since_midnight)
+
+# scale top-of-atmosphere irradiance based on distance to sun at time of year
 tsi_scaling = calc_sun_distance_factor(day_of_year, seconds_since_midnight)
 
 # read stats
@@ -148,32 +167,30 @@ play = nc_stat['thermo']['phydro'][t_idx]
 plev = nc_stat['thermo']['phydroh'][t_idx]
 rhoh = nc_stat['thermo']['rhoref'][:]
 
-# height diff
-
 ### Read data
 # dimensions and grid
 itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
 dims = (ktot, jtot, itot)
-grid = mht.Read_grid(itot, jtot, ktot)
+grid = mht.Read_grid(itot, jtot, ktot, path+"grid.0000000")
 dz = np.diff(grid.dim['zh'][:])
 
 zlay = grid.dim['z']
 zlev = grid.dim['zh']
 
 # read temperature, humidity
-qt = np.fromfile(path+"qt.{:07d}".format(time),TF).reshape(dims)
-tlay = np.fromfile(path+"T.{:07d}".format(time),TF).reshape(dims)
+qt = np.fromfile(path+"qt.{:07d}".format(iotime),TF).reshape(dims)
+tlay = np.fromfile(path+"T.{:07d}".format(iotime),TF).reshape(dims)
 
 # convert qt from kg/kg to vmr
 h2o = qt / (ep - ep*qt)
 
 # cloud properties and effective radius
-ql = read_if_exists(path+"ql", time, dims)
+ql = read_if_exists(path+"ql", iotime, dims)
 lwp = ql * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
 
-qi = read_if_exists(path+"qi", time, dims)
+qi = read_if_exists(path+"qi", iotime, dims)
 iwp = qi * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
 
 ftpnr_w = (4./3) * np.pi * 100e6 * 1e3
@@ -184,8 +201,13 @@ rei = np.where(iwp>0, 1e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr
 
 rel = np.maximum(2.5, np.minimum(rel, 21.5))
 rei = np.maximum(10., np.minimum(rei, 180.))
+
 lwp *= 1e3 # g/m2
 iwp *= 1e3 # g/m2
+
+nz = ktot
+grid_z = grid.dim['z']
+grid_zh = grid.dim['zh']
 
 # ozone profile
 o3 = nc_inp['init']['o3']
@@ -200,81 +222,17 @@ plev_bg = nc_inp['radiation']['p_lev']
 tlay_bg = nc_inp['radiation']['t_lay']
 tlev_bg = nc_inp['radiation']['t_lev']
 
-
-if f_regrid:
-    zh_regrid = np.arange(0, regrid_zmax+.001, regrid_dz)
-    z_regrid = (zh_regrid[1:] + zh_regrid[:-1]) / 2.
-    grid_top_idx = np.where(grid.dim['z'] > regrid_zmax)[0][0]
-
-    lwp_interp = interp1d(grid.dim['z'], lwp/dz[:,np.newaxis,np.newaxis], axis=0)
-    lwp_grid = lwp_interp(z_regrid)*regrid_dz
-    lwp = np.append(lwp_grid, np.tile(lwp[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    iwp_interp = interp1d(grid.dim['z'], iwp/dz[:,np.newaxis,np.newaxis], axis=0)
-    iwp_grid = iwp_interp(z_regrid)*regrid_dz
-    iwp = np.append(iwp_grid, np.tile(iwp[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    rel_interp = interp1d(grid.dim['z'], rel, axis=0)
-    rel_grid = rel_interp(z_regrid)
-    rel = np.append(rel_grid, np.tile(rel[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    rei_interp = interp1d(grid.dim['z'], rei, axis=0)
-    rei_grid = rei_interp(z_regrid)
-    rei = np.append(rei_grid, np.tile(rei[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    tlay_interp = interp1d(grid.dim['z'], tlay, axis=0)
-    tlay_grid = tlay_interp(z_regrid)
-    tlay = np.append(tlay_grid, np.tile(tlay[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    h2o_interp = interp1d(grid.dim['z'], h2o, axis=0)
-    h2o_grid = h2o_interp(z_regrid)
-    h2o = np.append(h2o_grid, np.tile(h2o[grid_top_idx:].mean(axis=(1,2))[:,None,None], (1, jtot, itot)), axis=0)
-
-    o3_interp = interp1d(grid.dim['z'], o3)
-    o3_grid = o3_interp(z_regrid)
-    o3 = np.append(o3_grid, o3[grid_top_idx:])
-
-    p_hf = np.append(play,plev)
-    z_hf = np.append(grid.dim['z'][:], grid.dim['zh'][:])
-    idc = np.argsort(z_hf)
-    p_hf = p_hf[idc]
-    z_hf = z_hf[idc]
-
-    play_interp = interp1d(z_hf, p_hf)
-    play_grid = play_interp(z_regrid)
-    play = np.append(play_grid, play[grid_top_idx:])
-
-    plev_interp = interp1d(z_hf, p_hf)
-    plev_grid = plev_interp(zh_regrid)
-    plev = np.append(plev_grid, plev[grid_top_idx+1:])
-
-    zlay = np.append(z_regrid, zlay[grid_top_idx:])
-    ktot = len(play)
-
 # find lowest height in bg profile that is heigher than domain top
 z_tod = grid.dim['zh'][-1]
 zmin_idx = np.where(zlay_bg[:] > z_tod)[0][0]
 
 zlay = np.append(zlay, zlay_bg[zmin_idx:])
+zlev = np.append(zlev, zlev_bg[zmin_idx+1:])
+zlev[nz] = nz*(grid_z[1]-grid_z[0])
+
 # patch pressure profiles
 play = np.append(play, play_bg[zmin_idx:])
 plev = np.append(plev, plev_bg[zmin_idx+1:])
-
-if merge_bg:
-    # for tilted column
-    nz = len(play)
-    grid_z = np.append(grid.dim['z'], zlay_bg[zmin_idx:])
-    grid_zh= np.append(grid.dim['zh'], zlev_bg[zmin_idx+1:])
-    if z_tilt == -1:
-        z_tilt = grid_zh[-1]
-elif f_regrid:
-    nz = len(z_regrid)
-    grid_z = z_regrid
-    grid_zh = zh_regrid
-else:
-    nz = ktot
-    grid_z = grid.dim['z']
-    grid_zh = grid.dim['zh']
 
 ### Writing output
 # create netcdf file
@@ -311,8 +269,9 @@ nc_zh = nc_out.createVariable("zh", "f8", ("zh",))
 nc_zh[:] = grid_zh
 
 nc_zlay = nc_out.createVariable("zlay", "f8", ("lay"))
-print(nc_zlay[:].shape,zlay.shape)
+nc_zlev = nc_out.createVariable("z_lev", "f8", ("lev"))
 nc_zlay[:] = zlay
+nc_zlev[:] = zlev
 
 # write pressures
 nc_play = nc_out.createVariable("p_lay", "f8", ("lay","y","x"))
@@ -330,23 +289,27 @@ nc_h2o[:] = np.append(h2o[:], np.tile(h2o_bg[zmin_idx:][:,None,None], (1, jtot, 
 nc_tlay = nc_out.createVariable("t_lay", "f8", ("lay","y","x"))
 nc_tlay[:] = np.append(tlay[:], np.tile(tlay_bg[zmin_idx:][:,None,None], (1, jtot, itot)), axis=0)
 
-# don't bother about longwave :)
+# We do not bother about t_lev yet  because the ray tracer is shortwave-only, but we do need to supply it in the netcdf
 nc_tlev = nc_out.createVariable("t_lev", "f8", ("lev","y","x"))
-nc_tlev[:] = 0 #np.append(tlev[:], np.tile(tlev_bg[zmin_idx+1:,None,None], (1, jtot, itot)), axis=0)
+nc_tlev[:] = 0 
 
-nc_lwp = nc_out.createVariable("lwp" , "f8", ("lev","y","x"))
+# Liquid water path
+nc_lwp = nc_out.createVariable("lwp" , "f8", ("lay","y","x"))
 nc_lwp[:] = 0
 nc_lwp[:ktot] = lwp
 
-nc_rel = nc_out.createVariable("rel" , "f8", ("lev","y","x"))
+# Liquid water effective radius
+nc_rel = nc_out.createVariable("rel" , "f8", ("lay","y","x"))
 nc_rel[:] = 0
 nc_rel[:ktot] = rel
 
-nc_iwp = nc_out.createVariable("iwp" , "f8", ("lev","y","x"))
+# Ice water path
+nc_iwp = nc_out.createVariable("iwp" , "f8", ("lay","y","x"))
 nc_iwp[:] = 0
 nc_iwp[:ktot] = iwp
 
-nc_rei = nc_out.createVariable("rei" , "f8", ("lev","y","x"))
+# Ice effective radius
+nc_rei = nc_out.createVariable("rei" , "f8", ("lay","y","x"))
 nc_rei[:] = 0
 nc_rei[:ktot] = rei
 
@@ -365,18 +328,18 @@ nc_mu = nc_out.createVariable("mu0", "f8", ("y","x"))
 nc_mu[:] = mu0
 nc_az = nc_out.createVariable("azi", "f8", ("y","x"))
 nc_az[:] = azi
+
+# Scaling top-of-atmosphere irradiance
 nc_ts = nc_out.createVariable("tsi_scaling", "f8")
 nc_ts[:] = tsi_scaling
 
-#trace gases:
+# trace gases:
 for var in nc_inp['radiation'].variables:
     if len(nc_inp['radiation'][var].dimensions) == 0:
         nc_gas = nc_out.createVariable("vmr_"+var, "f8")
         nc_gas[:] = nc_inp['radiation'][var][:]
 
-nc_z_tilt = nc_out.createVariable("z_tilt", "f8")
-nc_z_tilt[:] = z_tilt
-
+# size of null-collision grid
 nc_ng_x = nc_out.createVariable("ngrid_x", "f8")
 nc_ng_x[:] = ng_x
 nc_ng_y = nc_out.createVariable("ngrid_y", "f8")
