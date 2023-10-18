@@ -102,7 +102,7 @@ xz=38400
 
 [dump]
 swdump=1
-sampletime=100
+sampletime=900
 dumplist=None
 
 [limiter]

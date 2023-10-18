@@ -8,6 +8,8 @@ float_type = 'f8'
 # Case switches for microphysics schemes.
 sw_micro = 'sb06'
 sw_prognostic_ice = True
+sw_advec = '2i5'
+fluxlim_qx = True
 
 # ***** Parameters for WK ********
 # Tropopause parameters
@@ -178,7 +180,7 @@ elif sw_micro == 'sb06':
     ini['micro']['swdebug'] = 0
     ini['micro']['swprognosticice'] = sw_prognostic_ice
 
-    ini['dump']['dumplist'] = ['ql', 'qi']
+    ini['dump']['dumplist'] = ['ql', 'qi', 'qr', 'qs', 'qg', 'qh']
 
     prog_species = ['qr', 'nr', 'qs', 'ns', 'qg', 'ng', 'qh', 'nh']
     diag_species = ['ql']
@@ -194,5 +196,9 @@ else:
 paths = ['{}_path'.format(x) for x in prog_species + diag_species]
 ini['cross']['crosslist'] = prog_species + diag_species + bonus_cross + paths
 ini['limiter']['limitlist'] = ['qt'] + prog_species
+
+ini['advec']['swadvec'] = sw_advec
+if fluxlim_qx:
+    ini['advec']['fluxlimit_list'] = ['qt'] + prog_species
 
 ini.save('weisman_klemp.ini', allow_overwrite=True)
