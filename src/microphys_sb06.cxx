@@ -856,6 +856,9 @@ void Microphys_sb06<TF>::create(
             stats.add_tendency(*fields.st.at(it.first), "z", tend_name, tend_longname);
         }
 
+        if (sw_ice)
+            stats.add_prof("dBZ", "Radar reflectivity in dBZ", "-", "z" , group_name);
+
         // Microphysics budget
         if (sw_microbudget)
         {
@@ -2310,19 +2313,59 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    //const bool is_stat = true;
-    //const bool cyclic = false;
+    const bool is_stat = true;
+    const bool cyclic = false;
+
+    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
     // Time series
     for (auto& it : hydro_types)
         if (it.second.is_mass)
             stats.calc_stats_2d(it.second.name + "_rate", it.second.precip_rate, no_offset);
 
+    // Radar reflectivity
+    if (sw_ice)
+    {
+        auto Ta = fields.get_tmp();
+        auto ql = fields.get_tmp();
+        thermo.get_thermo_field(*Ta, "T", cyclic, is_stat);
+        thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+
+        auto zr = fields.get_tmp();
+
+        Sb_cold::compute_field_dbz_2mom(
+            zr->fld.data(),
+            ql->fld.data(),
+            fields.ap.at("qi")->fld.data(),
+            fields.ap.at("ni")->fld.data(),
+            fields.ap.at("qr")->fld.data(),
+            fields.ap.at("nr")->fld.data(),
+            fields.ap.at("qs")->fld.data(),
+            fields.ap.at("ns")->fld.data(),
+            fields.ap.at("qg")->fld.data(),
+            fields.ap.at("ng")->fld.data(),
+            fields.ap.at("qh")->fld.data(),
+            fields.ap.at("nh")->fld.data(),
+            Ta->fld.data(),
+            rho.data(),
+            cloud, rain, ice, snow,
+            graupel, hail, rain_coeffs,
+            this->Nc0,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+        stats.calc_stats("dBZ", *zr, no_offset, no_threshold);
+
+        fields.release_tmp(Ta);
+        fields.release_tmp(ql);
+        fields.release_tmp(zr);
+    }
+
     // Profiles
     auto vq = fields.get_tmp();
     auto vn = fields.get_tmp();
-
-    const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
 
     for (int k=gd.kend-1; k>=gd.kstart; --k)
     {

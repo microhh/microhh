@@ -101,6 +101,10 @@ namespace Sb_cold
     template<typename TF> constexpr TF T_freeze  = 273.15;             // lower temperature threshold for raindrop freezing
     template<typename TF> constexpr TF T_f  = 233.0;                   // below this temperature there is no liquid water
 
+    // Dielectric constants at reference temperature 0°C for radar reflectivity calculation:
+    template<typename TF> constexpr TF k_w0  = 0.93;                    // Water
+    template<typename TF> constexpr TF k_i0  = 0.176;                   // Ice
+
 
     template<typename TF>
     inline TF particle_meanmass(
@@ -3349,5 +3353,165 @@ namespace Sb_cold
                     }
                 }
             }
+    }
+
+
+    template<typename TF>
+    void compute_field_dbz_2mom(
+            TF* const restrict z_radar,
+            const TF* const restrict qc,
+            //const TF* const restrict nc, // replaced with Nc0 below, saves dummy 3D field.
+            const TF* const restrict qi,
+            const TF* const restrict ni,
+            const TF* const restrict qr,
+            const TF* const restrict nr,
+            const TF* const restrict qs,
+            const TF* const restrict ns,
+            const TF* const restrict qg,
+            const TF* const restrict ng,
+            const TF* const restrict qh,
+            const TF* const restrict nh,
+            const TF* const restrict Ta,
+            const TF* const restrict rho,
+            Particle<TF>& cloud,
+            Particle<TF>& rain,
+            Particle_frozen<TF>& ice,
+            Particle_frozen<TF>& snow,
+            Particle_frozen<TF>& graupel,
+            Particle_frozen<TF>& hail,
+            Particle_rain_coeffs<TF>& rain_coeffs,
+            const TF Nc0,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const TF eps  = 1.00e-15;
+        const TF eps2 = 1.00e-20;
+        const TF convfac = 1.e18;
+        //const TF scalfac = TF(10)/std::log(10);
+
+        // Passed as argument to ICON kernel:
+        const TF q_crit_radar = 1e-8;
+
+        // This is based on `PRESENT(ql_graupel)` etc in ICON:
+        const bool llwf_scheme = false;
+
+        const TF z_fac_ice_dry = fm::pow2(Constants::rho_w<TF>/Constants::rho_i<TF>) * k_i0<TF>/k_w0<TF>;
+        const TF z_fac_ice_wet = TF(1);
+
+        auto moment_gamma = [](
+            const Particle<TF> &p, const int n)
+        {
+            const TF moment_gamma = std::tgamma((n + p.nu + 1.0) / p.mu) / std::tgamma((p.nu + 1.0) / p.mu)
+                                    * std::pow(std::tgamma((p.nu + 1.0) / p.mu) / std::tgamma((p.nu + 2.0) / p.mu), n);
+            return moment_gamma;
+        };
+
+        // Only calculated once in ICON.
+        const TF mom_fac = fm::pow2(TF(6) / (Constants::pi<TF> * Constants::rho_w<TF>));
+        const TF z_fac_c = moment_gamma(cloud, 2)   * mom_fac;
+        const TF z_fac_r = moment_gamma(rain, 2)    * mom_fac;
+        const TF z_fac_i = moment_gamma(ice, 2)     * mom_fac;
+        const TF z_fac_s = moment_gamma(snow, 2)    * mom_fac;
+        const TF z_fac_g = moment_gamma(graupel, 2) * mom_fac;
+        const TF z_fac_h = moment_gamma(hail, 2)    * mom_fac;
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jstride;
+                    const int ijk = ij + k*kstride;
+
+                    z_radar[ijk] = TF(0);
+
+                    // Conversion `kg kg-1` to `kg m-3` and `kg-1` to `m-3`
+                    const TF q_c = std::max(qc[ijk], TF(0)) * rho[k];
+                    const TF n_c = std::max(Nc0,     TF(0)) * rho[k];
+                    const TF q_r = std::max(qr[ijk], TF(0)) * rho[k];
+                    const TF n_r = std::max(nr[ijk], TF(0)) * rho[k];
+                    const TF q_i = std::max(qi[ijk], TF(0)) * rho[k];
+                    const TF n_i = std::max(ni[ijk], TF(0)) * rho[k];
+                    const TF q_s = std::max(qs[ijk], TF(0)) * rho[k];
+                    const TF n_s = std::max(ns[ijk], TF(0)) * rho[k];
+
+                    TF q_g, q_h;
+                    if (llwf_scheme)
+                    {
+                        throw std::runtime_error("LLWF scheme not supported in dBZ calculation.");
+                        //q_g = (q_graupel(jc,jk,jb) + ql_graupel(jc,jk,jb), 0.0_wp) * rho(jc,jk,jb)
+                        //q_h = (q_hail(jc,jk,jb)    + ql_hail(jc,jk,jb)   , 0.0_wp) * rho(jc,jk,jb)
+                    }
+                    else
+                    {
+                        q_g = std::max(qg[ijk], TF(0)) * rho[k];
+                        q_h = std::max(qh[ijk], TF(0)) * rho[k];
+                    }
+
+                    const TF n_g = std::max(ng[ijk], TF(0)) * rho[k];
+                    const TF n_h = std::max(nh[ijk], TF(0)) * rho[k];
+
+                    TF x_c = std::min( std::max(q_c / (n_c + eps2), cloud.x_min), cloud.x_max );
+                    TF x_r = std::min( std::max(q_r / (n_r + eps2), rain.x_min), rain.x_max );
+                    TF x_i = std::min( std::max(q_i / (n_i + eps2), ice.x_min), ice.x_max );
+                    TF x_s = std::min( std::max(q_s / (n_s + eps2), snow.x_min), snow.x_max );
+                    TF x_g = std::min( std::max(q_g / (n_g + eps2), graupel.x_min), graupel.x_max );
+                    TF x_h = std::min( std::max(q_h / (n_h + eps2), hail.x_min), hail.x_max );
+
+                    // Cloud water reflectivity:
+                    if (q_c < q_crit_radar)
+                        x_c = TF(0);
+                    z_radar[ijk] += z_fac_c * q_c * x_c;
+
+                    // Rain water reflectivity:
+                    if (q_r >= q_crit_radar)
+                    {
+                        if (q_c > q_crit_radar) // ! Inside of cloud cores assume generalized gamma DSD:
+                            z_radar[ijk] += z_fac_r * q_r * x_r;
+                        else
+                        {
+                            // Outside of cloud cores assume mu-D-relation Seifert (2008):
+                            const TF d_r = rain.a_geo * std::exp(rain.b_geo * std::log(x_r));
+                            const TF muD = rain_mue_dm_relation(rain_coeffs, d_r);
+                            const TF z_fac_r_muD = mom_fac * (muD + TF(6)) * (muD + TF(5)) * (muD + TF(4)) /
+                                        ((muD + TF(3)) * (muD + TF(2)) * (muD + TF(1)));
+                            z_radar[ijk] += z_fac_r_muD * q_r * x_r;
+                        }
+                    }
+
+                    // Ice species reflectivity:
+                    if (q_i < q_crit_radar)
+                        x_i = TF(0);
+                    if (q_s < q_crit_radar)
+                        x_s = TF(0);
+                    if (q_g < q_crit_radar)
+                        x_g = TF(0);
+                    if (q_h < q_crit_radar)
+                        x_h = TF(0);
+
+                    if (Ta[ijk] < Constants::T0<TF>)
+                    {
+                        z_radar[ijk] += z_fac_i * q_i * x_i * z_fac_ice_dry;
+                        z_radar[ijk] += z_fac_s * q_s * x_s * z_fac_ice_dry;
+                        z_radar[ijk] += z_fac_g * q_g * x_g * z_fac_ice_dry;
+                        z_radar[ijk] += z_fac_h * q_h * x_h * z_fac_ice_dry;
+                    }
+                    else
+                    {
+                        z_radar[ijk] += z_fac_i * q_i * x_i * z_fac_ice_wet;
+                        z_radar[ijk] += z_fac_s * q_s * x_s * z_fac_ice_wet;
+                        z_radar[ijk] += z_fac_g * q_g * x_g * z_fac_ice_wet;
+                        z_radar[ijk] += z_fac_h * q_h * x_h * z_fac_ice_wet;
+                    }
+
+                    // conversion of output unit. Resulting unit = `mm^6/m^3`.
+                    z_radar[ijk] *= convfac;
+
+                    // Conversion to dBZ. In ICON, done as a post_op, defined in `src/io/shared/mo_post_op.f90`
+                    //z_radar[ijk] = scalfac * std::log(std::max(z_radar[ijk], TF(1e-15)));
+                    z_radar[ijk] = TF(10) * std::log10(std::max(z_radar[ijk], TF(1e-15)));
+                }
     }
 } // namespace
