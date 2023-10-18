@@ -3355,7 +3355,6 @@ namespace Sb_cold
             }
     }
 
-
     template<typename TF>
     void compute_field_dbz_2mom(
             TF* const restrict z_radar,

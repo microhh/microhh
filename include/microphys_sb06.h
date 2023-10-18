@@ -309,9 +309,9 @@ class Microphys_sb06 : public Microphys<TF>
         void exec(Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
 
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double);
-        void exec_column(Column<TF>&);
+        void exec_column(Column<TF>&, Thermo<TF>&);
         void exec_dump(Dump<TF>&, unsigned long) {};
-        void exec_cross(Cross<TF>&, unsigned long);
+        void exec_cross(Cross<TF>&, Thermo<TF>&, unsigned long);
 
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
@@ -365,7 +365,8 @@ class Microphys_sb06 : public Microphys<TF>
         // Disable the feature for now, and discuss later with the ICON people.
         bool use_ql_sedi_rain = false;
 
-        std::vector<std::string> crosslist; // Cross-sections handled by this class
+        std::vector<std::string> crosslist;     // Cross-sections handled by this class
+        std::vector<std::string> crosslist_dBZ; // dBZ cross-sections handled by this class
 
         const std::string tend_name = "micro";
         const std::string tend_longname = "Microphysics";

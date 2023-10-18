@@ -481,7 +481,7 @@ void Model<TF>::exec()
                         thermo   ->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
                         boundary ->exec_column(*column);
-                        microphys->exec_column(*column);
+                        microphys->exec_column(*column, *thermo);
 
                         #pragma omp critical
                         column   ->exec(iter, time, itime);
@@ -643,7 +643,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     {
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
-        microphys->exec_cross(*cross, iotime);
+        microphys->exec_cross(*cross, *thermo, iotime);
         ib       ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
     }

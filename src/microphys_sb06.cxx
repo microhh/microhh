@@ -919,12 +919,20 @@ void Microphys_sb06<TF>::create(
     // Variables that this class can calculate/provide:
     std::vector<std::string> allowed_crossvars;
     for (auto& it : hydro_types)
-    {
         allowed_crossvars.push_back("r" + it.first.substr(1,1) + "_bot");
+
+    std::vector<std::string> allowed_crossvars_dBZ;
+    if (sw_ice)
+    {
+        // Radar reflectivity.
+        allowed_crossvars_dBZ.push_back("dBZ");       // xy, xz, yz
+        allowed_crossvars_dBZ.push_back("dBZ_max");   // column max (xy)
+        allowed_crossvars_dBZ.push_back("dBZ_850");   // ~850 hPa
     }
 
     // Cross-reference with the variables requested in the .ini file:
-    crosslist = cross.get_enabled_variables(allowed_crossvars);
+    crosslist     = cross.get_enabled_variables(allowed_crossvars);
+    crosslist_dBZ = cross.get_enabled_variables(allowed_crossvars_dBZ);
 
     // Add timers for individual kernels.
     timer.create(timeloop.get_iotime(), sim_name);
@@ -2331,10 +2339,10 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
         thermo.get_thermo_field(*Ta, "T", cyclic, is_stat);
         thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
 
-        auto zr = fields.get_tmp();
+        auto dBZ = fields.get_tmp();
 
         Sb_cold::compute_field_dbz_2mom(
-            zr->fld.data(),
+            dBZ->fld.data(),
             ql->fld.data(),
             fields.ap.at("qi")->fld.data(),
             fields.ap.at("ni")->fld.data(),
@@ -2356,11 +2364,11 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
             gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
-        stats.calc_stats("dBZ", *zr, no_offset, no_threshold);
+        stats.calc_stats("dBZ", *dBZ, no_offset, no_threshold);
 
         fields.release_tmp(Ta);
         fields.release_tmp(ql);
-        fields.release_tmp(zr);
+        fields.release_tmp(dBZ);
     }
 
     // Profiles
@@ -2424,7 +2432,7 @@ void Microphys_sb06<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 
 #ifndef USECUDA
 template<typename TF>
-void Microphys_sb06<TF>::exec_column(Column<TF>& column)
+void Microphys_sb06<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo)
 {
     const TF no_offset = 0.;
 
@@ -2435,10 +2443,11 @@ void Microphys_sb06<TF>::exec_column(Column<TF>& column)
 #endif
 
 template<typename TF>
-void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
+void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, Thermo<TF>& thermo, unsigned long iotime)
 {
     if (cross.get_switch())
     {
+        auto& gd = grid.get_grid_data();
         const TF no_offset = 0.;
 
         for (auto& it : crosslist)
@@ -2447,6 +2456,79 @@ void Microphys_sb06<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             // using the full name, like e.g. `rain_rate` or `qr_flux` or ...?
             const std::string letter = it.substr(1,1);
             cross.cross_plane(hydro_types.at("q" + letter).precip_rate.data(), no_offset, it, iotime);
+        }
+
+        if (crosslist_dBZ.size() > 0)
+        {
+            const bool is_stat = true;
+            const bool cyclic = false;
+
+            auto Ta = fields.get_tmp();
+            auto ql = fields.get_tmp();
+
+            thermo.get_thermo_field(*Ta, "T", cyclic, is_stat);
+            thermo.get_thermo_field(*ql, "ql", cyclic, is_stat);
+            const std::vector<TF>& rho = thermo.get_basestate_vector("rho");
+            const std::vector<TF>& p = thermo.get_basestate_vector("p");
+
+            auto dBZ = fields.get_tmp();
+
+            Sb_cold::compute_field_dbz_2mom(
+                    dBZ->fld.data(),
+                    ql->fld.data(),
+                    fields.ap.at("qi")->fld.data(),
+                    fields.ap.at("ni")->fld.data(),
+                    fields.ap.at("qr")->fld.data(),
+                    fields.ap.at("nr")->fld.data(),
+                    fields.ap.at("qs")->fld.data(),
+                    fields.ap.at("ns")->fld.data(),
+                    fields.ap.at("qg")->fld.data(),
+                    fields.ap.at("ng")->fld.data(),
+                    fields.ap.at("qh")->fld.data(),
+                    fields.ap.at("nh")->fld.data(),
+                    Ta->fld.data(),
+                    rho.data(),
+                    cloud, rain, ice, snow,
+                    graupel, hail, rain_coeffs,
+                    this->Nc0,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            auto get_k_850 = [&]()
+            {
+                TF d_min = Constants::dhuge;
+                int k_min;
+
+                for (int k=gd.kstart; k<gd.kend; ++k)
+                {
+                    const TF d = std::abs(p[k]-85000);
+                    if (d < d_min)
+                    {
+                        d_min = d;
+                        k_min = k;
+                    }
+                }
+                return k_min;
+            };
+
+            for (auto& it : crosslist_dBZ)
+            {
+                if (it == "dBZ")
+                    cross.cross_simple(dBZ->fld.data(), no_offset, it, iotime, gd.sloc);
+                else if (it == "dBZ_850")
+                {
+                    const int k = get_k_850();
+                    cross.cross_plane(&dBZ->fld.data()[k*gd.ijcells], no_offset, it, iotime);
+                }
+                else if (it == "dBZ_max")
+                    cross.cross_path_max(dBZ->fld.data(), it, iotime);
+            }
+
+            fields.release_tmp(Ta);
+            fields.release_tmp(ql);
+            fields.release_tmp(dBZ);
         }
     }
 }

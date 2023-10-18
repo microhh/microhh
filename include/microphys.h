@@ -64,10 +64,10 @@ class Microphys
 
         virtual void exec(Thermo<TF>&, Timeloop<TF>&, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&, Thermo<TF>&, const double) = 0; ///< Calculate the statistics
-        virtual void exec_column(Column<TF>&) = 0;
+        virtual void exec_column(Column<TF>&, Thermo<TF>&) = 0;
 
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
-        virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
+        virtual void exec_cross(Cross<TF>&, Thermo<TF>& thermo, unsigned long) = 0;
 
         virtual void get_mask(Stats<TF>&, std::string) = 0;
         virtual bool has_mask(std::string) = 0;

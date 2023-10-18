@@ -196,6 +196,36 @@ namespace
             }
     }
 
+
+    template<typename TF>
+    void calc_cross_path_max(
+            const TF* const restrict data,
+            TF* const restrict tmp,
+            int jj, int kk,
+            int istart, int iend,
+            int jstart, int jend,
+            int kstart, int kend)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*jj + kstart*kk;
+                tmp[ijk] = -Constants::dhuge;
+            }
+
+        // Find max with height
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk1 = i + j*jj + kstart*kk;
+                    const int ijk  = i + j*jj + k*kk;
+                    tmp[ijk1] = std::max(tmp[ijk1], data[ijk]);
+                }
+    }
+
     template<typename TF>
     void calc_cross_height_threshold(
             const TF* const restrict data, TF* const restrict height,
@@ -715,7 +745,6 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 {
-
     int nerror = 0;
     TF no_offset = 0.;
     auto tmpfld = fields.get_tmp();
@@ -724,6 +753,27 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 
     calc_cross_path<TF>(
             data, tmp, fields.rhoref.data(), gd.dz.data(),
+            gd.icells, gd.ijcells,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend);
+
+    nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], no_offset, name, iotime);
+    fields.release_tmp(tmpfld);
+    return nerror;
+}
+
+template<typename TF>
+int Cross<TF>::cross_path_max(TF* restrict data, std::string name, int iotime)
+{
+    int nerror = 0;
+    TF no_offset = 0.;
+    auto tmpfld = fields.get_tmp();
+    auto tmp = tmpfld->fld.data();
+    auto& gd = grid.get_grid_data();
+
+    calc_cross_path_max<TF>(
+            data, tmp,
             gd.icells, gd.ijcells,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
