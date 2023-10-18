@@ -1,3 +1,5 @@
+# NOTE: all `None` values are set by `weisman_klemp_input.py`.
+
 [master]
 npx=1
 npy=1
@@ -30,10 +32,11 @@ pbot=95533.21858012446
 thvref0=300
 swupdatebasestate=1
 
+swsatadjust_ql=None
+swsatadjust_qi=None
+
 [micro]
-swmicro=nsw6
-# swmicro=sb06
-# swmicrobudget=1
+swmicro=None
 cflmax=1.2
 Nc0=250e6
 
@@ -93,15 +96,17 @@ sampletime=60
 [cross]
 swcross=1
 sampletime=60
-# crosslist=thl,ql_path,ql,qi,qr,qr_path,qt,u,v,w
-crosslist=thl,qlqi_path,qlqi,qr,qr_path,u,v,w
+crosslist=None
 xy=2000,5000,8000
 xz=38400
 
 [dump]
 swdump=1
 sampletime=100
-dumplist=qlqi
+dumplist=None
 
 [limiter]
-limitlist=qt,qr
+limitlist=None
+
+[timer]
+swtimer=1

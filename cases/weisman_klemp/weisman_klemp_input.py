@@ -1,7 +1,13 @@
 import numpy as np
 import netCDF4 as nc
 
+import microhh_tools as mht
+
 float_type = 'f8'
+
+# Case switches for microphysics schemes.
+sw_micro = 'sb06'
+sw_prognostic_ice = True
 
 # ***** Parameters for WK ********
 # Tropopause parameters
@@ -26,7 +32,7 @@ rdcp     = Rd/cp
 cprd     = cp/Rd
 grav     = 9.81
 
-# Variations used 
+# Variations used
 qv0      = 0.014       # Vapor Mixing ratio in BL (maximum value) (kg/kg) [ 11 / 14 / 16 ]
 Us       = 25.         # Shear velocity (m/s) [ 5 15 25 35 45 ]
 
@@ -54,9 +60,8 @@ def qsat_liq(p, T):
 def qv_rh(p, T, rh):
     return ep*esat_liq(T)*rh/(p-(1.-ep)*esat_liq(T)*rh)
 
-
 # Get number of vertical levels and size from .ini file
-with open('weisman_klemp.ini') as f:
+with open('weisman_klemp.ini.base') as f:
     for line in f:
         if(line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
@@ -88,8 +93,6 @@ while z[k] < z_tr:
 # Pressure in tropopause
 p_tr = p0 * pow( T_tr/ theta_tr, cprd)
 
-
-
 # Calculate theta and rh arrays and velocity
 for k in range(k_tr):
     thl[k] = theta_0 + (theta_tr - theta_0) *pow( z[k] / z_tr, 5/4)
@@ -108,7 +111,6 @@ for k in range(k_tr,kmax):
     p_loc =  p0 * pow( T_tr/ thl[k], rdcp)
     qt[k] = rh[k] * qv_rh(p_loc,T_tr,rh[k])
 
-
 # Calculate values below tropopause
 cpres = grav*pow(p0,rdcp)*dz/cp
 qfg = 0
@@ -123,10 +125,10 @@ for k in range(k_tr-1, -2, -1):
     p_up  = pow(pow(p_up,rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
     Ttemp = thl[k] * pow(p_up/p0, rdcp) if k > -1 else theta_0 * pow(p_up/p0, rdcp)
     if ( k > -1):
-        qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))	
+        qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))
         #print(z[k], p_up/1.e5, Ttemp, qt[k])
 
-print("Please set surface pressure in ini file to:", p_up)    
+print("Please set surface pressure in ini file to:", p_up)
 
 # write the data to a file
 nc_file = nc.Dataset("weisman_klemp_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
@@ -147,3 +149,50 @@ nc_v    [:] = v    [:]
 
 nc_file.close()
 
+"""
+Generate .ini file from .ini.base
+"""
+ini = mht.Read_namelist('weisman_klemp.ini.base')
+
+ini['micro']['swmicro'] = sw_micro
+
+if sw_micro == 'nsw6':
+
+    ini['thermo']['swsatadjust_ql'] = 1
+    ini['thermo']['swsatadjust_qi'] = 1
+    ini['micro']['cflmax'] = 1.2
+    ini['dump']['dumplist'] = ['qlqi']
+
+    prog_species = ['qr', 'qs', 'qg']
+    diag_species = ['ql', 'qi']
+    bonus_cross = ['thl', 'qt', 'u', 'v', 'w', 'qlqi']
+
+elif sw_micro == 'sb06':
+
+    ini['thermo']['swsatadjust_ql'] = 1
+    ini['thermo']['swsatadjust_qi'] = not sw_prognostic_ice
+
+    ini['micro']['swice'] = 1
+    ini['micro']['swmicrobudget'] = 1
+    ini['micro']['swintegrate'] = 0
+    ini['micro']['swdebug'] = 0
+    ini['micro']['swprognosticice'] = sw_prognostic_ice
+
+    ini['dump']['dumplist'] = ['ql', 'qi']
+
+    prog_species = ['qr', 'nr', 'qs', 'ns', 'qg', 'ng', 'qh', 'nh']
+    diag_species = ['ql']
+    if sw_prognostic_ice:
+        prog_species += ['qi', 'ni']
+    else:
+        diag_species += ['qi']
+    bonus_cross = ['thl', 'qt', 'u', 'v', 'w', 'dBZ', 'dBZ_850', 'dBZ_max']
+
+else:
+    raise Exception('Unknown sw_micro!')
+
+paths = ['{}_path'.format(x) for x in prog_species + diag_species]
+ini['cross']['crosslist'] = prog_species + diag_species + bonus_cross + paths
+ini['limiter']['limitlist'] = ['qt'] + prog_species
+
+ini.save('weisman_klemp.ini', allow_overwrite=True)
