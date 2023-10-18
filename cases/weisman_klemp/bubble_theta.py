@@ -45,7 +45,7 @@ kmaxbub = int(round((zbub + lzbub)/dz))  + 1
 
 # Open the file
 filename = "thl.0000000"
-float_type = np.float64 if os.path.getsize(filename) // (2*itot + 2*jtot + 2*ktot) == 8 else np.float32
+float_type = np.float64 if os.path.getsize(filename) // (itot * jtot * ktot) == 8 else np.float32
 
 thl = np.fromfile(filename, dtype=float_type).reshape(ktot, jtot, itot)
 
