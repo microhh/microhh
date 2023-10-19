@@ -2128,15 +2128,13 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
         // Vertical profiles
         column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-        column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
-
         column.add_time_series("ql_path", "Liquid water path", "kg m-2");
 
-        if (sw_satadjust == Satadjust_type::Liquid_ice)
-        {
-            column.add_time_series("qi_path", "Ice path", "kg m-2");
-            column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
-        }
+        //if (sw_satadjust == Satadjust_type::Liquid_ice)
+        //{
+        //    column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
+        //    column.add_time_series("qi_path", "Ice path", "kg m-2");
+        //}
     }
 }
 
@@ -2271,26 +2269,26 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     fields.release_tmp(ql);
 
-    if (sw_satadjust == Satadjust_type::Liquid_ice)
-    {
-        // Calculate the ice stats
-        auto qi = fields.get_tmp();
-        qi->loc = gd.sloc;
+    //if (sw_satadjust == Satadjust_type::Liquid_ice)
+    //{
+    //    // Calculate the ice stats
+    //    auto qi = fields.get_tmp();
+    //    qi->loc = gd.sloc;
 
-        get_thermo_field(*qi, "qi", true, true);
-        stats.calc_stats("qi", *qi, no_offset, no_threshold);
+    //    get_thermo_field(*qi, "qi", true, true);
+    //    stats.calc_stats("qi", *qi, no_offset, no_threshold);
 
-        fields.release_tmp(qi);
+    //    fields.release_tmp(qi);
 
-        // Calculate the combined liquid water and ice stats
-        auto qlqi = fields.get_tmp();
-        qlqi->loc = gd.sloc;
+    //    // Calculate the combined liquid water and ice stats
+    //    auto qlqi = fields.get_tmp();
+    //    qlqi->loc = gd.sloc;
 
-    get_thermo_field(*qlqi, "qlqi", true, true);
-    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
+    //    get_thermo_field(*qlqi, "qlqi", true, true);
+    //    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
 
-        fields.release_tmp(qlqi);
-    }
+    //    fields.release_tmp(qlqi);
+    //}
 
     // Calculate the saturated water vapor stats
     auto qsat = fields.get_tmp();
@@ -2357,23 +2355,23 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     column.calc_column("ql", output->fld.data(), no_offset);
     column.calc_time_series("ql_path", output->fld_bot.data(), no_offset);
 
-    if (sw_satadjust == Satadjust_type::Liquid_ice)
-    {
-        get_thermo_field(*output, "qi", false, true);
+    //if (sw_satadjust == Satadjust_type::Liquid_ice)
+    //{
+    //    get_thermo_field(*output, "qi", false, true);
 
-        calc_path(
-            output->fld_bot.data(),
-            output->fld.data(),
-            bs_stats.rhoref.data(),
-            gd.dz.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    //    calc_path(
+    //        output->fld_bot.data(),
+    //        output->fld.data(),
+    //        bs_stats.rhoref.data(),
+    //        gd.dz.data(),
+    //        gd.istart, gd.iend,
+    //        gd.jstart, gd.jend,
+    //        gd.kstart, gd.kend,
+    //        gd.icells, gd.ijcells);
 
-        column.calc_column("qi", output->fld.data(), no_offset);
-        column.calc_time_series("qi_path", output->fld_bot.data(), no_offset);
-    }
+    //    column.calc_column("qi", output->fld.data(), no_offset);
+    //    column.calc_time_series("qi_path", output->fld_bot.data(), no_offset);
+    //}
 
     fields.release_tmp(output);
 }

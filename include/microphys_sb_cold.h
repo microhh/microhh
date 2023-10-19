@@ -2971,7 +2971,7 @@ namespace Sb_cold
                     }
 
                     ndiag = std::min(ndiag, ni_het_max<TF>);
-                    TF nuc_n = std::max(ndiag - n_inact[ij],TF(0));
+                    TF nuc_n = std::max(ndiag - n_inact[ij], TF(0));
                     TF nuc_q = std::min(nuc_n * ice.x_min, qv[ij]);
                     nuc_n = nuc_q / ice.x_min;
 
