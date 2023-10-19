@@ -1,12 +1,12 @@
 # NOTE: all `None` values are set by `weisman_klemp_input.py`.
 
 [master]
-npx=1
-npy=1
+npx=2
+npy=2
 
 [grid]
-itot=768
-jtot=768
+itot=32
+jtot=32
 ktot=192
 
 xsize=76800.
@@ -39,6 +39,7 @@ swsatadjust_qi=None
 swmicro=None
 cflmax=1.2
 Nc0=250e6
+Ni0=1e5
 
 # [force]
 # swlspres=geo
@@ -83,21 +84,26 @@ starttime=0
 endtime=10800
 dt=6.
 dtmax=30
-savetime=3600
-outputiter=10
+savetime=60
+outputiter=1
 adaptivestep=true
 rkorder=4
 
 [stats]
-swstats=0
-sampletime=60
-# masklist=ql,qlcore
+swstats=1
+sampletime=10
+
+[column]
+swcolumn=1
+sampletime=10
+coordinates[x]=None
+coordinates[y]=None
 
 [cross]
 swcross=1
 sampletime=60
 crosslist=None
-xy=2000,5000,8000
+xy=100,2000,5000,8000
 xz=38400
 
 [dump]

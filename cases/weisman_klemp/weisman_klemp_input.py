@@ -6,8 +6,12 @@ import microhh_tools as mht
 float_type = 'f8'
 
 # Case switches for microphysics schemes.
+#sw_micro = 'nsw6'
+#sw_prognostic_ice = False
+
 sw_micro = 'sb06'
 sw_prognostic_ice = True
+
 sw_advec = '2i5'
 fluxlim_qx = True
 
@@ -200,5 +204,8 @@ ini['limiter']['limitlist'] = ['qt'] + prog_species
 ini['advec']['swadvec'] = sw_advec
 if fluxlim_qx:
     ini['advec']['fluxlimit_list'] = ['qt'] + prog_species
+
+ini['column']['coordinates[x]'] = 1/3. * ini['grid']['xsize']
+ini['column']['coordinates[y]'] = 1/2. * ini['grid']['ysize']
 
 ini.save('weisman_klemp.ini', allow_overwrite=True)
