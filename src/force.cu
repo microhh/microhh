@@ -403,7 +403,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         if (grid.get_spatial_order() == Grid_order::Second)
         {
-            coriolis_2nd_g<<<gridGPU, blockGPU>>>(
+            coriolis_2nd_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
                 ug_g, vg_g, fc, gd.utrans, gd.vtrans,
@@ -414,7 +414,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
-            coriolis_4th_g<<<gridGPU, blockGPU>>>(
+            coriolis_4th_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
                 ug_g, vg_g, fc, gd.utrans, gd.vtrans,
@@ -433,7 +433,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         for (auto& it : lslist)
         {
-            large_scale_source_g<<<gridGPU, blockGPU>>>(
+            large_scale_source_g<TF><<<gridGPU, blockGPU>>>(
                 fields.at.at(it)->fld_g, lsprofs_g.at(it),
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
@@ -457,7 +457,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                 cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
             }
 
-            nudging_tendency_g<<<gridGPU, blockGPU>>>(
+            nudging_tendency_g<TF><<<gridGPU, blockGPU>>>(
                 fields.at.at(it)->fld_g, fields.ap.at(it)->fld_mean_g,
                 nudgeprofs_g.at(it), nudge_factor_g,
                 gd.istart, gd.jstart, gd.kstart,
@@ -472,7 +472,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         if (swwls_mom)
-            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g,
                 fields.mp.at("u")->fld_mean_g,
                 wls_g, gd.dzhi_g,
@@ -484,7 +484,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("v")->fld_g,
                 fields.mp.at("v")->fld_mean_g,
                 wls_g, gd.dzhi_g,
@@ -499,7 +499,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g,
                 fields.sp.at(it.first)->fld_mean_g,
                 wls_g, gd.dzhi_g,
@@ -515,7 +515,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     else if (swwls == Large_scale_subsidence_type::Local_field)
     {
         if (swwls_mom)
-            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g,
                 fields.mp.at("u")->fld_g,
                 wls_g, gd.dzhi_g,
@@ -527,7 +527,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("v")->fld_g,
                 fields.mp.at("v")->fld_g,
                 wls_g, gd.dzhi_g,
@@ -539,7 +539,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
 
-            advec_wls_2nd_local_w_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_local_w_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("w")->fld_g,
                 fields.mp.at("w")->fld_g,
                 wls_g, gd.dzi_g,
@@ -553,7 +553,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g,
                 fields.sp.at(it.first)->fld_g,
                 wls_g, gd.dzhi_g,

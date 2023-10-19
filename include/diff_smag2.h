@@ -67,7 +67,7 @@ class Diff_smag2 : public Diff<TF>
 
         void create_stats(Stats<TF>&);
 
-        TF* mlen_g;
+        cuda_vector<TF> mlen_g;
 
         double dnmax;
         double dnmul;

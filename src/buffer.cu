@@ -35,7 +35,7 @@ namespace
 {
     template<typename TF>__global__
     void buffer_g(TF* __restrict__ at,   TF* __restrict__ a,
-                  TF* __restrict__ abuf, TF* __restrict__ z,
+                  TF* __restrict__ abuf, const TF* __restrict__ z,
                   TF zstart, TF zsizebufi, TF sigma,  TF beta,
                   int istart, int jstart, int bufferkstart,
                   int iend,   int jend,   int kend,
@@ -114,7 +114,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
 
         if (swupdate)
         {
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
                 fields.mp.at("u")->fld_mean_g, gd.z_g,
                 zstart, zsizebufi, sigma, beta,
@@ -123,7 +123,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
                 fields.mp.at("v")->fld_mean_g, gd.z_g,
                 zstart, zsizebufi, sigma, beta,
@@ -132,7 +132,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
                 fields.mp.at("w")->fld_mean_g, gd.zh_g,
                 zstart, zsizebufi, sigma, beta,
@@ -142,7 +142,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
             cuda_check_error();
 
             for (auto& it : fields.sp)
-                buffer_g<<<gridGPU, blockGPU>>>(
+                buffer_g<TF><<<gridGPU, blockGPU>>>(
                     fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g,
                     fields.sp.at(it.first)->fld_mean_g, gd.z_g,
                     zstart, zsizebufi, sigma, beta,
@@ -153,7 +153,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
         }
         else
         {
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g,
                 bufferprofs_g.at("u"), gd.z_g,
                 zstart, zsizebufi, sigma, beta,
@@ -162,7 +162,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("v")->fld_g, fields.mp.at("v")->fld_g,
                 bufferprofs_g.at("v"), gd.z_g,
                 zstart, zsizebufi, sigma, beta,
@@ -171,7 +171,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 gd.icells, gd.ijcells);
             cuda_check_error();
 
-            buffer_g<<<gridGPU, blockGPU>>>(
+            buffer_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("w")->fld_g, fields.mp.at("w")->fld_g,
                 bufferprofs_g.at("w"), gd.zh_g,
                 zstart, zsizebufi, sigma, beta,
@@ -181,7 +181,7 @@ void Buffer<TF>::exec(Stats<TF>& stats)
             cuda_check_error();
 
             for (auto& it : fields.sp)
-                buffer_g<<<gridGPU, blockGPU>>>(
+                buffer_g<TF><<<gridGPU, blockGPU>>>(
                     fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g,
                     bufferprofs_g.at(it.first), gd.z_g,
                     zstart, zsizebufi, sigma, beta,

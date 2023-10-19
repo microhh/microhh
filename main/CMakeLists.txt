@@ -19,6 +19,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
+include_directories(${INCLUDE_DIRS} "../include")
 
 # retrieve the git hash from the current commit
 find_package(Git)

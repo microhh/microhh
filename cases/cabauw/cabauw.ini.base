@@ -52,7 +52,6 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
-swhomogenizesfcrad=0
 
 [aerosol]
 swaerosol=1
