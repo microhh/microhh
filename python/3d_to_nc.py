@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -24,15 +24,21 @@ import microhh_tools as mht     # available in microhh/python directory
 import argparse
 import os
 import glob
+import struct
 import time as tm
 import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
+    if doubledump:
+        niter_tot = niter *2 -1
+    else:
+        niter_tot = niter
+    
     for variable in variables:
         filename = "{0}.nc".format(variable)
         dim = {
-            'time': range(niter),
+            'time': range(niter_tot),
             'z': range(kmax),
             'y': range(jtot),
             'x': range(itot)}
@@ -43,29 +49,38 @@ def convert_to_nc(variables):
         if variable == 'w':
             dim['zh'] = dim.pop('z')
         try:
-            ncfile = mht.Create_ncfile(
-                grid, filename, variable, dim, precision, compression)
-            # Loop through the files and read 3d field
-            for t in range(niter):
-                otime = round((starttime + t * sampletime) / 10**iotimeprec)
+            def convert(otime, tout):
                 f_in = "{0:}.{1:07d}".format(variable, otime)
-
                 try:
                     fin = mht.Read_binary(grid, f_in)
                 except Exception as ex:
                     print (ex)
                     raise Exception(
                         'Stopping: cannot find file {}'.format(f_in))
-
                 print("Processing %8s, time=%7i" % (variable, otime))
-                ncfile.dimvar['time'][t] = otime * 10**iotimeprec
+                ncfile.dimvar['time'][tout] = otime * 10**iotimeprec
                 if (perslice):
                     for k in range(kmax):
-                        ncfile.var[t,k,:,:] = fin.read(itot * jtot)
+                        ncfile.var[tout,k,:,:] = fin.read(itot * jtot)
                 else:
-                    ncfile.var[t,:,:,:] = fin.read(itot * jtot * kmax)
+                    ncfile.var[tout,:,:,:] = fin.read(itot * jtot * kmax)
 
                 fin.close()
+
+            ncfile = mht.Create_ncfile(
+                grid, filename, variable, dim, precision, compression)
+            # Loop through the files and read 3d field
+            tout = 0
+            for t in range(niter):
+                otime = round((starttime + t * sampletime) / 10**iotimeprec)
+                if (doubledump and t>0):
+                    timedata = struct.unpack("=QQi",open('time.{0:07d}'.format(otime), 'rb').read())
+                    otime2 = round((timedata[0]-timedata[1]) *10**(-iotimeprec-9)-0.5)
+                    convert(otime2, tout)
+                    tout += 1
+
+                convert(otime, tout)
+                tout += 1
             ncfile.close()
         except Exception as ex:
             print(ex)
@@ -133,6 +148,11 @@ kmax = min(kmax, ktot)
 starttime = args.starttime if args.starttime is not None else nl['time']['starttime']
 endtime = args.endtime if args.endtime is not None else nl['time']['endtime']
 sampletime = args.sampletime if args.sampletime is not None else nl['dump']['sampletime']
+try:
+    doubledump = (nl['dump']['swdoubledump']==1)
+except:
+    doubledump = False
+
 try:
     iotimeprec = nl['time']['iotimeprec']
 except KeyError:

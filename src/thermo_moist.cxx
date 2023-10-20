@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -1483,7 +1483,7 @@ bool Thermo_moist<TF>::has_mask(std::string mask_name)
 template<typename TF>
 bool Thermo_moist<TF>::check_field_exists(const std::string name)
 {
-    if (name == "b" || name == "ql" || name == "T" || name == "qi")
+    if (name == "b" || name == "ql" || name == "T" || name == "qi" || name == "qlqi")
         return true;
     else
         return false;
@@ -1555,7 +1555,7 @@ void Thermo_moist<TF>::get_thermo_field(
         calc_ice(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                  gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
     }
-    else if (name == "ql_qi")
+    else if (name == "qlqi")
     {
         calc_condensate(fld.fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), base.pref.data(),
                         gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
@@ -1964,7 +1964,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
         const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top"};
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
-        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi_path", "qlqi_base", "qlqi_top"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
@@ -2065,6 +2065,15 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     auto ql = fields.get_tmp();
     ql->loc = gd.sloc;
 
+    for (int n=0; n<gd.ncells; ++n)
+        ql->fld[n] = 0.;
+
+    for (int n=0; n<gd.ijcells; ++n)
+    {
+        ql->flux_bot[n] = 0.;
+        ql->flux_top[n] = 0.;
+    }
+
     get_thermo_field(*ql, "ql", true, true);
     stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
@@ -2085,6 +2094,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
         ql->flux_top[n] = 0.;
     }
 
+    ql->loc = gd.wloc;
     get_thermo_field(*ql, "ql_h", true, true);
     stats.calc_stats_w("ql", *ql, no_offset);
     stats.calc_stats_flux("ql", *ql, no_offset);
@@ -2104,7 +2114,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     auto qlqi = fields.get_tmp();
     qlqi->loc = gd.sloc;
 
-    get_thermo_field(*qlqi, "ql_qi", true, true);
+    get_thermo_field(*qlqi, "qlqi", true, true);
     stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
 
     fields.release_tmp(qlqi);
@@ -2251,10 +2261,12 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     }
 
     if (swcross_qlqi)
-        get_thermo_field(*output, "ql_qi", false, true);
+        get_thermo_field(*output, "qlqi", false, true);
 
     for (auto& it : crosslist)
     {
+        if (it == "qlqi")
+            cross.cross_simple(output->fld.data(), no_offset, "qlqi", iotime, gd.sloc);
         if (it == "qlqi_path")
             cross.cross_path(output->fld.data(), "qlqi_path", iotime);
         if (it == "qlqi_base")
@@ -2292,7 +2304,7 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
         auto qlqi = fields.get_tmp();
         auto thv  = fields.get_tmp();
 
-        get_thermo_field(*qlqi, "ql_qi", false, true);
+        get_thermo_field(*qlqi, "qlqi", false, true);
         get_thermo_field(*thv,  "thv", false, true);
 
         field3d_operators.calc_mean_profile(thv->fld_mean.data(), thv->fld.data());

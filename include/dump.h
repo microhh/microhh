@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -42,7 +42,7 @@ class Dump
         bool get_switch() { return swdump; }
         std::vector<std::string>& get_dumplist();
 
-        bool do_dump(unsigned long);
+        bool do_dump(unsigned long, unsigned long);
         void save_dump(TF*, const std::string&, int);
 
     private:
@@ -53,6 +53,7 @@ class Dump
 
         std::vector<std::string> dumplist; // List with all dumps from the ini file.
         bool swdump;                       // Statistics on/off switch
+        bool swdoubledump;                 // On/off switch for two consecutive dumps in time
         double sampletime;
         unsigned long isampletime;
 };

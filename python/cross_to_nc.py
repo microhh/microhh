@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -52,6 +52,12 @@ def convert_to_nc(variables):
                         indexes_local,halflevel = mht.get_cross_indices(variable, mode)
                     else:
                         indexes_local = indexes
+
+                        files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
+                                variable, mode, indexes_local[0], starttime))
+                        if len(files) == 0:
+                            raise Exception('Cannot find any cross-section')
+                        halflevel = files[0].split('.')[-3]
 
                 #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
                 dim = collections.OrderedDict()
