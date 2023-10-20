@@ -1652,6 +1652,22 @@ template<typename TF>
 void Stats<TF>::calc_stats(
         const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
+    calc_stats_mean(varname, fld, offset);
+    calc_stats_moments(varname, fld, offset);
+    calc_stats_w(varname, fld, offset);
+    calc_stats_diff(varname, fld, offset);
+    calc_stats_flux(varname, fld, offset);
+    calc_stats_grad(varname, fld);
+    calc_stats_path(varname, fld);
+    calc_stats_cover(varname, fld, offset, threshold);
+    calc_stats_frac(varname, fld, offset, threshold);        
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_mean(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
     auto& gd = grid.get_grid_data();
 
     unsigned int flag;
@@ -1682,6 +1698,18 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_moments(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc moments
     for (int power=2; power<=4; power++)
@@ -1708,6 +1736,109 @@ void Stats<TF>::calc_stats(
             }
         }
     }
+}
+
+// template<typename TF>
+// void Stats<TF>::calc_stats_w(
+//         const std::string& varname, const Field3d<TF>& fld, const TF offset)
+// {
+//     auto& gd = grid.get_grid_data();
+
+//     unsigned int flag;
+//     const int* nmask;
+//     std::string name;
+
+//     // Calc Resolved Flux
+//     name = varname + "_w";
+//     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+//     {
+//         auto advec_flux = fields.get_tmp();
+//         auto fld_prime = fields.get_tmp();
+//         auto w_prime = fields.get_tmp();
+
+//         for (auto& m : masks)
+//         {
+//             // Set flag for `w` level, and calculate `w_mean` over mask in `w_prime->fld_mean`.
+//             const int w_loc = 1;
+//             set_flag(flag, nmask, m.second, fld.loc[2]);
+//             calc_mean(
+//                     fld_prime->fld_mean.data(),
+//                     fld.fld.data(),
+//                     mfield.data(), flag, nmask,
+//                     gd.istart, gd.iend,
+//                     gd.jstart, gd.jend,
+//                     gd.kstart, gd.kend,
+//                     gd.icells, gd.ijcells);
+
+//             master.sum(fld_prime->fld_mean.data(), gd.kcells);
+
+//             // calc_mean(
+//             //         w_prime->fld_mean.data(),
+//             //         fields.mp.at("w")->fld.data(),
+//             //         mfield.data(), flag, nmask,
+//             //         gd.istart, gd.iend,
+//             //         gd.jstart, gd.jend,
+//             //         gd.kstart, gd.kend,
+//             //         gd.icells, gd.ijcells);
+
+//             // master.sum(w_prime->fld_mean.data(), gd.kcells);
+
+//             // // Subtract mean from `var` and `w` to get turbulent fluctuations.
+//             subtract_mean(
+//                     fld_prime->fld.data(),
+//                     fld.fld.data(),fld_prime->fld_mean.data(),
+//                      0,gd.icells,0,gd.jcells,0,gd.kcells,gd.icells,gd.ijcells);
+//                     // gd.istart, gd.iend,
+//                     // gd.jstart, gd.jend,
+//                     // gd.kstart, gd.kend,
+//                     // gd.icells, gd.ijcells);
+
+//             // subtract_mean(
+//             //         w_prime->fld.data(),
+//             //         fields.mp.at("w")->fld.data(),
+//             //         w_prime->fld_mean.data(),
+//             //         gd.istart, gd.iend,
+//             //         gd.jstart, gd.jend,
+//             //         gd.kstart, gd.kend+1,
+//             //         gd.icells, gd.ijcells);
+
+//             // fld_prime->loc[2] = w_loc;
+//             // advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
+
+//             // Switch flag to flux location of `fld`.
+//             // set_flag(flag, nmask, m.second, !fld.loc[2]);
+
+//             calc_mean(
+//                     m.second.profs.at(name).data.data(),
+//                     fld_prime->fld.data(),
+//                     mfield.data(), flag, nmask,
+//                     gd.istart, gd.iend,
+//                     gd.jstart, gd.jend,
+//                     gd.kstart, gd.kend,
+//                     gd.icells, gd.ijcells);
+// int n = 14;
+// std::cout<<"1calc_stats_w: "<<name<<" "<<m.second.profs.at(name).data[n]<<" " << fld_prime->fld_mean[n]<< " "<< fld_prime->fld[n*gd.ijcells+n*gd.icells + n]<<" "<< nmask[n] <<std::endl;
+//             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+// // std::cout<<"calc_stats_w: "<<name<<" "<<m.second.profs.at(name).data[n]<<" " << fld_prime->fld_mean[n]<< " "<< fld_prime->fld[n*gd.ijcells+n*gd.icells + n]<<" "<< nmask[n] <<std::endl;
+//             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+// // std::cout<<"calc_stats_w: "<<name<<" "<<m.second.profs.at(name).data[n]<<" " << fld_prime->fld_mean[n]<< " "<< fld_prime->fld[n*gd.ijcells+n*gd.icells + n]<<" "<< nmask[n] <<std::endl;
+//         }
+
+//         fields.release_tmp(advec_flux);
+//         fields.release_tmp(fld_prime);
+//         fields.release_tmp(w_prime);
+//     }
+// }
+
+template<typename TF>
+void Stats<TF>::calc_stats_w(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Resolved Flux
     name = varname + "_w";
@@ -1719,30 +1850,56 @@ void Stats<TF>::calc_stats(
 
         for (auto& m : masks)
         {
-            // Set flag for `w` level, and calculate `w_mean` over mask in `w_prime->fld_mean`.
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
+            // Subtract mean from `var` to get turbulent fluctuations.
+            calc_mean(
+                    w_prime->fld_mean.data(),
+                    fields.mp.at("w")->fld.data(),
+                    mfield.data(),
+                    flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend+1,
+                    gd.icells, gd.ijcells);
+            master.sum(w_prime->fld_mean.data(), gd.kcells);
+
+            calc_mean(
+                    fld_prime->fld_mean.data(),
+                    fld.fld.data(),
+                    mfield.data(),
+                    flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            master.sum(fld_prime->fld_mean.data(), gd.kcells);
+
+            subtract_mean(
+                    fld_prime->fld.data(),
+                    fld.fld.data(),
+                    fld_prime->fld_mean.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend+1,
+                    gd.icells, gd.ijcells);
+
+
+            // Set flag for `w` level
             const int w_loc = 1;
             set_flag(flag, nmask, m.second, w_loc);
 
+            // Calculate w_mean and w_prime over the mask at half level.
             calc_mean(
                     w_prime->fld_mean.data(),
                     fields.mp.at("w")->fld.data(),
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
             master.sum(w_prime->fld_mean.data(), gd.kcells);
-
-            // Subtract mean from `var` and `w` to get turbulent fluctuations.
-            subtract_mean(
-                    fld_prime->fld.data(),
-                    fld.fld.data(),
-                    m.second.profs.at(varname).data.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
 
             subtract_mean(
                     w_prime->fld.data(),
@@ -1753,13 +1910,15 @@ void Stats<TF>::calc_stats(
                     gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
+            fld_prime->loc = gd.wloc;
             advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
             // Switch flag to flux location of `fld`.
-            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            // set_flag(flag, nmask, m.second, !fld.loc[2]);
 
             calc_mean(
                     m.second.profs.at(name).data.data(),
+                    // fld_prime->fld.data(),
                     advec_flux->fld.data(),
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
@@ -1775,6 +1934,18 @@ void Stats<TF>::calc_stats(
         fields.release_tmp(fld_prime);
         fields.release_tmp(w_prime);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_diff(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Diffusive Flux
     name = varname + "_diff";
@@ -1802,6 +1973,18 @@ void Stats<TF>::calc_stats(
 
         fields.release_tmp(diff_flux);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_flux(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Total Flux
     name = varname + "_flux";
@@ -1821,6 +2004,17 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_grad(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Gradient
     name = varname + "_grad";
@@ -1857,6 +2051,17 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_path(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Integrated Path
     name = varname + "_path";
@@ -1881,6 +2086,17 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = path.first / path.second;
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_cover(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Cover
     name = varname + "_cover";
@@ -1907,6 +2123,18 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
         }
     }
+
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_frac(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Fraction
     name = varname + "_frac";

@@ -29,7 +29,7 @@ visc   =  1.0e-5
 for k in range(kmax):
     u[k] = 1./(2.*visc)*dpdxls*(z[k]**2. - zsize*z[k])
 
-nc_file = nc.Dataset("moser180_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("moser180_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))

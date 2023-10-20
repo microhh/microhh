@@ -34,7 +34,7 @@ nc_file = nc.Dataset(
     'sullivan2011_input.nc',
     mode='w',
     datamodel='NETCDF4',
-    clobber=False)
+    clobber=True)
 
 nc_file.createDimension('z', kmax)
 nc_z = nc_file.createVariable('z', float_type, ('z'))

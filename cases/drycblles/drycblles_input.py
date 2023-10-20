@@ -43,7 +43,7 @@ for k in range(kmax):
     wls [k] = -0.01*(z[k]/zsize)
 """
 
-nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))
