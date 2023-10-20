@@ -3,4 +3,5 @@
 	url = https://github.com/microhh/rte-rrtmgp-cpp
 [submodule "external/kernel_launcher"]
 	path = external/kernel_launcher
-	url = https://github.com/KernelTuner/kernel_launcher
+    #url = https://github.com/KernelTuner/kernel_launcher
+	url = https://github.com/microhh/kernel_launcher
