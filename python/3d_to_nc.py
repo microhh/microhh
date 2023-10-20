@@ -30,15 +30,11 @@ import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
-    if doubledump:
-        niter_tot = niter *2 -1
-    else:
-        niter_tot = niter
     
     for variable in variables:
         filename = "{0}.nc".format(variable)
         dim = {
-            'time': range(niter_tot),
+            'time': [],
             'z': range(kmax),
             'y': range(jtot),
             'x': range(itot)}
@@ -55,8 +51,9 @@ def convert_to_nc(variables):
                     fin = mht.Read_binary(grid, f_in)
                 except Exception as ex:
                     print (ex)
-                    raise Exception(
-                        'Stopping: cannot find file {}'.format(f_in))
+                    return
+                # raise Exception(
+                #         'Stopping: cannot find file {}'.format(f_in))
                 print("Processing %8s, time=%7i" % (variable, otime))
                 ncfile.dimvar['time'][tout] = otime * 10**iotimeprec
                 if (perslice):
@@ -71,15 +68,19 @@ def convert_to_nc(variables):
                 grid, filename, variable, dim, precision, compression)
             # Loop through the files and read 3d field
             tout = 0
-            for t in range(niter):
-                otime = round((starttime + t * sampletime) / 10**iotimeprec)
+            for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
+                otime = round(time / 10**iotimeprec)
                 if (doubledump and t>0):
                     timedata = struct.unpack("=QQi",open('time.{0:07d}'.format(otime), 'rb').read())
                     otime2 = round((timedata[0]-timedata[1]) *10**(-iotimeprec-9)-0.5)
                     convert(otime2, tout)
                     tout += 1
 
-                convert(otime, tout)
+                try:
+                    convert(otime, tout)
+                except Exception as ex:
+                    print (ex)
+                    break
                 tout += 1
             ncfile.close()
         except Exception as ex:

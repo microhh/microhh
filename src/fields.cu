@@ -42,8 +42,8 @@ namespace
 
     // TODO use interp2 functions instead of manual interpolation
     template<typename TF> __global__
-    void calc_mom_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                        TF* __restrict__ mom, TF* __restrict__ dz,
+    void calc_mom_2nd_g(const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+                        TF* __restrict__ mom, const TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
@@ -63,8 +63,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_tke_2nd_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                        TF* __restrict__ tke, TF* __restrict__ dz,
+    void calc_tke_2nd_g(const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+                        TF* __restrict__ tke, const TF* __restrict__ dz,
                         int istart, int jstart, int kstart,
                         int iend,   int jend,   int kend,
                         int jj,     int kk)
@@ -142,24 +142,24 @@ namespace
         //dim3 gridGPU1(1, 1, 1);
         //dim3 blockGPU1(1, 1, gd.kcells);
 
-        set_to_val_g<<<gridGPU3, blockGPU>>>(
+        set_to_val_g<TF><<<gridGPU3, blockGPU>>>(
                 fld->fld_g, value,
                 gd.icells, gd.jcells, gd.kcells, gd.ijcells);
         cuda_check_error();
 
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->fld_bot_g, value, gd.icells, gd.jcells);
         cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
-        cuda_check_error();
-
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
-        cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->fld_top_g, value, gd.icells, gd.jcells);
         cuda_check_error();
 
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->flux_bot_g, value, gd.icells, gd.jcells);
         cuda_check_error();
-        set_to_val_g<<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->flux_top_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->grad_bot_g, value, gd.icells, gd.jcells);
+        cuda_check_error();
+        set_to_val_g<TF><<<gridGPU2, blockGPU>>>(fld->grad_top_g, value, gd.icells, gd.jcells);
         cuda_check_error();
 
         //set_to_val_g<<<gridGPU1, blockGPU1>>>(fld->fld_mean_g, value, gd.kcells);
@@ -183,7 +183,7 @@ TF Fields<TF>::check_momentum()
 
     auto tmp1 = get_tmp_g();
 
-    calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
+    calc_mom_2nd_g<TF><<<gridGPU, blockGPU>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -215,7 +215,7 @@ TF Fields<TF>::check_tke()
 
     auto tmp1 = get_tmp_g();
 
-    calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
+    calc_tke_2nd_g<TF><<<gridGPU, blockGPU>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -330,14 +330,13 @@ void Fields<TF>::prepare_device()
     const int nmemsize1d = gd.kcells*sizeof(TF);
     const int nmemsize_soil = sgd.ncells*sizeof(TF);
 
-
     // Prognostic fields atmosphere
     for (auto& it : a)
         it.second->init_device();
 
     // Tendencies atmosphere
     for (auto& it : at)
-        cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize));
+        it.second->fld_g.resize(gd.ncells);
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
@@ -356,8 +355,10 @@ void Fields<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&it.second->fld_g, nmemsize_soil));
 
     // Reference profiles
-    cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
-    cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
+    rhoref_g.resize(gd.kcells);
+    rhorefh_g.resize(gd.kcells);
+    rhorefi_g.resize(gd.kcells);
+    rhorefhi_g.resize(gd.kcells);
 
     // copy all the data to the GPU
     forward_device();
@@ -375,7 +376,7 @@ void Fields<TF>::clear_device()
 
     // Tendencies atmosphere
     for (auto& it : at)
-        cuda_safe_call(cudaFree(it.second->fld_g));
+        it.second->fld_g.free();
 
     // Prognostic 2D fields
     for (auto& it : ap2d)
@@ -393,8 +394,10 @@ void Fields<TF>::clear_device()
     for (auto& it : sts)
         cuda_safe_call(cudaFree(it.second->fld_g));
 
-    cuda_safe_call(cudaFree(rhoref_g));
-    cuda_safe_call(cudaFree(rhorefh_g));
+    rhoref_g.free();
+    rhorefh_g.free();
+    rhorefi_g.free();
+    rhorefhi_g.free();
 
     // Free the tmp fields
     for (auto& it : atmp_g)
@@ -434,8 +437,20 @@ void Fields<TF>::forward_device()
     for (auto& it : sts)
         forward_field_device(it.second->fld_g, it.second->fld.data(), sgd.ncells);
 
-    forward_field_device(rhoref_g,  rhoref.data() , gd.kcells);
-    forward_field_device(rhorefh_g, rhorefh.data(), gd.kcells);
+    forward_field_device(rhoref_g,   rhoref.data() , gd.kcells);
+    forward_field_device(rhorefh_g,  rhorefh.data(), gd.kcells);
+
+    // Calculate reciprocal of rho
+    std::vector<TF> rhorefi(gd.kcells);
+    std::vector<TF> rhorefhi(gd.kcells);
+
+    for (int k = 0; k < gd.kcells; k++) {
+        rhorefi[k] = 1.0 / rhoref[k];
+        rhorefhi[k] = 1.0 / rhorefh[k];
+    }
+
+    forward_field_device(rhorefi_g,  rhorefi.data() , gd.kcells);
+    forward_field_device(rhorefhi_g, rhorefhi.data(), gd.kcells);
 }
 
 /**

@@ -353,8 +353,11 @@ class Create_ncfile():
             self.dim[key] = self.ncfile.createDimension(key, len(value))
             self.dimvar[key] = self.ncfile.createVariable(
                 key, precision, (key))
-            if key != 'time':
+            if key == 'time':
+                self.dimvar[key].units = "seconds since start"
+            else:
                 self.dimvar[key][:] = grid.dim[key][value]
+                self.dimvar[key].units = "m"
 
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(

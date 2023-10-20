@@ -123,6 +123,7 @@ namespace Diff_kernels_g
         }
     }
 
+
     template<typename TF, Surface_model surface_model> __global__
     void diff_uvw_g(
             TF* const __restrict__ ut,
@@ -279,6 +280,7 @@ namespace Diff_kernels_g
         }
     }
 
+
     template<typename TF, Surface_model surface_model> __global__
     void diff_c_g(
             TF* const __restrict__ at,
@@ -361,6 +363,7 @@ namespace Diff_kernels_g
         }
     }
 
+
     template<typename TF> __global__
     void calc_dnmul_g(
             TF* const __restrict__ dnmul,
@@ -382,6 +385,30 @@ namespace Diff_kernels_g
         {
             const int ijk = i + j*jj + k*kk;
             dnmul[ijk] = fabs(evisc[ijk]*tPrfac_i*(dxidxi + dyidyi + dzi[k]*dzi[k]));
+        }
+    }
+
+
+    template<typename TF> __global__
+    void calc_ghostcells_evisc(
+            TF* __restrict__ evisc,
+            const int icells, const int jcells,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int kb = kstart;
+            const int kt = kend-1;
+
+            const int ijkb = i + j*jj + kb*kk;
+            const int ijkt = i + j*jj + kt*kk;
+
+            evisc[ijkb-kk] = evisc[ijkb];
+            evisc[ijkt+kk] = evisc[ijkt];
         }
     }
 }

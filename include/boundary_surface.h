@@ -60,10 +60,10 @@ class Boundary_surface : public Boundary<TF>
         void backward_device(Thermo<TF>&);
         void clear_device(Thermo<TF>&);
 
-        TF* get_z0m_g()  { return z0m_g; };
-        TF* get_dudz_g() { return dudz_mo_g; };
-        TF* get_dvdz_g() { return dvdz_mo_g; };
-        TF* get_dbdz_g() { return dbdz_mo_g; };
+        cuda_vector<TF>& get_z0m_g()  { return z0m_g; };
+        cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
+        cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
+        cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -107,19 +107,19 @@ class Boundary_surface : public Boundary<TF>
         std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
-        TF* z0m_g;
-        TF* z0h_g;
-        TF* obuk_g;
-        TF* ustar_g;
+        cuda_vector<TF> z0m_g;
+        cuda_vector<TF> z0h_g;
+        cuda_vector<TF> obuk_g;
+        cuda_vector<TF> ustar_g;
 
-        TF* dudz_mo_g;
-        TF* dvdz_mo_g;
-        TF* dbdz_mo_g;
+        cuda_vector<TF> dudz_mo_g;
+        cuda_vector<TF> dvdz_mo_g;
+        cuda_vector<TF> dbdz_mo_g;
 
-        int* nobuk_g;
+        int* nobuk_g = nullptr;
 
-        float* zL_sl_g;
-        float* f_sl_g;
+        float* zL_sl_g = nullptr;
+        float* f_sl_g = nullptr;
         #endif
 
         Boundary_type thermobc;

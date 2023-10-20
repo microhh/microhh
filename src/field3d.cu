@@ -32,31 +32,27 @@ template<typename TF>
 void Field3d<TF>::init_device()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    const int nmemsize   = gd.ncells  * sizeof(TF);
-    const int nmemsize1d = gd.kcells  * sizeof(TF);
-    const int nmemsize2d = gd.ijcells * sizeof(TF);
-
-    cuda_safe_call(cudaMalloc(&fld_g,      nmemsize  ));
-    cuda_safe_call(cudaMalloc(&fld_bot_g,  nmemsize2d));
-    cuda_safe_call(cudaMalloc(&fld_top_g,  nmemsize2d));
-    cuda_safe_call(cudaMalloc(&grad_bot_g, nmemsize2d));
-    cuda_safe_call(cudaMalloc(&grad_top_g, nmemsize2d));
-    cuda_safe_call(cudaMalloc(&flux_bot_g, nmemsize2d));
-    cuda_safe_call(cudaMalloc(&flux_top_g, nmemsize2d));
-    cuda_safe_call(cudaMalloc(&fld_mean_g, nmemsize1d));
+    fld_g.resize(gd.ncells);
+    fld_bot_g.resize(gd.ijcells);
+    fld_top_g.resize(gd.ijcells);
+    grad_bot_g.resize(gd.ijcells);
+    grad_top_g.resize(gd.ijcells);
+    flux_bot_g.resize(gd.ijcells);
+    flux_top_g.resize(gd.ijcells);
+    fld_mean_g.resize(gd.kcells);
 }
 
 template<typename TF>
 void Field3d<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(fld_g));
-    cuda_safe_call(cudaFree(fld_bot_g));
-    cuda_safe_call(cudaFree(fld_top_g));
-    cuda_safe_call(cudaFree(grad_bot_g));
-    cuda_safe_call(cudaFree(grad_top_g));
-    cuda_safe_call(cudaFree(flux_bot_g));
-    cuda_safe_call(cudaFree(flux_top_g));
-    cuda_safe_call(cudaFree(fld_mean_g));
+    fld_g.free();
+    fld_bot_g.free();
+    fld_top_g.free();
+    grad_bot_g.free();
+    grad_top_g.free();
+    flux_bot_g.free();
+    flux_top_g.free();
+    fld_mean_g.free();
 }
 
 

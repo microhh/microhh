@@ -269,19 +269,17 @@ void Boundary_surface<TF>::prepare_device(Thermo<TF>& thermo)
 
     const int dmemsize2d = gd.ijcells*sizeof(TF);
     const int imemsize2d = gd.ijcells*sizeof(int);
-    const int dimemsize  = gd.icells*sizeof(TF);
-    const int iimemsize  = gd.icells*sizeof(int);
 
     // 2D fields:
-    cuda_safe_call(cudaMalloc(&obuk_g,    dmemsize2d));
-    cuda_safe_call(cudaMalloc(&ustar_g,   dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0m_g,     dmemsize2d));
-    cuda_safe_call(cudaMalloc(&z0h_g,     dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
+    obuk_g.allocate(gd.ijcells);
+    ustar_g.allocate(gd.ijcells);
+    z0m_g.allocate(gd.ijcells);
+    z0h_g.allocate(gd.ijcells);
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
 
     if (thermo.get_switch() != Thermo_type::Disabled)
-        cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+        dbdz_mo_g.allocate(gd.ijcells);
 
     // Lookuk table:
     if (sw_constant_z0)
@@ -346,17 +344,6 @@ void Boundary_surface<TF>::clear_device(Thermo<TF>& thermo)
 {
     Boundary<TF>::clear_device(thermo);
 
-    cuda_safe_call(cudaFree(obuk_g ));
-    cuda_safe_call(cudaFree(ustar_g));
-    cuda_safe_call(cudaFree(z0m_g));
-    cuda_safe_call(cudaFree(z0h_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-
-    if (thermo.get_switch() != Thermo_type::Disabled)
-        cuda_safe_call(cudaFree(dbdz_mo_g));
-
     if (sw_constant_z0)
     {
         cuda_safe_call(cudaFree(nobuk_g));
@@ -391,7 +378,7 @@ void Boundary_surface<TF>::exec(
     // Calculate dutot in tmp2
     auto dutot = fields.get_tmp_g();
 
-    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
+    bsk::calc_dutot_g<TF><<<gridGPU, blockGPU>>>(
         dutot->fld_g,
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
@@ -410,7 +397,7 @@ void Boundary_surface<TF>::exec(
     if (thermo.get_switch() == Thermo_type::Disabled)
     {
         // Calculate ustar and Obukhov length, including ghost cells
-        stability_neutral_g<<<gridGPU2, blockGPU2>>>(
+        stability_neutral_g<TF><<<gridGPU2, blockGPU2>>>(
             ustar_g, obuk_g,
             dutot->fld_g, z0m_g, gd.z[gd.kstart],
             gd.icells, gd.jcells, gd.icells,
@@ -457,7 +444,7 @@ void Boundary_surface<TF>::exec(
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     // Momentum:
-    surfm_flux_g<<<gridGPU, blockGPU>>>(
+    surfm_flux_g<TF><<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->flux_bot_g,
         fields.mp.at("v")->flux_bot_g,
         fields.mp.at("u")->fld_g,
@@ -477,7 +464,7 @@ void Boundary_surface<TF>::exec(
     boundary_cyclic.exec_2d_g(fields.mp.at("v")->flux_bot_g);
 
     // Calculate surface gradients, including ghost cells
-    surfm_grad_g<<<gridGPU2, blockGPU2>>>(
+    surfm_grad_g<TF><<<gridGPU2, blockGPU2>>>(
         fields.mp.at("u")->grad_bot_g,
         fields.mp.at("v")->grad_bot_g,
         fields.mp.at("u")->fld_g,
@@ -490,7 +477,7 @@ void Boundary_surface<TF>::exec(
 
     // Scalars:
     for (auto it : fields.sp)
-        surfs_g<<<gridGPU2, blockGPU2>>>(
+        surfs_g<TF><<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g,
             it.second->grad_bot_g,
             it.second->fld_bot_g,
@@ -502,7 +489,7 @@ void Boundary_surface<TF>::exec(
     cuda_check_error();
 
     // Calc MO gradients, for subgrid scheme
-    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_duvdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -524,7 +511,7 @@ void Boundary_surface<TF>::exec(
         auto buoy = fields.get_tmp_g();
         thermo.get_buoyancy_fluxbot_g(*buoy);
 
-        bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
+        bsk::calc_dbdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
                 dbdz_mo_g, buoy->flux_bot_g,
                 ustar_g, obuk_g,
                 gd.z[gd.kstart],
