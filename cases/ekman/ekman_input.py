@@ -32,7 +32,7 @@ v[:] = v_geo[:]
 #  v[k] = u_geo[k]*(     exp(-gamma*z[k]) * sin(gamma*z[k]))
 
 # write the data to a file
-nc_file = nc.Dataset("ekman_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("ekman_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))

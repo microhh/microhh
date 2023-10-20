@@ -30,7 +30,7 @@ zsize = z[kmax-1] + 0.5*dz[kmax-1]
 
 b = np.zeros(z.size)
 
-nc_file = nc.Dataset("prandtlslope_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("prandtlslope_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))
