@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -249,9 +249,9 @@ void Pres<TF>::make_cufft_plan()
     // the 2D and 3D batched FFTs are equally fast, so it does not really matter...
     size_t margin = 5 * (gd.kcells + 6) * gd.ijcells * sizeof(TF) + 1e9/4;
 
-    master.print_message("Total memory =" + std::to_string(total_mem));
-    master.print_message("Available memory pre-FFT=" + std::to_string(free_mem));
-    master.print_message("Memory margin=" + std::to_string(margin));
+    master.print_message("Total memory = " + std::to_string(total_mem));
+    master.print_message("Available memory pre-FFT = " + std::to_string(free_mem));
+    master.print_message("Memory margin = " + std::to_string(margin));
 
     int nerror = 0;
     if (force_FFT_per_slice || free_mem - margin < total_work_size)

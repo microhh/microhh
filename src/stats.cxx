@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,6 +33,7 @@
 #include "master.h"
 #include "grid.h"
 #include "soil_grid.h"
+#include "background_profs.h"
 #include "fields.h"
 #include "stats.h"
 #include "defines.h"
@@ -536,9 +537,9 @@ namespace
 
 template<typename TF>
 Stats<TF>::Stats(
-        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin, Background<TF>& backgroundin,
         Fields<TF>& fieldsin, Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
-    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin), advec(advecin), diff(diffin),
+    master(masterin), grid(gridin), soil_grid(soilgridin), background(backgroundin), fields(fieldsin), advec(advecin), diff(diffin),
     boundary_cyclic(master, grid)
 
 {
@@ -1105,7 +1106,7 @@ void Stats<TF>::add_prof(
         }
         else if ((zloc == "era_levels") || (zloc == "era_layers"))
         {
-           const TF n_era_levels = 137;
+            const TF n_era_levels = background.get_n_era_levels();
             Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_era_levels), level};
 
             m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
@@ -1853,14 +1854,25 @@ void Stats<TF>::calc_stats_w(
 
             // Subtract mean from `var` to get turbulent fluctuations.
             calc_mean(
-                    fld_prime->fld_mean.data(),
-                    fld.fld.data(),
-                    mfield.data(), flag, nmask,
+                    w_prime->fld_mean.data(),
+                    fields.mp.at("w")->fld.data(),
+                    mfield.data(),
+                    flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
+            master.sum(w_prime->fld_mean.data(), gd.kcells);
 
+            calc_mean(
+                    fld_prime->fld_mean.data(),
+                    fld.fld.data(),
+                    mfield.data(),
+                    flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
             master.sum(fld_prime->fld_mean.data(), gd.kcells);
 
             subtract_mean(
@@ -1869,7 +1881,7 @@ void Stats<TF>::calc_stats_w(
                     fld_prime->fld_mean.data(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart-1, gd.kend+1,
+                    gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
 
@@ -1898,8 +1910,7 @@ void Stats<TF>::calc_stats_w(
                     gd.kstart, gd.kend+1,
                     gd.icells, gd.ijcells);
 
-
-            // Calculate advection flux
+            fld_prime->loc = gd.wloc;
             advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
             // Switch flag to flux location of `fld`.
