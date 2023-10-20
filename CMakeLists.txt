@@ -79,7 +79,6 @@ else()
   project(microhhc CXX Fortran)
 endif()
 
-
 # Display status messages for MPI set precompiler flags.
 if(USEMPI)
   message(STATUS "MPI: Enabled.")
@@ -166,6 +165,13 @@ endif()
 
 if(USECUDA)
   if(USEKERNELLAUNCHER)
+    # Set `clang-tidy` flag for Kernel Launcher
+    if (NOT USECLANGTIDY)
+      set(DISABLE_CLANG_TIDY TRUE)
+    else()
+      set(DISABLE_CLANG_TIDY FALSE)
+    endif()
+
     add_compile_definitions(ENABLE_KERNEL_LAUNCHER)
     add_subdirectory(external/kernel_launcher)
   endif()
