@@ -43,56 +43,6 @@
 namespace
 {
     using namespace Finite_difference::O2;
-
-    /**
-     * Calculate the kinetic and turbulence kinetic energy
-     */
-    template<typename TF>
-    void calc_kinetic_energy(
-            TF* const restrict ke, TF* const restrict tke,
-            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
-            const TF* const restrict umodel, const TF* const restrict vmodel, const TF* const restrict wmodel,
-            const TF utrans, const TF vtrans,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-            const int icells, const int ijcells)
-    {
-        using Fast_math::pow2;
-
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        #pragma omp parallel for
-        for (int k=kstart; k<kend; ++k)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    const TF u2 = pow2(interp2(u[ijk]+utrans, u[ijk+ii]+utrans));
-                    const TF v2 = pow2(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans));
-                    const TF w2 = pow2(interp2(w[ijk]       , w[ijk+kk]       ));
-
-                    ke[ijk] = TF(0.5) * (u2 + v2 + w2);
-                }
-
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    const TF u2 = pow2(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]));
-                    const TF v2 = pow2(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]));
-                    const TF w2 = pow2(interp2(w[ijk]-wmodel[k], w[ijk+kk]-wmodel[k+1]));
-
-                    tke[ijk] = TF(0.5) * (u2 + v2 + w2);
-                }
-        }
-    }
-
     /**
      * Calculate the budget terms related to shear production (-2 u_i*u_j * d<u_i>/dx_j)
      */
@@ -1316,10 +1266,6 @@ void Budget_2<TF>::create(Stats<TF>& stats)
 {
     const std::string group_name = "budget";
 
-    // Add the profiles for the kinetic energy to the statistics.
-    stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
-    stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
-
     // Add the profiles for the kinetic energy budget to the statistics.
     stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" , group_name);
     stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" , group_name);
@@ -1427,29 +1373,11 @@ void Budget_2<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_mask_mean_profile(vmodel, m, *fields.mp.at("v"));
         stats.calc_mask_mean_profile(wmodel, m, *fields.mp.at("w"));
 
-        // field3d_operators.calc_mean_profile(umodel.data(), fields.mp.at("u")->fld.data());
-        // field3d_operators.calc_mean_profile(vmodel.data(), fields.mp.at("v")->fld.data());
-
-        // Calculate kinetic and turbulent kinetic energy
-        auto ke  = fields.get_tmp();
-        auto tke = fields.get_tmp();
-
         constexpr TF no_offset = 0.;
         constexpr TF no_threshold = 0.;
 
-        calc_kinetic_energy(
-                ke->fld.data(), tke->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(), wmodel.data(),
-                gd.utrans, gd.vtrans,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
-        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
-
-        auto wx = std::move(ke );
-        auto wy = std::move(tke);
+        auto wx = fields.get_tmp();
+        auto wy = fields.get_tmp();
 
         // Interpolate w to the locations of u and v.
         constexpr int wloc [3] = {0,0,1};

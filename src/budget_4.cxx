@@ -43,54 +43,6 @@
 
 namespace
 {
-    template<typename TF>
-    void calc_ke(TF* restrict ke, TF* restrict tke,
-                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
-                 const TF* restrict umodel, const TF* restrict vmodel, const TF* restrict wmodel,
-                 const TF utrans, const TF vtrans,
-                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-                 const int icells, const int ijcells)
-    {
-        using Fast_math::pow2;
-
-        using namespace Finite_difference::O4;
-
-        const int ii1 = 1;
-        const int ii2 = 2;
-        const int jj1 = 1*icells;
-        const int jj2 = 2*icells;
-        const int kk1 = 1*ijcells;
-        const int kk2 = 2*ijcells;
-
-        for (int k=kstart; k<kend; ++k)
-        {
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj1 + k*kk1;
-                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] + utrans) + ci1<TF>*pow2(u[ijk    ] + utrans)
-                                + ci2<TF>*pow2(u[ijk+ii1] + utrans) + ci3<TF>*pow2(u[ijk+ii2] + utrans);
-                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] + vtrans) + ci1<TF>*pow2(v[ijk    ] + vtrans)
-                                + ci2<TF>*pow2(v[ijk+jj1] + vtrans) + ci3<TF>*pow2(v[ijk+jj2] + vtrans);
-                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1]) + ci1<TF>*pow2(w[ijk]) + ci2<TF>*pow2(w[ijk+kk1]) + ci3<TF>*pow2(w[ijk+kk2]);
-                    ke[ijk] = TF(0.5)*(u2 + v2 + w2);
-                }
-
-            for (int j=jstart; j<jend; ++j)
-                #pragma ivdep
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj1 + k*kk1;
-                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] - umodel[k]) + ci1<TF>*pow2(u[ijk    ] - umodel[k])
-                                + ci2<TF>*pow2(u[ijk+ii1] - umodel[k]) + ci3<TF>*pow2(u[ijk+ii2] - umodel[k]);
-                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] - vmodel[k]) + ci1<TF>*pow2(v[ijk    ] - vmodel[k])
-                                + ci2<TF>*pow2(v[ijk+jj1] - vmodel[k]) + ci3<TF>*pow2(v[ijk+jj2] - vmodel[k]);
-                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1] - wmodel[k-1]) + ci1<TF>*pow2(w[ijk] - wmodel[k]) + ci2<TF>*pow2(w[ijk+kk1] - wmodel[k+1]) + ci3<TF>*pow2(w[ijk+kk2] - wmodel[k+2]);
-                    tke[ijk] = TF(0.5)*(u2 + v2 + w2);
-                }
-        }
-    }
 
     template<typename TF>
     void calc_prime(
@@ -2719,10 +2671,6 @@ void Budget_4<TF>::create(Stats<TF>& stats)
 {
     const std::string group_name = "budget";
 
-    // Add the profiles for the kinetic energy to the statistics.
-    stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
-    stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
-
     // Add the profiles for the kinetic energy budget to the statistics.
     stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" , group_name);
     stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" , group_name);
@@ -2816,22 +2764,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
         stats.calc_mask_mean_profile(vmodel, m, *fields.mp.at("v"));
         stats.calc_mask_mean_profile(wmodel, m, *fields.mp.at("w"));
 
-        // Calculate the TKE budget.
-        auto ke  = fields.get_tmp();
-        auto tke = fields.get_tmp();
-
         const TF no_offset = 0.;
         const TF no_threshold = 0.;
-
-        calc_ke(ke->fld.data(), tke->fld.data(),
-                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(), wmodel.data(),
-                gd.utrans, gd.vtrans,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
-        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
 
         // Subtract mean
         auto w_prime = fields.get_tmp();
@@ -2840,8 +2774,8 @@ void Budget_4<TF>::exec_stats(Stats<TF>& stats)
                 gd.icells, gd.jcells, gd.kcells,
                 gd.ijcells);
 
-        auto wx = std::move(ke );
-        auto wy = std::move(tke);
+        auto wx = fields.get_tmp();
+        auto wy = fields.get_tmp();
 
         // Interpolate w to the locations of u and v.
         const int wloc [3] = {0,0,1};
