@@ -622,7 +622,8 @@ namespace Sb_cold
                     if (Dr > TF(0.30e-3))
                         br = (k_br * (Dr - D_br) + TF(1)) * sc;
 
-                    nrt[ij] += sc - br;
+                    nrt[ij] -= (sc-br);
+                    //rain%n(i,k) = n_r - MIN(n_r,sc-br)
                 }
             }
     }
