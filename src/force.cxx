@@ -347,6 +347,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swlspres = Large_scale_pressure_type::Geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "", -1.);
         swtimedep_geo = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
+
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", swtimedep_geo));
         tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", swtimedep_geo));
     }
@@ -487,7 +488,6 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
-
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -503,7 +503,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the large scale sources, which are the variable names with a "_ls" suffix.
         for (std::string& it : lslist)
         {
-            if (!swtimedep_ls)
+            if (tdep_ls.find(it) == tdep_ls.end())
             {
                 group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
                 std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
@@ -536,7 +536,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the nudging profiles, which are the variable names with a "nudge" suffix
         for (auto& it : nudgelist)
         {
-            if (!swtimedep_nudge)
+            if (tdep_nudge.find(it) == tdep_nudge.end())
             {
                 group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
                 std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
