@@ -316,6 +316,51 @@ void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
 }
 #endif
 
+#ifdef USECUDA
+template<typename TF>
+std::shared_ptr<cuda_vector<TF>> Fields<TF>::get_tmp_xy_g()
+{
+    auto& gd = grid.get_grid_data();
+    std::shared_ptr<cuda_vector<TF>> tmp;
+
+    cudaDeviceSynchronize();
+
+    // In case of insufficient tmp fields, allocate a new one.
+    if (atmp_xy_g.empty())
+    {
+        static int ntmp_xy = 0;
+        ++ntmp_xy;
+        std::string fldname = "tmp_xy" + std::to_string(ntmp_xy);
+        std::string message = "Allocating temporary XY field: " + fldname;
+        master.print_message(message);
+
+        atmp_xy_g.push_back(std::make_shared<cuda_vector<TF>>(gd.ijcells));
+        tmp = atmp_xy_g.back();
+    }
+    else
+        tmp = atmp_xy_g.back();
+
+    atmp_xy_g.pop_back();
+
+    // Assign to a huge negative number in case of debug mode.
+    #ifdef __CUDACC_DEBUG__
+    set_to_val_g(tmp.get(), TF(-1e30), gd.ncells);
+    #endif
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_xy_g(std::shared_ptr<cuda_vector<TF>>& tmp)
+{
+    #pragma omp critical
+    {
+        cudaDeviceSynchronize();
+        atmp_xy_g.push_back(std::move(tmp));
+    }
+}
+#endif
+
 /**
  * This function allocates all field3d instances and fields at device
  */

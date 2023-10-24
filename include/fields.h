@@ -155,6 +155,9 @@ class Fields
         #ifdef USECUDA
         std::shared_ptr<Field3d<TF>> get_tmp_g();
         void release_tmp_g(std::shared_ptr<Field3d<TF>>&);
+
+        std::shared_ptr<cuda_vector<TF>> get_tmp_xy_g();
+        void release_tmp_xy_g(std::shared_ptr<cuda_vector<TF>>&);
         #endif
 
         std::vector<TF> rhoref;  ///< Reference density at full levels
@@ -202,6 +205,7 @@ class Fields
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 
         std::vector<std::shared_ptr<std::vector<TF>>> atmp_xy;
+        std::vector<std::shared_ptr<cuda_vector<TF>>> atmp_xy_g;
 
         std::mutex tmp_fld_mutex;
         // cross sections
