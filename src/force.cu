@@ -400,7 +400,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         if (fc_loc < 0)
             fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
         
-
         if (grid.get_spatial_order() == Grid_order::Second)
         {
             coriolis_2nd_g<TF><<<gridGPU, blockGPU>>>(
@@ -495,7 +494,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
-
 
         for (auto& it : fields.st)
         {
