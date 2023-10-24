@@ -1474,6 +1474,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
 
     //Loop through units to find matches; in which case add the powers
     int unit1_size = unit1.size();
+
     for (auto& u2 : unit2)
     {
         int i;
@@ -1484,7 +1485,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
                 if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
                 {
                     int j;
-                    for (j = i++ ; j < unit1_size; j++)
+                    for (j = i+1 ; j < unit1_size; j++)
                     {
                         if (u2.first == unit1[j].first)
                             break;
