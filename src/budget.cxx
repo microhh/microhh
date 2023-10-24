@@ -58,10 +58,13 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
 
     if (swbudget == "0")
         return std::make_shared<Budget_disabled<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
-    else if (swbudget == "2")
-        return std::make_shared<Budget_2<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
-    else if (swbudget == "4")
-        return std::make_shared<Budget_4<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
+    else if (swbudget == "1")
+    {
+        if (gridin.get_spatial_order() == Grid_order::Second)
+            return std::make_shared<Budget_2<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
+        else
+            return std::make_shared<Budget_4<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
+    }
     else
     {
         std::string error_message = swbudget + " is an illegal value for swbudget";

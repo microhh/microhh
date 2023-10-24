@@ -246,6 +246,7 @@ class Fields
         // statistics
         std::vector<TF> umodel;
         std::vector<TF> vmodel;
+        std::vector<TF> wmodel;
 
         // double* umodel;
         // double* vmodel;
