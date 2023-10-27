@@ -87,6 +87,14 @@ def convert_to_nc(variables):
                     dim['zh'] = dim.pop('z')
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
+                
+                print("index: ", indexes_local)
+                print("dim", dim)
+                for key, val in dim.items():
+                    if key == 'time':
+                        continue
+                    elif val == []:
+                        ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
                 for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
