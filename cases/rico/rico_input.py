@@ -90,7 +90,7 @@ qt  /= 1000.
 qtls/= 1000.
 
 # write the data to a file
-nc_file = nc.Dataset("rico_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("rico_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
 

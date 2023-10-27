@@ -1921,8 +1921,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
         const Float iwp_max = calc_max_nogc(ciwp->fld_g, gd.imax, gd.jmax, gd.ktot);
         Float liwp_max = lwp_max + iwp_max;
 
-        const bool run_raytracer = (liwp_max > 0 || sw_always_rt) ? true : false;
-
+        const bool run_raytracer = (liwp_max > 0 || !sw_2str_when_no_clouds) ? true : false;
 
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
         const int ijmax = gd.imax*gd.jmax;

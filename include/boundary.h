@@ -115,10 +115,10 @@ class Boundary
         std::string get_switch();
 
         #ifdef USECUDA
-        virtual TF* get_z0m_g();
-        virtual TF* get_dudz_g();
-        virtual TF* get_dvdz_g();
-        virtual TF* get_dbdz_g();
+        virtual cuda_vector<TF>& get_z0m_g();
+        virtual cuda_vector<TF>& get_dudz_g();
+        virtual cuda_vector<TF>& get_dvdz_g();
+        virtual cuda_vector<TF>& get_dbdz_g();
 
         virtual void prepare_device(Thermo<TF>&);
         virtual void forward_device(Thermo<TF>&);

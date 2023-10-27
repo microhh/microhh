@@ -110,6 +110,11 @@ class Force
         std::map<std::string, Timedep<TF>*> tdep_nudge;
         std::unique_ptr<Timedep<TF>> tdep_wls;
 
+        bool swtimedep_geo;
+        bool swtimedep_ls;
+        bool swtimedep_wls;
+        bool swtimedep_nudge;
+
         // GPU functions and variables
         TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
         TF* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.

@@ -72,7 +72,7 @@ for k in range(ktot):
     b[k] = N2*z[k]
 
 # write the data to a file
-nc_file = nc.Dataset("vanheerwaarden2016_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("vanheerwaarden2016_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", ktot)
 nc_z = nc_file.createVariable("z" , float_type, ("z"))
