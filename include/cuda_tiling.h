@@ -200,7 +200,7 @@ struct Grid_layout
             .jend = gd.jend,
             .kend = gd.kend,
             .ii = 1,
-            .jj = gd.jcells,
+            .jj = gd.icells,
             .kk = gd.ijcells
         };
     }
