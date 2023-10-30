@@ -1543,7 +1543,7 @@ void Stats<TF>::calc_stats_w(
                     flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart-1, gd.kend+1,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
             master.sum(fld_prime->fld_mean.data(), gd.kcells);
 
@@ -1553,7 +1553,7 @@ void Stats<TF>::calc_stats_w(
                     fld_prime->fld_mean.data(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart-1, gd.kend+1,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
 
@@ -1568,7 +1568,7 @@ void Stats<TF>::calc_stats_w(
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend + w_loc,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
             master.sum(w_prime->fld_mean.data(), gd.kcells);
@@ -1579,7 +1579,7 @@ void Stats<TF>::calc_stats_w(
                     w_prime->fld_mean.data(),
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend + w_loc,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
             fld_prime->loc = fld.loc;
@@ -1595,7 +1595,7 @@ void Stats<TF>::calc_stats_w(
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend + w_loc,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
