@@ -67,10 +67,10 @@ kl::KernelBuilder GridKernel::build() const {
 
             Grid_layout gd = {
                 GRID_START_I,
-                GRID_START_J,
-                GRID_START_K,
                 GRID_END_I,
+                GRID_START_J,
                 GRID_END_J,
+                GRID_START_K,
                 GRID_END_K,
                 GRID_STRIDE_I,
                 GRID_STRIDE_J,
@@ -167,9 +167,9 @@ kl::KernelBuilder GridKernel::build() const {
         .define("GRID_END_I", std::to_string(grid.iend))
         .define("GRID_END_J", std::to_string(grid.jend))
         .define("GRID_END_K", std::to_string(grid.kend))
-        .define("GRID_STRIDE_I", std::to_string(grid.ii))
-        .define("GRID_STRIDE_J", std::to_string(grid.jj))
-        .define("GRID_STRIDE_K", std::to_string(grid.kk))
+        .define("GRID_STRIDE_I", std::to_string(grid.istride))
+        .define("GRID_STRIDE_J", std::to_string(grid.jstride))
+        .define("GRID_STRIDE_K", std::to_string(grid.kstride))
         .define("NUM_BLOCKS_X", nx)
         .define("NUM_BLOCKS_Y", ny)
         .define("NUM_BLOCKS_Z", nz)
