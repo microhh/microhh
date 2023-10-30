@@ -37,6 +37,11 @@
 #include "field3d_operators.h"
 #include "stats.h"
 
+// Kernel/CUDA launcher:
+#include "pres_2_kernels.cuh"
+#include "cuda_launcher.h"
+#include "cuda_tiling.h"
+
 namespace
 {
     template<typename TF> __global__
@@ -254,6 +259,15 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
+    // Grid layout for KL/CL launches over interior, including ghost cells.
+    Grid_layout grid_layout_int = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -277,16 +291,20 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
     boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
-    pres_in_g<TF><<<gridGPU, blockGPU>>>(
-        fields.sd.at("p")->fld_g,
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-        gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi, static_cast<TF>(dti),
-        gd.icells, gd.ijcells,
-        gd.imax, gd.imax*gd.jmax,
-        gd.imax, gd.jmax, gd.kmax,
-        gd.igc, gd.jgc, gd.kgc);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernel::pres_in_g<TF>>(
+            grid_layout_int,
+            fields.sd.at("p")->fld_g.view(),
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("w")->fld_g,
+            fields.mt.at("u")->fld_g,
+            fields.mt.at("v")->fld_g,
+            fields.mt.at("w")->fld_g,
+            gd.dzi_g,
+            fields.rhoref_g,
+            fields.rhorefh_g,
+            gd.dxi, gd.dyi,
+            TF(dti));
 
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
@@ -320,14 +338,13 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
-    pres_out_g<TF><<<gridGPU, blockGPU>>>(
-        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-        fields.sd.at("p")->fld_g,
-        gd.dzhi_g, TF(1.)/gd.dx, TF(1.)/gd.dy,
-        gd.icells, gd.ijcells,
-        gd.istart,  gd.jstart, gd.kstart,
-        gd.iend,    gd.jend,   gd.kend);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernel::pres_out_g<TF>>(
+            grid_layout_int,
+            fields.mt.at("u")->fld_g.view(),
+            fields.mt.at("v")->fld_g.view(),
+            fields.mt.at("w")->fld_g.view(),
+            fields.sd.at("p")->fld_g,
+            gd.dzhi_g, TF(1.)/gd.dx, TF(1.)/gd.dy);
 
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
