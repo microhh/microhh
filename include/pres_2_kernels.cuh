@@ -66,13 +66,141 @@ namespace Pres_2_kernel
             const int jgc = g.jstart;
             const int kgc = g.kstart;
 
-            const int ijk  = i + j*jj + k*kk;
+            const int ijk  = g(i, j, k);
             const int ijkp = (i-igc) + (j-jgc)*jjp + (k-kgc)*kkp;
 
             p[ijkp] = rhoref [k+kgc]   * ((ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti)) * dxi
                     + rhoref [k+kgc]   * ((vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti)) * dyi
                   + ( rhorefh[k+kgc+1] * ( wt[ijk+kk] + w[ijk+kk] * dti)
                     - rhorefh[k+kgc  ] * ( wt[ijk   ] + w[ijk   ] * dti)) * dzi[k+kgc];
+        }
+    };
+
+
+    template<typename TF>
+    struct solve_in_g
+    {
+        DEFINE_GRID_KERNEL("pres_2::solve_in", 0)
+
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(
+                Grid_layout g,
+                const int i, const int j, const int k,
+                const Level level,
+                TF* const __restrict__ p,
+                const TF* const __restrict__ work3d,
+                TF* const __restrict__ b,
+                const TF* const __restrict__ a,
+                const TF* const __restrict__ c,
+                const TF* const __restrict__ dz,
+                const TF* const __restrict__ rhoref,
+                const TF* const __restrict__ bmati,
+                const TF* const __restrict__ bmatj,
+                const int kstart, const int kmax)
+        {
+            const int ijk = g(i, j, k);
+
+            // CvH this needs to be taken into account in case of an MPI run
+            // iindex = mpi->mpicoordy * iblock + i;
+            // jindex = mpi->mpicoordx * jblock + j;
+            // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+            //  if(iindex == 0 && jindex == 0)
+
+            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
+            p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
+
+            if (k == 0)
+            {
+                // Substitute BC's
+                // ijk = i + j*jj;
+                b[ijk] += a[0];
+            }
+            else if (k == kmax-1)
+            {
+                // For wave number 0, which contains average, set pressure at top to zero
+                if (i == 0 && j == 0)
+                    b[ijk] -= c[k];
+                else
+                    b[ijk] += c[k];
+            }
+        }
+    };
+
+
+    template<typename TF>
+    struct tdma_g
+    {
+        DEFINE_GRID_KERNEL("pres_2::tdma_g", 0)
+
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(
+                Grid_layout g,
+                const int i, const int j, const int k,
+                const Level level,
+                const TF* const __restrict__ a,
+                const TF* const __restrict__ b,
+                const TF* const __restrict__ c,
+                TF* const __restrict__ p,
+                TF* const __restrict__ work3d,
+                const int kmax)
+        {
+            const int ij = g(i, j, k);  // k=0
+            const int kk = g.kstride;
+
+            TF work2d = b[ij];
+            p[ij] /= work2d;
+
+            for (int k=1; k<kmax; k++)
+            {
+                const int ijk = ij + k*kk;
+                work3d[ijk] = c[k-1] / work2d;
+                work2d = b[ijk] - a[k]*work3d[ijk];
+                p[ijk] -= a[k]*p[ijk-kk];
+                p[ijk] /= work2d;
+            }
+
+            for (int k=kmax-2; k>=0; k--)
+            {
+                const int ijk = ij + k*kk;
+                p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+            }
+        }
+    };
+
+
+    template<typename TF>
+    struct solve_out_g
+    {
+        DEFINE_GRID_KERNEL("pres_2::solve_out", 0)
+
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(
+                Grid_layout g,
+                const int i, const int j, const int k,
+                const Level level,
+                TF* const __restrict__ p,
+                const TF* const __restrict__ work3d,
+                const int istart, const int jstart, const int kstart,
+                const int jj_gc, const int kk_gc)
+        {
+            // Strides without ghost cells;
+            const int jj = g.jstride;
+            const int kk = g.kstride;
+
+            // Strides with ghost cells:
+            const int jjp = jj_gc;
+            const int kkp = kk_gc;
+
+            const int ijk  = i + j*jj + k*kk;
+            const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
+
+            p[ijkp] = work3d[ijk];
+
+            if (k == 0)
+                p[ijkp-kkp] = p[ijkp];
         }
     };
 
