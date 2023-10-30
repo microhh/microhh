@@ -84,6 +84,15 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -110,7 +119,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 
         // Calculate total strain rate
         launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
-            gd,
+            grid_layout,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -143,7 +152,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             TF tPri = 1./tPr;
 
             launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
-                gd,
+                grid_layout,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, dbdz_g,
                 mlen_g, z0m_g, gd.z_g,
@@ -159,7 +168,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     {
         // Calculate total strain rate
         launch_grid_kernel<diff_les::calc_strain2_g<TF, false>>(
-            gd,
+            grid_layout,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -195,7 +204,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             TF tPri = 1./tPr;
 
             launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
-                gd,
+                grid_layout,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, nullptr,
                 mlen_g, nullptr, gd.z_g,
@@ -223,6 +232,15 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const TF dxidxi = TF(1)/(gd.dx * gd.dx);
     const TF dyidyi = TF(1)/(gd.dy * gd.dy);
     const TF tPri = TF(1)/tPr;
@@ -231,7 +249,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     if (boundary.get_switch() == "default")
     {
         launch_grid_kernel<diff_les::diff_uvw_g<TF, false>>(
-                gd,
+                grid_layout,
                 fields.mt.at("u")->fld_g.view(),
                 fields.mt.at("v")->fld_g.view(),
                 fields.mt.at("w")->fld_g.view(),
@@ -254,7 +272,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         for (auto it : fields.st)
         {
             launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
-                    gd,
+                    grid_layout,
                     it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,
@@ -272,7 +290,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     else
     {
         launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
-                gd,
+                grid_layout,
                 fields.mt.at("u")->fld_g.view(),
                 fields.mt.at("v")->fld_g.view(),
                 fields.mt.at("w")->fld_g.view(),
@@ -295,7 +313,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         for (auto it : fields.st)
         {
             launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
-                    gd,
+                    grid_layout,
                     it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,

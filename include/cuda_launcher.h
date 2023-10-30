@@ -153,29 +153,29 @@ void launch_grid_kernel(
     cuda_check_error();
 }
 
-template <typename F, typename TF, typename... Args>
-void launch_grid_kernel(
-        const Grid_data<TF> &gd,
-        Args&&... args
-)
-{
-    launch_grid_kernel<F>(
-            Grid_layout::from_grid_data(gd),
-            std::forward<Args>(args)...
-    );
-}
-
-template <typename F, typename TF, typename... Args>
-void launch_grid_kernel(
-        const Grid<TF> &grid,
-        Args&&... args
-)
-{
-    launch_grid_kernel<F>(
-            Grid_layout::from_grid_data(grid.get_grid_data()),
-            std::forward<Args>(args)...
-    );
-}
+//template <typename F, typename TF, typename... Args>
+//void launch_grid_kernel(
+//        const Grid_data<TF> &gd,
+//        Args&&... args
+//)
+//{
+//    launch_grid_kernel<F>(
+//            Grid_layout::from_grid_data(gd),
+//            std::forward<Args>(args)...
+//    );
+//}
+//
+//template <typename F, typename TF, typename... Args>
+//void launch_grid_kernel(
+//        const Grid<TF> &grid,
+//        Args&&... args
+//)
+//{
+//    launch_grid_kernel<F>(
+//            Grid_layout::from_grid_data(grid.get_grid_data()),
+//            std::forward<Args>(args)...
+//    );
+//}
 
 template <typename F, typename TF, typename... Args>
 void launch_grid_kernel(

@@ -78,6 +78,10 @@ struct Grid_data
     int jend;    // Index of the last gridpoint+1 in the y-direction.
     int kend;    // Index of the last gridpoint+1 in the z-direction.
 
+    int istride; // 1D index stride in x-direction (==1).
+    int jstride; // 1D index stride in y-direction (==icells).
+    int kstride; // 1D index stride in z-direction (==ijcells).
+
     TF xsize; // Size of the domain in the x-direction.
     TF ysize; // Size of the domain in the y-direction.
     TF zsize; // Size of the domain in the z-direction.

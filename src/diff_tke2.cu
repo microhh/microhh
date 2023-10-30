@@ -236,6 +236,15 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -251,7 +260,7 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
     const TF tPr_i_dummy = 1;
 
     launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
-            gd,
+            grid_layout,
             fields.mt.at("u")->fld_g.view(),
             fields.mt.at("v")->fld_g.view(),
             fields.mt.at("w")->fld_g.view(),
@@ -285,7 +294,7 @@ void Diff_tke2<TF>::exec(Stats<TF>& stats)
         }
 
         launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
-                gd,
+                grid_layout,
                 it.second->fld_g.view(),
                 fields.sp.at(it.first)->fld_g,
                 *evisc_ptr,
@@ -312,6 +321,15 @@ template<typename TF>
 void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
+
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
@@ -340,7 +358,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
     // Calculate total strain rate
     launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
-            gd,
+            grid_layout,
             str2_tmp->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -412,7 +430,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         // Note BvS: templated lambda functions are not (yet?) allowed by NVCC :-(
         if (sw_mason)
             launch_grid_kernel<diff_tke2::evisc_g<TF, true, true>>(
-                    gd,
+                    grid_layout,
                     fields.sd.at("evisc")->fld_g.view(),
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g,
@@ -424,7 +442,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     this->cm);
         else
             launch_grid_kernel<diff_tke2::evisc_g<TF, true, false>>(
-                    gd,
+                    grid_layout,
                     fields.sd.at("evisc")->fld_g.view(),
                     fields.sp.at("sgstke")->fld_g,
                     buoy_tmp->fld_g,
@@ -437,7 +455,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
         if (sw_mason)
             launch_grid_kernel<diff_tke2::evisc_heat_g<TF, true, true>>(
-                    gd,
+                    grid_layout,
                     fields.sd.at("eviscs")->fld_g.view(),
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
@@ -447,7 +465,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                     this->cn, this->ch1, this->ch2);
         else
             launch_grid_kernel<diff_tke2::evisc_heat_g<TF, true, false>>(
-                    gd,
+                    grid_layout,
                     fields.sd.at("eviscs")->fld_g.view(),
                     fields.sd.at("evisc")->fld_g,
                     fields.sp.at("sgstke")->fld_g,
@@ -462,7 +480,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
         // Calculate tendencies here, to prevent having to
         // re-calculate `strain2` in diffusion->exec()`.
         launch_grid_kernel<diff_tke2::sgstke_buoy_tend_g<TF>>(
-                gd,
+                grid_layout,
                 fields.st.at("sgstke")->fld_g.view(),
                 fields.sp.at("sgstke")->fld_g,
                 fields.sd.at("eviscs")->fld_g,
@@ -474,7 +492,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
 
         if (sw_mason)
             launch_grid_kernel<diff_tke2::sgstke_diss_tend_g<TF, true>>(
-                gd,
+                grid_layout,
                 fields.st.at("sgstke")->fld_g.view(),
                 fields.sp.at("sgstke")->fld_g,
                 buoy_tmp->fld_g,
@@ -487,7 +505,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
                 this->ce2);
         else
             launch_grid_kernel<diff_tke2::sgstke_diss_tend_g<TF, false>>(
-                gd,
+                grid_layout,
                 fields.st.at("sgstke")->fld_g.view(),
                 fields.sp.at("sgstke")->fld_g,
                 buoy_tmp->fld_g,
@@ -506,7 +524,7 @@ void Diff_tke2<TF>::exec_viscosity(Stats<TF>& stats, Thermo<TF>& thermo)
     }
 
     launch_grid_kernel<diff_tke2::sgstke_shear_tend_g<TF>>(
-            gd,
+            grid_layout,
             fields.st.at("sgstke")->fld_g.view(),
             fields.sp.at("sgstke")->fld_g,
             fields.sd.at("evisc")->fld_g,
