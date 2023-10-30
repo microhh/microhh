@@ -27,7 +27,8 @@
 #include "fast_math.h"
 #include "monin_obukhov.h"
 
-namespace diff_les {
+namespace Diff_les_kernels
+{
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 

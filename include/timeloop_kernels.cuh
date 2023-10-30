@@ -25,7 +25,7 @@
 
 #include "cuda_tiling.h"
 
-namespace timeloop
+namespace Timeloop_kernel
 {
     template<typename TF, int substep>
     struct rk3_g

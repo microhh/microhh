@@ -26,12 +26,11 @@
 #include "finite_difference.h"
 #include "cuda_tiling.h"
 
-namespace advec_2i5
+namespace Advec_2i5_kernels
 {
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
     using namespace Finite_difference::O6;
-
 
     template<typename TF>
     struct advec_u_g
