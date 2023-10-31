@@ -304,7 +304,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
     boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
-    launch_grid_kernel<Pres_2_kernel::pres_in_g<TF>>(
+    launch_grid_kernel<Pres_2_kernels::pres_in_g<TF>>(
             grid_layout_nogc,
             fields.sd.at("p")->fld_g.view(),
             fields.mp.at("u")->fld_g,
@@ -323,7 +323,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    launch_grid_kernel<Pres_2_kernel::solve_in_g<TF>>(
+    launch_grid_kernel<Pres_2_kernels::solve_in_g<TF>>(
             grid_layout_nogc,
             fields.sd.at("p")->fld_g.view(),
             tmp1->fld_g,
@@ -334,7 +334,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             gd.kstart, gd.kmax);
 
     // DOES NOT WORK (YET):
-    launch_grid_kernel<Pres_2_kernel::tdma_g<TF>>(
+    launch_grid_kernel<Pres_2_kernels::tdma_g<TF>>(
             grid_layout_2d_nogc,
             a_g,
             tmp2->fld_g,
@@ -347,7 +347,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
-    launch_grid_kernel<Pres_2_kernel::solve_out_g<TF>>(
+    launch_grid_kernel<Pres_2_kernels::solve_out_g<TF>>(
             grid_layout_nogc,
             fields.sd.at("p")->fld_g.view(),
             tmp1->fld_g,
@@ -356,7 +356,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
-    launch_grid_kernel<Pres_2_kernel::pres_out_g<TF>>(
+    launch_grid_kernel<Pres_2_kernels::pres_out_g<TF>>(
             grid_layout_int,
             fields.mt.at("u")->fld_g.view(),
             fields.mt.at("v")->fld_g.view(),

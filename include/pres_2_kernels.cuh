@@ -25,7 +25,7 @@
 
 #include "cuda_tiling.h"
 
-namespace Pres_2_kernel
+namespace Pres_2_kernels
 {
     template<typename TF>
     struct pres_in_g
@@ -100,13 +100,13 @@ namespace Pres_2_kernel
             b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
             p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
 
-            if (k == 0)
+            if (level.distance_to_start() == 0)
             {
                 // Substitute BC's
                 // ijk = i + j*jj;
                 b[ijk] += a[0];
             }
-            else if (k == kmax-1)
+            else if (level.distance_to_end() == 0)
             {
                 // For wave number 0, which contains average, set pressure at top to zero
                 if (i == 0 && j == 0)
@@ -189,7 +189,7 @@ namespace Pres_2_kernel
 
             p[ijkp] = work3d[ijk];
 
-            if (k == 0)
+            if (level.distance_to_start() == 0)
                 p[ijkp-kkp] = p[ijkp];
         }
     };
