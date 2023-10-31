@@ -233,7 +233,7 @@ void Pres_2<TF>::prepare_device()
     bmatj_g.allocate(gd.jtot);
     a_g.allocate(gd.kmax);
     c_g.allocate(gd.kmax);
-    work2d_g.allocate(gd.imax*gd.kmax);
+    work2d_g.allocate(gd.imax*gd.jmax);
 
     cuda_safe_call(cudaMemcpy(bmati_g,  bmati.data(),  imemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bmatj_g,  bmatj.data(),  jmemsize,  cudaMemcpyHostToDevice));
