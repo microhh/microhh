@@ -48,26 +48,16 @@ namespace Pres_2_kernel
                 const TF* const __restrict__ dzi,
                 const TF* const __restrict__ rhoref,
                 const TF* const __restrict__ rhorefh,
-                const TF dxi, const TF dyi, const TF dti)
+                const TF dxi, const TF dyi, const TF dti,
+                const int icells, const int ijcells,
+                const int igc, const int jgc, const int kgc)
         {
-            // Strides over field including ghost cells.
             const int ii = 1;
-            const int jj = g.jstride;
-            const int kk = g.kstride;
+            const int jj = icells;
+            const int kk = ijcells;
 
-            // Strides over field excluding ghost cells.
-            const int imax = g.iend-g.istart;
-            const int jmax = g.jend-g.jstart;
-            const int jjp = imax;
-            const int kkp = imax*jmax;
-
-            // Calculate ghost cells from start index.
-            const int igc = g.istart;
-            const int jgc = g.jstart;
-            const int kgc = g.kstart;
-
-            const int ijk  = g(i, j, k);
-            const int ijkp = (i-igc) + (j-jgc)*jjp + (k-kgc)*kkp;
+            const int ijkp = g(i, j, k);
+            const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
 
             p[ijkp] = rhoref [k+kgc]   * ((ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti)) * dxi
                     + rhoref [k+kgc]   * ((vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti)) * dyi

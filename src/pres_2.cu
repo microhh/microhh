@@ -305,7 +305,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
     launch_grid_kernel<Pres_2_kernel::pres_in_g<TF>>(
-            grid_layout_int,
+            grid_layout_nogc,
             fields.sd.at("p")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -317,7 +317,9 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             fields.rhoref_g,
             fields.rhorefh_g,
             gd.dxi, gd.dyi,
-            TF(dti));
+            TF(dti),
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart);
 
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
