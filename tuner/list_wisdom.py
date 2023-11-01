@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import json
 
-files = glob.glob('../wisdom/*float.wisdom')
+files = glob.glob('../wisdom/*.wisdom')
 files.sort()
 
 df = pd.DataFrame(

@@ -1,2 +1,31 @@
 {"version": "1.0", "objective": "time", "tunable_parameters": ["BLOCK_SIZE_X", "BLOCK_SIZE_Y", "BLOCK_SIZE_Z", "BLOCKS_PER_SM", "TILE_FACTOR_X", "TILE_FACTOR_Y", "TILE_FACTOR_Z", "LOOP_UNROLL_DEPTH", "AXES_PERMUTATION", "TILE_CONTIGUOUS_YZ"], "key": "advec_2i5::advec_s@double"}
+
+
+
+
 {"config": [128, 1, 1, 5, 1, 1, 3, 0, 2, 1], "problem_size": [256, 256, 256], "time": 0.6531071901321411, "environment": {"date": "2023-09-28T15:17:40.461986", "device_name": "NVIDIA A100-SXM4-40GB", "compute_capability": 80, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 11080, "host_name": "gcn26.local.snellius.surf.nl", "host_address": "172.18.62.26", "git": "27cd2e451037e64837299af10cd95d56c4782510"}}
+{"config": [128, 1, 1, 2, 1, 2, 1, 3, 0, 0], "problem_size": [128, 128, 128], "time": 0.17597504114111265, "environment": {"date": "2023-10-25T18:27:57.242338", "device_name": "Tesla V100-PCIE-32GB", "compute_capability": 70, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 12020, "host_name": "cumulus", "host_address": "127.0.1.1", "git": "f7ba4f58ac2027df3125ec63ee73b341fdacd315"}}
+{"config": [16, 8, 1, 4, 1, 2, 1, 2, 1, 1], "problem_size": [256, 256, 256], "time": 1.3651190519332885, "environment": {"date": "2023-10-25T18:44:24.277008", "device_name": "Tesla V100-PCIE-32GB", "compute_capability": 70, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 12020, "host_name": "cumulus", "host_address": "127.0.1.1", "git": "f7ba4f58ac2027df3125ec63ee73b341fdacd315"}}
+{"config": [64, 1, 1, 2, 1, 3, 1, 2, 5, 1], "problem_size": [512, 512, 256], "time": 5.560925439198812, "environment": {"date": "2023-10-25T19:00:55.244576", "device_name": "Tesla V100-PCIE-32GB", "compute_capability": 70, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 12020, "host_name": "cumulus", "host_address": "127.0.1.1", "git": "f7ba4f58ac2027df3125ec63ee73b341fdacd315"}}
+{"config": [64, 1, 1, 5, 1, 1, 1, 3, 1, 1], "problem_size": [64, 64, 64], "time": 0.04148981237163146, "environment": {"date": "2023-10-25T19:17:22.315948", "device_name": "Tesla V100-PCIE-32GB", "compute_capability": 70, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 12020, "host_name": "cumulus", "host_address": "127.0.1.1", "git": "f7ba4f58ac2027df3125ec63ee73b341fdacd315"}}
+
+
+
+
+
+
+
+
+
+
+
+
+{"config": [128, 1, 1, 5, 1, 1, 3, 0, 2, 1], "problem_size": [256, 256, 256], "time": 0.6531071901321411, "environment": {"date": "2023-09-28T15:17:40.461986", "device_name": "NVIDIA A100-SXM4-40GB", "compute_capability": 80, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12020, "cuda_version": 11080, "host_name": "gcn26.local.snellius.surf.nl", "host_address": "172.18.62.26", "git": "27cd2e451037e64837299af10cd95d56c4782510"}}
+{"config": [32, 4, 1, 4, 4, 1, 1, 1, 5, 0], "problem_size": [1024, 1024, 128], "time": 3.909848102728526, "environment": {"date": "2023-10-28T16:02:05.118786", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [128, 1, 1, 1, 1, 4, 1, 0, 5, 1], "problem_size": [1024, 1024, 256], "time": 8.023497818311055, "environment": {"date": "2023-10-28T16:17:55.955383", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [64, 1, 2, 6, 1, 1, 1, 0, 0, 1], "problem_size": [128, 128, 128], "time": 0.06634154699742795, "environment": {"date": "2023-10-28T16:33:40.167995", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [32, 2, 2, 2, 2, 1, 16, 0, 3, 0], "problem_size": [2048, 2048, 128], "time": 18.306914920806886, "environment": {"date": "2023-10-28T16:49:48.246321", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [32, 2, 1, 2, 4, 1, 1, 0, 0, 1], "problem_size": [256, 256, 256], "time": 0.44746016095081964, "environment": {"date": "2023-10-28T17:05:32.391674", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [256, 1, 1, 2, 1, 1, 4, 3, 5, 1], "problem_size": [512, 512, 256], "time": 1.9184951468308766, "environment": {"date": "2023-10-28T17:21:21.614232", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [256, 1, 1, 1, 1, 2, 1, 2, 3, 0], "problem_size": [512, 512, 512], "time": 3.9963286391894024, "environment": {"date": "2023-10-28T17:37:11.131964", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
+{"config": [32, 4, 2, 4, 1, 1, 1, 0, 4, 0], "problem_size": [64, 64, 64], "time": 0.011704426724463701, "environment": {"date": "2023-10-28T17:52:55.727232", "device_name": "NVIDIA H100 PCIe", "compute_capability": 90, "kernel_tuner_version": "0.4.5", "cuda_driver_version": 12010, "cuda_version": 12020, "host_name": "node005", "host_address": "10.20.20.15"}}
