@@ -1532,6 +1532,10 @@ void Stats<TF>::calc_stats_w(
         auto advec_flux = fields.get_tmp();
         auto fld_prime = fields.get_tmp();
         auto w_prime = fields.get_tmp();
+
+        w_prime->name = "w";
+        fld_prime->name = fld.name;
+
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
@@ -1570,7 +1574,6 @@ void Stats<TF>::calc_stats_w(
                     gd.jstart, gd.jend,
                     0, gd.kcells,
                     gd.icells, gd.ijcells);
-
             master.sum(w_prime->fld_mean.data(), gd.kcells);
 
             subtract_mean(
@@ -1583,6 +1586,7 @@ void Stats<TF>::calc_stats_w(
                     gd.icells, gd.ijcells);
 
             fld_prime->loc = fld.loc;
+
             advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
             // Switch flag to flux location of `fld`.
