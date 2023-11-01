@@ -44,7 +44,6 @@ namespace Force_kernels
                 const TF* const __restrict__ wls,
                 const TF* const __restrict__ dzhi)
         {
-            const int kk = g.kstride;
             const int ijk = g(i, j, k);
 
             if (wls[k] > TF(0))
@@ -132,6 +131,24 @@ namespace Force_kernels
             vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
         }
     };
+
+
+    template<typename TF>
+    struct add_profile_g
+    {
+        DEFINE_GRID_KERNEL("force::add_profile", 0)
+
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(
+                Grid_layout g, const int i, const int j, const int k, const Level level,
+                TF* const __restrict__ st,
+                const TF* const __restrict__ prof)
+        {
+            const int ijk = g(i, j, k);
+            st[ijk] += prof[k];
+        }
+    };
 }
 
-#endif //MICROHHC_TIMELOOP_KERNELS_CUH
+#endif //FORCE_KERNELS_CUH

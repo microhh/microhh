@@ -97,42 +97,21 @@ namespace
         }
     }
 
-    template<typename TF> __global__
-    void large_scale_source_g(TF* const __restrict__ st, TF* const __restrict__ sls,
-                              const int istart, const int jstart, const int kstart,
-                              const int iend,   const int jend,   const int kend,
-                              const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            st[ijk] += sls[k];
-        }
-    }
 
     template<typename TF> __global__
-    void nudging_tendency_g(TF* const __restrict__ st, TF* const __restrict__ smn,
-                            TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
-                            const int istart, const int jstart, const int kstart,
-                            const int iend,   const int jend,   const int kend,
-                            const int jj,     const int kk)
+    void nudging_tendency_g(
+        TF* const __restrict__ st,
+        const TF* const __restrict__ smn,
+        const TF* const __restrict__ snudge,
+        const TF* const __restrict__ nudge_fac,
+        const int kstart, const int kend)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
+        const int k = blockIdx.x*blockDim.x + threadIdx.x + kstart;
 
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k]);
-
-        }
+        if (k < kend)
+            st[k] = -nudge_fac[k] * (smn[k]-snudge[k]);
     }
+
 
     template<typename TF>
     int calc_zi(
@@ -200,8 +179,7 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : lslist)
         {
-            lsprofs_g.emplace(it, nullptr);
-            cuda_safe_call(cudaMalloc(&lsprofs_g.at(it), nmemsize));
+            lsprofs_g.emplace(it, cuda_vector<TF>(gd.kcells));
             cuda_safe_call(cudaMemcpy(lsprofs_g.at(it), lsprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
     }
@@ -210,11 +188,11 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : nudgelist)
         {
-            nudgeprofs_g.emplace(it, nullptr);
-            cuda_safe_call(cudaMalloc(&nudgeprofs_g.at(it), nmemsize));
+            nudgeprofs_g.emplace(it, cuda_vector<TF>(gd.kcells));
             cuda_safe_call(cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
         nudge_factor_g.allocate(gd.kcells);
+        nudge_tend_g.allocate(gd.kcells);
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 
@@ -237,19 +215,14 @@ void Force<TF>::clear_device()
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
-        for (auto& it : lsprofs_g)
-            cuda_safe_call(cudaFree(it.second));
         for (auto& it : tdep_ls)
             it.second->clear_device();
     }
 
     if (swnudge == Nudging_type::Enabled)
     {
-        for (auto& it : nudgeprofs_g)
-            cuda_safe_call(cudaFree(it.second));
         for (auto& it : tdep_nudge)
             it.second->clear_device();
-
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field ||
@@ -355,12 +328,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         for (auto& it : lslist)
         {
-            large_scale_source_g<TF><<<gridGPU, blockGPU>>>(
-                fields.at.at(it)->fld_g, lsprofs_g.at(it),
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::add_profile_g<TF>>(
+                    grid_layout,
+                    fields.at.at(it)->fld_g.view(),
+                    lsprofs_g.at(it));
+
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.at.at(it), tend_name_ls);
         }
@@ -379,13 +351,27 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                 cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
             }
 
+            // Calculate nudging tendency profile.
+            const int blocki = 32;
+            const int gridi  = gd.kmax/blocki + (gd.kmax%blocki > 0);
+
+            dim3 gridGPU (gridi);
+            dim3 blockGPU(blocki);
+
+            // Calculate nudging tendency as single profile.
             nudging_tendency_g<TF><<<gridGPU, blockGPU>>>(
-                fields.at.at(it)->fld_g, fields.ap.at(it)->fld_mean_g,
-                nudgeprofs_g.at(it), nudge_factor_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+                    nudge_tend_g.view(),
+                    fields.ap.at(it)->fld_mean_g,
+                    nudgeprofs_g.at(it),
+                    nudge_factor_g,
+                    gd.kstart, gd.kend);
+
+            // Add tendency profile to 3D tendency field.
+            launch_grid_kernel<Force_kernels::add_profile_g<TF>>(
+                    grid_layout,
+                    fields.at.at(it)->fld_g.view(),
+                    nudge_tend_g);
+
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.at.at(it), tend_name_nudge);
         }
@@ -448,7 +434,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
 
-            // Modifiek `grid_layout`, which starts at kstart+1 (for w subsidence).
+            // Modified `grid_layout`, which starts at kstart+1 (for w subsidence).
             Grid_layout grid_layout_kp1 = {
                     gd.istart,   gd.iend,
                     gd.jstart,   gd.jend,

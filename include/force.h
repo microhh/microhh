@@ -74,9 +74,6 @@ class Force
         void prepare_device();
         void clear_device();
 
-        std::map<std::string, TF*> lsprofs_g;    ///< Map of profiles with forcings stored by its name.
-        std::map<std::string, TF*> nudgeprofs_g; ///< Map of nudging profiles stored by its name.
-
         // Accessor functions
         Large_scale_pressure_type get_switch_lspres() { return swlspres; }
         TF get_coriolis_parameter() const { return fc; }
@@ -121,6 +118,9 @@ class Force
         cuda_vector<TF> vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         cuda_vector<TF> wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         cuda_vector<TF> nudge_factor_g; ///< Pointer to GPU array nudge factor.
+        cuda_vector<TF> nudge_tend_g; ///< Nudging tendency profile.
+        std::map<std::string, cuda_vector<TF>> lsprofs_g;    ///< Map of profiles with forcings stored by its name.
+        std::map<std::string, cuda_vector<TF>> nudgeprofs_g; ///< Map of nudging profiles stored by its name.
         #endif
 
         const std::string tend_name_pres      = "lspres";
