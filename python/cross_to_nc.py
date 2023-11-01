@@ -88,8 +88,6 @@ def convert_to_nc(variables):
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
                 
-                print("index: ", indexes_local)
-                print("dim", dim)
                 for key, val in dim.items():
                     if key == 'time':
                         continue
