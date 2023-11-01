@@ -530,8 +530,12 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     }
     else
     {
-        lat = inputin.get_item<Float>("grid", "lat", "");
-        lon = inputin.get_item<Float>("grid", "lon", "");
+        //Test whether lat/lon exist in the input file
+        if (sw_shortwave)
+        {
+            inputin.get_item<TF>("grid", "lat", "");
+            inputin.get_item<TF>("grid", "lon", "");
+        }
     }
 
     gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());

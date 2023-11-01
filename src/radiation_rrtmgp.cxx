@@ -695,6 +695,15 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         const Float sza = inputin.get_item<Float>("radiation", "sza", "");
         mu0 = std::cos(sza);
     }
+    else
+    {
+        //Test whether lat/lon exist in the input file
+        if (sw_shortwave)
+        {
+            inputin.get_item<TF>("grid", "lat", "");
+            inputin.get_item<TF>("grid", "lon", "");
+        }
+    }
 
     // Surface diffuse radiation filtering
     sw_diffuse_filter = inputin.get_item<bool>("radiation", "swfilterdiffuse", "", false);
