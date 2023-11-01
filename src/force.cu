@@ -471,6 +471,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         if (swwls_mom)
+        {
             advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g,
                 fields.mp.at("u")->fld_mean_g,
@@ -494,6 +495,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+        }
 
         for (auto& it : fields.st)
         {
@@ -513,6 +515,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     else if (swwls == Large_scale_subsidence_type::Local_field)
     {
         if (swwls_mom)
+        {
             advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g,
                 fields.mp.at("u")->fld_g,
@@ -548,6 +551,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
+        }
 
         for (auto& it : fields.st)
         {
