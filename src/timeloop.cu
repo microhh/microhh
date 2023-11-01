@@ -186,13 +186,13 @@ void Timeloop<TF>::exec()
                     gd.kstride};
 
             if (substep == 0)
-                launch_grid_kernel<Timeloop_kernel::rk3_g<TF, 0>>(
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 0>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
-                launch_grid_kernel<Timeloop_kernel::rk3_g<TF, 1>>(
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 1>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
-                launch_grid_kernel<Timeloop_kernel::rk3_g<TF, 2>>(
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 2>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
         };
 
@@ -276,19 +276,19 @@ void Timeloop<TF>::exec()
                     gd.kstride};
 
             if (substep == 0)
-                launch_grid_kernel<Timeloop_kernel::rk4_g<TF, 0>>(
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 0>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
-                launch_grid_kernel<Timeloop_kernel::rk4_g<TF, 1>>(
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 1>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
-                launch_grid_kernel<Timeloop_kernel::rk4_g<TF, 2>>(
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 2>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 3)
-                launch_grid_kernel<Timeloop_kernel::rk4_g<TF, 3>>(
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 3>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 4)
-                launch_grid_kernel<Timeloop_kernel::rk4_g<TF, 4>>(
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 4>>(
                         grid_layout, fld.view(), tend.view(), TF(dt));
         };
 
