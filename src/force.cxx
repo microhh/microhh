@@ -346,6 +346,10 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
         fc = inputin.get_item<TF>("force", "fc", "", -1.);
+        // Test whether latitude is available in the input file.
+        if (fc < 0.)
+            inputin.get_item<TF>("grid", "lat", "");
+
         swtimedep_geo = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
 
         tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", swtimedep_geo));
