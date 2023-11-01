@@ -63,28 +63,6 @@ namespace
     }
 
     template<typename TF> __global__
-    void coriolis_2nd_g(TF* const __restrict__ ut, TF* const __restrict__ vt,
-                        TF* const __restrict__ u,  TF* const __restrict__ v,
-                        TF* const __restrict__ ug, TF* const __restrict__ vg,
-                        const TF fc, const TF ugrid, const TF vgrid,
-                        const int jj, const int kk,
-                        const int istart, const int jstart, const int kstart,
-                        const int iend,   const int jend,   const int kend)
-    {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k  = blockIdx.z + kstart;
-        const int ii = 1;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
-            vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
-        }
-    }
-
-    template<typename TF> __global__
     void coriolis_4th_g(TF* const __restrict__ ut, TF* const __restrict__ vt,
                         TF* const __restrict__ u,  TF* const __restrict__ v,
                         TF* const __restrict__ ug, TF* const __restrict__ vg,
@@ -116,76 +94,6 @@ namespace
                               + ci2<TF>*(ci0<TF>*u[ijk-ii     ] + ci1<TF>*u[ijk       ] + ci2<TF>*u[ijk+ii    ] + ci3<TF>*u[ijk+ii2    ])
                               + ci3<TF>*(ci0<TF>*u[ijk-ii+jj  ] + ci1<TF>*u[ijk+jj    ] + ci2<TF>*u[ijk+ii+jj ] + ci3<TF>*u[ijk+ii2+jj ]) )
                        + ugrid - ug[k]);
-        }
-    }
-
-    template<typename TF> __global__
-    void advec_wls_2nd_mean_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (wls[k] > 0.)
-                st[ijk] -= wls[k] * (s[k]-s[k-1])*dzhi[k];
-            else
-                st[ijk] -= wls[k] * (s[k+1]-s[k])*dzhi[k+1];
-        }
-    }
-
-    template<typename TF> __global__
-    void advec_wls_2nd_local_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (wls[k] > 0.)
-                st[ijk] -= wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
-            else
-                st[ijk] -= wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
-        }
-    }
-
-
-    template<typename TF> __global__
-    void advec_wls_2nd_local_w_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart + 1;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (interp2( wls[k-1], wls[k] ) > 0.)
-                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
-            else
-                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
         }
     }
 
@@ -227,7 +135,10 @@ namespace
     }
 
     template<typename TF>
-    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    int calc_zi(
+            const TF* const restrict fldmean,
+            const int kstart, const int kend,
+            const int plusminus)
     {
         TF maxgrad = 0.;
         TF grad = 0.;
@@ -255,10 +166,11 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
-                                    const double fac0, const double fac1,
-                                    const int index0,  const int index1,
-                                    const int kmax,    const int kgc)
+    void calc_time_dependent_prof_g(
+            TF* const __restrict__ prof, const TF* const __restrict__ data,
+            const double fac0, const double fac1,
+            const int index0,  const int index1,
+            const int kmax,    const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -362,7 +274,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
             gd.jstride,
             gd.kstride};
 
-
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -414,14 +325,14 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         
         if (grid.get_spatial_order() == Grid_order::Second)
         {
-            coriolis_2nd_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
-                gd.icells, gd.ijcells,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::coriolis_2nd_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("u")->fld_g,
+                    fields.mp.at("v")->fld_g,
+                    ug_g, vg_g, fc,
+                    gd.utrans, gd.vtrans);
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
         {

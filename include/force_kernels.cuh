@@ -104,6 +104,34 @@ namespace Force_kernels
         }
     };
 
+
+    template<typename TF>
+    struct coriolis_2nd_g
+    {
+        DEFINE_GRID_KERNEL("force::coriolis_2nd", 0)
+
+        template <typename Level>
+        CUDA_DEVICE
+        void operator()(
+                Grid_layout g, const int i, const int j, const int k, const Level level,
+                TF* const __restrict__ ut,
+                TF* const __restrict__ vt,
+                const TF* const __restrict__ u,
+                const TF* const __restrict__ v,
+                const TF* const __restrict__ ug,
+                const TF* const __restrict__ vg,
+                const TF fc,
+                const TF ugrid,
+                const TF vgrid)
+        {
+            const int ii = 1;
+            const int jj = g.jstride;
+            const int ijk = g(i, j, k);
+
+            ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
+            vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
+        }
+    };
 }
 
 #endif //MICROHHC_TIMELOOP_KERNELS_CUH
