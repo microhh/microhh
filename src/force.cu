@@ -35,6 +35,11 @@
 #include "thermo.h"
 #include "force.h"
 
+// Kernel/CUDA launcher:
+#include "force_kernels.cuh"
+#include "cuda_launcher.h"
+#include "cuda_tiling.h"
+
 using namespace Finite_difference::O2;
 
 namespace
@@ -272,8 +277,8 @@ void Force<TF>::prepare_device()
 
     if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        cuda_safe_call(cudaMalloc(&ug_g, nmemsize));
-        cuda_safe_call(cudaMalloc(&vg_g, nmemsize));
+        ug_g.allocate(gd.kcells);
+        vg_g.allocate(gd.kcells);
 
         cuda_safe_call(cudaMemcpy(ug_g, ug.data(), nmemsize, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
@@ -297,14 +302,14 @@ void Force<TF>::prepare_device()
             cuda_safe_call(cudaMalloc(&nudgeprofs_g.at(it), nmemsize));
             cuda_safe_call(cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
-        cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
+        nudge_factor_g.allocate(gd.kcells);
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field ||
         swwls == Large_scale_subsidence_type::Local_field)
     {
-        cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
+        wls_g.allocate(gd.kcells);
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 }
@@ -314,8 +319,6 @@ void Force<TF>::clear_device()
 {
     if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        cuda_safe_call(cudaFree(ug_g));
-        cuda_safe_call(cudaFree(vg_g));
         for (auto& it : tdep_geo)
             it.second->clear_device();
     }
@@ -332,7 +335,6 @@ void Force<TF>::clear_device()
     {
         for (auto& it : nudgeprofs_g)
             cuda_safe_call(cudaFree(it.second));
-        cuda_safe_call(cudaFree(nudge_factor_g));
         for (auto& it : tdep_nudge)
             it.second->clear_device();
 
@@ -341,7 +343,6 @@ void Force<TF>::clear_device()
     if (swwls == Large_scale_subsidence_type::Mean_field ||
         swwls == Large_scale_subsidence_type::Local_field)
     {
-        cuda_safe_call(cudaFree(wls_g));
         tdep_wls->clear_device();
     }
 }
@@ -351,6 +352,17 @@ template<typename TF>
 void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+
+    // Grid layout for KL/CL launches over interior.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -472,26 +484,20 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mp.at("u")->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mp.at("u")->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("v")->fld_g,
-                fields.mp.at("v")->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("v")->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
@@ -499,14 +505,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g,
-                fields.sp.at(it.first)->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.st.at(it.first)->fld_g.view(),
+                    fields.sp.at(it.first)->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*it.second, tend_name_subs);
@@ -516,38 +519,38 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mp.at("u")->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mp.at("u")->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("v")->fld_g,
-                fields.mp.at("v")->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("v")->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
 
-            advec_wls_2nd_local_w_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("w")->fld_g,
-                fields.mp.at("w")->fld_g,
-                wls_g, gd.dzi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            // Modifiek `grid_layout`, which starts at kstart+1 (for w subsidence).
+            Grid_layout grid_layout_kp1 = {
+                    gd.istart,   gd.iend,
+                    gd.jstart,   gd.jend,
+                    gd.kstart+1, gd.kend,
+                    gd.istride,
+                    gd.jstride,
+                    gd.kstride};
+
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_w_g<TF>>(
+                    grid_layout_kp1,
+                    fields.mt.at("w")->fld_g.view(),
+                    fields.mp.at("w")->fld_g,
+                    wls_g, gd.dzi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
@@ -555,14 +558,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g,
-                fields.sp.at(it.first)->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.st.at(it.first)->fld_g.view(),
+                    fields.sp.at(it.first)->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*it.second, tend_name_subs);

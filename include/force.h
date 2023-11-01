@@ -116,10 +116,12 @@ class Force
         bool swtimedep_nudge;
 
         // GPU functions and variables
-        TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
-        TF* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
-        TF* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
-        TF* nudge_factor_g; ///< Pointer to GPU array nudge factor.
+        #ifdef USECUDA
+        cuda_vector<TF> ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
+        cuda_vector<TF> vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
+        cuda_vector<TF> wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+        cuda_vector<TF> nudge_factor_g; ///< Pointer to GPU array nudge factor.
+        #endif
 
         const std::string tend_name_pres      = "lspres";
         const std::string tend_longname_pres  = "Large Scale Pressure";
