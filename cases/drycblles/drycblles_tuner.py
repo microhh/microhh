@@ -10,6 +10,7 @@ base_opts = {
     'force': 
     {
         'swlspres': 'geo',
+        'fc': 1e-4,
         'swls': 1,
         'lslist': 'th',
         'swwls': 'mean',
