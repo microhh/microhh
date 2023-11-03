@@ -721,7 +721,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         grid.set_minimum_ghost_cells(igc, jgc, kgc);
     }
 
-    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());
+    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_gas", "", std::vector<std::string>());
 
     const std::vector<std::string> possible_gases = {
             "h2o", "co2" ,"o3", "n2o", "co", "ch4", "o2", "n2",
@@ -737,7 +737,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
         }
         else
         {
-            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_bg" << std::endl;
+            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_gas" << std::endl;
         }
     }
 
