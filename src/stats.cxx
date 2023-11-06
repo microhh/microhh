@@ -1555,11 +1555,10 @@ void Stats<TF>::calc_stats_w(
                     fld_prime->fld.data(),
                     fld.fld.data(),
                     fld_prime->fld_mean.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
+                    0, gd.icells,
+                    0, gd.jcells,
                     0, gd.kcells,
                     gd.icells, gd.ijcells);
-
 
             // Set flag for `w` level
             const int w_loc = 1;
@@ -1580,8 +1579,8 @@ void Stats<TF>::calc_stats_w(
                     w_prime->fld.data(),
                     fields.mp.at("w")->fld.data(),
                     w_prime->fld_mean.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
+                    0, gd.icells,
+                    0, gd.jcells,
                     0, gd.kcells,
                     gd.icells, gd.ijcells);
 
@@ -1589,12 +1588,8 @@ void Stats<TF>::calc_stats_w(
 
             advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
 
-            // Switch flag to flux location of `fld`.
-            // set_flag(flag, nmask, m.second, !fld.loc[2]);
-
             calc_mean(
                     m.second.profs.at(name).data.data(),
-                    // fld_prime->fld.data(),
                     advec_flux->fld.data(),
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
