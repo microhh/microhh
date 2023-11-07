@@ -388,7 +388,7 @@ void Radiation_gcss<TF>::exec(
 template<typename TF>
 bool Radiation_gcss<TF>::check_field_exists(const std::string& name)
 {
-    if (name == "rflx" || name == "sflx")
+    if (name == "lflx" || name == "sflx")
         return true;
     else
         return false;

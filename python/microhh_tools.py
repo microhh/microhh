@@ -323,29 +323,6 @@ class Create_ncfile():
         else:
             precision = 'f8'
 
-        half_level_vars = [
-            'w',
-            'sw_flux_dn', 'sw_flux_dn_dir', 'sw_flux_up',
-            'sw_flux_dn_clear', 'sw_flux_dn_dir_clear', 'sw_flux_up_clear',
-            'lw_flux_dn', 'lw_flux_up'
-            'lw_flux_dn_clear', 'lw_flux_up_clear']
-
-        if(varname == 'u'):
-            try:
-                dimensions['xh'] = dimensions.pop('x')
-            except KeyError:
-                pass
-        if(varname == 'v'):
-            try:
-                dimensions['yh'] = dimensions.pop('y')
-            except KeyError:
-                pass
-        if(varname in half_level_vars):
-            try:
-                dimensions['zh'] = dimensions.pop('z')
-            except KeyError:
-                pass
-
         # create dimensions in netCDF file
         self.dim = {}
         self.dimvar = {}
