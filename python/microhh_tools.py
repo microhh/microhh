@@ -58,9 +58,9 @@ def _convert_value(value):
     """ Helper function: convert namelist value or list """
     if ',' in value:
         value = value.split(',')
-        return [_int_or_float_or_str(val) for val in value]
+        return [_int_or_float_or_str(val.strip()) for val in value]
     else:
-        return _int_or_float_or_str(value)
+        return _int_or_float_or_str(value.strip())
 
 
 def _find_namelist_file():
@@ -104,7 +104,7 @@ class Read_namelist:
                         curr_group_name = lstrip[1:-1]
                         self.groups[curr_group_name] = {}
                     elif ("=" in line):
-                        var_name = lstrip.split('=')[0]
+                        var_name = lstrip.split('=')[0].strip()
                         value    = lstrip.split('=')[1]
 
                         if ducktype:
