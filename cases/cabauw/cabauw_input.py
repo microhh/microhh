@@ -46,28 +46,33 @@ def create_case_input(
         use_htessel,
         use_rrtmgp,
         use_rt,
+        use_aerosols,
         use_homogeneous_z0,
         use_homogeneous_ls,
         gpt_set,
         itot, jtot, ktot,
         xsize, ysize, zsize,
-        endtime, TF):
+        endtime, TF,
+        npx=1, npy=1):
 
     # Link required files (if not present)
     if use_htessel:
         copy_or_link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
     if use_rrtmgp:
         if gpt_set == '256_224':
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g256-2018-12-04.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g256.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g224.nc', 'coefficients_sw.nc')
         elif gpt_set == '128_112':
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc', 'coefficients_sw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g128.nc', 'coefficients_lw.nc')
+            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g112.nc', 'coefficients_sw.nc')
         else:
             raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
 
-        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-lw.nc', 'cloud_coefficients_lw.nc')
-        copy_or_link('../../rte-rrtmgp-cpp/rte-rrtmgp/extensions/cloud_optics/rrtmgp-cloud-optics-coeffs-sw.nc', 'cloud_coefficients_sw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc')
+        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc')
+
+    if use_aerosols:
+        copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
 
     """
     Create vertical grid for LES
@@ -81,6 +86,11 @@ def create_case_input(
     ls2d = xr.open_dataset('ls2d_20160815.nc')
     ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
     ls2d_z = ls2d.interp(z=z)
+
+    if use_aerosols:
+        cams = xr.open_dataset('cams_20160815.nc')
+        cams = cams.sel(lay=slice(0, 135))
+        cams_z = cams.interp(z=z)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
@@ -105,6 +115,9 @@ def create_case_input(
     Update .ini file
     """
     ini = mht.Read_namelist('cabauw.ini.base')
+
+    ini['master']['npx'] = npx
+    ini['master']['npy'] = npy
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
@@ -139,6 +152,11 @@ def create_case_input(
     else:
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
+
+    if use_aerosols:
+        ini['aerosol']['swaerosol'] = 1
+    else:
+        ini['aerosol']['swaerosol'] = 0
 
     ini['time']['endtime'] = endtime
 
@@ -228,6 +246,21 @@ def create_case_input(
         add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
         add_nc_var('h2o',   ('lay'), nc_rad, ls2d_z.h2o_lay.mean(axis=0))
 
+        #aerosols for background column
+        if use_aerosols:
+            add_nc_var('aermr01', ('lay'), nc_rad, cams_z.aermr01_lay.mean(axis=0))
+            add_nc_var('aermr02', ('lay'), nc_rad, cams_z.aermr02_lay.mean(axis=0))
+            add_nc_var('aermr03', ('lay'), nc_rad, cams_z.aermr03_lay.mean(axis=0))
+            add_nc_var('aermr04', ('lay'), nc_rad, cams_z.aermr04_lay.mean(axis=0))
+            add_nc_var('aermr05', ('lay'), nc_rad, cams_z.aermr05_lay.mean(axis=0))
+            add_nc_var('aermr06', ('lay'), nc_rad, cams_z.aermr06_lay.mean(axis=0))
+            add_nc_var('aermr07', ('lay'), nc_rad, cams_z.aermr07_lay.mean(axis=0))
+            add_nc_var('aermr08', ('lay'), nc_rad, cams_z.aermr08_lay.mean(axis=0))
+            add_nc_var('aermr09', ('lay'), nc_rad, cams_z.aermr09_lay.mean(axis=0))
+            add_nc_var('aermr10', ('lay'), nc_rad, cams_z.aermr10_lay.mean(axis=0))
+            add_nc_var('aermr11', ('lay'), nc_rad, cams_z.aermr11_lay.mean(axis=0))
+
+
     """
     Land-surface and soil
     """
@@ -240,6 +273,23 @@ def create_case_input(
         add_nc_var('t_soil', ('z'), nc_soil, t_soil)
         add_nc_var('index_soil', ('z'), nc_soil, index_soil)
         add_nc_var('root_frac', ('z'), nc_soil, root_frac)
+
+    """
+    Aerosols
+    """
+    if use_aerosols:
+        nc_tdep.createDimension('time_aerosols', cams_z.dims['time'])
+        add_nc_var('aermr01', ('z'), nc_init, cams_z.aermr01.mean(axis=0))
+        add_nc_var('aermr02', ('z'), nc_init, cams_z.aermr02.mean(axis=0))
+        add_nc_var('aermr03', ('z'), nc_init, cams_z.aermr03.mean(axis=0))
+        add_nc_var('aermr04', ('z'), nc_init, cams_z.aermr04.mean(axis=0))
+        add_nc_var('aermr05', ('z'), nc_init, cams_z.aermr05.mean(axis=0))
+        add_nc_var('aermr06', ('z'), nc_init, cams_z.aermr06.mean(axis=0))
+        add_nc_var('aermr07', ('z'), nc_init, cams_z.aermr07.mean(axis=0))
+        add_nc_var('aermr08', ('z'), nc_init, cams_z.aermr08.mean(axis=0))
+        add_nc_var('aermr09', ('z'), nc_init, cams_z.aermr09.mean(axis=0))
+        add_nc_var('aermr10', ('z'), nc_init, cams_z.aermr10.mean(axis=0))
+        add_nc_var('aermr11', ('z'), nc_init, cams_z.aermr11.mean(axis=0))
 
     nc.close()
 
@@ -338,6 +388,7 @@ if __name__ == '__main__':
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
+    use_aerosols = False         # False = no aerosols
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
@@ -359,6 +410,7 @@ if __name__ == '__main__':
             use_htessel,
             use_rrtmgp,
             use_rt,
+            use_aerosols,
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,

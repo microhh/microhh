@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -42,9 +42,108 @@
 #include "cross.h"
 #include "dump.h"
 #include "diff.h"
+#include "fast_math.h"
 
+   
 namespace
 {
+    template<typename TF>
+    void calc_kinetic_energy_2nd(
+            TF* const restrict ke, TF* const restrict tke,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umodel, const TF* const restrict vmodel, const TF* const restrict wmodel,
+            const TF utrans, const TF vtrans,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O2;
+        using Fast_math::pow2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF u2 = pow2(interp2(u[ijk]+utrans, u[ijk+ii]+utrans));
+                    const TF v2 = pow2(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans));
+                    const TF w2 = pow2(interp2(w[ijk]       , w[ijk+kk]       ));
+
+                    ke[ijk] = TF(0.5) * (u2 + v2 + w2);
+                }
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF u2 = pow2(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]));
+                    const TF v2 = pow2(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]));
+                    const TF w2 = pow2(interp2(w[ijk]-wmodel[k], w[ijk+kk]-wmodel[k+1]));
+
+                    tke[ijk] = TF(0.5) * (u2 + v2 + w2);
+                }
+        }
+    }
+
+
+    template<typename TF>
+    void calc_kinetic_energy_4th(TF* restrict ke, TF* restrict tke,
+                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
+                 const TF* restrict umodel, const TF* restrict vmodel, const TF* restrict wmodel,
+                 const TF utrans, const TF vtrans,
+                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                 const int icells, const int ijcells)
+    {
+        using Fast_math::pow2;
+
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] + utrans) + ci1<TF>*pow2(u[ijk    ] + utrans)
+                                + ci2<TF>*pow2(u[ijk+ii1] + utrans) + ci3<TF>*pow2(u[ijk+ii2] + utrans);
+                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] + vtrans) + ci1<TF>*pow2(v[ijk    ] + vtrans)
+                                + ci2<TF>*pow2(v[ijk+jj1] + vtrans) + ci3<TF>*pow2(v[ijk+jj2] + vtrans);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1]) + ci1<TF>*pow2(w[ijk]) + ci2<TF>*pow2(w[ijk+kk1]) + ci3<TF>*pow2(w[ijk+kk2]);
+                    ke[ijk] = TF(0.5)*(u2 + v2 + w2);
+                }
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] - umodel[k]) + ci1<TF>*pow2(u[ijk    ] - umodel[k])
+                                + ci2<TF>*pow2(u[ijk+ii1] - umodel[k]) + ci3<TF>*pow2(u[ijk+ii2] - umodel[k]);
+                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] - vmodel[k]) + ci1<TF>*pow2(v[ijk    ] - vmodel[k])
+                                + ci2<TF>*pow2(v[ijk+jj1] - vmodel[k]) + ci3<TF>*pow2(v[ijk+jj2] - vmodel[k]);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1] - wmodel[k-1]) + ci1<TF>*pow2(w[ijk] - wmodel[k]) + ci2<TF>*pow2(w[ijk+kk1] - wmodel[k+1]) + ci3<TF>*pow2(w[ijk+kk2] - wmodel[k+2]);
+                    tke[ijk] = TF(0.5)*(u2 + v2 + w2);
+                }
+        }
+    }
+
     enum class Mask_type {Wplus, Wmin};
 
     template<typename TF, Mask_type mode>
@@ -397,6 +496,7 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     // Create help arrays for statistics.
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+    wmodel.resize(gd.kcells);
 
     // Allocate user XY masks
     for (auto& mask : xymasklist)
@@ -482,18 +582,18 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
         for (auto& it : ap)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
-            check_added_cross(it.first, "bot",     crosslist_global, cross_bot);
-            check_added_cross(it.first, "top",     crosslist_global, cross_top);
-            check_added_cross(it.first, "fluxbot", crosslist_global, cross_fluxbot);
-            check_added_cross(it.first, "fluxtop", crosslist_global, cross_fluxtop);
-            check_added_cross(it.first, "path",    crosslist_global, cross_path);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
+            check_added_cross(it.first, "_top",     crosslist_global, cross_top);
+            check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
+            check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
+            check_added_cross(it.first, "_path",    crosslist_global, cross_path);
         }
 
         for (auto& it : sd)
         {
             check_added_cross(it.first, "",        crosslist_global, cross_simple);
-            check_added_cross(it.first, "lngrad",  crosslist_global, cross_lngrad);
+            check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
         }
     }
 }
@@ -647,12 +747,14 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 template<typename TF>
 void Fields<TF>::exec_stats(Stats<TF>& stats)
 {
+    auto& gd = grid.get_grid_data();
+
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
 
     stats.calc_stats("w", *mp.at("w"), no_offset, no_threshold);
-    stats.calc_stats("u", *mp.at("u"), grid.utrans, no_threshold);
-    stats.calc_stats("v", *mp.at("v"), grid.vtrans, no_threshold);
+    stats.calc_stats("u", *mp.at("u"), gd.utrans, no_threshold);
+    stats.calc_stats("v", *mp.at("v"), gd.vtrans, no_threshold);
 
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
@@ -677,6 +779,54 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
             }
         }
     }
+
+    auto& masks = stats.get_masks();
+
+    // The loop over masks inside of budget is necessary, because the mask mean is 
+    // required in order to compute the budget terms.
+    for (auto& m : masks)
+    {
+        // Calculate the mean of the fields.
+        stats.calc_mask_mean_profile(umodel, m, *mp.at("u"));
+        stats.calc_mask_mean_profile(vmodel, m, *mp.at("v"));
+        stats.calc_mask_mean_profile(wmodel, m, *mp.at("w"));
+
+        // Calculate kinetic and turbulent kinetic energy
+        auto ke  = get_tmp();
+        auto tke = get_tmp();
+
+        constexpr TF no_offset = 0.;
+        constexpr TF no_threshold = 0.;
+
+        if (grid.get_spatial_order() == Grid_order::Second)
+        {
+            calc_kinetic_energy_2nd(
+                ke->fld.data(), tke->fld.data(),
+                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
+                gd.utrans, gd.vtrans,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+        }
+        else
+        {
+            calc_kinetic_energy_4th(
+                ke->fld.data(), tke->fld.data(),
+                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
+                gd.utrans, gd.vtrans,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        }
+        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
+
+        release_tmp(ke);
+        release_tmp(tke);
+
+    }
+
 }
 
 template<typename TF>
@@ -717,7 +867,7 @@ template<typename TF>
 void Fields<TF>::init_prognostic_field(
         const std::string& fldname, const std::string& longname,
         const std::string& unit, const std::string& groupname,
-        const std::array<int,3>& loc)
+        const std::array<int,3>& loc, const bool& required)
 {
     if (sp.find(fldname)!=sp.end())
     {
@@ -739,6 +889,10 @@ void Fields<TF>::init_prognostic_field(
     a [fldname] = sp[fldname];
     ap[fldname] = sp[fldname];
     at[fldname] = st[fldname];
+
+    // Record whether a WARNING needs to be thrown if the field does not exist in the input
+    required_read[fldname] = required;
+    
 }
 
 template<typename TF>
@@ -849,8 +1003,8 @@ void Fields<TF>::create(Input& input, Netcdf_file& input_nc)
     add_mean_profs(input_nc);
 
     /*
-    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, grid.utrans);
-    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, grid.vtrans);
+    nerror += add_mean_prof(inputin, "u", mp.at("u")->data, gd.utrans);
+    nerror += add_mean_prof(inputin, "v", mp.at("v")->data, gd.vtrans);
 
     for (auto& it : sp)
         nerror += add_mean_prof(inputin, it.first, it.second->data, 0.);
@@ -887,7 +1041,7 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
 
     // Look up the specific randomizer variables.
     rndamp = input.get_item<TF>("fields", "rndamp", fld, 0.);
-    rndz   = input.get_item<TF>("fields", "rndz"  , fld, 0.);
+    rndz   = input.get_item<TF>("fields", "rndz"  , fld, gd.zsize);
     rndexp = input.get_item<TF>("fields", "rndexp", fld, 0.);
 
     if (rndz > gd.zsize)
@@ -900,11 +1054,9 @@ void Fields<TF>::randomize(Input& input, std::string fld, TF* const restrict dat
     int kendrnd = gd.kstart;
     while (gd.z[kendrnd] < rndz)
         ++kendrnd;
-
     // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
     if (kendrnd == gd.kstart && rndz > 0.)
         master.print_warning("randomization depth is less than the height of the first model level\n");
-
     for (int k=gd.kstart; k<kendrnd; ++k)
     {
         const TF rndfac = std::pow((rndz-gd.z[k])/rndz, rndexp);
@@ -950,18 +1102,18 @@ void Fields<TF>::add_mean_profs(Netcdf_handle& input_nc)
     Netcdf_group& group_nc = input_nc.get_group("init");
     group_nc.get_variable(prof, "u", start, count);
 
-    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), grid.utrans,
+    add_mean_prof_to_field<TF>(mp.at("u")->fld.data(), prof.data(), gd.utrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     group_nc.get_variable(prof, "v", start, count);
-    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), grid.vtrans,
+    add_mean_prof_to_field<TF>(mp.at("v")->fld.data(), prof.data(), gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     for (auto& f : sp)
     {
-        group_nc.get_variable(prof, f.first, start, count);
+        group_nc.get_variable(prof, f.first, start, count, required_read[f.first]);
         add_mean_prof_to_field<TF>(f.second->fld.data(), prof.data(), 0.,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
@@ -1042,6 +1194,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
                 stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
+
+        // (Turbulence) Kinetic Energy
+        stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
+        stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
     }
 
     // Add time series of scalar surface values
@@ -1171,7 +1327,7 @@ void Fields<TF>::load(int n)
     for (auto& mask : xymasks)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", mask.first.c_str(), n);
+        std::sprintf(filename, "%s.%07d", mask.first.c_str(), 0);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -1243,26 +1399,54 @@ TF Fields<TF>::check_mass()
 template<typename TF>
 void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
-    for (auto& it : cross_simple)
-        cross.cross_simple(a.at(it)->fld.data(), a.at(it)->name, iotime, a.at(it)->loc);
+    auto& gd = grid.get_grid_data();
 
+    TF no_offset = 0.;
+    TF offset;
+    for (auto& it : cross_simple)
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        
+        cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
+    }
     for (auto& it : cross_lngrad)
-        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"lngrad", iotime);
+        cross.cross_lngrad(a.at(it)->fld.data(), a.at(it)->name+"_lngrad", iotime);
 
     for (auto& it : cross_fluxbot)
-        cross.cross_plane(a.at(it)->flux_bot.data(), a.at(it)->name+"fluxbot", iotime);
+        cross.cross_plane(a.at(it)->flux_bot.data(), offset, a.at(it)->name+"_fluxbot", iotime);
 
     for (auto& it : cross_fluxtop)
-        cross.cross_plane(a.at(it)->flux_top.data(), a.at(it)->name+"fluxtop", iotime);
+        cross.cross_plane(a.at(it)->flux_top.data(), offset, a.at(it)->name+"_fluxtop", iotime);
 
     for (auto& it : cross_bot)
-        cross.cross_plane(a.at(it)->fld_bot.data(), a.at(it)->name+"bot", iotime);
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_bot.data(), offset, a.at(it)->name+"_bot", iotime);
+    }
 
     for (auto& it : cross_top)
-        cross.cross_plane(a.at(it)->fld_top.data(), a.at(it)->name+"top", iotime);
-
+    {
+        if (it == "u")
+            offset = gd.utrans;
+        else if (it == "v")
+            offset = gd.vtrans;
+        else
+            offset = no_offset;
+        cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
+    }
+    
     for (auto& it : cross_path)
-        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"path", iotime);
+        cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }
 
 template<typename TF>
@@ -1277,9 +1461,10 @@ template<typename TF>
 void Fields<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
+    auto& gd = grid.get_grid_data();
 
-    column.calc_column("u", mp.at("u")->fld.data(), grid.utrans);
-    column.calc_column("v", mp.at("v")->fld.data(), grid.vtrans);
+    column.calc_column("u", mp.at("u")->fld.data(), gd.utrans);
+    column.calc_column("v", mp.at("v")->fld.data(), gd.vtrans);
     column.calc_column("w", mp.at("w")->fld.data(), no_offset);
 
     for (auto& it : sp)
@@ -1312,6 +1497,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
 
     //Loop through units to find matches; in which case add the powers
     int unit1_size = unit1.size();
+
     for (auto& u2 : unit2)
     {
         int i;
@@ -1322,7 +1508,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
                 if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
                 {
                     int j;
-                    for (j = i++ ; j < unit1_size; j++)
+                    for (j = i+1 ; j < unit1_size; j++)
                     {
                         if (u2.first == unit1[j].first)
                             break;
@@ -1392,5 +1578,8 @@ void Fields<TF>::reset_tendencies()
 }
 
 
-template class Fields<double>;
+#ifdef FLOAT_SINGLE
 template class Fields<float>;
+#else
+template class Fields<double>;
+#endif

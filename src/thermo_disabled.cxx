@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,7 +32,7 @@
 template<typename TF>
 Thermo_disabled<TF>::Thermo_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) : Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
-    swthermo = "0";
+    swthermo = Thermo_type::Disabled;
 }
 
 template<typename TF>
@@ -58,5 +58,9 @@ TF Thermo_disabled<TF>::get_buoyancy_diffusivity()
     return 0.;
 }
 
-template class Thermo_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_disabled<float>;
+#else
+template class Thermo_disabled<double>;
+#endif

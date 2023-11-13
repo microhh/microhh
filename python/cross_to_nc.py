@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -38,7 +38,7 @@ def convert_to_nc(variables):
         for mode in modes:
             try:
                 otime = int(round(starttime / 10**iotimeprec))
-                if os.path.isfile("{0}.xy.{1:07d}".format(variable, otime)):
+                if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
                     if mode != 'xy':
                         continue
                     at_surface = True
@@ -46,15 +46,21 @@ def convert_to_nc(variables):
                     at_surface = False
 
                 filename = "{0}.{1}.nc".format(variable, mode)
+                halflevel = '000'
                 if not at_surface:
                     if indexes is None:
-                        indexes_local = mht.get_cross_indices(variable, mode)
+                        indexes_local,halflevel = mht.get_cross_indices(variable, mode)
                     else:
                         indexes_local = indexes
 
-                #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
+                        files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
+                                variable, mode, indexes_local[0], starttime))
+                        if len(files) == 0:
+                            raise Exception('Cannot find any cross-section')
+                        halflevel = files[0].split('.')[-3]
+
                 dim = collections.OrderedDict()
-                dim['time'] = range(niter)
+                dim['time'] = []
                 dim['z'] = range(ktot)
                 dim['y'] = range(jtot)
                 dim['x'] = range(itot)
@@ -64,49 +70,53 @@ def convert_to_nc(variables):
                     n = itot * jtot
                     indexes_local = [-1]
                 elif mode == 'xy':
-                    dim.update({'z': indexes_local})
+                    dim.update({'z': []})
                     n = itot * jtot
                 elif mode == 'xz':
-                    dim.update({'y': indexes_local})
+                    dim.update({'y': []})
                     n = itot * ktot
                 elif mode == 'yz':
-                    dim.update({'x': indexes_local})
+                    dim.update({'x': []})
                     n = ktot * jtot
 
-                if variable == 'u':
+                if halflevel[0] == '1':
                     dim['xh'] = dim.pop('x')
-                if variable == 'v':
+                if halflevel[1] == '1':
                     dim['yh'] = dim.pop('y')
-                if variable == 'w':
+                if halflevel[2] == '1':
                     dim['zh'] = dim.pop('z')
-
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
+                
+                for key, val in dim.items():
+                    if key == 'time':
+                        continue
+                    elif val == []:
+                        ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
-                for t in range(niter):
+                for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
                         index = indexes_local[k]
                         otime = int(
                             round(
-                                (starttime + t * sampletime) / 10**iotimeprec))
+                                (time) / 10**iotimeprec))
                         if at_surface:
-                            f_in = "{0}.{1}.{2:07d}".format(
-                                variable, mode, otime)
+                            f_in = "{0}.{1}.{2}.{3:07d}".format(
+                                variable, mode, halflevel, otime)
                         else:
-                            f_in = "{0:}.{1}.{2:05d}.{3:07d}".format(
-                                variable, mode, index, otime)
+                            f_in = "{0:}.{1}.{2}.{3:05d}.{4:07d}".format(
+                                variable, mode, halflevel, index, otime)
                         try:
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:
                             print (ex)
-                            raise Exception(
-                                'Stopping: cannot find file {}'.format(f_in))
+                            break
 
                         print(
                             "Processing %8s, time=%7i, index=%4i" %
                             (variable, otime, index))
 
-                        ncfile.dimvar['time'][t] = otime * 10**iotimeprec
+                        ncfile.dimvar['time'][t] = time
 
                         if at_surface:
                             ncfile.var[t, :, :] = fin.read(n)
@@ -211,14 +221,6 @@ precision = args.precision
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
 # End option parsing
-
-# Calculate the number of iterations
-for time in np.arange(starttime, endtime, sampletime):
-    otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime)):
-        endtime = time - sampletime
-        break
-niter = int((endtime - starttime) / sampletime + 1)
 
 grid = mht.Read_grid(itot, jtot, ktot)
 

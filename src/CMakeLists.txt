@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -23,3 +23,14 @@ FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
 include_directories("../include" "../rte-rrtmgp-cpp/include" SYSTEM ${INCLUDE_DIRS})
 
 add_library(microhhc STATIC ${sourcefiles})
+target_include_directories(microhhc PRIVATE "../include" "../rte-rrtmgp-cpp/include" "../rte-rrtmgp-cpp/include_rt" "../rte-rrtmgp-cpp/include_kernels_cuda" "../rte-rrtmgp-cpp/include_rt_kernels" ${INCLUDE_DIRS})
+
+if(USECUDA)
+    if(USEKERNELLAUNCHER)
+        target_link_libraries(microhhc PRIVATE CUDA::curand CUDA::cufft ${LIBS} kernel_launcher)
+    else()
+        target_link_libraries(microhhc PRIVATE CUDA::curand CUDA::cufft ${LIBS})
+    endif()
+else()
+    target_link_libraries(microhhc PRIVATE ${LIBS})
+endif()

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,6 +26,8 @@
 #include <string>
 #include <vector>
 #include <array>
+
+#include "cuda_buffer.h"
 
 class Master;
 template<typename> class Grid;
@@ -66,14 +68,14 @@ class Field3d
         void init_device();  // Allocate Field3D fields at device
         void clear_device(); // Deallocate Field3D fields at device
 
-        TF* fld_g;
-        TF* fld_bot_g;
-        TF* fld_top_g;
-        TF* fld_mean_g;
-        TF* grad_bot_g;
-        TF* grad_top_g;
-        TF* flux_bot_g;
-        TF* flux_top_g;
+        cuda_vector<TF> fld_g;
+        cuda_vector<TF> fld_bot_g;
+        cuda_vector<TF> fld_top_g;
+        cuda_vector<TF> fld_mean_g;
+        cuda_vector<TF> grad_bot_g;
+        cuda_vector<TF> grad_top_g;
+        cuda_vector<TF> flux_bot_g;
+        cuda_vector<TF> flux_top_g;
 
     private:
         Master& master;

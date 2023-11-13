@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -48,8 +48,9 @@ template<typename> class Microphys;
 
 class Input;
 
-enum class Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
+enum class Boundary_type {Dirichlet_type, Neumann_type, Flux_type, Ustar_type, Off_type};
 enum class Boundary_w_type {Normal_type, Conservation_type};
+enum class Surface_model {Enabled, Disabled};
 
 // Size of lookup table in Boundary_surface
 const int nzL_lut = 10000;
@@ -81,7 +82,7 @@ class Boundary
         static std::shared_ptr<Boundary> factory(
             Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&); ///< Factory function for boundary class generation.
 
-        virtual void init(Input&, Thermo<TF>&);   ///< Initialize the fields.
+        virtual void init(Input&, Thermo<TF>&, const Sim_mode);   ///< Initialize the fields.
         virtual void create_cold_start(Netcdf_handle&); ///< Create fields for cold start.
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&,
@@ -114,15 +115,15 @@ class Boundary
         std::string get_switch();
 
         #ifdef USECUDA
-        virtual TF* get_z0m_g();
-        virtual TF* get_dudz_g();
-        virtual TF* get_dvdz_g();
-        virtual TF* get_dbdz_g();
+        virtual cuda_vector<TF>& get_z0m_g();
+        virtual cuda_vector<TF>& get_dudz_g();
+        virtual cuda_vector<TF>& get_dvdz_g();
+        virtual cuda_vector<TF>& get_dbdz_g();
 
-        virtual void prepare_device();
-        virtual void forward_device();
-        virtual void backward_device();
-        virtual void clear_device();
+        virtual void prepare_device(Thermo<TF>&);
+        virtual void forward_device(Thermo<TF>&);
+        virtual void backward_device(Thermo<TF>&);
+        virtual void clear_device(Thermo<TF>&);
         #endif
 
     protected:
@@ -172,10 +173,13 @@ class Boundary
 
         #ifdef USECUDA
         std::map<std::string, TF*> inflow_profiles_g;
+        std::map<std::string, TF*> sbot_2d_prev_g;
+        std::map<std::string, TF*> sbot_2d_next_g;
         #endif
 
         // GPU functions and variables
-        void set_bc_g(TF*, TF*, TF*, Boundary_type, TF, TF, TF); ///< Set the values for the boundary fields.
+        void set_bc_g   (TF*, TF*, TF*, Boundary_type, TF, TF, TF, bool); ///< Set the values for the boundary fields.
+        void set_bc_2d_g(TF*, TF*, TF*, TF*, Boundary_type, TF, TF, bool); ///< Set the values for the boundary fields.
 
     private:
         virtual void update_slave_bcs(); // Update the slave boundary values.

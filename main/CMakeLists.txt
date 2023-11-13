@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -38,8 +38,10 @@ message(STATUS "Git hash " ${GITHASH})
 add_definitions(-DGITHASH="${GITHASH}")
 
 add_executable(microhh microhh.cxx)
+target_include_directories(microhh PUBLIC ${INCLUDE_DIRS} "../include")
+
 if(USECUDA)
-    target_link_libraries(microhh microhhc rte_rrtmgp rte_rrtmgp_cuda rte_rrtmgp_kernels rte_rrtmgp_kernels_cuda ${LIBS} m)
+    target_link_libraries(microhh microhhc curand rte_rrtmgp rte_rrtmgp_cuda rte_rrtmgp_cuda_rt rte_rrtmgp_kernels rte_rrtmgp_kernels_cuda rte_rrtmgp_kernels_cuda_rt ${LIBS} m)
 else()
     target_link_libraries(microhh microhhc rte_rrtmgp_kernels rte_rrtmgp ${LIBS} m)
 endif()

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,10 +32,16 @@
 #include <array>
 #include "defines.h"
 #include "transpose.h"
+class Netcdf_handle;
+#include "timedep.h"
+#include "cuda_buffer.h"
 
 class Master;
 class Input;
 class Netcdf_handle;
+template<typename> class Timeloop;
+template<typename> class Timedep;
+template<typename> class Stats;
 
 enum class Grid_order { Second, Fourth };
 
@@ -98,20 +104,26 @@ struct Grid_data
     std::vector<TF> yh; // Grid coordinate of cell faces in x-direction.
     std::vector<TF> zh; // Grid coordinate of cell faces in x-direction.
 
+    TF lat; // Latitude of the domain.
+    TF lon; // Longitude of the domain.
+
+    TF utrans; // Galilean transformation velocity in x-direction.
+    TF vtrans; // Galilean transformation velocity in y-direction.
+
     // GPU fields and settings
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
 
-    TF* x_g;
-    TF* y_g;
-    TF* z_g;
-    TF* zh_g;
-    TF* dz_g;
-    TF* dzh_g;
-    TF* dzi_g;
-    TF* dzhi_g;
-    TF* dzi4_g;
-    TF* dzhi4_g;
+    cuda_vector<TF> x_g;
+    cuda_vector<TF> y_g;
+    cuda_vector<TF> z_g;
+    cuda_vector<TF> zh_g;
+    cuda_vector<TF> dz_g;
+    cuda_vector<TF> dzh_g;
+    cuda_vector<TF> dzi_g;
+    cuda_vector<TF> dzhi_g;
+    cuda_vector<TF> dzi4_g;
+    cuda_vector<TF> dzhi4_g;
 
     const std::array<int,3> uloc  = {{1,0,0}}; // Location of the u-velocity on the staggered grid
     const std::array<int,3> vloc  = {{0,1,0}}; // Location of the v-velocity on the staggered grid
@@ -136,14 +148,14 @@ class Grid
         ~Grid();               // Destructor of the grid class.
 
         void init();              // Initialization of the grid arrays.
-        void create(Netcdf_handle&); // Creation of the grid data.
+        void create(Input&, Netcdf_handle&); // Creation of the grid data.
         void save();              // Saves grid data to file.
-        void load();              // Loads grid data to file.
+        void load(Input&, Netcdf_handle&);              // Loads grid data to file.
 
-        TF utrans; // Galilean transformation velocity in x-direction.
-        TF vtrans; // Galilean transformation velocity in y-direction.
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
+        void exec_stats(Stats<TF>&);
 
-        const Grid_data<TF>& get_grid_data();
+        const Grid_data<TF>& get_grid_data() const;
         Grid_order get_spatial_order() const { return spatial_order; }
 
         void set_minimum_ghost_cells(int, int, int);
@@ -155,6 +167,8 @@ class Grid
         // interpolation functions
         void interpolate_2nd(TF*, const TF*, const int[3], const int[3]); // Second order interpolation
         void interpolate_4th(TF*, const TF*, const int[3], const int[3]); // Fourth order interpolation
+
+        void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
@@ -180,5 +194,9 @@ class Grid
         MPI_Datatype subi; // MPI datatype containing a subset of the entire x-axis.
         MPI_Datatype subj; // MPI datatype containing a subset of the entire y-axis.
         #endif
+
+        bool swtimedep;
+        std::map<std::string, Timedep<TF>*> tdep_latlon;
+
 };
 #endif

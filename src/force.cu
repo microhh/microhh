@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -157,6 +157,30 @@ namespace
                 st[ijk] -= wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
             else
                 st[ijk] -= wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
+        }
+    }
+
+
+    template<typename TF> __global__
+    void advec_wls_2nd_local_w_g(
+            TF* const __restrict__ st, const TF* const __restrict__ s,
+            const TF* const __restrict__ wls, const TF* const __restrict__ dzi,
+            const int istart, const int jstart, const int kstart,
+            const int iend,   const int jend,   const int kend,
+            const int jj,     const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart + 1;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            if (interp2( wls[k-1], wls[k] ) > 0.)
+                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
+            else
+                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
         }
     }
 
@@ -344,7 +368,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         fields.release_tmp_g(tmp);
 
-        const TF fbody = (uflux - uavg - grid.utrans) / dt - utavg;
+        const TF fbody = (uflux - uavg - gd.utrans) / dt - utavg;
 
         add_pressure_force_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("u")->fld_g,
@@ -372,12 +396,16 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
+        
         if (grid.get_spatial_order() == Grid_order::Second)
         {
-            coriolis_2nd_g<<<gridGPU, blockGPU>>>(
+            coriolis_2nd_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
                 gd.icells, gd.ijcells,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);
@@ -385,10 +413,10 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
-            coriolis_4th_g<<<gridGPU, blockGPU>>>(
+            coriolis_4th_g<TF><<<gridGPU, blockGPU>>>(
                 fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, grid.utrans, grid.vtrans,
+                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
                 gd.icells, gd.ijcells,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend);
@@ -404,7 +432,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         for (auto& it : lslist)
         {
-            large_scale_source_g<<<gridGPU, blockGPU>>>(
+            large_scale_source_g<TF><<<gridGPU, blockGPU>>>(
                 fields.at.at(it)->fld_g, lsprofs_g.at(it),
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
@@ -428,7 +456,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                 cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
             }
 
-            nudging_tendency_g<<<gridGPU, blockGPU>>>(
+            nudging_tendency_g<TF><<<gridGPU, blockGPU>>>(
                 fields.at.at(it)->fld_g, fields.ap.at(it)->fld_mean_g,
                 nudgeprofs_g.at(it), nudge_factor_g,
                 gd.istart, gd.jstart, gd.kstart,
@@ -443,11 +471,35 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     if (swwls == Large_scale_subsidence_type::Mean_field)
     {
         if (swwls_mom)
-            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+        {
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g,
+                fields.mp.at("u")->fld_mean_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g,
+                fields.mp.at("v")->fld_mean_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+        }
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_mean_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g,
                 fields.sp.at(it.first)->fld_mean_g,
                 wls_g, gd.dzhi_g,
@@ -463,11 +515,47 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     else if (swwls == Large_scale_subsidence_type::Local_field)
     {
         if (swwls_mom)
-            throw std::runtime_error("Subsidence of momentum is not (yet) implemented on GPU.");
+        {
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
+                fields.mt.at("u")->fld_g,
+                fields.mp.at("u")->fld_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
+
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
+                fields.mt.at("v")->fld_g,
+                fields.mp.at("v")->fld_g,
+                wls_g, gd.dzhi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
+
+            advec_wls_2nd_local_w_g<TF><<<gridGPU, blockGPU>>>(
+                fields.mt.at("w")->fld_g,
+                fields.mp.at("w")->fld_g,
+                wls_g, gd.dzi_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+            cuda_check_error();
+
+            cudaDeviceSynchronize();
+            stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
+        }
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_local_g<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g,
                 fields.sp.at(it.first)->fld_g,
                 wls_g, gd.dzhi_g,
@@ -513,5 +601,9 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 }
 #endif
 
-template class Force<double>;
+
+#ifdef FLOAT_SINGLE
 template class Force<float>;
+#else
+template class Force<double>;
+#endif

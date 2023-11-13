@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -597,6 +597,25 @@ namespace
     }
 
     template<typename TF>
+    void advec_flux_w(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int kk1 = 1*kk;
+        const int kk2 = 2*kk;
+
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = w[ijk] * s[ijk];
+                }
+    }
+
+    template<typename TF>
     void advec_flux_s(
             TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -721,28 +740,36 @@ void Advec_2i4<TF>::exec(Stats<TF>& stats)
 #endif
 
 template<typename TF>
-void Advec_2i4<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+void Advec_2i4<TF>::get_advec_flux(
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld, const Field3d<TF>& w)
 {
     auto& gd = grid.get_grid_data();
 
     if (fld.loc == gd.uloc)
     {
         advec_flux_u(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.vloc)
     {
         advec_flux_v(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.wloc)
+    {
+        advec_flux_w(
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.sloc)
     {
         advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
@@ -750,5 +777,9 @@ void Advec_2i4<TF>::get_advec_flux(Field3d<TF>& advec_flux, const Field3d<TF>& f
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
 }
 
-template class Advec_2i4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Advec_2i4<float>;
+#else
+template class Advec_2i4<double>;
+#endif

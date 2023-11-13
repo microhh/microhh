@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -22,6 +22,8 @@
 
 #ifndef THERMO_DRY_H
 #define THERMO_DRY_H
+
+#include <stdexcept>
 
 #include "boundary_cyclic.h"
 #include "timedep.h"
@@ -54,8 +56,7 @@ class Thermo_dry : public Thermo<TF>
         virtual ~Thermo_dry(); // Destructor of the dry thermodynamics class.
 
         void init();
-        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void create_basestate(Input&, Netcdf_handle&);
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
 
@@ -97,6 +98,8 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
+        void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const
             { throw std::runtime_error("Function get_radiation_columns_g not implemented"); }
         void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
@@ -108,6 +111,8 @@ class Thermo_dry : public Thermo<TF>
         // Functions which are not implemented and throw error
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
+            { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
@@ -116,6 +121,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
+        void create_basestate(Input&, Netcdf_handle&) {};
         void load(const int) {};
         void save(const int) {};
 

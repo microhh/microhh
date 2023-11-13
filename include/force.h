@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -121,6 +121,11 @@ class Force
         std::map<std::string, Timedep<TF>*> tdep_geo;
         std::map<std::string, Timedep<TF>*> tdep_nudge;
         std::unique_ptr<Timedep<TF>> tdep_wls;
+
+        bool swtimedep_geo;
+        bool swtimedep_ls;
+        bool swtimedep_wls;
+        bool swtimedep_nudge;
 
         // GPU functions and variables
         TF* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.

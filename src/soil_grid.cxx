@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2017 Chiel van Heerwaarden
- * Copyright (c) 2011-2017 Thijs Heus
- * Copyright (c) 2014-2017 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -143,5 +143,9 @@ const Soil_grid_data<TF>& Soil_grid<TF>::get_grid_data()
     return gd;
 }
 
-template class Soil_grid<double>;
+
+#ifdef FLOAT_SINGLE
 template class Soil_grid<float>;
+#else
+template class Soil_grid<double>;
+#endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -36,5 +36,9 @@ void Microphys_disabled<TF>::get_surface_rain_rate_g(
 }
 #endif
 
-template class Microphys_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_disabled<float>;
+#else
+template class Microphys_disabled<double>;
+#endif

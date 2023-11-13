@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -266,10 +266,10 @@ namespace Thermo_moist_functions
             const TF alpha_i = TF(1.) - alpha_w;
 
             qs = qsat(p, tnr);
-            const TF ql_qi = std::max(TF(0.), qt - qs);
+            const TF qlqi = std::max(TF(0.), qt - qs);
 
-            ans.ql = alpha_w*ql_qi;
-            ans.qi = alpha_i*ql_qi;
+            ans.ql = alpha_w*qlqi;
+            ans.qi = alpha_i*qlqi;
             ans.t  = tnr;
             ans.qs = qs;
         }

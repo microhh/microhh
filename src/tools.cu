@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * The cuda_safe_call() and cuda_check_error() are from
  * http://choorucode.com/2011/03/02/how-to-do-error-checking-in-cuda/
@@ -29,6 +29,42 @@
 
 namespace Tools_g
 {
+    static std::string format_exception_message(cudaError err, const char *file, const int line)
+    {
+        char output[1024];
+        snprintf(output, sizeof output, "CUDA error: %s (%s) at %s:%d",
+                 cudaGetErrorName(err),
+                 cudaGetErrorString(err),
+                 file,
+                 line);
+
+        return output;
+    }
+
+    cuda_exception::cuda_exception(cudaError err, const char *file, const int line):
+        err_(err),
+        message_(format_exception_message(err, file, line))
+    {
+        //
+    }
+
+
+    cuda_exception::cuda_exception(cudaError err, std::string msg):
+        err_(err),
+        message_("CUDA error: " + msg)
+    {
+        //
+    }
+
+    const char *cuda_exception::what() const throw()
+    {
+        return message_.c_str();
+    }
+
+    cudaError cuda_exception::error() const {
+        return err_;
+    }
+
     template <typename TF, Reduce_type function> __device__
     TF reduction(TF v1, TF v2)
     {
@@ -52,12 +88,48 @@ namespace Tools_g
         /* Once we get to the last 32 values (1 thread warp), the __syncthreads() is no longer necessary */
         if (tid < 32)
         {
-            if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<TF, function>(as[tid],as[tid + 32]); }}
-            if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<TF, function>(as[tid],as[tid + 16]); }}
-            if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<TF, function>(as[tid],as[tid +  8]); }}
-            if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<TF, function>(as[tid],as[tid +  4]); }}
-            if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<TF, function>(as[tid],as[tid +  2]); }}
-            if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<TF, function>(as[tid],as[tid +  1]); }}
+            if (blockSize >=  64) { if (tid < 32) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 32]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  32) { if (tid < 16) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 16]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  16) { if (tid < 8) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 8]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  8) { if (tid < 4) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 4]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  4) { if (tid < 2) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 2]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            if (blockSize >=  2) { if (tid < 1) {
+                TF v = as[tid]; __syncwarp();
+                v = reduction<TF, function>(v, as[tid + 1]); __syncwarp();
+                as[tid] = v; __syncwarp();
+            }}
+
+            //if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<TF, function>(as[tid],as[tid + 32]); }}
+            //if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<TF, function>(as[tid],as[tid + 16]); }}
+            //if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<TF, function>(as[tid],as[tid +  8]); }}
+            //if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<TF, function>(as[tid],as[tid +  4]); }}
+            //if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<TF, function>(as[tid],as[tid +  2]); }}
+            //if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<TF, function>(as[tid],as[tid +  1]); }}
         }
     }
 

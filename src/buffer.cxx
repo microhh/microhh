@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -187,13 +187,13 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
             // In case of u and v, subtract the grid velocity.
             for (int k=gd.kstart; k<gd.kend; ++k)
             {
-                bufferprofs.at("u")[k] -= grid.utrans;
-                bufferprofs.at("v")[k] -= grid.vtrans;
+                bufferprofs.at("u")[k] -= gd.utrans;
+                bufferprofs.at("v")[k] -= gd.vtrans;
             }
 
             for (auto& it : fields.sp)
             {
-                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count);
+                group_nc.get_variable(bufferprofs.at(it.first), it.first, start, count, fields.required_read.at(it.first));
                 std::rotate(bufferprofs.at(it.first).rbegin(), bufferprofs.at(it.first).rbegin() + gd.kstart, bufferprofs.at(it.first).rend());
             }
         }
@@ -281,5 +281,9 @@ void Buffer<TF>::exec(Stats<TF>& stats)
 }
 #endif
 
-template class Buffer<double>;
+
+#ifdef FLOAT_SINGLE
 template class Buffer<float>;
+#else
+template class Buffer<double>;
+#endif

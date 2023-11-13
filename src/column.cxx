@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -45,6 +45,11 @@ Column<TF>::Column(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
 
     if (swcolumn)
         sampletime = inputin.get_item<double>("column", "sampletime", "");
+    else
+        inputin.flag_as_used("column", "sampletime", "");
+
+    inputin.flag_as_used("column", "coordinates", "x");
+    inputin.flag_as_used("column", "coordinates", "y");
 }
 
 template<typename TF>
@@ -388,5 +393,9 @@ void Column<TF>::calc_time_series(
 }
 #endif
 
-template class Column<double>;
+
+#ifdef FLOAT_SINGLE
 template class Column<float>;
+#else
+template class Column<double>;
+#endif
