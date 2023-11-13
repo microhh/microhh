@@ -1634,5 +1634,8 @@ void Boundary_lateral<TF>::read_xy_slice(
     fields.release_tmp(tmp);
 }
 
-template class Boundary_lateral<double>;
+#ifdef FLOAT_SINGLE
 template class Boundary_lateral<float>;
+#else
+template class Boundary_lateral<double>;
+#endif

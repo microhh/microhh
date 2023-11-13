@@ -57,6 +57,7 @@ class Thermo_dry : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
+        void create_basestate(Input&, Netcdf_handle&);
         void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
 
@@ -121,7 +122,6 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
-        void create_basestate(Input&, Netcdf_handle&) {};
         void load(const int) {};
         void save(const int) {};
 

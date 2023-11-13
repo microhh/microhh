@@ -96,7 +96,6 @@ class Force
         Large_scale_subsidence_type swwls;
         Nudging_type swnudge;
         bool swwls_mom;
-        bool swtimedep_geo;
 
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF dpdx;  ///< Large-scale pressure gradient

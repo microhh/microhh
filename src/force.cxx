@@ -629,6 +629,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             read_3d_binary("ug", ug_next.data(), iotime_next);
             read_3d_binary("vg", vg_next.data(), iotime_next);
         }
+    }
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
@@ -795,11 +796,14 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                     ug.data(), vg.data(), fc_2d.data(),
                     fields.rhoref.data(), 
-                    grid.utrans, grid.vtrans,
+                    gd.utrans, gd.vtrans,
                     gd.dxi, gd.dyi,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
+    }
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
@@ -981,6 +985,7 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             fields.release_tmp(tmp1);
             fields.release_tmp(tmp2);
         }
+    }
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
