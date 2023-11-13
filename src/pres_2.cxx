@@ -36,6 +36,8 @@ Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT
     Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
     boundary_cyclic(master, grid)
 {
+    sw_openbc = inputin.get_item<bool>  ("pres", "swopenbc", "", false);
+
     #ifdef USECUDA
     a_g = 0;
     c_g = 0;
@@ -132,19 +134,30 @@ void Pres_2<TF>::set_values()
 
     const TF pi = std::acos(-1.);
 
-    for (int j=0; j<gd.jtot; ++j)
-        bmatj[j] = 2. * (std::cos(pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
+    if (sw_openbc)
+    {
+        for (int j=0; j<gd.jtot; ++j)
+            bmatj[j] = 2. * (std::cos(pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
 
-    // for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
-    //     bmatj[j] = bmatj[gd.jtot-j];
+        for (int i=0; i<gd.itot; ++i)
+            bmati[i] = 2. * (std::cos(pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
+    }
+    else
+    {
+        for (int j=0; j<gd.jtot/2+1; ++j)
+            bmatj[j] = 2. * (std::cos(2.*pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
 
-    for (int i=0; i<gd.itot; ++i)
-        bmati[i] = 2. * (std::cos(pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
+        for (int i=0; i<gd.itot/2+1; ++i)
+            bmati[i] = 2. * (std::cos(2.*pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
 
-    // for (int i=gd.itot/2+1; i<gd.itot; ++i)
-    //     bmati[i] = bmati[gd.itot-i];
+        for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
+            bmatj[j] = bmatj[gd.jtot-j];
 
-    // create vectors that go into the tridiagonal matrix solver
+        for (int i=gd.itot/2+1; i<gd.itot; ++i)
+            bmati[i] = bmati[gd.itot-i];
+    }
+
+    // Create vectors that go into the tridiagonal matrix solver.
     for (int k=0; k<gd.kmax; ++k)
     {
         a[k] = gd.dz[k+gd.kgc] * fields.rhorefh[k+gd.kgc  ]*gd.dzhi[k+gd.kgc  ];
@@ -182,47 +195,50 @@ void Pres_2<TF>::input(TF* const restrict p,
 
     auto& md = master.get_MPI_data();
 
-    if (md.mpicoordx == 0)
+    if (sw_openbc)
     {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-            {
-                const int ijk_west = gd.istart + j*jj + k*kk;
-                ut[ijk_west] = 0.;
-            }
+        if (md.mpicoordx == 0)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                {
+                    const int ijk_west = gd.istart + j*jj + k*kk;
+                    ut[ijk_west] = 0.;
+                }
+        }
+
+        if (md.mpicoordx == md.npx-1)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                {
+                    const int ijk_east = gd.iend   + j*jj + k*kk;
+                    ut[ijk_east] = 0.;
+                }
+        }
+
+        if (md.mpicoordy == 0)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk_south = i + gd.jstart*jj + k*kk;
+                    vt[ijk_south] = 0.;
+                }
+        }
+
+        if (md.mpicoordy == md.npy-1)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk_north = i + gd.jend  *jj + k*kk;
+                    vt[ijk_north] = 0.;
+                }
+        }
     }
 
-    if (md.mpicoordx == md.npx-1)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-            {
-                const int ijk_east = gd.iend   + j*jj + k*kk;
-                ut[ijk_east] = 0.;
-            }
-    }
-
-    if (md.mpicoordy == 0)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk_south = i + gd.jstart*jj + k*kk;
-                vt[ijk_south] = 0.;
-            }
-    }
-
-    if (md.mpicoordy == md.npy-1)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk_north = i + gd.jend  *jj + k*kk;
-                vt[ijk_north] = 0.;
-            }
-    }
-
-    // write pressure as a 3d array without ghost cells
+    // Write pressure as a 3d array without ghost cells.
     for (int k=0; k<gd.kmax; ++k)
         for (int j=0; j<gd.jmax; ++j)
             #pragma ivdep
@@ -402,45 +418,48 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     // set the cyclic boundary conditions
     boundary_cyclic.exec(p);
 
-    // set the pressure ghost cells enforce neumann = 0
-    if (md.mpicoordx == 0)
+    if (sw_openbc)
     {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-            {
-                const int ijk_west = gd.istart + j*jjp + k*kkp;
-                p[ijk_west-1] = p[ijk_west];
-            }
-    }
+        // set the pressure ghost cells enforce neumann = 0
+        if (md.mpicoordx == 0)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                {
+                    const int ijk_west = gd.istart + j*jjp + k*kkp;
+                    p[ijk_west-1] = p[ijk_west];
+                }
+        }
 
-    if (md.mpicoordx == md.npx-1)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int j=gd.jstart; j<gd.jend; ++j)
-            {
-                const int ijk_east = gd.iend + j*jjp + k*kkp;
-                p[ijk_east] = p[ijk_east-1];
-            }
-    }
+        if (md.mpicoordx == md.npx-1)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                {
+                    const int ijk_east = gd.iend + j*jjp + k*kkp;
+                    p[ijk_east] = p[ijk_east-1];
+                }
+        }
 
-    if (md.mpicoordy == 0)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk_south = i + gd.jstart*jjp + k*kkp;
-                p[ijk_south-jjp] = p[ijk_south];
-            }
-    }
+        if (md.mpicoordy == 0)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk_south = i + gd.jstart*jjp + k*kkp;
+                    p[ijk_south-jjp] = p[ijk_south];
+                }
+        }
 
-    if (md.mpicoordy == md.npy-1)
-    {
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk_north = i + gd.jend  *jjp + k*kkp;
-                p[ijk_north] = p[ijk_north-jjp];
-            }
+        if (md.mpicoordy == md.npy-1)
+        {
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int i=gd.istart; i<gd.iend; ++i)
+                {
+                    const int ijk_north = i + gd.jend  *jjp + k*kkp;
+                    p[ijk_north] = p[ijk_north-jjp];
+                }
+        }
     }
 }
 

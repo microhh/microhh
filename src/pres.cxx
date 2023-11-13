@@ -50,6 +50,8 @@ Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>
     iplanb = 0;
     jplanb = 0;
     #endif
+
+
 }
 
 template<typename TF>

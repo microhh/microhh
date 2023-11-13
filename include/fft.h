@@ -27,13 +27,16 @@
 #include "transpose.h"
 
 class Master;
+class Input;
 template<typename> class Grid;
+
+enum class FFT_type {DFT, DCT};
 
 template<typename TF>
 class FFT
 {
     public:
-        FFT(Master&, Grid<TF>&);
+        FFT(Master&, Grid<TF>&, Input&);
         ~FFT();
 
         void exec_forward (TF* const restrict, TF* const restrict);
@@ -56,5 +59,8 @@ class FFT
         fftwf_plan jplanff, jplanbf; // FFTW3 plans for forward and backward transforms in y-direction.
 
         bool has_fftw_plan;
+        bool sw_openbc;
+
+        FFT_type fft_type;
 };
 #endif

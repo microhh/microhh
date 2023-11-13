@@ -24,11 +24,13 @@
 
 #include "master.h"
 #include "grid.h"
+#include "input.h"
 #include "fft.h"
 
 template<typename TF>
-FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
-    master(masterin), grid(gridin),
+FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin, Input& inputin) :
+    master(masterin),
+    grid(gridin),
     transpose(master, grid)
 {
     has_fftw_plan = false;
@@ -38,8 +40,15 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
     fftouti = nullptr;
     fftinj  = nullptr;
     fftoutj = nullptr;
-}
 
+    // FFT type based on open/periodic pressure solver.
+    sw_openbc = inputin.get_item<bool>  ("pres", "swopenbc", "", false);
+
+    if (sw_openbc)
+        fft_type = FFT_type::DCT;
+    else
+        fft_type = FFT_type::DFT;
+}
 
 #ifdef FLOAT_SINGLE
 template<>
@@ -140,17 +149,35 @@ void FFT<float>::load()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    if (fft_type == FFT_type::DFT)
+    {
+        fftwf_r2r_kind kindf[] = {FFTW_R2HC};
+        fftwf_r2r_kind kindb[] = {FFTW_HC2R};
 
-    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
-    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
-    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
-    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+        iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
+    else
+    {
+        fftwf_r2r_kind kindf[] = {FFTW_REDFT10};
+        fftwf_r2r_kind kindb[] = {FFTW_REDFT01};
+
+        iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+
+    }
 
     has_fftw_plan = true;
 
@@ -186,17 +213,34 @@ void FFT<double>::load()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
+    if (fft_type == FFT_type::DFT)
+    {
+        fftw_r2r_kind kindf[] = {FFTW_R2HC};
+        fftw_r2r_kind kindb[] = {FFTW_HC2R};
 
-    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
-    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-            fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
-    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
-    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-            fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+        iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
+    else
+    {
+        fftw_r2r_kind kindf[] = {FFTW_REDFT10};
+        fftw_r2r_kind kindb[] = {FFTW_REDFT01};
+
+        iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
 
     has_fftw_plan = true;
 
@@ -221,17 +265,35 @@ void FFT<float>::save()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftwf_r2r_kind kindf[] = {FFTW_R2HC};
-    fftwf_r2r_kind kindb[] = {FFTW_HC2R};
+    if (fft_type == FFT_type::DFT)
+    {
+        fftwf_r2r_kind kindf[] = {FFTW_R2HC};
+        fftwf_r2r_kind kindb[] = {FFTW_HC2R};
 
-    iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
-    iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                  fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
-    jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
-    jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                  fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+        iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                      fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                      fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                      fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                      fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
+    else
+    {
+        fftwf_r2r_kind kindf[] = {FFTW_REDFT10};
+        fftwf_r2r_kind kindb[] = {FFTW_REDFT01};
+
+        iplanff = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                      fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanbf = fftwf_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                      fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanff = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                      fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanbf = fftwf_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                      fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+
+    }
 
     has_fftw_plan = true;
 
@@ -274,17 +336,34 @@ void FFT<double>::save()
     int idist = gd.itot;
     int jdist = 1;
 
-    fftw_r2r_kind kindf[] = {FFTW_R2HC};
-    fftw_r2r_kind kindb[] = {FFTW_HC2R};
+    if (fft_type == FFT_type::DFT)
+    {
+        fftw_r2r_kind kindf[] = {FFTW_R2HC};
+        fftw_r2r_kind kindb[] = {FFTW_HC2R};
 
-    iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
-    iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
-                                fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
-    jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
-    jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
-                                fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+        iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                    fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                    fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                    fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                    fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
+    else
+    {
+        fftw_r2r_kind kindf[] = {FFTW_REDFT10};
+        fftw_r2r_kind kindb[] = {FFTW_REDFT01};
+
+        iplanf = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                    fftouti, ni, istride, idist, kindf, FFTW_ESTIMATE);
+        iplanb = fftw_plan_many_r2r(rank, ni, gd.jmax, fftini, ni, istride, idist,
+                                    fftouti, ni, istride, idist, kindb, FFTW_ESTIMATE);
+        jplanf = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                    fftoutj, nj, jstride, jdist, kindf, FFTW_ESTIMATE);
+        jplanb = fftw_plan_many_r2r(rank, nj, gd.iblock, fftinj, nj, jstride, jdist,
+                                    fftoutj, nj, jstride, jdist, kindb, FFTW_ESTIMATE);
+    }
 
     has_fftw_plan = true;
 
@@ -397,9 +476,14 @@ namespace
                       TF* const restrict fftinj, TF* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                      const Grid_data<TF>& gd,
+                      Transpose<TF>& transpose,
+                      FFT_type fft_type)
     {
         int kk = gd.iblock*gd.jtot;
+
+        // Scaling factor DFT/DCT.
+        const TF fac = (fft_type == FFT_type::DCT) ? TF(2) : TF(1);
 
         // transform the second transform back
         for (int k=0; k<gd.kblock; ++k)
@@ -419,7 +503,7 @@ namespace
             {
                 const int ij = n;
                 const int ijk = n + k*kk;
-                data[ijk] = fftoutj[ij] / gd.jtot;
+                data[ijk] = fftoutj[ij] / (fac*gd.jtot);
             }
         }
 
@@ -444,7 +528,7 @@ namespace
                 const int ij = n;
                 const int ijk = n + k*kk;
                 // swap array here to avoid unnecessary 3d loop
-                tmp1[ijk] = fftouti[ij] / gd.itot;
+                tmp1[ijk] = fftouti[ij] / (fac*gd.itot);   // NOTE: `jtot` in old `pres_cos` branch?
             }
         }
     }
@@ -523,8 +607,13 @@ namespace
                       TF* const restrict fftinj, TF* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                      const Grid_data<TF>& gd,
+                      Transpose<TF>& transpose,
+                      FFT_type fft_type)
     {
+        // Scaling factor DFT/DCT.
+        const TF fac = (fft_type == FFT_type::DCT) ? TF(2) : TF(1);
+
         // Transpose back to y.
         transpose.exec_zy(tmp1, data);
 
@@ -548,7 +637,7 @@ namespace
             {
                 const int ij = n;
                 const int ijk = n + k*kk;
-                data[ijk] = fftoutj[ij] / gd.jtot;
+                data[ijk] = fftoutj[ij] / (fac*gd.jtot);
             }
         }
 
@@ -576,7 +665,7 @@ namespace
                 const int ij = n;
                 const int ijk = n + k*kk;
                 // swap array here to avoid unnecessary 3d loop
-                data[ijk] = fftouti[ij] / gd.itot;
+                data[ijk] = fftouti[ij] / (fac*gd.itot);
             }
         }
 
@@ -597,7 +686,8 @@ template<typename TF>
 void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
 {
     fft_backward(data, tmp1, fftini, fftouti, fftinj, fftoutj,
-            iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(), transpose);
+            iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(),
+            transpose, fft_type);
 }
 
 

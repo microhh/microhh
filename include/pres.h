@@ -72,6 +72,7 @@ class Pres
 
         bool FFT_per_slice;
         bool force_FFT_per_slice;
+
         cufftHandle iplanf;
         cufftHandle jplanf;
         cufftHandle iplanb;

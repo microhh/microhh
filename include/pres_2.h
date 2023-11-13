@@ -64,6 +64,8 @@ class Pres_2 : public Pres<TF>
         std::vector<TF> c;
         std::vector<TF> work2d;
 
+        bool sw_openbc;
+
         #ifdef USECUDA
         using Pres<TF>::make_cufft_plan;
         using Pres<TF>::fft_forward;

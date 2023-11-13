@@ -125,7 +125,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         soil_grid = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
         fields    = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
         timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>      (master, *grid);
+        fft       = std::make_shared<FFT<TF>>      (master, *grid, *input);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
