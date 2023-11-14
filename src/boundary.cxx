@@ -642,21 +642,33 @@ void Boundary<TF>::set_values()
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();
-            TF* fld_2d_ptr = nullptr;
-            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
-                fld_2d_ptr = it.second->fld_bot.data();
-            else if (sbc.at(it.first).bcbot == Boundary_type::Neumann_type)
-                fld_2d_ptr = it.second->grad_bot.data();
-            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
-                fld_2d_ptr = it.second->flux_bot.data();
 
-            if (field3d_io.load_xy_slice(fld_2d_ptr, tmp->fld.data(), filename.c_str()))
+            if (field3d_io.load_xy_slice(tmp->fld_bot.data(), tmp->fld.data(), filename.c_str()))
             {
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
             }
             else
                 master.print_message("OK\n");
+
+            if (set_flux_grad)
+                set_bc_2d<TF, true>(
+                        it.second->fld_bot.data(),
+                        it.second->grad_bot.data(),
+                        it.second->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(it.first).bcbot,
+                        fields.sp.at(it.first)->visc,
+                        no_offset, gd.icells, gd.jcells);
+            else
+                set_bc_2d<TF, false>(
+                        it.second->fld_bot.data(),
+                        it.second->grad_bot.data(),
+                        it.second->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(it.first).bcbot,
+                        fields.sp.at(it.first)->visc,
+                        no_offset, gd.icells, gd.jcells);
 
             fields.release_tmp(tmp);
         }
