@@ -846,6 +846,15 @@ namespace
 }
 
 
+
+namespace
+{
+
+
+
+}
+
+
 template<typename TF>
 Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -855,48 +864,48 @@ Boundary_lateral<TF>::Boundary_lateral(
 
     if (sw_inoutflow)
     {
-        sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
-        sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
-        sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
-        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
-        sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
-        inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
+        //sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
+        //sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
+        //sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
+        //sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
+        //sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
+        //inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
-        if (sw_wtop_2d && sw_timedep)
-            wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
+        //if (sw_wtop_2d && sw_timedep)
+        //    wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
 
-        // Lateral sponge / diffusion layer.
-        sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", true);
-        if (sw_sponge)
-        {
-            n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
-            tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
-            w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
-        }
+        //// Lateral sponge / diffusion layer.
+        //sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", false);
+        //if (sw_sponge)
+        //{
+        //    n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
+        //    tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
+        //    w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
+        //}
 
-        // Inflow perturbations
-        sw_perturb = inputin.get_item<bool>("boundary", "sw_perturb", "", false);
-        if (sw_perturb)
-        {
-            perturb_list = inputin.get_list<std::string>("boundary", "perturb_list", "", std::vector<std::string>());
-            perturb_width = inputin.get_item<int>("boundary", "perturb_width", "", 4);
-            perturb_block = inputin.get_item<int>("boundary", "perturb_block", "", 2);
-            perturb_seed = inputin.get_item<int>("boundary", "perturb_seed", "", 0);
+        //// Inflow perturbations
+        //sw_perturb = inputin.get_item<bool>("boundary", "sw_perturb", "", false);
+        //if (sw_perturb)
+        //{
+        //    perturb_list = inputin.get_list<std::string>("boundary", "perturb_list", "", std::vector<std::string>());
+        //    perturb_width = inputin.get_item<int>("boundary", "perturb_width", "", 4);
+        //    perturb_block = inputin.get_item<int>("boundary", "perturb_block", "", 2);
+        //    perturb_seed = inputin.get_item<int>("boundary", "perturb_seed", "", 0);
 
-            for (auto& fld : perturb_list)
-            {
-                const TF ampl = inputin.get_item<TF>("boundary", "perturb_ampl", fld);
-                perturb_ampl.emplace(fld, ampl);
-            }
-        }
+        //    for (auto& fld : perturb_list)
+        //    {
+        //        const TF ampl = inputin.get_item<TF>("boundary", "perturb_ampl", fld);
+        //        perturb_ampl.emplace(fld, ampl);
+        //    }
+        //}
 
-        // Turbulence recycling.
-        recycle_list = inputin.get_list<std::string>("boundary", "recycle_list", "", std::vector<std::string>());
-        if (recycle_list.size() > 0)
-        {
-            tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
-            recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
-        }
+        //// Turbulence recycling.
+        //recycle_list = inputin.get_list<std::string>("boundary", "recycle_list", "", std::vector<std::string>());
+        //if (recycle_list.size() > 0)
+        //{
+        //    tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
+        //    recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
+        //}
     }
 }
 
@@ -915,43 +924,43 @@ void Boundary_lateral<TF>::init()
     auto& md = master.get_MPI_data();
 
     // Checks!
-    if (recycle_list.size() > 0)
-    {
-        if (!sw_sponge)
-            throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
+    //if (recycle_list.size() > 0)
+    //{
+    //    if (!sw_sponge)
+    //        throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
 
-        if (n_sponge+recycle_offset > gd.imax+gd.igc)
-            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
-        if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
-            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
-    }
+    //    if (n_sponge+recycle_offset > gd.imax+gd.igc)
+    //        throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
+    //    if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
+    //        throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
+    //}
 
-    auto add_lbc = [&](const std::string& name)
-    {
-        if (md.mpicoordx == 0)
-            lbc_w.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-        if (md.mpicoordx == md.npx-1)
-            lbc_e.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-        if (md.mpicoordy == 0)
-            lbc_s.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
-        if (md.mpicoordy == md.npy-1)
-            lbc_n.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
-    };
+    //auto add_lbc = [&](const std::string& name)
+    //{
+    //    if (md.mpicoordx == 0)
+    //        lbc_w.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
+    //    if (md.mpicoordx == md.npx-1)
+    //        lbc_e.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
+    //    if (md.mpicoordy == 0)
+    //        lbc_s.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
+    //    if (md.mpicoordy == md.npy-1)
+    //        lbc_n.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
+    //};
 
-    if (sw_inoutflow_u)
-        add_lbc("u");
-    if (sw_inoutflow_v)
-        add_lbc("v");
+    //if (sw_inoutflow_u)
+    //    add_lbc("u");
+    //if (sw_inoutflow_v)
+    //    add_lbc("v");
 
-    for (auto& fld : inoutflow_s)
-        add_lbc(fld);
+    //for (auto& fld : inoutflow_s)
+    //    add_lbc(fld);
 
-    // Make sure every MPI task has different seed.
-    if (sw_perturb)
-    {
-        perturb_seed += master.get_mpiid();
-        std::srand(perturb_seed);
-    }
+    //// Make sure every MPI task has different seed.
+    //if (sw_perturb)
+    //{
+    //    perturb_seed += master.get_mpiid();
+    //    std::srand(perturb_seed);
+    //}
 }
 
 template <typename TF>
@@ -982,187 +991,219 @@ void Boundary_lateral<TF>::create(
         w_top.resize(gd.ijcells);
     }
 
+    // Copy part of boundary that lives on this MPI task.
     auto copy_boundary = [&](
             std::map<std::string, std::vector<TF>>& map_out,
             std::vector<TF>& fld_in,
-            const int istart, const int iend,
-            const int igc, const int imax,
+            const int jsize, const int isize,
             const int istride_in, const int istride_out,
+
             const int mpicoord, const std::string& name)
     {
-        std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * istride_out);
+        std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * jsize * isize);
 
-        for (int t=0; t<ntime; t++)
-            for (int k=gd.kstart; k<gd.kend; k++)
-                for (int i=istart; i<iend; i++)
-                {
-                    const int kk = k-gd.kgc;
-                    const int ii = i-igc;
 
-                    const int ikt_out = i + k*istride_out + t*istride_out*gd.kcells;
-                    const int ikt_in = (ii+mpicoord*imax) + kk*istride_in + t*istride_in*gd.ktot;
 
-                    fld_out[ikt_out] = fld_in[ikt_in];
-                }
-
-        map_out.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(name),
-                std::forward_as_tuple(std::move(fld_out)));
     };
 
-    auto copy_boundaries = [&](const std::string& name)
-    {
-        std::vector<TF> lbc_w_full = input_nc.get_variable<TF>(name + "_west", {ntime, gd.ktot, gd.jtot});
-        std::vector<TF> lbc_e_full = input_nc.get_variable<TF>(name + "_east", {ntime, gd.ktot, gd.jtot});
-        std::vector<TF> lbc_s_full = input_nc.get_variable<TF>(name + "_south", {ntime, gd.ktot, gd.itot});
-        std::vector<TF> lbc_n_full = input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, gd.itot});
+    const int ipad = gd.itot + 2*gd.igc;
+    const int jpad = gd.jtot + 2*gd.jgc;
 
-        if (md.mpicoordx == 0)
-            copy_boundary(
-                    lbc_w_in, lbc_w_full,
-                    gd.jstart, gd.jend, gd.jgc, gd.jmax,
-                    gd.jtot, gd.jcells, md.mpicoordy, name);
+    // Dimensions of full input data.
+    std::vector<int> dim_in_ew = {ntime, gd.ktot, jpad, gd.igc};
+    std::vector<int> dim_in_ns = {ntime, gd.ktot, gd.jgc, ipad};
 
-        if (md.mpicoordx == md.npx-1)
-            copy_boundary(
-                    lbc_e_in, lbc_e_full,
-                    gd.jstart, gd.jend, gd.jgc, gd.jmax,
-                    gd.jtot, gd.jcells, md.mpicoordy, name);
+    // Local size accounting for MPI decomposition.
+    std::vector<int> dim_out_ew = {ntime, gd.kcells, gd.jcells, gd.igc};
+    std::vector<int> dim_out_ns = {ntime, gd.kcells, gd.jgc, gd.icells};
 
-        if (md.mpicoordy == 0)
-            copy_boundary(
-                    lbc_s_in, lbc_s_full,
-                    gd.istart, gd.iend, gd.igc, gd.imax,
-                    gd.itot, gd.icells, md.mpicoordx, name);
+    std::vector<TF> lbc_w_full = input_nc.get_variable<TF>("s_west",  dim_in_ew);
+    std::vector<TF> lbc_e_full = input_nc.get_variable<TF>("s_east",  dim_in_ew);
+    std::vector<TF> lbc_s_full = input_nc.get_variable<TF>("s_south", dim_in_ns);
+    std::vector<TF> lbc_n_full = input_nc.get_variable<TF>("s_north", dim_in_ns);
 
-        if (md.mpicoordy == md.npy-1)
-            copy_boundary(
-                    lbc_n_in, lbc_n_full,
-                    gd.istart, gd.iend, gd.igc, gd.imax,
-                    gd.itot, gd.icells, md.mpicoordx, name);
 
-        // Calculate domain total mass imbalance in kg s-1.
-        if (name == "u")
-            calc_div_h(
-                    div_u.data(),
-                    lbc_e_full.data(),
-                    lbc_w_full.data(),
-                    fields.rhoref.data(),
-                    gd.dz.data(),
-                    gd.dy,
-                    ntime,
-                    gd.jtot, gd.ktot, gd.kgc);
-        else if (name == "v")
-            calc_div_h(
-                    div_v.data(),
-                    lbc_n_full.data(),
-                    lbc_s_full.data(),
-                    fields.rhoref.data(),
-                    gd.dz.data(),
-                    gd.dx,
-                    ntime,
-                    gd.itot, gd.ktot, gd.kgc);
+    //auto copy_boundary = [&](
+    //        std::map<std::string, std::vector<TF>>& map_out,
+    //        std::vector<TF>& fld_in,
+    //        const int istart, const int iend,
+    //        const int igc, const int imax,
+    //        const int istride_in, const int istride_out,
+    //        const int mpicoord, const std::string& name)
+    //{
+    //    std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * istride_out);
 
-        //if (!sw_timedep)
-        //{
-            if (md.mpicoordx == 0)
-            {
-                for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                    lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
-            }
+    //    for (int t=0; t<ntime; t++)
+    //        for (int k=gd.kstart; k<gd.kend; k++)
+    //            for (int i=istart; i<iend; i++)
+    //            {
+    //                const int kk = k-gd.kgc;
+    //                const int ii = i-igc;
 
-            if (md.mpicoordx == md.npx-1)
-            {
-                for (int n=0; n<gd.jcells*gd.kcells; ++n)
-                    lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
-            }
+    //                const int ikt_out = i + k*istride_out + t*istride_out*gd.kcells;
+    //                const int ikt_in = (ii+mpicoord*imax) + kk*istride_in + t*istride_in*gd.ktot;
 
-            if (md.mpicoordy == 0)
-            {
-                for (int n=0; n<gd.icells*gd.kcells; ++n)
-                    lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
-            }
+    //                fld_out[ikt_out] = fld_in[ikt_in];
+    //            }
 
-            if (md.mpicoordy == md.npy-1)
-            {
-                for (int n=0; n<gd.icells*gd.kcells; ++n)
-                    lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
-            }
-        //}
-    };
+    //    map_out.emplace(
+    //            std::piecewise_construct,
+    //            std::forward_as_tuple(name),
+    //            std::forward_as_tuple(std::move(fld_out)));
+    //};
 
-    if (sw_inoutflow_u)
-        copy_boundaries("u");
+    //auto copy_boundaries = [&](const std::string& name)
+    //{
+    //    std::vector<TF> lbc_w_full = input_nc.get_variable<TF>(name + "_west", {ntime, gd.ktot, gd.jtot});
+    //    std::vector<TF> lbc_e_full = input_nc.get_variable<TF>(name + "_east", {ntime, gd.ktot, gd.jtot});
+    //    std::vector<TF> lbc_s_full = input_nc.get_variable<TF>(name + "_south", {ntime, gd.ktot, gd.itot});
+    //    std::vector<TF> lbc_n_full = input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, gd.itot});
 
-    if (sw_inoutflow_v)
-        copy_boundaries("v");
+    //    if (md.mpicoordx == 0)
+    //        copy_boundary(
+    //                lbc_w_in, lbc_w_full,
+    //                gd.jstart, gd.jend, gd.jgc, gd.jmax,
+    //                gd.jtot, gd.jcells, md.mpicoordy, name);
 
-    for (auto& fld : inoutflow_s)
-        copy_boundaries(fld);
+    //    if (md.mpicoordx == md.npx-1)
+    //        copy_boundary(
+    //                lbc_e_in, lbc_e_full,
+    //                gd.jstart, gd.jend, gd.jgc, gd.jmax,
+    //                gd.jtot, gd.jcells, md.mpicoordy, name);
 
-    // Calculate domain mean vertical velocity.
-    if (sw_inoutflow_u && sw_inoutflow_v)
-    {
-        if (sw_wtop_2d)
-        {
-            // Read constant or time varying w_top fields.
-            if (sw_timedep)
-            {
-                // Find previous and next times.
-                const double time = timeloop.get_time();
-                const double ifactor = timeloop.get_ifactor();
-                unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+    //    if (md.mpicoordy == 0)
+    //        copy_boundary(
+    //                lbc_s_in, lbc_s_full,
+    //                gd.istart, gd.iend, gd.igc, gd.imax,
+    //                gd.itot, gd.icells, md.mpicoordx, name);
 
-                // Read first two input times
-                itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
-                itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+    //    if (md.mpicoordy == md.npy-1)
+    //        copy_boundary(
+    //                lbc_n_in, lbc_n_full,
+    //                gd.istart, gd.iend, gd.igc, gd.imax,
+    //                gd.itot, gd.icells, md.mpicoordx, name);
 
-                // IO time accounting for iotimeprec
-                const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
-                const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
+    //    // Calculate domain total mass imbalance in kg s-1.
+    //    if (name == "u")
+    //        calc_div_h(
+    //                div_u.data(),
+    //                lbc_e_full.data(),
+    //                lbc_w_full.data(),
+    //                fields.rhoref.data(),
+    //                gd.dz.data(),
+    //                gd.dy,
+    //                ntime,
+    //                gd.jtot, gd.ktot, gd.kgc);
+    //    else if (name == "v")
+    //        calc_div_h(
+    //                div_v.data(),
+    //                lbc_n_full.data(),
+    //                lbc_s_full.data(),
+    //                fields.rhoref.data(),
+    //                gd.dz.data(),
+    //                gd.dx,
+    //                ntime,
+    //                gd.itot, gd.ktot, gd.kgc);
 
-                w_top_prev.resize(gd.ijcells);
-                w_top_next.resize(gd.ijcells);
+    //    //if (!sw_timedep)
+    //    //{
+    //        if (md.mpicoordx == 0)
+    //        {
+    //            for (int n=0; n<gd.jcells*gd.kcells; ++n)
+    //                lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
+    //        }
 
-                // Read the first two w_top fields.
-                read_xy_slice(w_top_prev, "w_top", iotime0);
-                read_xy_slice(w_top_next, "w_top", iotime1);
-            }
-            else
-                read_xy_slice(w_top, "w_top", 0);
-        }
-        else
-        {
-            // Calculate domain mean `w_top`.
-            w_top_in.resize(ntime);
+    //        if (md.mpicoordx == md.npx-1)
+    //        {
+    //            for (int n=0; n<gd.jcells*gd.kcells; ++n)
+    //                lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
+    //        }
 
-            for (int t=0; t<ntime; ++t)
-            {
-                // w_top is the total mass in/outflow at the top divided by the total area and the local density.
-                w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+    //        if (md.mpicoordy == 0)
+    //        {
+    //            for (int n=0; n<gd.icells*gd.kcells; ++n)
+    //                lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
+    //        }
 
-                std::string message=
-                        "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
-                master.print_message(message);
-            }
+    //        if (md.mpicoordy == md.npy-1)
+    //        {
+    //            for (int n=0; n<gd.icells*gd.kcells; ++n)
+    //                lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
+    //        }
+    //    //}
+    //};
 
-            if (!sw_timedep)
-                std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
-        }
-    }
+    //if (sw_inoutflow_u)
+    //    copy_boundaries("u");
 
-    if (sw_perturb)
-    {
-        const TF perturb_zmax = inputin.get_item<TF>("boundary", "perturb_zmax", "");
+    //if (sw_inoutflow_v)
+    //    copy_boundaries("v");
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-            if (gd.z[k] < perturb_zmax && gd.z[k+1] >= perturb_zmax)
-            {
-                perturb_kend = k+1;
-                break;
-            }
-    }
+    //for (auto& fld : inoutflow_s)
+    //    copy_boundaries(fld);
+
+    //// Calculate domain mean vertical velocity.
+    //if (sw_inoutflow_u && sw_inoutflow_v)
+    //{
+    //    if (sw_wtop_2d)
+    //    {
+    //        // Read constant or time varying w_top fields.
+    //        if (sw_timedep)
+    //        {
+    //            // Find previous and next times.
+    //            const double time = timeloop.get_time();
+    //            const double ifactor = timeloop.get_ifactor();
+    //            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+    //            // Read first two input times
+    //            itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
+    //            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+
+    //            // IO time accounting for iotimeprec
+    //            const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
+    //            const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
+
+    //            w_top_prev.resize(gd.ijcells);
+    //            w_top_next.resize(gd.ijcells);
+
+    //            // Read the first two w_top fields.
+    //            read_xy_slice(w_top_prev, "w_top", iotime0);
+    //            read_xy_slice(w_top_next, "w_top", iotime1);
+    //        }
+    //        else
+    //            read_xy_slice(w_top, "w_top", 0);
+    //    }
+    //    else
+    //    {
+    //        // Calculate domain mean `w_top`.
+    //        w_top_in.resize(ntime);
+
+    //        for (int t=0; t<ntime; ++t)
+    //        {
+    //            // w_top is the total mass in/outflow at the top divided by the total area and the local density.
+    //            w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+
+    //            std::string message=
+    //                    "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+    //            master.print_message(message);
+    //        }
+
+    //        if (!sw_timedep)
+    //            std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
+    //    }
+    //}
+
+    //if (sw_perturb)
+    //{
+    //    const TF perturb_zmax = inputin.get_item<TF>("boundary", "perturb_zmax", "");
+
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //        if (gd.z[k] < perturb_zmax && gd.z[k+1] >= perturb_zmax)
+    //        {
+    //            perturb_kend = k+1;
+    //            break;
+    //        }
+    //}
 }
 
 template <typename TF>
@@ -1178,11 +1219,10 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             std::vector<TF>& fld,
             const std::string& name)
     {
-        if (md.npx > 1 || md.npy > 1)
-            throw std::runtime_error("Raw dump function does not support npx,npy>1");
+        std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy);
 
         FILE *pFile;
-        pFile = fopen(name.c_str(), "wbx");
+        pFile = fopen(name_out.c_str(), "wbx");
 
         if (pFile == NULL)
             throw std::runtime_error("Opening raw dump field failed.");
@@ -1199,311 +1239,311 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         fclose(pFile);
     };
 
-    auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
-            std::map<std::string, std::vector<TF>>& lbc_map,
-            const std::string& name)
-    {
-        set_ghost_cell_kernel_s<TF, location>(
-                fields.ap.at(name)->fld.data(),
-                lbc_map.at(name).data(),
-                gd.istart, gd.iend, gd.igc,
-                gd.jstart, gd.jend, gd.jgc,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells, gd.kcells,
-                gd.ijcells);
-    };
+    //auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map,
+    //        const std::string& name)
+    //{
+    //    set_ghost_cell_kernel_s<TF, location>(
+    //            fields.ap.at(name)->fld.data(),
+    //            lbc_map.at(name).data(),
+    //            gd.istart, gd.iend, gd.igc,
+    //            gd.jstart, gd.jend, gd.jgc,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells, gd.kcells,
+    //            gd.ijcells);
+    //};
 
-    auto sponge_layer_wrapper = [&]<Lbc_location location, bool sw_recycle>(
-            std::map<std::string, std::vector<TF>>& lbc_map,
-            const std::string& name)
-    {
-        if (!sw_sponge)
-            return;
+    //auto sponge_layer_wrapper = [&]<Lbc_location location, bool sw_recycle>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map,
+    //        const std::string& name)
+    //{
+    //    if (!sw_sponge)
+    //        return;
 
-        lateral_sponge_kernel_s<TF, location, sw_recycle>(
-                fields.at.at(name)->fld.data(),
-                fields.ap.at(name)->fld.data(),
-                lbc_map.at(name).data(),
-                tau_nudge,
-                w_diff,
-                n_sponge,
-                tau_recycle,
-                recycle_offset,
-                md.npx, md.npy,
-                md.mpicoordx, md.mpicoordy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.ijcells);
-    };
+    //    lateral_sponge_kernel_s<TF, location, sw_recycle>(
+    //            fields.at.at(name)->fld.data(),
+    //            fields.ap.at(name)->fld.data(),
+    //            lbc_map.at(name).data(),
+    //            tau_nudge,
+    //            w_diff,
+    //            n_sponge,
+    //            tau_recycle,
+    //            recycle_offset,
+    //            md.npx, md.npy,
+    //            md.mpicoordx, md.mpicoordy,
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells,
+    //            gd.ijcells);
+    //};
 
-    auto set_ghost_cell_u_wrapper = [&]<Lbc_location location>(
-            std::map<std::string, std::vector<TF>>& lbc_map)
-    {
-        set_ghost_cell_kernel_u<TF, location>(
-                fields.mp.at("u")->fld.data(),
-                lbc_map.at("u").data(),
-                gd.istart, gd.iend, gd.igc,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.ijcells);
-    };
+    //auto set_ghost_cell_u_wrapper = [&]<Lbc_location location>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map)
+    //{
+    //    set_ghost_cell_kernel_u<TF, location>(
+    //            fields.mp.at("u")->fld.data(),
+    //            lbc_map.at("u").data(),
+    //            gd.istart, gd.iend, gd.igc,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells,
+    //            gd.ijcells);
+    //};
 
-    auto sponge_layer_u_wrapper = [&]<Lbc_location location>(
-            std::map<std::string, std::vector<TF>>& lbc_map)
-    {
-        if (!sw_sponge)
-            return;
+    //auto sponge_layer_u_wrapper = [&]<Lbc_location location>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map)
+    //{
+    //    if (!sw_sponge)
+    //        return;
 
-        lateral_sponge_kernel_u<TF, location>(
-                fields.mt.at("u")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                lbc_map.at("u").data(),
-                tau_nudge,
-                w_diff,
-                n_sponge,
-                md.npy,
-                md.mpicoordy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.ijcells);
-    };
+    //    lateral_sponge_kernel_u<TF, location>(
+    //            fields.mt.at("u")->fld.data(),
+    //            fields.mp.at("u")->fld.data(),
+    //            lbc_map.at("u").data(),
+    //            tau_nudge,
+    //            w_diff,
+    //            n_sponge,
+    //            md.npy,
+    //            md.mpicoordy,
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells,
+    //            gd.ijcells);
+    //};
 
-    auto set_ghost_cell_v_wrapper = [&]<Lbc_location location>(
-            std::map<std::string, std::vector<TF>>& lbc_map)
-    {
-        set_ghost_cell_kernel_v<TF, location>(
-                fields.mp.at("v")->fld.data(),
-                lbc_map.at("v").data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend, gd.jgc,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.ijcells);
-    };
+    //auto set_ghost_cell_v_wrapper = [&]<Lbc_location location>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map)
+    //{
+    //    set_ghost_cell_kernel_v<TF, location>(
+    //            fields.mp.at("v")->fld.data(),
+    //            lbc_map.at("v").data(),
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend, gd.jgc,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells,
+    //            gd.ijcells);
+    //};
 
-    auto sponge_layer_v_wrapper = [&]<Lbc_location location>(
-            std::map<std::string, std::vector<TF>>& lbc_map)
-    {
-        if (!sw_sponge)
-            return;
+    //auto sponge_layer_v_wrapper = [&]<Lbc_location location>(
+    //        std::map<std::string, std::vector<TF>>& lbc_map)
+    //{
+    //    if (!sw_sponge)
+    //        return;
 
-        lateral_sponge_kernel_v<TF, location>(
-                fields.mt.at("v")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                lbc_map.at("v").data(),
-                tau_nudge,
-                w_diff,
-                n_sponge,
-                md.npx,
-                md.mpicoordx,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.ijcells);
-    };
+    //    lateral_sponge_kernel_v<TF, location>(
+    //            fields.mt.at("v")->fld.data(),
+    //            fields.mp.at("v")->fld.data(),
+    //            lbc_map.at("v").data(),
+    //            tau_nudge,
+    //            w_diff,
+    //            n_sponge,
+    //            md.npx,
+    //            md.mpicoordx,
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart, gd.kend,
+    //            gd.icells, gd.jcells,
+    //            gd.ijcells);
+    //};
 
-    auto set_ghost_cell_w_wrapper = [&]<Lbc_location location>()
-    {
-        set_ghost_cell_kernel_w<TF, location>(
-                fields.mp.at("w")->fld.data(),
-                gd.istart, gd.iend, gd.igc,
-                gd.jstart, gd.jend, gd.jgc,
-                gd.kstart, gd.kend+1,
-                gd.icells, gd.jcells, gd.kcells,
-                gd.ijcells);
-    };
+    //auto set_ghost_cell_w_wrapper = [&]<Lbc_location location>()
+    //{
+    //    set_ghost_cell_kernel_w<TF, location>(
+    //            fields.mp.at("w")->fld.data(),
+    //            gd.istart, gd.iend, gd.igc,
+    //            gd.jstart, gd.jend, gd.jgc,
+    //            gd.kstart, gd.kend+1,
+    //            gd.icells, gd.jcells, gd.kcells,
+    //            gd.ijcells);
+    //};
 
-    auto set_corner_ghost_cell_wrapper = [&](
-            std::vector<TF>& fld,
-            const int kend)
-    {
-        set_corner_ghost_cell_kernel(
-                fld.data(),
-                md.mpicoordx, md.mpicoordy,
-                md.npx, md.npy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, kend,
-                gd.icells, gd.jcells,
-                gd.kcells, gd.ijcells);
-    };
-
-
-    if (sw_inoutflow_u)
-    {
-        if (md.mpicoordy == 0)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
-            sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
-        }
-        if (md.mpicoordy == md.npy-1)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
-            sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
-        }
-        if (md.mpicoordx == 0)
-        {
-            set_ghost_cell_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
-            sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
-        }
-        if (md.mpicoordx == md.npx-1)
-        {
-            set_ghost_cell_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
-            sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
-        }
-
-        set_corner_ghost_cell_wrapper(fields.mp.at("u")->fld, gd.kend);
-    }
-
-    if (sw_inoutflow_v)
-    {
-        if (md.mpicoordx == 0)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
-            sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
-        }
-        if (md.mpicoordx == md.npx-1)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
-            sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
-        }
-        if (md.mpicoordy == 0)
-        {
-            set_ghost_cell_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        }
-        if (md.mpicoordy == md.npy-1)
-        {
-            set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-            sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        }
-
-        set_corner_ghost_cell_wrapper(fields.mp.at("v")->fld, gd.kend);
-    }
-
-    if (sw_inoutflow_u || sw_inoutflow_v)
-    {
-        const int k = gd.kend;
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                const int ij = i + j*gd.icells;
-                fields.mp.at("w")->fld[ijk] = w_top[ij];
-            }
-    }
-
-    // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
-    // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
-    // be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
-    // gradient into the ghost cells.
-    if (sw_inoutflow_w)
-    {
-        if (md.mpicoordx == 0)
-        {
-            set_ghost_cell_w_wrapper.template operator()<Lbc_location::West>();
-            // sponge_layer_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
-        }
-        if (md.mpicoordx == md.npx-1)
-        {
-            set_ghost_cell_w_wrapper.template operator()<Lbc_location::East>();
-            // sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
-        }
-        if (md.mpicoordy == 0)
-        {
-            set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
-            // sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        }
-        if (md.mpicoordy == md.npy-1)
-        {
-            set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
-            // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        }
-
-        set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
-    }
-
-    for (auto& fld : inoutflow_s)
-    {
-        const bool sw_recycle = in_list<std::string>(fld, recycle_list);
-
-        if (md.mpicoordx == 0)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, fld);
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, fld);
-        }
-        if (md.mpicoordx == md.npx-1)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, fld);
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, fld);
-        }
-        if (md.mpicoordy == 0)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::South, true>(lbc_s, fld);
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, fld);
-        }
-        if (md.mpicoordy == md.npy-1)
-        {
-            set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
-            if (sw_recycle)
-                sponge_layer_wrapper.template operator()<Lbc_location::North, true>(lbc_n, fld);
-            else
-                sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, fld);
-        }
-
-        set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
-    }
+    //auto set_corner_ghost_cell_wrapper = [&](
+    //        std::vector<TF>& fld,
+    //        const int kend)
+    //{
+    //    set_corner_ghost_cell_kernel(
+    //            fld.data(),
+    //            md.mpicoordx, md.mpicoordy,
+    //            md.npx, md.npy,
+    //            gd.istart, gd.iend,
+    //            gd.jstart, gd.jend,
+    //            gd.kstart, kend,
+    //            gd.icells, gd.jcells,
+    //            gd.kcells, gd.ijcells);
+    //};
 
 
-    if (sw_perturb)
-    {
-        auto perturb_boundary_wrapper = [&]<Lbc_location location>(
-                std::map<std::string, std::vector<TF>>& lbc_map,
-                const std::string& fld)
-        {
-            perturb_boundary_kernel<TF, location>(
-                    fields.at.at(fld)->fld.data(),
-                    fields.ap.at(fld)->fld.data(),
-                    lbc_map.at(fld).data(),
-                    perturb_ampl.at(fld),
-                    timeloop.get_sub_time_step(),
-                    perturb_width, perturb_block,
-                    md.mpicoordx, md.npx,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, perturb_kend,
-                    gd.icells, gd.jcells,
-                    gd.ijcells);
-        };
+    //if (sw_inoutflow_u)
+    //{
+    //    if (md.mpicoordy == 0)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, "u");
+    //        sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
+    //    }
+    //    if (md.mpicoordy == md.npy-1)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, "u");
+    //        sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
+    //    }
+    //    if (md.mpicoordx == 0)
+    //    {
+    //        set_ghost_cell_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
+    //        sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
+    //    }
+    //    if (md.mpicoordx == md.npx-1)
+    //    {
+    //        set_ghost_cell_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
+    //        sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
+    //    }
 
-        // Add random perturbation in a certain block size to the fields near the lateral boundaries.
-        for (auto& fld : perturb_list)
-        {
-            if (md.mpicoordx == 0)
-                perturb_boundary_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
-            //if (md.mpicoordx == md.npx-1)
-            //    perturb_boundary_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
-            //if (md.mpicoordy == 0)
-            //    perturb_boundary_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
-            //if (md.mpicoordy == md.npy-1)
-            //    perturb_boundary_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
-        }
-    }
+    //    set_corner_ghost_cell_wrapper(fields.mp.at("u")->fld, gd.kend);
+    //}
+
+    //if (sw_inoutflow_v)
+    //{
+    //    if (md.mpicoordx == 0)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
+    //        sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
+    //    }
+    //    if (md.mpicoordx == md.npx-1)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
+    //        sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
+    //    }
+    //    if (md.mpicoordy == 0)
+    //    {
+    //        set_ghost_cell_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+    //        sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+    //    }
+    //    if (md.mpicoordy == md.npy-1)
+    //    {
+    //        set_ghost_cell_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+    //        sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+    //    }
+
+    //    set_corner_ghost_cell_wrapper(fields.mp.at("v")->fld, gd.kend);
+    //}
+
+    //if (sw_inoutflow_u || sw_inoutflow_v)
+    //{
+    //    const int k = gd.kend;
+    //    for (int j=gd.jstart; j<gd.jend; ++j)
+    //        for (int i=gd.istart; i<gd.iend; ++i)
+    //        {
+    //            const int ijk = i + j*gd.icells + k*gd.ijcells;
+    //            const int ij = i + j*gd.icells;
+    //            fields.mp.at("w")->fld[ijk] = w_top[ij];
+    //        }
+    //}
+
+    //// Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
+    //// constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
+    //// be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
+    //// gradient into the ghost cells.
+    //if (sw_inoutflow_w)
+    //{
+    //    if (md.mpicoordx == 0)
+    //    {
+    //        set_ghost_cell_w_wrapper.template operator()<Lbc_location::West>();
+    //        // sponge_layer_wrapper.template operator()<Lbc_location::West>(lbc_w, "v");
+    //    }
+    //    if (md.mpicoordx == md.npx-1)
+    //    {
+    //        set_ghost_cell_w_wrapper.template operator()<Lbc_location::East>();
+    //        // sponge_layer_wrapper.template operator()<Lbc_location::East>(lbc_e, "v");
+    //    }
+    //    if (md.mpicoordy == 0)
+    //    {
+    //        set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
+    //        // sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+    //    }
+    //    if (md.mpicoordy == md.npy-1)
+    //    {
+    //        set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
+    //        // sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
+    //    }
+
+    //    set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
+    //}
+
+    //for (auto& fld : inoutflow_s)
+    //{
+    //    const bool sw_recycle = in_list<std::string>(fld, recycle_list);
+
+    //    if (md.mpicoordx == 0)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
+    //        if (sw_recycle)
+    //            sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, fld);
+    //        else
+    //            sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, fld);
+    //    }
+    //    if (md.mpicoordx == md.npx-1)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
+    //        if (sw_recycle)
+    //            sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, fld);
+    //        else
+    //            sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, fld);
+    //    }
+    //    if (md.mpicoordy == 0)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
+    //        if (sw_recycle)
+    //            sponge_layer_wrapper.template operator()<Lbc_location::South, true>(lbc_s, fld);
+    //        else
+    //            sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, fld);
+    //    }
+    //    if (md.mpicoordy == md.npy-1)
+    //    {
+    //        set_ghost_cell_s_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
+    //        if (sw_recycle)
+    //            sponge_layer_wrapper.template operator()<Lbc_location::North, true>(lbc_n, fld);
+    //        else
+    //            sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, fld);
+    //    }
+
+    //    set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
+    //}
+
+
+    //if (sw_perturb)
+    //{
+    //    auto perturb_boundary_wrapper = [&]<Lbc_location location>(
+    //            std::map<std::string, std::vector<TF>>& lbc_map,
+    //            const std::string& fld)
+    //    {
+    //        perturb_boundary_kernel<TF, location>(
+    //                fields.at.at(fld)->fld.data(),
+    //                fields.ap.at(fld)->fld.data(),
+    //                lbc_map.at(fld).data(),
+    //                perturb_ampl.at(fld),
+    //                timeloop.get_sub_time_step(),
+    //                perturb_width, perturb_block,
+    //                md.mpicoordx, md.npx,
+    //                gd.istart, gd.iend,
+    //                gd.jstart, gd.jend,
+    //                gd.kstart, perturb_kend,
+    //                gd.icells, gd.jcells,
+    //                gd.ijcells);
+    //    };
+
+    //    // Add random perturbation in a certain block size to the fields near the lateral boundaries.
+    //    for (auto& fld : perturb_list)
+    //    {
+    //        if (md.mpicoordx == 0)
+    //            perturb_boundary_wrapper.template operator()<Lbc_location::West>(lbc_w, fld);
+    //        //if (md.mpicoordx == md.npx-1)
+    //        //    perturb_boundary_wrapper.template operator()<Lbc_location::East>(lbc_e, fld);
+    //        //if (md.mpicoordy == 0)
+    //        //    perturb_boundary_wrapper.template operator()<Lbc_location::South>(lbc_s, fld);
+    //        //if (md.mpicoordy == md.npy-1)
+    //        //    perturb_boundary_wrapper.template operator()<Lbc_location::North>(lbc_n, fld);
+    //    }
+    //}
 }
 
 
@@ -1519,98 +1559,98 @@ void Boundary_lateral<TF>::update_time_dependent(
     auto& md = master.get_MPI_data();
 
     // Find index in time array.
-    double time = timeloop.get_time();
+    //double time = timeloop.get_time();
 
-    // CvH: this is an UGLY hack, because it only works for RK4.
-    // We need to know from the time whether we are in the last iter.
-    // Also, it will fail miserably if we perturb the velocities at the walls
-    if (pres_fix && timeloop.get_substep() == 4)
-        time += timeloop.get_dt();
+    //// CvH: this is an UGLY hack, because it only works for RK4.
+    //// We need to know from the time whether we are in the last iter.
+    //// Also, it will fail miserably if we perturb the velocities at the walls
+    //if (pres_fix && timeloop.get_substep() == 4)
+    //    time += timeloop.get_dt();
 
-    int t0;
-    for (int i=0; i<time_in.size()-1; ++i)
-        if (time_in[i] <= time and time_in[i+1] > time)
-        {
-            t0=i;
-            break;
-        }
+    //int t0;
+    //for (int i=0; i<time_in.size()-1; ++i)
+    //    if (time_in[i] <= time and time_in[i+1] > time)
+    //    {
+    //        t0=i;
+    //        break;
+    //    }
 
-    // Interpolation factor.
-    const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
-    const TF f1 = TF(1) - f0;
+    //// Interpolation factor.
+    //const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+    //const TF f1 = TF(1) - f0;
 
-    // Interpolate mean domain top velocity
-    if (sw_wtop_2d)
-    {
-        unsigned long itime = timeloop.get_itime();
+    //// Interpolate mean domain top velocity
+    //if (sw_wtop_2d)
+    //{
+    //    unsigned long itime = timeloop.get_itime();
 
-        if (itime > itime_w_top_next)
-        {
-            // Read new w_top field
-            const double ifactor = timeloop.get_ifactor();
-            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+    //    if (itime > itime_w_top_next)
+    //    {
+    //        // Read new w_top field
+    //        const double ifactor = timeloop.get_ifactor();
+    //        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
-            itime_w_top_prev = itime_w_top_next;
-            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
-            const int iotime1 = int(itime_w_top_next / iiotimeprec);
+    //        itime_w_top_prev = itime_w_top_next;
+    //        itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+    //        const int iotime1 = int(itime_w_top_next / iiotimeprec);
 
-            // Copy of data from next to prev. time
-            w_top_prev = w_top_next;
+    //        // Copy of data from next to prev. time
+    //        w_top_prev = w_top_next;
 
-            // Read new w_top slice.
-            read_xy_slice(w_top_next, "w_top", iotime1);
-        }
+    //        // Read new w_top slice.
+    //        read_xy_slice(w_top_next, "w_top", iotime1);
+    //    }
 
-        // Interpolate `w_top` field in time.
-        for (int n=0; n<gd.ijcells; ++n)
-            w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
-    }
-    else
-    {
-        const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
-        std::fill(w_top.begin(), w_top.end(), w_top_int);
-    }
+    //    // Interpolate `w_top` field in time.
+    //    for (int n=0; n<gd.ijcells; ++n)
+    //        w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
+    //}
+    //else
+    //{
+    //    const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
+    //    std::fill(w_top.begin(), w_top.end(), w_top_int);
+    //}
 
-    // Interpolate boundaries in time.
-    if (md.mpicoordx == 0)
-    {
-        for (auto& it : lbc_w)
-            interpolate_lbc_kernel(
-                lbc_w.at(it.first).data(),
-                lbc_w_in.at(it.first).data(),
-                gd.kcells*gd.jcells,
-                t0, f0);
-    }
+    //// Interpolate boundaries in time.
+    //if (md.mpicoordx == 0)
+    //{
+    //    for (auto& it : lbc_w)
+    //        interpolate_lbc_kernel(
+    //            lbc_w.at(it.first).data(),
+    //            lbc_w_in.at(it.first).data(),
+    //            gd.kcells*gd.jcells,
+    //            t0, f0);
+    //}
 
-    if (md.mpicoordx == md.npx-1)
-    {
-        for (auto& it : lbc_e)
-            interpolate_lbc_kernel(
-                    lbc_e.at(it.first).data(),
-                    lbc_e_in.at(it.first).data(),
-                    gd.kcells*gd.jcells,
-                    t0, f0);
-    }
+    //if (md.mpicoordx == md.npx-1)
+    //{
+    //    for (auto& it : lbc_e)
+    //        interpolate_lbc_kernel(
+    //                lbc_e.at(it.first).data(),
+    //                lbc_e_in.at(it.first).data(),
+    //                gd.kcells*gd.jcells,
+    //                t0, f0);
+    //}
 
-    if (md.mpicoordy == 0)
-    {
-        for (auto& it : lbc_s)
-            interpolate_lbc_kernel(
-                    lbc_s.at(it.first).data(),
-                    lbc_s_in.at(it.first).data(),
-                    gd.kcells*gd.icells,
-                    t0, f0);
-    }
+    //if (md.mpicoordy == 0)
+    //{
+    //    for (auto& it : lbc_s)
+    //        interpolate_lbc_kernel(
+    //                lbc_s.at(it.first).data(),
+    //                lbc_s_in.at(it.first).data(),
+    //                gd.kcells*gd.icells,
+    //                t0, f0);
+    //}
 
-    if (md.mpicoordy == md.npy-1)
-    {
-        for (auto& it : lbc_n)
-            interpolate_lbc_kernel(
-                    lbc_n.at(it.first).data(),
-                    lbc_n_in.at(it.first).data(),
-                    gd.kcells*gd.icells,
-                    t0, f0);
-    }
+    //if (md.mpicoordy == md.npy-1)
+    //{
+    //    for (auto& it : lbc_n)
+    //        interpolate_lbc_kernel(
+    //                lbc_n.at(it.first).data(),
+    //                lbc_n_in.at(it.first).data(),
+    //                gd.kcells*gd.icells,
+    //                t0, f0);
+    //}
 }
 
 
