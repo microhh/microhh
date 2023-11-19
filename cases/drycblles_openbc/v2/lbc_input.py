@@ -101,22 +101,22 @@ def lbc_input(
 
     for fld in fields:
         if fld not in ('u','v','w'):
-            add_var(f'{fld}_west', ('time', 'z', 'xgw', 'y'))
-            add_var(f'{fld}_east', ('time', 'z', 'xge', 'y'))
-            add_var(f'{fld}_south', ('time', 'z', 'x', 'ygs'))
-            add_var(f'{fld}_north', ('time', 'z', 'x', 'ygn'))
+            add_var(f'{fld}_west', ('time', 'z', 'y', 'xgw'))
+            add_var(f'{fld}_east', ('time', 'z', 'y', 'xge'))
+            add_var(f'{fld}_south', ('time', 'z', 'ygs', 'x'))
+            add_var(f'{fld}_north', ('time', 'z', 'ygn', 'x'))
 
     if 'u' in fields:
-        add_var('u_west', ('time', 'z', 'xhgw', 'y'))
-        add_var('u_east', ('time', 'z', 'xhge', 'y'))
-        add_var('u_south', ('time', 'z', 'xh', 'ygs'))
-        add_var('u_north', ('time', 'z', 'xh', 'ygn'))
+        add_var('u_west', ('time', 'z', 'y', 'xhgw'))
+        add_var('u_east', ('time', 'z', 'y', 'xhge'))
+        add_var('u_south', ('time', 'z', 'ygs', 'xh'))
+        add_var('u_north', ('time', 'z', 'ygn', 'xh'))
 
     if 'v' in fields:
-        add_var('v_west', ('time', 'z', 'xgw', 'yh'))
-        add_var('v_east', ('time', 'z', 'xge', 'yh'))
-        add_var('v_south', ('time', 'z', 'x', 'yhgs'))
-        add_var('v_north', ('time', 'z', 'x', 'yhgn'))
+        add_var('v_west', ('time', 'z', 'yh', 'xgw'))
+        add_var('v_east', ('time', 'z', 'yh', 'xge'))
+        add_var('v_south', ('time', 'z', 'yhgs', 'x'))
+        add_var('v_north', ('time', 'z', 'yhgn', 'x'))
 
     return ds
 

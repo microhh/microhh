@@ -1,7 +1,7 @@
 import numpy as np
 import netCDF4 as nc
 
-from lbc_input import LBC_input
+from lbc_input import lbc_input
 
 #float_type = "f8"
 float_type = "f4"
@@ -27,14 +27,16 @@ dz = zsize / ktot
 dthetadz = 0.003
 
 # set the height
-z  = np.linspace(0.5*dz, zsize-0.5*dz, ktot)
+z  = np.arange(0.5*dz, zsize, dz)
+zh = np.arange(0, zsize, dz)
+
 u  = np.zeros(np.size(z))
 v  = np.zeros(np.size(z))
 th = np.zeros(np.size(z))
 
 # linearly stratified profile
 for k in range(ktot):
-    th  [k] = 300. + dthetadz*z[k]
+    th[k] = 300. + dthetadz*z[k]
 
 """
 # well mixed profile with jump
@@ -82,20 +84,37 @@ y = np.arange(dy/2, ysize, dy)
 yh = np.arange(0, ysize, dy)
 
 time = np.array([0, 10800])
-fields = ['u', 'v', 's']
+fields = ['s', 'u', 'v']
 nghost = 3
 
-lbc = LBC_input(fields, itot, jtot, ktot, nghost, time)
+lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
 
-lbc.s_west [0,:] = 0
-lbc.s_south[0,:] = 0
-lbc.s_north[0,:] = 0
-lbc.s_east [0,:] = 0
+for fld in fields:
+    for loc in ['west', 'east', 'south', 'north']:
 
-lbc.s_west [1,:] = 10
-lbc.s_south[1,:] = 0
-lbc.s_north[1,:] = 0
-lbc.s_east [1,:] = 0
+        lbc_ref = lbc[f'{fld}_{loc}']
+        dims = lbc_ref.shape
+        print(fld, loc, dims)
+
+        for t in range(dims[0]):
+            for k in range(dims[1]):
+                for j in range(dims[2]):
+                    for i in range(dims[3]):
+                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
+
+
+lbc.to_netcdf('drycblles_lbc_input.nc')
+
+
+#lbc.s_west [0,:] = 0
+#lbc.s_south[0,:] = 0
+#lbc.s_north[0,:] = 0
+#lbc.s_east [0,:] = 0
+#
+#lbc.s_west [1,:] = 10
+#lbc.s_south[1,:] = 0
+#lbc.s_north[1,:] = 0
+#lbc.s_east [1,:] = 0
 
 #u_west = 2.1
 #u_east = 0.
@@ -123,4 +142,3 @@ lbc.s_east [1,:] = 0
 #lbc.v_south[:, :, :] = v_south + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
 #lbc.v_north[:, :, :] = v_north + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
 
-lbc.to_netcdf('drycblles')

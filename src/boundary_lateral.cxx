@@ -846,15 +846,6 @@ namespace
 }
 
 
-
-namespace
-{
-
-
-
-}
-
-
 template<typename TF>
 Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -865,11 +856,11 @@ Boundary_lateral<TF>::Boundary_lateral(
     if (sw_inoutflow)
     {
         //sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
-        //sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
-        //sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
-        //sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
+        sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
+        sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
+        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
         //sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
-        //inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
+        inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
         //if (sw_wtop_2d && sw_timedep)
         //    wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
@@ -984,163 +975,190 @@ void Boundary_lateral<TF>::create(
     TF* rhoref = fields.rhoref.data();
 
     // Domain total divergence in u and v direction.
-    if (sw_inoutflow_u && sw_inoutflow_v)
-    {
-        div_u.resize(ntime);
-        div_v.resize(ntime);
-        w_top.resize(gd.ijcells);
-    }
+    //if (sw_inoutflow_u && sw_inoutflow_v)
+    //{
+    //    div_u.resize(ntime);
+    //    div_v.resize(ntime);
+    //    w_top.resize(gd.ijcells);
+    //}
 
-    // Copy part of boundary that lives on this MPI task.
+    auto dump_vector = [&](
+            std::vector<float>& fld,
+            const std::string& name)
+    {
+        std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
+
+        FILE *pFile;
+        pFile = fopen(name_out.c_str(), "wb");
+
+        if (pFile == NULL)
+            throw std::runtime_error("Opening raw dump field failed.");
+
+        fwrite(fld.data(), sizeof(float), fld.size(), pFile);
+        fclose(pFile);
+    };
+
     auto copy_boundary = [&](
             std::map<std::string, std::vector<TF>>& map_out,
-            std::vector<TF>& fld_in,
-            const int jsize, const int isize,
-            const int istride_in, const int istride_out,
-
-            const int mpicoord, const std::string& name)
+            const std::vector<TF>& fld_in,
+            const int isize_in, const int jsize_in,
+            const int isize_out, const int jsize_out,
+            const int istart_in, const int jstart_in,
+            const std::string& name)
     {
-        std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * jsize * isize);
+        const int size_in = ntime * gd.ktot * jsize_in * isize_in;
+        const int size_out = ntime * gd.kcells * jsize_out * isize_out;
 
+        std::vector<TF> fld_out = std::vector<TF>(size_out);
 
+        const int jstride_in = isize_in;
+        const int kstride_in = jstride_in * jsize_in;
+        const int tstride_in = kstride_in * gd.ktot;
+
+        const int jstride_out = isize_out;
+        const int kstride_out = jstride_out * jsize_out;
+        const int tstride_out = kstride_out * gd.kcells;
+
+        for (int t=0; t<ntime; t++)
+            for (int k=0; k<gd.ktot; k++)
+                for (int j=0; j<jsize_out; j++)
+                    for (int i=0; i<isize_out; i++)
+                    {
+                        const int ijk_in = i+istart_in + (j+jstart_in)*jstride_in + k*kstride_in + t*tstride_in;
+                        const int ijk_out = i + j*jstride_out + (k+gd.kstart)*kstride_out + t*tstride_out;
+
+                        fld_out[ijk_out] = fld_in[ijk_in];
+                    }
+
+        map_out.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(name),
+                std::forward_as_tuple(std::move(fld_out)));
+    };
+
+    auto copy_boundaries = [&](const std::string& name)
+    {
+        std::cout << name << std::endl;
+
+        // `u` at west boundary and `v` at south boundary also contain `u` at `istart`
+        // and `v` at `jstart`, and are therefore larger.
+        const int igc_pad = (name == "u") ? gd.igc+1 : gd.igc;
+        const int jgc_pad = (name == "v") ? gd.jgc+1 : gd.jgc;
+
+        // Read full boundaries for entire domain.
+        std::vector<TF> lbc_w_full = input_nc.get_variable<TF>(name + "_west",  {ntime, gd.ktot, gd.jtot+2*gd.jgc, igc_pad});
+        std::vector<TF> lbc_e_full = input_nc.get_variable<TF>(name + "_east",  {ntime, gd.ktot, gd.jtot+2*gd.jgc, gd.igc});
+        std::vector<TF> lbc_s_full = input_nc.get_variable<TF>(name + "_south", {ntime, gd.ktot, jgc_pad, gd.itot+2*gd.igc});
+        std::vector<TF> lbc_n_full = input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, gd.jgc, gd.itot+2*gd.igc});
+
+        if (md.mpicoordx == 0)
+        {
+            copy_boundary(
+                    lbc_w_in, lbc_w_full,
+                    igc_pad, gd.jtot+2*gd.jgc,
+                    igc_pad, gd.jcells,
+                    0, md.mpicoordy*gd.jmax,
+                    name);
+            //dump_vector(lbc_w_in.at(name), name + "_west");
+        }
+
+        if (md.mpicoordx == md.npx-1)
+        {
+            copy_boundary(
+                    lbc_e_in, lbc_e_full,
+                    gd.igc, gd.jtot+2*gd.jgc,
+                    gd.igc, gd.jcells,
+                    0, md.mpicoordy*gd.jmax,
+                    name);
+            //dump_vector(lbc_e_in.at(name), name + "_east");
+        }
+
+        if (md.mpicoordy == 0)
+        {
+            copy_boundary(
+                    lbc_s_in, lbc_s_full,
+                    gd.itot+2*gd.igc, jgc_pad,
+                    gd.icells, jgc_pad,
+                    md.mpicoordx*gd.imax, 0,
+                    name);
+            //dump_vector(lbc_s_in.at(name), name + "_south");
+        }
+
+        if (md.mpicoordy == md.npy-1)
+        {
+            copy_boundary(
+                    lbc_n_in, lbc_n_full,
+                    gd.itot+2*gd.igc, gd.jgc,
+                    gd.icells, gd.jgc,
+                    md.mpicoordx*gd.imax, 0,
+                    name);
+            //dump_vector(lbc_n_in.at(name), name + "_north");
+        }
+
+        // Calculate domain total mass imbalance in kg s-1.
+        //if (name == "u")
+        //    calc_div_h(
+        //            div_u.data(),
+        //            lbc_e_full.data(),
+        //            lbc_w_full.data(),
+        //            fields.rhoref.data(),
+        //            gd.dz.data(),
+        //            gd.dy,
+        //            ntime,
+        //            gd.jtot, gd.ktot, gd.kgc);
+        //else if (name == "v")
+        //    calc_div_h(
+        //            div_v.data(),
+        //            lbc_n_full.data(),
+        //            lbc_s_full.data(),
+        //            fields.rhoref.data(),
+        //            gd.dz.data(),
+        //            gd.dx,
+        //            ntime,
+        //            gd.itot, gd.ktot, gd.kgc);
+
+        ////if (!sw_timedep)
+        ////{
+        //    if (md.mpicoordx == 0)
+        //    {
+        //        for (int n=0; n<gd.jcells*gd.kcells; ++n)
+        //            lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
+        //    }
+
+        //    if (md.mpicoordx == md.npx-1)
+        //    {
+        //        for (int n=0; n<gd.jcells*gd.kcells; ++n)
+        //            lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
+        //    }
+
+        //    if (md.mpicoordy == 0)
+        //    {
+        //        for (int n=0; n<gd.icells*gd.kcells; ++n)
+        //            lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
+        //    }
+
+        //    if (md.mpicoordy == md.npy-1)
+        //    {
+        //        for (int n=0; n<gd.icells*gd.kcells; ++n)
+        //            lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
+        //    }
+        ////}
 
     };
 
-    const int ipad = gd.itot + 2*gd.igc;
-    const int jpad = gd.jtot + 2*gd.jgc;
+    if (sw_inoutflow_u)
+        copy_boundaries("u");
 
-    // Dimensions of full input data.
-    std::vector<int> dim_in_ew = {ntime, gd.ktot, jpad, gd.igc};
-    std::vector<int> dim_in_ns = {ntime, gd.ktot, gd.jgc, ipad};
+    if (sw_inoutflow_v)
+        copy_boundaries("v");
 
-    // Local size accounting for MPI decomposition.
-    std::vector<int> dim_out_ew = {ntime, gd.kcells, gd.jcells, gd.igc};
-    std::vector<int> dim_out_ns = {ntime, gd.kcells, gd.jgc, gd.icells};
+    for (auto& fld : inoutflow_s)
+    {
+        std::cout << "boe" << std::endl;
+        copy_boundaries(fld);
+    }
 
-    std::vector<TF> lbc_w_full = input_nc.get_variable<TF>("s_west",  dim_in_ew);
-    std::vector<TF> lbc_e_full = input_nc.get_variable<TF>("s_east",  dim_in_ew);
-    std::vector<TF> lbc_s_full = input_nc.get_variable<TF>("s_south", dim_in_ns);
-    std::vector<TF> lbc_n_full = input_nc.get_variable<TF>("s_north", dim_in_ns);
-
-
-    //auto copy_boundary = [&](
-    //        std::map<std::string, std::vector<TF>>& map_out,
-    //        std::vector<TF>& fld_in,
-    //        const int istart, const int iend,
-    //        const int igc, const int imax,
-    //        const int istride_in, const int istride_out,
-    //        const int mpicoord, const std::string& name)
-    //{
-    //    std::vector<TF> fld_out = std::vector<TF>(ntime * gd.kcells * istride_out);
-
-    //    for (int t=0; t<ntime; t++)
-    //        for (int k=gd.kstart; k<gd.kend; k++)
-    //            for (int i=istart; i<iend; i++)
-    //            {
-    //                const int kk = k-gd.kgc;
-    //                const int ii = i-igc;
-
-    //                const int ikt_out = i + k*istride_out + t*istride_out*gd.kcells;
-    //                const int ikt_in = (ii+mpicoord*imax) + kk*istride_in + t*istride_in*gd.ktot;
-
-    //                fld_out[ikt_out] = fld_in[ikt_in];
-    //            }
-
-    //    map_out.emplace(
-    //            std::piecewise_construct,
-    //            std::forward_as_tuple(name),
-    //            std::forward_as_tuple(std::move(fld_out)));
-    //};
-
-    //auto copy_boundaries = [&](const std::string& name)
-    //{
-    //    std::vector<TF> lbc_w_full = input_nc.get_variable<TF>(name + "_west", {ntime, gd.ktot, gd.jtot});
-    //    std::vector<TF> lbc_e_full = input_nc.get_variable<TF>(name + "_east", {ntime, gd.ktot, gd.jtot});
-    //    std::vector<TF> lbc_s_full = input_nc.get_variable<TF>(name + "_south", {ntime, gd.ktot, gd.itot});
-    //    std::vector<TF> lbc_n_full = input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, gd.itot});
-
-    //    if (md.mpicoordx == 0)
-    //        copy_boundary(
-    //                lbc_w_in, lbc_w_full,
-    //                gd.jstart, gd.jend, gd.jgc, gd.jmax,
-    //                gd.jtot, gd.jcells, md.mpicoordy, name);
-
-    //    if (md.mpicoordx == md.npx-1)
-    //        copy_boundary(
-    //                lbc_e_in, lbc_e_full,
-    //                gd.jstart, gd.jend, gd.jgc, gd.jmax,
-    //                gd.jtot, gd.jcells, md.mpicoordy, name);
-
-    //    if (md.mpicoordy == 0)
-    //        copy_boundary(
-    //                lbc_s_in, lbc_s_full,
-    //                gd.istart, gd.iend, gd.igc, gd.imax,
-    //                gd.itot, gd.icells, md.mpicoordx, name);
-
-    //    if (md.mpicoordy == md.npy-1)
-    //        copy_boundary(
-    //                lbc_n_in, lbc_n_full,
-    //                gd.istart, gd.iend, gd.igc, gd.imax,
-    //                gd.itot, gd.icells, md.mpicoordx, name);
-
-    //    // Calculate domain total mass imbalance in kg s-1.
-    //    if (name == "u")
-    //        calc_div_h(
-    //                div_u.data(),
-    //                lbc_e_full.data(),
-    //                lbc_w_full.data(),
-    //                fields.rhoref.data(),
-    //                gd.dz.data(),
-    //                gd.dy,
-    //                ntime,
-    //                gd.jtot, gd.ktot, gd.kgc);
-    //    else if (name == "v")
-    //        calc_div_h(
-    //                div_v.data(),
-    //                lbc_n_full.data(),
-    //                lbc_s_full.data(),
-    //                fields.rhoref.data(),
-    //                gd.dz.data(),
-    //                gd.dx,
-    //                ntime,
-    //                gd.itot, gd.ktot, gd.kgc);
-
-    //    //if (!sw_timedep)
-    //    //{
-    //        if (md.mpicoordx == 0)
-    //        {
-    //            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-    //                lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
-    //        }
-
-    //        if (md.mpicoordx == md.npx-1)
-    //        {
-    //            for (int n=0; n<gd.jcells*gd.kcells; ++n)
-    //                lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
-    //        }
-
-    //        if (md.mpicoordy == 0)
-    //        {
-    //            for (int n=0; n<gd.icells*gd.kcells; ++n)
-    //                lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
-    //        }
-
-    //        if (md.mpicoordy == md.npy-1)
-    //        {
-    //            for (int n=0; n<gd.icells*gd.kcells; ++n)
-    //                lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
-    //        }
-    //    //}
-    //};
-
-    //if (sw_inoutflow_u)
-    //    copy_boundaries("u");
-
-    //if (sw_inoutflow_v)
-    //    copy_boundaries("v");
-
-    //for (auto& fld : inoutflow_s)
-    //    copy_boundaries(fld);
+    throw 1;
 
     //// Calculate domain mean vertical velocity.
     //if (sw_inoutflow_u && sw_inoutflow_v)
