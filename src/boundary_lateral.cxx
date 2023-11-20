@@ -748,30 +748,30 @@ namespace
     }
 
 
-    template<typename TF>
-    void calc_div_h(
-            TF* const restrict div,
-            const TF* const restrict lbc_u,
-            const TF* const restrict lbc_d,
-            const TF* const restrict rhoref,
-            const TF* const restrict dz,
-            const TF dx_or_dy,
-            const int ntime,
-            const int ntot, const int ktot,
-            const int kgc)
-    {
-        for (int t=0; t<ntime; ++t)
-        {
-            div[t] = TF(0);
-            for (int k=0; k<ktot; ++k)
-                for (int n=0; n<ntot; ++n)
-                {
-                    const int nk = n + k*ntot + t*ntot*ktot;
+    //template<typename TF>
+    //void calc_div_h(
+    //        TF* const restrict div,
+    //        const TF* const restrict lbc_u,
+    //        const TF* const restrict lbc_d,
+    //        const TF* const restrict rhoref,
+    //        const TF* const restrict dz,
+    //        const TF dx_or_dy,
+    //        const int ntime,
+    //        const int ntot, const int ktot,
+    //        const int kgc)
+    //{
+    //    for (int t=0; t<ntime; ++t)
+    //    {
+    //        div[t] = TF(0);
+    //        for (int k=0; k<ktot; ++k)
+    //            for (int n=0; n<ntot; ++n)
+    //            {
+    //                const int nk = n + k*ntot + t*ntot*ktot;
 
-                    div[t] += rhoref[k+kgc] * dx_or_dy * dz[k+kgc] * (lbc_u[nk] - lbc_d[nk]);
-                }
-        }
-    }
+    //                div[t] += rhoref[k+kgc] * dx_or_dy * dz[k+kgc] * (lbc_u[nk] - lbc_d[nk]);
+    //            }
+    //    }
+    //}
 
 
     template<typename TF, Lbc_location location>
@@ -928,6 +928,89 @@ namespace
                     }
         }
     };
+
+
+    template<typename TF>
+    void calc_div_x(
+            TF* const restrict div,
+            const TF* const restrict lbc_u_west,
+            const TF* const restrict lbc_u_east,
+            const TF* const restrict rhoref,
+            const TF* const restrict dz,
+            const TF dy,
+            const int ntime,
+            const int ngc, const int kgc,
+            const int jstart, const int jend,
+            const int ktot,
+            const int icells, const int jcells)
+    {
+        const int jstride_w = ngc+1;
+        const int kstride_w = jstride_w * jcells;
+        const int tstride_w = kstride_w * ktot;
+
+        const int jstride_e = ngc;
+        const int kstride_e = jstride_w * jcells;
+        const int tstride_e = kstride_w * ktot;
+
+        const int iw = ngc+1;
+        const int ie = 0;
+
+        for (int t=0; t<ntime; ++t)
+        {
+            div[t] = 0;
+            for (int k=0; k<ktot; ++k)
+                for (int j=jstart; j<jend; ++j)
+                {
+                    const int ijk_w = iw + j*jstride_w + k*kstride_w + t*tstride_w;
+                    const int ijk_e = ie + j*jstride_w + k*kstride_w + t*tstride_w;
+
+                    div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * (lbc_u_east[ijk_e] - lbc_u_west[ijk_w]);
+                }
+        }
+    }
+
+    template<typename TF>
+    void calc_div_y(
+            TF* const restrict div,
+            const TF* const restrict lbc_v_south,
+            const TF* const restrict lbc_v_north,
+            const TF* const restrict rhoref,
+            const TF* const restrict dz,
+            const TF dx,
+            const int ntime,
+            const int ngc, const int kgc,
+            const int istart, const int iend,
+            const int ktot,
+            const int icells, const int jcells)
+    {
+        const int jstride_s = icells;
+        const int kstride_s = jstride_s * (ngc+1);
+        const int tstride_s = kstride_s * ktot;
+
+        const int jstride_n = icells;
+        const int kstride_n = jstride_n * ngc;
+        const int tstride_n = kstride_n * ktot;
+
+        const int js = ngc+1;
+        const int jn = 0;
+
+        for (int t=0; t<ntime; ++t)
+        {
+            div[t] = 0;
+            for (int k=0; k<ktot; ++k)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk_s = i + js*jstride_s + k*kstride_s + t*tstride_s;
+                    const int ijk_n = i + jn*jstride_n + k*kstride_n + t*tstride_n;
+
+                    div[t] += rhoref[k+kgc] * dx * dz[k+kgc] * (lbc_v_north[ijk_n] - lbc_v_south[ijk_s]);
+                }
+        }
+    }
+
+
+
+
 }
 
 
@@ -940,24 +1023,23 @@ Boundary_lateral<TF>::Boundary_lateral(
 
     if (sw_inoutflow)
     {
-        //sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
-        sw_inoutflow_u = inputin.get_item<bool>("boundary", "sw_inoutflow_u", "", true);
-        sw_inoutflow_v = inputin.get_item<bool>("boundary", "sw_inoutflow_v", "", true);
+        sw_inoutflow_uv = inputin.get_item<bool>("boundary", "sw_inoutflow_uv", "", true);
         sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
-        //sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
+        sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
 
-        //if (sw_wtop_2d && sw_timedep)
-        //    wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
+        sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
+        if (sw_wtop_2d && sw_timedep)
+            wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
 
-        //// Lateral sponge / diffusion layer.
-        //sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", false);
-        //if (sw_sponge)
-        //{
-        //    n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
-        //    tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
-        //    w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
-        //}
+        // Lateral sponge / diffusion layer.
+        sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", false);
+        if (sw_sponge)
+        {
+            n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
+            tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
+            w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
+        }
 
         //// Inflow perturbations
         //sw_perturb = inputin.get_item<bool>("boundary", "sw_perturb", "", false);
@@ -1026,10 +1108,11 @@ void Boundary_lateral<TF>::init()
             lbc_n.emplace(name, std::vector<TF>(gd.icells*gd.jgc*gd.kcells));
     };
 
-    if (sw_inoutflow_u)
+    if (sw_inoutflow_uv)
+    {
         add_lbc("u");
-    if (sw_inoutflow_v)
         add_lbc("v");
+    }
 
     for (auto& fld : inoutflow_s)
         add_lbc(fld);
@@ -1063,12 +1146,12 @@ void Boundary_lateral<TF>::create(
     TF* rhoref = fields.rhoref.data();
 
     // Domain total divergence in u and v direction.
-    //if (sw_inoutflow_u && sw_inoutflow_v)
-    //{
-    //    div_u.resize(ntime);
-    //    div_v.resize(ntime);
-    //    w_top.resize(gd.ijcells);
-    //}
+    if (sw_inoutflow_uv)
+    {
+        div_u.resize(ntime);
+        div_v.resize(ntime);
+        w_top.resize(gd.ijcells);
+    }
 
     auto dump_vector = [&](
             std::vector<float>& fld,
@@ -1170,26 +1253,30 @@ void Boundary_lateral<TF>::create(
                     name);
 
         // Calculate domain total mass imbalance in kg s-1.
-        //if (name == "u")
-        //    calc_div_h(
-        //            div_u.data(),
-        //            lbc_e_full.data(),
-        //            lbc_w_full.data(),
-        //            fields.rhoref.data(),
-        //            gd.dz.data(),
-        //            gd.dy,
-        //            ntime,
-        //            gd.jtot, gd.ktot, gd.kgc);
-        //else if (name == "v")
-        //    calc_div_h(
-        //            div_v.data(),
-        //            lbc_n_full.data(),
-        //            lbc_s_full.data(),
-        //            fields.rhoref.data(),
-        //            gd.dz.data(),
-        //            gd.dx,
-        //            ntime,
-        //            gd.itot, gd.ktot, gd.kgc);
+        if (name == "u")
+            calc_div_x(
+                    div_u.data(),
+                    lbc_w_full.data(),
+                    lbc_e_full.data(),
+                    fields.rhoref.data(),
+                    gd.dz.data(),
+                    gd.dy,
+                    ntime,
+                    gd.igc, gd.kgc,
+                    gd.jstart, gd.jend,
+                    gd.ktot, gd.icells, gd.jcells);
+        else if (name == "v")
+            calc_div_y(
+                    div_v.data(),
+                    lbc_s_full.data(),
+                    lbc_n_full.data(),
+                    fields.rhoref.data(),
+                    gd.dz.data(),
+                    gd.dy,
+                    ntime,
+                    gd.jgc, gd.kgc,
+                    gd.jstart, gd.jend,
+                    gd.ktot, gd.icells, gd.jcells);
 
         if (!sw_timedep)
         {
@@ -1219,65 +1306,65 @@ void Boundary_lateral<TF>::create(
         }
     };
 
-    if (sw_inoutflow_u)
+    if (sw_inoutflow_uv)
+    {
         copy_boundaries("u");
-
-    if (sw_inoutflow_v)
         copy_boundaries("v");
+    }
 
     for (auto& fld : inoutflow_s)
         copy_boundaries(fld);
 
-    //// Calculate domain mean vertical velocity.
-    //if (sw_inoutflow_u && sw_inoutflow_v)
-    //{
-    //    if (sw_wtop_2d)
-    //    {
-    //        // Read constant or time varying w_top fields.
-    //        if (sw_timedep)
-    //        {
-    //            // Find previous and next times.
-    //            const double time = timeloop.get_time();
-    //            const double ifactor = timeloop.get_ifactor();
-    //            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+    // Calculate domain mean vertical velocity.
+    if (sw_inoutflow_uv)
+    {
+        if (sw_wtop_2d)
+        {
+            // Read constant or time varying w_top fields.
+            if (sw_timedep)
+            {
+                // Find previous and next times.
+                const double time = timeloop.get_time();
+                const double ifactor = timeloop.get_ifactor();
+                unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
-    //            // Read first two input times
-    //            itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
-    //            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+                // Read first two input times
+                itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
+                itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
 
-    //            // IO time accounting for iotimeprec
-    //            const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
-    //            const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
+                // IO time accounting for iotimeprec
+                const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
+                const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
 
-    //            w_top_prev.resize(gd.ijcells);
-    //            w_top_next.resize(gd.ijcells);
+                w_top_prev.resize(gd.ijcells);
+                w_top_next.resize(gd.ijcells);
 
-    //            // Read the first two w_top fields.
-    //            read_xy_slice(w_top_prev, "w_top", iotime0);
-    //            read_xy_slice(w_top_next, "w_top", iotime1);
-    //        }
-    //        else
-    //            read_xy_slice(w_top, "w_top", 0);
-    //    }
-    //    else
-    //    {
-    //        // Calculate domain mean `w_top`.
-    //        w_top_in.resize(ntime);
+                // Read the first two w_top fields.
+                read_xy_slice(w_top_prev, "w_top", iotime0);
+                read_xy_slice(w_top_next, "w_top", iotime1);
+            }
+            else
+                read_xy_slice(w_top, "w_top", 0);
+        }
+        else
+        {
+            // Calculate domain mean `w_top`.
+            w_top_in.resize(ntime);
 
-    //        for (int t=0; t<ntime; ++t)
-    //        {
-    //            // w_top is the total mass in/outflow at the top divided by the total area and the local density.
-    //            w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+            for (int t=0; t<ntime; ++t)
+            {
+                // w_top is the total mass in/outflow at the top divided by the total area and the local density.
+                w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
 
-    //            std::string message=
-    //                    "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
-    //            master.print_message(message);
-    //        }
+                std::string message=
+                        "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+                master.print_message(message);
+            }
 
-    //        if (!sw_timedep)
-    //            std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
-    //    }
-    //}
+            if (!sw_timedep)
+                std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
+        }
+    }
 
     //if (sw_perturb)
     //{
@@ -1324,7 +1411,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     const bool at_south_edge = (md.mpicoordy == 0);
     const bool at_north_edge = (md.mpicoordy == md.npy-1);
 
-    if (sw_inoutflow_u)
+    if (sw_inoutflow_uv)
+    {
         set_lbc_gcs(
                 fields.ap.at("u")->fld.data(),
                 lbc_w.at("u").data(),
@@ -1340,7 +1428,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 at_west_edge, at_east_edge,
                 at_south_edge, at_north_edge);
 
-    if (sw_inoutflow_v)
         set_lbc_gcs(
                 fields.ap.at("v")->fld.data(),
                 lbc_w.at("v").data(),
@@ -1355,6 +1442,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 gd.kcells,
                 at_west_edge, at_east_edge,
                 at_south_edge, at_north_edge);
+    }
 
     for (auto& fld : inoutflow_s)
         set_lbc_gcs(

@@ -58,8 +58,7 @@ class Boundary_lateral
                 std::vector<TF>&, const std::string&, const int);
 
         bool sw_inoutflow;
-        bool sw_inoutflow_u;
-        bool sw_inoutflow_v;
+        bool sw_inoutflow_uv;
         bool sw_inoutflow_w;
         bool sw_timedep;
         bool sw_wtop_2d;
