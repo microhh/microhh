@@ -165,7 +165,7 @@ nc_inp = nc.Dataset(path+"{}_input.nc".format(name))
 # pressure and base state density profiles
 play = nc_stat['thermo']['phydro'][t_idx]
 plev = nc_stat['thermo']['phydroh'][t_idx]
-rhoh = nc_stat['thermo']['rhoref'][:]
+rho = nc_stat['thermo']['rho'][t_idx]
 
 ### Read data
 # dimensions and grid
@@ -188,10 +188,10 @@ h2o = qt / (ep - ep*qt)
 
 # cloud properties and effective radius
 ql = read_if_exists(path+"ql", iotime, dims)
-lwp = ql * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
+lwp = ql * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
 
 qi = read_if_exists(path+"qi", iotime, dims)
-iwp = qi * (dz*rhoh)[:,np.newaxis,np.newaxis] # kg/m2
+iwp = qi * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
 
 ftpnr_w = (4./3) * np.pi * 100e6 * 1e3
 ftpnr_i = (4./3) * np.pi * 1e5 * 7e2
@@ -278,6 +278,10 @@ nc_play = nc_out.createVariable("p_lay", "f8", ("lay","y","x"))
 nc_play[:] = np.tile(play.reshape(len(play),1,1), (1, jtot, itot))
 nc_plev = nc_out.createVariable("p_lev", "f8", ("lev","y","x"))
 nc_plev[:] = np.tile(plev.reshape(len(plev),1,1), (1, jtot, itot))
+
+# write density profile
+nc_rho = nc_out.createVariable("rho", "f8", ("z",))
+nc_rho[:] = rho
 
 # write ozone
 nc_o3 = nc_out.createVariable("vmr_o3", "f8", ("lay","y","x"))
