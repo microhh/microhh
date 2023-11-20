@@ -83,28 +83,36 @@ xh = np.arange(0, xsize, dx)
 y = np.arange(dy/2, ysize, dy)
 yh = np.arange(0, ysize, dy)
 
-time = np.array([0, 10800])
-fields = ['s', 'u', 'v']
+time = np.array([0])
+fields = ['th','s', 'u', 'v']
 nghost = 3
 
 lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
 
-for fld in fields:
-    for loc in ['west', 'east', 'south', 'north']:
+lbc.th_west[:,:,:,:] = th[None,:,None,None]
+lbc.th_east[:,:,:,:] = th[None,:,None,None]
+lbc.th_south[:,:,:,:] = th[None,:,None,None]
+lbc.th_north[:,:,:,:] = th[None,:,None,None]
 
-        lbc_ref = lbc[f'{fld}_{loc}']
-        dims = lbc_ref.shape
-        print(fld, loc, dims)
+lbc.u_west[:,:,:,:] = 1
+lbc.u_east[:,:,:,:] = 0
+lbc.u_south[:,:,:,:] = 0
+lbc.u_north[:,:,:,:] = 1
 
-        for t in range(dims[0]):
-            for k in range(dims[1]):
-                for j in range(dims[2]):
-                    for i in range(dims[3]):
-                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
+#for fld in fields:
+#    for loc in ['west', 'east', 'south', 'north']:
+#
+#        lbc_ref = lbc[f'{fld}_{loc}']
+#        dims = lbc_ref.shape
+#
+#        for t in range(dims[0]):
+#            for k in range(dims[1]):
+#                for j in range(dims[2]):
+#                    for i in range(dims[3]):
+#                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
 
 
 lbc.to_netcdf('drycblles_lbc_input.nc')
-
 
 #lbc.s_west [0,:] = 0
 #lbc.s_south[0,:] = 0

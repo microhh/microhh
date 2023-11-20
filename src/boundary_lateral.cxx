@@ -846,6 +846,91 @@ namespace
 }
 
 
+
+namespace
+{
+    template<typename TF>
+    void set_lbc_gcs(
+            TF* const restrict fld,
+            const TF* const restrict lbc_w,
+            const TF* const restrict lbc_e,
+            const TF* const restrict lbc_s,
+            const TF* const restrict lbc_n,
+            const int ngc_w, const int ngc_s, const int ngc,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int jcells,
+            const int kcells,
+            const bool is_west_edge, const bool is_east_edge,
+            const bool is_south_edge, const bool is_north_edge)
+    {
+        const int jstride_out = icells;
+        const int kstride_out = icells * jcells;
+
+        if (is_west_edge)
+        {
+            const int jstride_w = ngc_w;
+            const int kstride_w = jstride_w * jcells;
+
+            for (int k=kstart; k<kend; k++)
+                for (int j=0; j<jcells; j++)
+                    for (int i=0; i<ngc_w; i++)
+                    {
+                        const int ijk_in = i + j*jstride_w + k*kstride_w;
+                        const int ijk_out = i + j*jstride_out + k*kstride_out;
+                        fld[ijk_out] = lbc_w[ijk_in];
+                    }
+        }
+
+        if (is_east_edge)
+        {
+            const int jstride_e = ngc;
+            const int kstride_e = jstride_e * jcells;
+
+            for (int k=kstart; k<kend; k++)
+                for (int j=0; j<jcells; j++)
+                    for (int i=0; i<ngc; i++)
+                    {
+                        const int ijk_in = i + j*jstride_e + k*kstride_e;
+                        const int ijk_out = (i+iend) + j*jstride_out + k*kstride_out;
+                        fld[ijk_out] = lbc_e[ijk_in];
+                    }
+        }
+
+        if (is_south_edge)
+        {
+            const int jstride_s = icells;
+            const int kstride_s = jstride_s * ngc_s;
+
+            for (int k=kstart; k<kend; k++)
+                for (int j=0; j<ngc_s; j++)
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk_in = i + j*jstride_s + k*kstride_s;
+                        const int ijk_out = i + j*jstride_out + k*kstride_out;
+                        fld[ijk_out] = lbc_s[ijk_in];
+                    }
+        }
+
+        if (is_north_edge)
+        {
+            const int jstride_n= icells;
+            const int kstride_n = jstride_n * ngc;
+
+            for (int k=kstart; k<kend; k++)
+                for (int j=0; j<ngc; j++)
+                    for (int i=istart; i<iend; i++)
+                    {
+                        const int ijk_in = i + j*jstride_n + k*kstride_n;
+                        const int ijk_out = i + (j+jend)*jstride_out + k*kstride_out;
+                        fld[ijk_out] = lbc_n[ijk_in];
+                    }
+        }
+    };
+}
+
+
 template<typename TF>
 Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -926,25 +1011,28 @@ void Boundary_lateral<TF>::init()
     //        throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
     //}
 
-    //auto add_lbc = [&](const std::string& name)
-    //{
-    //    if (md.mpicoordx == 0)
-    //        lbc_w.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-    //    if (md.mpicoordx == md.npx-1)
-    //        lbc_e.emplace(name, std::vector<TF>(gd.kcells*gd.jcells));
-    //    if (md.mpicoordy == 0)
-    //        lbc_s.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
-    //    if (md.mpicoordy == md.npy-1)
-    //        lbc_n.emplace(name, std::vector<TF>(gd.kcells*gd.icells));
-    //};
+    auto add_lbc = [&](const std::string& name)
+    {
+        const int igc_pad = (name == "u") ? gd.igc+1 : gd.igc;
+        const int jgc_pad = (name == "v") ? gd.jgc+1 : gd.jgc;
 
-    //if (sw_inoutflow_u)
-    //    add_lbc("u");
-    //if (sw_inoutflow_v)
-    //    add_lbc("v");
+        if (md.mpicoordx == 0)
+            lbc_w.emplace(name, std::vector<TF>(igc_pad*gd.kcells*gd.jcells));
+        if (md.mpicoordx == md.npx-1)
+            lbc_e.emplace(name, std::vector<TF>(gd.igc*gd.kcells*gd.jcells));
+        if (md.mpicoordy == 0)
+            lbc_s.emplace(name, std::vector<TF>(gd.icells*jgc_pad*gd.kcells));
+        if (md.mpicoordy == md.npy-1)
+            lbc_n.emplace(name, std::vector<TF>(gd.icells*gd.jgc*gd.kcells));
+    };
 
-    //for (auto& fld : inoutflow_s)
-    //    add_lbc(fld);
+    if (sw_inoutflow_u)
+        add_lbc("u");
+    if (sw_inoutflow_v)
+        add_lbc("v");
+
+    for (auto& fld : inoutflow_s)
+        add_lbc(fld);
 
     //// Make sure every MPI task has different seed.
     //if (sw_perturb)
@@ -1038,8 +1126,6 @@ void Boundary_lateral<TF>::create(
 
     auto copy_boundaries = [&](const std::string& name)
     {
-        std::cout << name << std::endl;
-
         // `u` at west boundary and `v` at south boundary also contain `u` at `istart`
         // and `v` at `jstart`, and are therefore larger.
         const int igc_pad = (name == "u") ? gd.igc+1 : gd.igc;
@@ -1052,48 +1138,36 @@ void Boundary_lateral<TF>::create(
         std::vector<TF> lbc_n_full = input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, gd.jgc, gd.itot+2*gd.igc});
 
         if (md.mpicoordx == 0)
-        {
             copy_boundary(
                     lbc_w_in, lbc_w_full,
                     igc_pad, gd.jtot+2*gd.jgc,
                     igc_pad, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name);
-            //dump_vector(lbc_w_in.at(name), name + "_west");
-        }
 
         if (md.mpicoordx == md.npx-1)
-        {
             copy_boundary(
                     lbc_e_in, lbc_e_full,
                     gd.igc, gd.jtot+2*gd.jgc,
                     gd.igc, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name);
-            //dump_vector(lbc_e_in.at(name), name + "_east");
-        }
 
         if (md.mpicoordy == 0)
-        {
             copy_boundary(
                     lbc_s_in, lbc_s_full,
                     gd.itot+2*gd.igc, jgc_pad,
                     gd.icells, jgc_pad,
                     md.mpicoordx*gd.imax, 0,
                     name);
-            //dump_vector(lbc_s_in.at(name), name + "_south");
-        }
 
         if (md.mpicoordy == md.npy-1)
-        {
             copy_boundary(
                     lbc_n_in, lbc_n_full,
                     gd.itot+2*gd.igc, gd.jgc,
                     gd.icells, gd.jgc,
                     md.mpicoordx*gd.imax, 0,
                     name);
-            //dump_vector(lbc_n_in.at(name), name + "_north");
-        }
 
         // Calculate domain total mass imbalance in kg s-1.
         //if (name == "u")
@@ -1117,33 +1191,32 @@ void Boundary_lateral<TF>::create(
         //            ntime,
         //            gd.itot, gd.ktot, gd.kgc);
 
-        ////if (!sw_timedep)
-        ////{
-        //    if (md.mpicoordx == 0)
-        //    {
-        //        for (int n=0; n<gd.jcells*gd.kcells; ++n)
-        //            lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
-        //    }
+        if (!sw_timedep)
+        {
+            if (md.mpicoordx == 0)
+            {
+                for (int n=0; n<igc_pad*gd.jcells*gd.kcells; ++n)
+                    lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
+            }
 
-        //    if (md.mpicoordx == md.npx-1)
-        //    {
-        //        for (int n=0; n<gd.jcells*gd.kcells; ++n)
-        //            lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
-        //    }
+            if (md.mpicoordx == md.npx-1)
+            {
+                for (int n=0; n<gd.igc*gd.jcells*gd.kcells; ++n)
+                    lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
+            }
 
-        //    if (md.mpicoordy == 0)
-        //    {
-        //        for (int n=0; n<gd.icells*gd.kcells; ++n)
-        //            lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
-        //    }
+            if (md.mpicoordy == 0)
+            {
+                for (int n=0; n<gd.icells*jgc_pad*gd.kcells; ++n)
+                    lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
+            }
 
-        //    if (md.mpicoordy == md.npy-1)
-        //    {
-        //        for (int n=0; n<gd.icells*gd.kcells; ++n)
-        //            lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
-        //    }
-        ////}
-
+            if (md.mpicoordy == md.npy-1)
+            {
+                for (int n=0; n<gd.icells*gd.jgc*gd.kcells; ++n)
+                    lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
+            }
+        }
     };
 
     if (sw_inoutflow_u)
@@ -1153,12 +1226,7 @@ void Boundary_lateral<TF>::create(
         copy_boundaries("v");
 
     for (auto& fld : inoutflow_s)
-    {
-        std::cout << "boe" << std::endl;
         copy_boundaries(fld);
-    }
-
-    throw 1;
 
     //// Calculate domain mean vertical velocity.
     //if (sw_inoutflow_u && sw_inoutflow_v)
@@ -1224,6 +1292,8 @@ void Boundary_lateral<TF>::create(
     //}
 }
 
+
+
 template <typename TF>
 void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 {
@@ -1233,29 +1303,76 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    auto dump_fld3d = [&](
-            std::vector<TF>& fld,
+    auto dump_vector = [&](
+            std::vector<float>& fld,
             const std::string& name)
     {
-        std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy);
+        std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
 
         FILE *pFile;
-        pFile = fopen(name_out.c_str(), "wbx");
+        pFile = fopen(name_out.c_str(), "wb");
 
         if (pFile == NULL)
             throw std::runtime_error("Opening raw dump field failed.");
 
-        const int jj = gd.icells;
-        const int kk = gd.icells*gd.jcells;
-
-        for (int k=0; k<gd.kcells; ++k)
-            for (int j=0; j<gd.jcells; ++j)
-            {
-                const int ijk = j*jj + k*kk;
-                fwrite(&fld.data()[ijk], sizeof(TF), gd.icells, pFile);
-            }
+        fwrite(fld.data(), sizeof(float), fld.size(), pFile);
         fclose(pFile);
     };
+
+    const bool at_west_edge = (md.mpicoordx == 0);
+    const bool at_east_edge = (md.mpicoordx == md.npx-1);
+    const bool at_south_edge = (md.mpicoordy == 0);
+    const bool at_north_edge = (md.mpicoordy == md.npy-1);
+
+    if (sw_inoutflow_u)
+        set_lbc_gcs(
+                fields.ap.at("u")->fld.data(),
+                lbc_w.at("u").data(),
+                lbc_e.at("u").data(),
+                lbc_s.at("u").data(),
+                lbc_n.at("u").data(),
+                gd.igc+1, gd.jgc, gd.igc,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells,
+                gd.kcells,
+                at_west_edge, at_east_edge,
+                at_south_edge, at_north_edge);
+
+    if (sw_inoutflow_v)
+        set_lbc_gcs(
+                fields.ap.at("v")->fld.data(),
+                lbc_w.at("v").data(),
+                lbc_e.at("v").data(),
+                lbc_s.at("v").data(),
+                lbc_n.at("v").data(),
+                gd.igc, gd.jgc+1, gd.igc,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells,
+                gd.kcells,
+                at_west_edge, at_east_edge,
+                at_south_edge, at_north_edge);
+
+    for (auto& fld : inoutflow_s)
+        set_lbc_gcs(
+                fields.ap.at(fld)->fld.data(),
+                lbc_w.at(fld).data(),
+                lbc_e.at(fld).data(),
+                lbc_s.at(fld).data(),
+                lbc_n.at(fld).data(),
+                gd.igc, gd.jgc, gd.igc,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells,
+                gd.kcells,
+                at_west_edge, at_east_edge,
+                at_south_edge, at_north_edge);
+
+
 
     //auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
     //        std::map<std::string, std::vector<TF>>& lbc_map,
