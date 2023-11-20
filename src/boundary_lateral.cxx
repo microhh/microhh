@@ -852,38 +852,34 @@ namespace
     template<typename TF>
     void set_lbc_gcs(
             TF* const restrict fld,
-            const TF* const restrict lbc_w,
-            const TF* const restrict lbc_e,
-            const TF* const restrict lbc_s,
-            const TF* const restrict lbc_n,
-            const int ngc_w, const int ngc_s, const int ngc,
+            const TF* const restrict lbc,
+            const int ngc,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int icells, const int jcells,
             const int kcells,
-            const bool is_west_edge, const bool is_east_edge,
-            const bool is_south_edge, const bool is_north_edge)
+            Lbc_location location)
     {
         const int jstride_out = icells;
         const int kstride_out = icells * jcells;
 
-        if (is_west_edge)
+        if (location == Lbc_location::West)
         {
-            const int jstride_w = ngc_w;
+            const int jstride_w = ngc;
             const int kstride_w = jstride_w * jcells;
 
             for (int k=kstart; k<kend; k++)
                 for (int j=0; j<jcells; j++)
-                    for (int i=0; i<ngc_w; i++)
+                    for (int i=0; i<ngc; i++)
                     {
                         const int ijk_in = i + j*jstride_w + k*kstride_w;
                         const int ijk_out = i + j*jstride_out + k*kstride_out;
-                        fld[ijk_out] = lbc_w[ijk_in];
+                        fld[ijk_out] = lbc[ijk_in];
                     }
         }
 
-        if (is_east_edge)
+        if (location == Lbc_location::East)
         {
             const int jstride_e = ngc;
             const int kstride_e = jstride_e * jcells;
@@ -894,26 +890,26 @@ namespace
                     {
                         const int ijk_in = i + j*jstride_e + k*kstride_e;
                         const int ijk_out = (i+iend) + j*jstride_out + k*kstride_out;
-                        fld[ijk_out] = lbc_e[ijk_in];
+                        fld[ijk_out] = lbc[ijk_in];
                     }
         }
 
-        if (is_south_edge)
+        if (location == Lbc_location::South)
         {
             const int jstride_s = icells;
-            const int kstride_s = jstride_s * ngc_s;
+            const int kstride_s = jstride_s * ngc;
 
             for (int k=kstart; k<kend; k++)
-                for (int j=0; j<ngc_s; j++)
+                for (int j=0; j<ngc; j++)
                     for (int i=istart; i<iend; i++)
                     {
                         const int ijk_in = i + j*jstride_s + k*kstride_s;
                         const int ijk_out = i + j*jstride_out + k*kstride_out;
-                        fld[ijk_out] = lbc_s[ijk_in];
+                        fld[ijk_out] = lbc[ijk_in];
                     }
         }
 
-        if (is_north_edge)
+        if (location == Lbc_location::North)
         {
             const int jstride_n= icells;
             const int kstride_n = jstride_n * ngc;
@@ -924,7 +920,7 @@ namespace
                     {
                         const int ijk_in = i + j*jstride_n + k*kstride_n;
                         const int ijk_out = i + (j+jend)*jstride_out + k*kstride_out;
-                        fld[ijk_out] = lbc_n[ijk_in];
+                        fld[ijk_out] = lbc[ijk_in];
                     }
         }
     };
@@ -949,10 +945,10 @@ namespace
         const int tstride_w = kstride_w * ktot;
 
         const int jstride_e = ngc;
-        const int kstride_e = jstride_w * jcells;
-        const int tstride_e = kstride_w * ktot;
+        const int kstride_e = jstride_e * jcells;
+        const int tstride_e = kstride_e * ktot;
 
-        const int iw = ngc+1;
+        const int iw = ngc;
         const int ie = 0;
 
         for (int t=0; t<ntime; ++t)
@@ -962,7 +958,10 @@ namespace
                 for (int j=jstart; j<jend; ++j)
                 {
                     const int ijk_w = iw + j*jstride_w + k*kstride_w + t*tstride_w;
-                    const int ijk_e = ie + j*jstride_w + k*kstride_w + t*tstride_w;
+                    const int ijk_e = ie + j*jstride_e + k*kstride_e + t*tstride_e;
+
+                    const TF v1 = lbc_u_east[ijk_e];
+                    const TF v2 = lbc_u_west[ijk_w];
 
                     div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * (lbc_u_east[ijk_e] - lbc_u_west[ijk_w]);
                 }
@@ -991,7 +990,7 @@ namespace
         const int kstride_n = jstride_n * ngc;
         const int tstride_n = kstride_n * ktot;
 
-        const int js = ngc+1;
+        const int js = ngc;
         const int jn = 0;
 
         for (int t=0; t<ntime; ++t)
@@ -1003,14 +1002,13 @@ namespace
                     const int ijk_s = i + js*jstride_s + k*kstride_s + t*tstride_s;
                     const int ijk_n = i + jn*jstride_n + k*kstride_n + t*tstride_n;
 
+                    const TF v1 = lbc_v_north[ijk_n];
+                    const TF v2 = lbc_v_south[ijk_s];
+
                     div[t] += rhoref[k+kgc] * dx * dz[k+kgc] * (lbc_v_north[ijk_n] - lbc_v_south[ijk_s]);
                 }
         }
     }
-
-
-
-
 }
 
 
@@ -1272,10 +1270,10 @@ void Boundary_lateral<TF>::create(
                     lbc_n_full.data(),
                     fields.rhoref.data(),
                     gd.dz.data(),
-                    gd.dy,
+                    gd.dx,
                     ntime,
                     gd.jgc, gd.kgc,
-                    gd.jstart, gd.jend,
+                    gd.istart, gd.iend,
                     gd.ktot, gd.icells, gd.jcells);
 
         if (!sw_timedep)
@@ -1406,59 +1404,54 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         fclose(pFile);
     };
 
-    const bool at_west_edge = (md.mpicoordx == 0);
-    const bool at_east_edge = (md.mpicoordx == md.npx-1);
-    const bool at_south_edge = (md.mpicoordy == 0);
-    const bool at_north_edge = (md.mpicoordy == md.npy-1);
+
+    auto set_lbc_gcs_wrapper = [&](
+            const std::string& fld,
+            const std::map<std::string, std::vector<TF>>& lbc,
+            const Lbc_location location)
+    {
+        int ngc = gd.igc;
+        if (fld == "u" && md.mpicoordx == 0)
+            ngc += 1;
+        if (fld == "v" && md.mpicoordy == 0)
+            ngc += 1;
+
+        set_lbc_gcs(
+                fields.ap.at(fld)->fld.data(),
+                lbc.at(fld).data(),
+                ngc,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells,
+                gd.kcells,
+                location);
+    };
+
+    auto set_gcs = [&](const std::string& fld)
+    {
+        if (md.mpicoordx == 0)
+            set_lbc_gcs_wrapper(fld, lbc_w, Lbc_location::West);
+        if (md.mpicoordx == md.npx-1)
+            set_lbc_gcs_wrapper(fld, lbc_e, Lbc_location::East);
+        if (md.mpicoordy == 0)
+            set_lbc_gcs_wrapper(fld, lbc_s, Lbc_location::South);
+        if (md.mpicoordy == md.npy-1)
+            set_lbc_gcs_wrapper(fld, lbc_n, Lbc_location::North);
+    };
 
     if (sw_inoutflow_uv)
     {
-        set_lbc_gcs(
-                fields.ap.at("u")->fld.data(),
-                lbc_w.at("u").data(),
-                lbc_e.at("u").data(),
-                lbc_s.at("u").data(),
-                lbc_n.at("u").data(),
-                gd.igc+1, gd.jgc, gd.igc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.kcells,
-                at_west_edge, at_east_edge,
-                at_south_edge, at_north_edge);
-
-        set_lbc_gcs(
-                fields.ap.at("v")->fld.data(),
-                lbc_w.at("v").data(),
-                lbc_e.at("v").data(),
-                lbc_s.at("v").data(),
-                lbc_n.at("v").data(),
-                gd.igc, gd.jgc+1, gd.igc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.kcells,
-                at_west_edge, at_east_edge,
-                at_south_edge, at_north_edge);
+        set_gcs("u");
+        set_gcs("v");
     }
 
     for (auto& fld : inoutflow_s)
-        set_lbc_gcs(
-                fields.ap.at(fld)->fld.data(),
-                lbc_w.at(fld).data(),
-                lbc_e.at(fld).data(),
-                lbc_s.at(fld).data(),
-                lbc_n.at(fld).data(),
-                gd.igc, gd.jgc, gd.igc,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.jcells,
-                gd.kcells,
-                at_west_edge, at_east_edge,
-                at_south_edge, at_north_edge);
+        set_gcs(fld);
+
+
+
+
 
 
 

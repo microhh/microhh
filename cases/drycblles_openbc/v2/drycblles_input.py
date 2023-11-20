@@ -94,7 +94,7 @@ lbc.th_east[:,:,:,:] = th[None,:,None,None]
 lbc.th_south[:,:,:,:] = th[None,:,None,None]
 lbc.th_north[:,:,:,:] = th[None,:,None,None]
 
-lbc.u_west[:,:,:,:] = 1
+lbc.u_west[:,:,:,:] = 0.1
 lbc.u_east[:,:,:,:] = 0
 lbc.u_south[:,:,:,:] = 0
 lbc.u_north[:,:,:,:] = 0
@@ -102,7 +102,7 @@ lbc.u_north[:,:,:,:] = 0
 lbc.v_west[:,:,:,:] = 0
 lbc.v_east[:,:,:,:] = 0
 lbc.v_south[:,:,:,:] = 0
-lbc.v_north[:,:,:,:] = 0
+lbc.v_north[:,:,:,:] = 0.1
 
 #for fld in fields:
 #    for loc in ['west', 'east', 'south', 'north']:
