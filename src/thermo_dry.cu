@@ -129,7 +129,7 @@ namespace
 
     template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2,    TF* __restrict__ th,
-                   TF* __restrict__ thref, TF* __restrict__ dzi,
+                   TF* __restrict__ thref, const TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
                    int iend,   int jend,   int kend,
                    int jj, int kk)
@@ -226,7 +226,7 @@ void Thermo_dry<TF>::exec(const double dt, Stats<TF>& stats)
 
     if (grid.get_spatial_order() == Grid_order::Second)
     {
-        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_2nd_g<TF><<<gridGPU, blockGPU>>>(
             fields.mt.at("w")->fld_g, fields.sp.at("th")->fld_g, bs.threfh_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
@@ -235,7 +235,7 @@ void Thermo_dry<TF>::exec(const double dt, Stats<TF>& stats)
 
         if (swbaroclinic)
         {
-            calc_baroclinic_2nd_g<<<gridGPU, blockGPU>>>(
+            calc_baroclinic_2nd_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at("th")->fld_g, fields.mp.at("v")->fld_g,
                 dthetady_ls,
                 gd.istart, gd.jstart, gd.kstart,
@@ -275,7 +275,7 @@ void Thermo_dry<TF>::get_thermo_field_g(
 
     if (name == "b")
     {
-        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_g<TF><<<gridGPU, blockGPU>>>(
             fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g,
             gd.istart, gd.jstart,
             gd.iend, gd.jend, gd.kcells,
@@ -284,8 +284,9 @@ void Thermo_dry<TF>::get_thermo_field_g(
     }
     else if (name == "N2")
     {
-        calc_N2_g<<<gridGPU2, blockGPU2>>>(
-            fld.fld_g, fields.sp.at("th")->fld_g, bs.thref_g, gd.dzi_g,
+        calc_N2_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g, fields.sp.at("th")->fld_g,
+            bs.thref_g, gd.dzi_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -316,7 +317,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
     dim3 gridGPU (gridi, gridj, 1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<TF><<<gridGPU, blockGPU>>>(
         b.flux_bot_g, fields.sp.at("th")->flux_bot_g,
         bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
@@ -338,14 +339,14 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
     dim3 gridGPU (gridi, gridj, 1);
     dim3 blockGPU(blocki, blockj, 1);
 
-    calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_bot_g<TF><<<gridGPU, blockGPU>>>(
         b.fld_g, b.fld_bot_g,
         fields.sp.at("th")->fld_g, fields.sp.at("th")->fld_bot_g,
         bs.thref_g, bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<TF><<<gridGPU, blockGPU>>>(
         b.flux_bot_g, fields.sp.at("th")->flux_bot_g,
         bs.threfh_g, gd.kstart, gd.icells, gd.jcells,
         gd.icells, gd.ijcells);

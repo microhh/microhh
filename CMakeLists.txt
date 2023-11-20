@@ -163,5 +163,13 @@ if(USECUDA)
   add_subdirectory(rte-rrtmgp-cpp/src_cuda)
   add_subdirectory(rte-rrtmgp-cpp/src_cuda_rt)
 endif()
+
+if(USECUDA)
+  if(USEKERNELLAUNCHER)
+    add_compile_definitions(ENABLE_KERNEL_LAUNCHER)
+    add_subdirectory(external/kernel_launcher)
+  endif()
+endif()
+
 add_subdirectory(src)
 add_subdirectory(main)

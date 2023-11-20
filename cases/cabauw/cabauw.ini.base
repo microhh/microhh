@@ -52,7 +52,6 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
-swhomogenizesfcrad=0
 
 [aerosol]
 swaerosol=1
@@ -140,7 +139,7 @@ sampletime=60
 swcross=1
 sampletime=60
 xy=0
-crosslist=qlqipath,qlqibase,qlqitop,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thlfluxbot,qtfluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt
+crosslist=qlqi_path,qlqi_base,qlqi_top,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thl_fluxbot,qt_fluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt,lw_flux_up,lw_flux_dn,thl,qt,ql,w,b
 
 [column]
 swcolumn=0

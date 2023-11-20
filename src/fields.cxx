@@ -42,9 +42,108 @@
 #include "cross.h"
 #include "dump.h"
 #include "diff.h"
+#include "fast_math.h"
 
+   
 namespace
 {
+    template<typename TF>
+    void calc_kinetic_energy_2nd(
+            TF* const restrict ke, TF* const restrict tke,
+            const TF* const restrict u, const TF* const restrict v, const TF* const restrict w,
+            const TF* const restrict umodel, const TF* const restrict vmodel, const TF* const restrict wmodel,
+            const TF utrans, const TF vtrans,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O2;
+        using Fast_math::pow2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF u2 = pow2(interp2(u[ijk]+utrans, u[ijk+ii]+utrans));
+                    const TF v2 = pow2(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans));
+                    const TF w2 = pow2(interp2(w[ijk]       , w[ijk+kk]       ));
+
+                    ke[ijk] = TF(0.5) * (u2 + v2 + w2);
+                }
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF u2 = pow2(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]));
+                    const TF v2 = pow2(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]));
+                    const TF w2 = pow2(interp2(w[ijk]-wmodel[k], w[ijk+kk]-wmodel[k+1]));
+
+                    tke[ijk] = TF(0.5) * (u2 + v2 + w2);
+                }
+        }
+    }
+
+
+    template<typename TF>
+    void calc_kinetic_energy_4th(TF* restrict ke, TF* restrict tke,
+                 const TF* restrict u, const TF* restrict v, const TF* restrict w,
+                 const TF* restrict umodel, const TF* restrict vmodel, const TF* restrict wmodel,
+                 const TF utrans, const TF vtrans,
+                 const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+                 const int icells, const int ijcells)
+    {
+        using Fast_math::pow2;
+
+        using namespace Finite_difference::O4;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] + utrans) + ci1<TF>*pow2(u[ijk    ] + utrans)
+                                + ci2<TF>*pow2(u[ijk+ii1] + utrans) + ci3<TF>*pow2(u[ijk+ii2] + utrans);
+                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] + vtrans) + ci1<TF>*pow2(v[ijk    ] + vtrans)
+                                + ci2<TF>*pow2(v[ijk+jj1] + vtrans) + ci3<TF>*pow2(v[ijk+jj2] + vtrans);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1]) + ci1<TF>*pow2(w[ijk]) + ci2<TF>*pow2(w[ijk+kk1]) + ci3<TF>*pow2(w[ijk+kk2]);
+                    ke[ijk] = TF(0.5)*(u2 + v2 + w2);
+                }
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj1 + k*kk1;
+                    const TF u2 = ci0<TF>*pow2(u[ijk-ii1] - umodel[k]) + ci1<TF>*pow2(u[ijk    ] - umodel[k])
+                                + ci2<TF>*pow2(u[ijk+ii1] - umodel[k]) + ci3<TF>*pow2(u[ijk+ii2] - umodel[k]);
+                    const TF v2 = ci0<TF>*pow2(v[ijk-jj1] - vmodel[k]) + ci1<TF>*pow2(v[ijk    ] - vmodel[k])
+                                + ci2<TF>*pow2(v[ijk+jj1] - vmodel[k]) + ci3<TF>*pow2(v[ijk+jj2] - vmodel[k]);
+                    const TF w2 = ci0<TF>*pow2(w[ijk-kk1] - wmodel[k-1]) + ci1<TF>*pow2(w[ijk] - wmodel[k]) + ci2<TF>*pow2(w[ijk+kk1] - wmodel[k+1]) + ci3<TF>*pow2(w[ijk+kk2] - wmodel[k+2]);
+                    tke[ijk] = TF(0.5)*(u2 + v2 + w2);
+                }
+        }
+    }
+
     enum class Mask_type {Wplus, Wmin};
 
     template<typename TF, Mask_type mode>
@@ -397,6 +496,7 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     // Create help arrays for statistics.
     umodel.resize(gd.kcells);
     vmodel.resize(gd.kcells);
+    wmodel.resize(gd.kcells);
 
     // Allocate user XY masks
     for (auto& mask : xymasklist)
@@ -679,6 +779,54 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
             }
         }
     }
+
+    auto& masks = stats.get_masks();
+
+    // The loop over masks inside of budget is necessary, because the mask mean is 
+    // required in order to compute the budget terms.
+    for (auto& m : masks)
+    {
+        // Calculate the mean of the fields.
+        stats.calc_mask_mean_profile(umodel, m, *mp.at("u"));
+        stats.calc_mask_mean_profile(vmodel, m, *mp.at("v"));
+        stats.calc_mask_mean_profile(wmodel, m, *mp.at("w"));
+
+        // Calculate kinetic and turbulent kinetic energy
+        auto ke  = get_tmp();
+        auto tke = get_tmp();
+
+        constexpr TF no_offset = 0.;
+        constexpr TF no_threshold = 0.;
+
+        if (grid.get_spatial_order() == Grid_order::Second)
+        {
+            calc_kinetic_energy_2nd(
+                ke->fld.data(), tke->fld.data(),
+                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
+                gd.utrans, gd.vtrans,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+        }
+        else
+        {
+            calc_kinetic_energy_4th(
+                ke->fld.data(), tke->fld.data(),
+                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+                umodel.data(), vmodel.data(), wmodel.data(),
+                gd.utrans, gd.vtrans,
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
+        }
+        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
+        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
+
+        release_tmp(ke);
+        release_tmp(tke);
+
+    }
+
 }
 
 template<typename TF>
@@ -1046,6 +1194,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
                 stats.add_covariance(*it1.second, *it2.second, locstring);
             }
         }
+
+        // (Turbulence) Kinetic Energy
+        stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
+        stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
     }
 
     // Add time series of scalar surface values
@@ -1322,6 +1474,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
 
     //Loop through units to find matches; in which case add the powers
     int unit1_size = unit1.size();
+
     for (auto& u2 : unit2)
     {
         int i;
@@ -1332,7 +1485,7 @@ std::string Fields<TF>::simplify_unit(const std::string str1, const std::string 
                 if (u2.first == "kg") //Special case: there could be a kg/kg here to simplify
                 {
                     int j;
-                    for (j = i++ ; j < unit1_size; j++)
+                    for (j = i+1 ; j < unit1_size; j++)
                     {
                         if (u2.first == unit1[j].first)
                             break;

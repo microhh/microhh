@@ -95,7 +95,7 @@ sbotthl = H/(rho*cp)
 sbotqt  = LE/(rho*Lv)
 
 # Save all the input data to NetCDF
-nc_file = nc.Dataset("arm_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("arm_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))

@@ -493,7 +493,7 @@ double Advec_4<TF>::get_cfl(const double dt)
 
     auto cfl_3d = fields.get_tmp_g();
 
-    calc_cfl_g<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         cfl_3d->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         gd.dzi_g, gd.dxi, gd.dyi,
@@ -546,7 +546,7 @@ void Advec_4<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     // Interior:
-    advec_u_g<<<gridGPU, blockGPU>>>(
+    advec_u_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("u")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
@@ -572,7 +572,7 @@ void Advec_4<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     // Interior
-    advec_v_g<<<gridGPU, blockGPU>>>(
+    advec_v_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("v")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("w")->fld_g, gd.dzi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
@@ -598,7 +598,7 @@ void Advec_4<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     // Interior:
-    advec_w_g<<<gridGPU, blockGPU>>>(
+    advec_w_g<TF><<<gridGPU, blockGPU>>>(
         fields.mt.at("w")->fld_g, fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
         fields.mp.at("w")->fld_g, gd.dzhi4_g, gd.dxi, gd.dyi,
         gd.icells, gd.ijcells,
@@ -607,7 +607,7 @@ void Advec_4<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     for (auto& it : fields.st)
-        advec_s_g<<<gridGPU, blockGPU>>>(
+        advec_s_g<TF><<<gridGPU, blockGPU>>>(
             it.second->fld_g, fields.sp.at(it.first)->fld_g,
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             gd.dzi4_g, gd.dxi, gd.dyi,

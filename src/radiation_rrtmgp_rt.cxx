@@ -141,14 +141,15 @@ namespace
             }
         };
     }
-    
+
+
     void load_aerosol_concs(
             Aerosol_concs& aerosol_concs, Netcdf_handle& input_nc, const std::string& dim_name)
     {
         const int n_lay = input_nc.get_dimension_size(dim_name);
 
         const std::vector<std::string> aerosol_types = {
-                "aermr01", "aermr02", "aermr03", "aermr04", "aermr05", "aermr06", 
+                "aermr01", "aermr02", "aermr03", "aermr04", "aermr05", "aermr06",
                 "aermr07", "aermr08", "aermr09", "aermr10", "aermr11"};
 
         for (const std::string& name : aerosol_types)
@@ -160,7 +161,7 @@ namespace
 
                 if (n_dims == 1 && dims.at(dim_name) == n_lay)
                 {
-                    aerosol_concs.set_vmr(name, 
+                    aerosol_concs.set_vmr(name,
                             Array<Float,1>(input_nc.get_variable<Float>(name, {n_lay}), {n_lay}));
                 }
                 else
@@ -174,7 +175,6 @@ namespace
             }
         }
     }
-
 
 
     Gas_optics_rrtmgp load_and_init_gas_optics(
@@ -440,7 +440,8 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
-    
+
+
     Aerosol_optics load_and_init_aerosol_optics(
             Master& master,
             const std::string& coef_file)
@@ -481,6 +482,7 @@ namespace
 
 }
 
+
 template<typename TF>
 Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -496,7 +498,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
-    sw_always_rt     = inputin.get_item<bool>("radiation", "swalwaysrt", "", false);
+    sw_2str_when_no_clouds = inputin.get_item<bool>("radiation", "sw2strwhennoclouds", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
@@ -528,8 +530,8 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     }
     else
     {
-        lat = inputin.get_item<Float>("radiation", "lat", "");
-        lon = inputin.get_item<Float>("radiation", "lon", "");
+        lat = inputin.get_item<Float>("grid", "lat", "");
+        lon = inputin.get_item<Float>("grid", "lon", "");
     }
 
     gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());
@@ -557,17 +559,17 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     fields.init_diagnostic_field("lw_flux_up", "Longwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("lw_flux_dn", "Longwave downwelling flux", "W m-2", "radiation", gd.wloc);
-    
+
     if (sw_clear_sky_stats)
     {
         fields.init_diagnostic_field("lw_flux_up_clear", "Clear-sky longwave upwelling flux", "W m-2", "radiation", gd.wloc);
         fields.init_diagnostic_field("lw_flux_dn_clear", "Clear-sky longwave downwelling flux", "W m-2", "radiation", gd.wloc);
     }
-    
+
     fields.init_diagnostic_field("sw_flux_up", "Shortwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn", "Shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
-    
+
     fields.init_diagnostic_field("sw_heat_dir_rt", "Heating rates from direct raytraced radiation", "K s-1", "radiation", gd.sloc);
     fields.init_diagnostic_field("sw_heat_dif_rt", "Heating rates from diffuse raytraced radiation", "k s-1", "radiation", gd.sloc);
 
@@ -625,12 +627,21 @@ void Radiation_rrtmgp_rt<TF>::create(
         Input& input, Netcdf_handle& input_nc, Thermo<TF>& thermo,
         Stats<TF>& stats, Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump)
 {
+    auto& gd = grid.get_grid_data();
+
     // Check if the thermo supports the radiation.
     if (thermo.get_switch() != Thermo_type::Moist)
-        throw std::runtime_error("Radiation only supports swthermo=moist.");
+        throw std::runtime_error("Radiation_rrtmgp_rt only supports swthermo=moist.");
+
+    // Check if grid is equidistant.
+    const TF dz0 = gd.dz[gd.kstart];
+    for (int k=gd.kstart+1; k<gd.kend; ++k)
+    {
+        if (std::abs(gd.dz[k] - dz0) > Constants::dsmall)
+            throw std::runtime_error("Radiation_rrtmgp_rt requires an equidistant vertical grid.");
+    }
 
     // Setup timedependent gasses
-    auto& gd = grid.get_grid_data();
     const TF offset = 0;
     std::string timedep_dim_ls = "time_ls";
 
@@ -687,7 +698,7 @@ void Radiation_rrtmgp_rt<TF>::create(
         stats.add_time_series("saa", "solar azimuth angle", "rad", group_name);
         stats.add_time_series("tsi_scaling", "tsi scaling", "W/m2", group_name);
         stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
-        
+
         stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
         stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
         stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
@@ -711,13 +722,13 @@ void Radiation_rrtmgp_rt<TF>::create(
 
         allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
         allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
-        
+
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
         allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
         allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
         allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
         allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
-        
+
         if (sw_clear_sky_stats)
         {
             allowed_crossvars_radiation.push_back("sw_flux_up_clear");
@@ -878,7 +889,7 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
                 rh,
                 p_lev,
                 *aerosol_props);
-        
+
         if (sw_delta_aer)
             aerosol_props->delta_scale();
 
@@ -958,8 +969,8 @@ void Radiation_rrtmgp_rt<TF>::create_column(
     Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
     load_gas_concs(gas_concs_col, rad_nc, "lay");
-    
-    if (sw_aerosol)    
+
+    if (sw_aerosol)
     {
         load_aerosol_concs(aerosol_concs_col, rad_nc, "lay");
     }
@@ -1042,7 +1053,7 @@ void Radiation_rrtmgp_rt<TF>::read_background_profiles(
         col_dry = rad_nc.get_variable<Float>("col_dry", {n_lay_col, n_col});
     else
         Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
-    
+
 }
 
 
@@ -1287,7 +1298,6 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         }
     }
 
-
     // Set up the statistics.
     if (stats.get_switch())
     {
@@ -1297,7 +1307,7 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
 
         stats.add_prof("sw_heat_dir_rt"    , "Raytraced heating rates from direct radiation"   , "K s-2", "z", group_name);
         stats.add_prof("sw_heat_dif_rt"    , "Raytraced heating rates from diffuse radiation"  , "K s-2", "z", group_name);
-        
+
         if (sw_clear_sky_stats)
         {
             stats.add_prof("sw_flux_up_clear"    , "Clear-sky shortwave upwelling flux"         , "W m-2", "zh", group_name);

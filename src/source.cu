@@ -153,7 +153,7 @@ void Source<TF>::exec(Timeloop<TF>& timeloop)
         dim3 gridGPU (gridi, gridj, range[2]);
         dim3 blockGPU(blocki, blockj, 1);
 
-        calc_source_g<<<gridGPU, blockGPU>>>(
+        calc_source_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st[sourcelist[n]]->fld_g,
                 gd.x_g, gd.y_g, gd.z_g,
                 source_x0[n], sigma_x[n], line_x[n],
