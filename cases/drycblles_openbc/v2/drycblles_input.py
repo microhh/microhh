@@ -89,18 +89,26 @@ nghost = 3
 
 lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
 
-lbc.th_west[:,:,:,:] = th[None,:,None,None]
-lbc.th_east[:,:,:,:] = th[None,:,None,None]
+ii = 1
+
+lbc.th_west[:,:,:,:]  = th[None,:,None,None]
+lbc.th_east[:,:,:,:]  = th[None,:,None,None]
 lbc.th_south[:,:,:,:] = th[None,:,None,None]
 lbc.th_north[:,:,:,:] = th[None,:,None,None]
 
-lbc.u_west[:,:,:,:] = 0.1
-lbc.u_east[:,:,:,:] = 0
+lbc.s_west[:,:,:,:]  = 0
+lbc.s_east[:,:,:,:]  = 0
+lbc.s_south[:,:,:,:] = 0
+lbc.s_north[:,:,:,:] = 0
+lbc.s_west[:,:15,:,:] = 1
+
+lbc.u_west[:,:,:,:]  = 0.1
+lbc.u_east[:,:,:,:]  = 0
 lbc.u_south[:,:,:,:] = 0
 lbc.u_north[:,:,:,:] = 0
 
-lbc.v_west[:,:,:,:] = 0
-lbc.v_east[:,:,:,:] = 0
+lbc.v_west[:,:,:,:]  = 0
+lbc.v_east[:,:,:,:]  = 0
 lbc.v_south[:,:,:,:] = 0
 lbc.v_north[:,:,:,:] = 0.1
 
@@ -115,7 +123,6 @@ lbc.v_north[:,:,:,:] = 0.1
 #                for j in range(dims[2]):
 #                    for i in range(dims[3]):
 #                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
-
 
 lbc.to_netcdf('drycblles_lbc_input.nc')
 

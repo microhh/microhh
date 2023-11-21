@@ -1152,7 +1152,7 @@ void Boundary_lateral<TF>::create(
     }
 
     auto dump_vector = [&](
-            std::vector<float>& fld,
+            std::vector<TF>& fld,
             const std::string& name)
     {
         std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
@@ -1163,7 +1163,7 @@ void Boundary_lateral<TF>::create(
         if (pFile == NULL)
             throw std::runtime_error("Opening raw dump field failed.");
 
-        fwrite(fld.data(), sizeof(float), fld.size(), pFile);
+        fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
         fclose(pFile);
     };
 
@@ -1173,7 +1173,7 @@ void Boundary_lateral<TF>::create(
             const int isize_in, const int jsize_in,
             const int isize_out, const int jsize_out,
             const int istart_in, const int jstart_in,
-            const std::string& name)
+            const std::string& name, const std::string& loc)
     {
         const int size_in = ntime * gd.ktot * jsize_in * isize_in;
         const int size_out = ntime * gd.kcells * jsize_out * isize_out;
@@ -1224,7 +1224,7 @@ void Boundary_lateral<TF>::create(
                     igc_pad, gd.jtot+2*gd.jgc,
                     igc_pad, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
-                    name);
+                    name, "west");
 
         if (md.mpicoordx == md.npx-1)
             copy_boundary(
@@ -1232,7 +1232,7 @@ void Boundary_lateral<TF>::create(
                     gd.igc, gd.jtot+2*gd.jgc,
                     gd.igc, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
-                    name);
+                    name, "east");
 
         if (md.mpicoordy == 0)
             copy_boundary(
@@ -1240,7 +1240,7 @@ void Boundary_lateral<TF>::create(
                     gd.itot+2*gd.igc, jgc_pad,
                     gd.icells, jgc_pad,
                     md.mpicoordx*gd.imax, 0,
-                    name);
+                    name, "south");
 
         if (md.mpicoordy == md.npy-1)
             copy_boundary(
@@ -1248,7 +1248,7 @@ void Boundary_lateral<TF>::create(
                     gd.itot+2*gd.igc, gd.jgc,
                     gd.icells, gd.jgc,
                     md.mpicoordx*gd.imax, 0,
-                    name);
+                    name, "north");
 
         // Calculate domain total mass imbalance in kg s-1.
         if (name == "u")
@@ -1389,7 +1389,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     auto& md = master.get_MPI_data();
 
     auto dump_vector = [&](
-            std::vector<float>& fld,
+            std::vector<TF>& fld,
             const std::string& name)
     {
         std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
@@ -1400,25 +1400,25 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         if (pFile == NULL)
             throw std::runtime_error("Opening raw dump field failed.");
 
-        fwrite(fld.data(), sizeof(float), fld.size(), pFile);
+        fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
         fclose(pFile);
     };
 
 
     auto set_lbc_gcs_wrapper = [&](
             const std::string& fld,
-            const std::map<std::string, std::vector<TF>>& lbc,
+            std::vector<TF>& lbc,
             const Lbc_location location)
     {
         int ngc = gd.igc;
-        if (fld == "u" && md.mpicoordx == 0)
+        if (fld == "u" && location == Lbc_location::West)
             ngc += 1;
-        if (fld == "v" && md.mpicoordy == 0)
+        if (fld == "v" && location == Lbc_location::South)
             ngc += 1;
 
         set_lbc_gcs(
                 fields.ap.at(fld)->fld.data(),
-                lbc.at(fld).data(),
+                lbc.data(),
                 ngc,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -1431,13 +1431,13 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     auto set_gcs = [&](const std::string& fld)
     {
         if (md.mpicoordx == 0)
-            set_lbc_gcs_wrapper(fld, lbc_w, Lbc_location::West);
+            set_lbc_gcs_wrapper(fld, lbc_w.at(fld), Lbc_location::West);
         if (md.mpicoordx == md.npx-1)
-            set_lbc_gcs_wrapper(fld, lbc_e, Lbc_location::East);
+            set_lbc_gcs_wrapper(fld, lbc_e.at(fld), Lbc_location::East);
         if (md.mpicoordy == 0)
-            set_lbc_gcs_wrapper(fld, lbc_s, Lbc_location::South);
+            set_lbc_gcs_wrapper(fld, lbc_s.at(fld), Lbc_location::South);
         if (md.mpicoordy == md.npy-1)
-            set_lbc_gcs_wrapper(fld, lbc_n, Lbc_location::North);
+            set_lbc_gcs_wrapper(fld, lbc_n.at(fld), Lbc_location::North);
     };
 
     if (sw_inoutflow_uv)
@@ -1450,8 +1450,49 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         set_gcs(fld);
 
 
+    // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
+    // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
+    // be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
+    // gradient into the ghost cells.
+    if (sw_inoutflow_w)
+    {
+        auto set_ghost_cell_w_wrapper = [&]<Lbc_location location>()
+        {
+            set_ghost_cell_kernel_w<TF, location>(
+                    fields.mp.at("w")->fld.data(),
+                    gd.istart, gd.iend, gd.igc,
+                    gd.jstart, gd.jend, gd.jgc,
+                    gd.kstart, gd.kend+1,
+                    gd.icells, gd.jcells, gd.kcells,
+                    gd.ijcells);
+        };
 
+        auto set_corner_ghost_cell_wrapper = [&](
+                std::vector<TF>& fld,
+                const int kend)
+        {
+            set_corner_ghost_cell_kernel(
+                    fld.data(),
+                    md.mpicoordx, md.mpicoordy,
+                    md.npx, md.npy,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, kend,
+                    gd.icells, gd.jcells,
+                    gd.kcells, gd.ijcells);
+        };
 
+        if (md.mpicoordx == 0)
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::West>();
+        if (md.mpicoordx == md.npx-1)
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::East>();
+        if (md.mpicoordy == 0)
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::South>();
+        if (md.mpicoordy == md.npy-1)
+            set_ghost_cell_w_wrapper.template operator()<Lbc_location::North>();
+
+        set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
+    }
 
 
 
