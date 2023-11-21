@@ -83,34 +83,29 @@ xh = np.arange(0, xsize, dx)
 y = np.arange(dy/2, ysize, dy)
 yh = np.arange(0, ysize, dy)
 
-time = np.array([0])
-fields = ['th','s', 'u', 'v']
+time = np.array([0, 3600, 10800])
+fields = ['th','s', 'u', 'v', 'w']
 nghost = 3
 
 lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
 
-ii = 1
-
-lbc.th_west[:,:,:,:]  = th[None,:,None,None]
-lbc.th_east[:,:,:,:]  = th[None,:,None,None]
+lbc.th_west [:,:,:,:] = th[None,:,None,None]
+lbc.th_east [:,:,:,:] = th[None,:,None,None]
 lbc.th_south[:,:,:,:] = th[None,:,None,None]
 lbc.th_north[:,:,:,:] = th[None,:,None,None]
 
-lbc.s_west[:,:,:,:]  = 0
-lbc.s_east[:,:,:,:]  = 0
-lbc.s_south[:,:,:,:] = 0
-lbc.s_north[:,:,:,:] = 0
-lbc.s_west[:,:15,:,:] = 1
+lbc.u_west[0,:,:,:]  = 0
+lbc.u_west[1,:,:,:]  = 0.1
+lbc.u_west[2,:,:,:]  = 0.1
 
-lbc.u_west[:,:,:,:]  = 0.1
-lbc.u_east[:,:,:,:]  = 0
-lbc.u_south[:,:,:,:] = 0
-lbc.u_north[:,:,:,:] = 0
+#w = np.linspace(0, 0.1, 
+dwdz = 0.1/3200
+w = zh*dwdz
 
-lbc.v_west[:,:,:,:]  = 0
-lbc.v_east[:,:,:,:]  = 0
-lbc.v_south[:,:,:,:] = 0
-lbc.v_north[:,:,:,:] = 0.1
+lbc.w_west[:,:,:,:]  = w[None, :, None, None]
+lbc.w_east[:,:,:,:]  = w[None, :, None, None]
+lbc.w_south[:,:,:,:] = w[None, :, None, None]
+lbc.w_north[:,:,:,:] = w[None, :, None, None]
 
 #for fld in fields:
 #    for loc in ['west', 'east', 'south', 'north']:

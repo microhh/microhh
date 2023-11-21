@@ -13,8 +13,8 @@ def lbc_input(
     """
 
     # Checks.
-    if 'w' in fields:
-        raise Exception('You can not specify vertical velocity BCs!')
+    #if 'w' in fields:
+    #    raise Exception('You can not specify vertical velocity BCs!')
 
     nt = time.size
     itot = x.size
@@ -117,6 +117,12 @@ def lbc_input(
         add_var('v_east', ('time', 'z', 'yh', 'xge'))
         add_var('v_south', ('time', 'z', 'yhgs', 'x'))
         add_var('v_north', ('time', 'z', 'yhgn', 'x'))
+
+    if 'w' in fields:
+        add_var('w_west', ('time', 'zh', 'y', 'xgw'))
+        add_var('w_east', ('time', 'zh', 'y', 'xge'))
+        add_var('w_south', ('time', 'zh', 'ygs', 'x'))
+        add_var('w_north', ('time', 'zh', 'ygn', 'x'))
 
     return ds
 

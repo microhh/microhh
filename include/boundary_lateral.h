@@ -60,6 +60,7 @@ class Boundary_lateral
         bool sw_inoutflow;
         bool sw_inoutflow_uv;
         bool sw_inoutflow_w;
+        bool sw_neumann_w;
         bool sw_timedep;
         bool sw_wtop_2d;
 

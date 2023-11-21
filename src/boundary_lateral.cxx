@@ -938,7 +938,7 @@ namespace
             const int ngc, const int kgc,
             const int jstart, const int jend,
             const int ktot,
-            const int icells, const int jcells)
+            const int jcells)
     {
         const int jstride_w = ngc+1;
         const int kstride_w = jstride_w * jcells;
@@ -980,7 +980,7 @@ namespace
             const int ngc, const int kgc,
             const int istart, const int iend,
             const int ktot,
-            const int icells, const int jcells)
+            const int icells)
     {
         const int jstride_s = icells;
         const int kstride_s = jstride_s * (ngc+1);
@@ -1022,9 +1022,14 @@ Boundary_lateral<TF>::Boundary_lateral(
     if (sw_inoutflow)
     {
         sw_inoutflow_uv = inputin.get_item<bool>("boundary", "sw_inoutflow_uv", "", true);
-        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", true);
+        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", false);
+        sw_neumann_w = inputin.get_item<bool>("boundary", "sw_neumann_w", "", true);
         sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
         inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
+
+        // Check....
+        if (sw_inoutflow_w && sw_neumann_w)
+            throw std::runtime_error("Cant have both \"sw_inoutflow_w\" and \"sw_neumann_w\" = true!");
 
         sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
         if (sw_wtop_2d && sw_timedep)
@@ -1111,6 +1116,9 @@ void Boundary_lateral<TF>::init()
         add_lbc("u");
         add_lbc("v");
     }
+
+    if (sw_inoutflow_w)
+        add_lbc("w");
 
     for (auto& fld : inoutflow_s)
         add_lbc(fld);
@@ -1261,8 +1269,8 @@ void Boundary_lateral<TF>::create(
                     gd.dy,
                     ntime,
                     gd.igc, gd.kgc,
-                    gd.jstart, gd.jend,
-                    gd.ktot, gd.icells, gd.jcells);
+                    gd.jgc, gd.jtot+gd.jgc,
+                    gd.ktot, gd.jtot+(2*gd.jgc));
         else if (name == "v")
             calc_div_y(
                     div_v.data(),
@@ -1273,8 +1281,8 @@ void Boundary_lateral<TF>::create(
                     gd.dx,
                     ntime,
                     gd.jgc, gd.kgc,
-                    gd.istart, gd.iend,
-                    gd.ktot, gd.icells, gd.jcells);
+                    gd.igc, gd.itot+gd.igc,
+                    gd.ktot, gd.itot+(2*gd.igc));
 
         if (!sw_timedep)
         {
@@ -1309,6 +1317,9 @@ void Boundary_lateral<TF>::create(
         copy_boundaries("u");
         copy_boundaries("v");
     }
+
+    if (sw_inoutflow_w)
+        copy_boundaries("w");
 
     for (auto& fld : inoutflow_s)
         copy_boundaries(fld);
@@ -1352,10 +1363,13 @@ void Boundary_lateral<TF>::create(
             for (int t=0; t<ntime; ++t)
             {
                 // w_top is the total mass in/outflow at the top divided by the total area and the local density.
-                w_top_in[t]=-(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+                w_top_in[t] = -(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
 
                 std::string message=
-                        "<w_top> =" + std::to_string(w_top_in[t]) + " m/s @ t=" + std::to_string(time_in[t]);
+                        "- div(u) = " + std::to_string(div_u[t])
+                      + ", div(v) = " + std::to_string(div_v[t])
+                      + ", w_top = " + std::to_string(w_top_in[t])
+                      + " m/s @ t=" + std::to_string(time_in[t]) + " sec.";
                 master.print_message(message);
             }
 
@@ -1446,16 +1460,31 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         set_gcs("v");
     }
 
+    if (sw_inoutflow_w)
+        set_gcs("w");
+
     for (auto& fld : inoutflow_s)
         set_gcs(fld);
 
-
-    // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
-    // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
-    // be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
-    // gradient into the ghost cells.
-    if (sw_inoutflow_w)
+    // Set vertical velocity at domain top.
+    if (sw_inoutflow_uv)
     {
+        const int k = gd.kend;
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                const int ij = i + j*gd.icells;
+                fields.mp.at("w")->fld[ijk] = w_top[ij];
+            }
+    }
+
+    if (sw_neumann_w)
+    {
+        // Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
+        // constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
+        // be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
+        // gradient into the ghost cells.
         auto set_ghost_cell_w_wrapper = [&]<Lbc_location location>()
         {
             set_ghost_cell_kernel_w<TF, location>(
@@ -1684,18 +1713,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     //    set_corner_ghost_cell_wrapper(fields.mp.at("v")->fld, gd.kend);
     //}
 
-    //if (sw_inoutflow_u || sw_inoutflow_v)
-    //{
-    //    const int k = gd.kend;
-    //    for (int j=gd.jstart; j<gd.jend; ++j)
-    //        for (int i=gd.istart; i<gd.iend; ++i)
-    //        {
-    //            const int ijk = i + j*gd.icells + k*gd.ijcells;
-    //            const int ij = i + j*gd.icells;
-    //            fields.mp.at("w")->fld[ijk] = w_top[ij];
-    //        }
-    //}
-
     //// Here, we enfore a Neumann BC of 0 over the boundaries. This works if the large scale w is approximately
     //// constant in the horizontal plane. Note that w must be derived from u and v if the large-scale field is to
     //// be divergence free. If there is a horizontal gradient in w_top, then it is probably better to extrapolate that
@@ -1816,98 +1833,105 @@ void Boundary_lateral<TF>::update_time_dependent(
     auto& md = master.get_MPI_data();
 
     // Find index in time array.
-    //double time = timeloop.get_time();
+    double time = timeloop.get_time();
 
-    //// CvH: this is an UGLY hack, because it only works for RK4.
-    //// We need to know from the time whether we are in the last iter.
-    //// Also, it will fail miserably if we perturb the velocities at the walls
-    //if (pres_fix && timeloop.get_substep() == 4)
-    //    time += timeloop.get_dt();
+    // CvH: this is an UGLY hack, because it only works for RK4.
+    // We need to know from the time whether we are in the last iter.
+    // Also, it will fail miserably if we perturb the velocities at the walls
+    if (pres_fix && timeloop.get_substep() == 4)
+        time += timeloop.get_dt();
 
-    //int t0;
-    //for (int i=0; i<time_in.size()-1; ++i)
-    //    if (time_in[i] <= time and time_in[i+1] > time)
-    //    {
-    //        t0=i;
-    //        break;
-    //    }
+    int t0;
+    for (int i=0; i<time_in.size()-1; ++i)
+        if (time_in[i] <= time and time_in[i+1] > time)
+        {
+            t0=i;
+            break;
+        }
 
-    //// Interpolation factor.
-    //const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
-    //const TF f1 = TF(1) - f0;
+    // Interpolation factor.
+    const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+    const TF f1 = TF(1) - f0;
 
-    //// Interpolate mean domain top velocity
-    //if (sw_wtop_2d)
-    //{
-    //    unsigned long itime = timeloop.get_itime();
+    // Interpolate mean domain top velocity
+    if (sw_wtop_2d)
+    {
+        unsigned long itime = timeloop.get_itime();
 
-    //    if (itime > itime_w_top_next)
-    //    {
-    //        // Read new w_top field
-    //        const double ifactor = timeloop.get_ifactor();
-    //        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+        if (itime > itime_w_top_next)
+        {
+            // Read new w_top field
+            const double ifactor = timeloop.get_ifactor();
+            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
-    //        itime_w_top_prev = itime_w_top_next;
-    //        itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
-    //        const int iotime1 = int(itime_w_top_next / iiotimeprec);
+            itime_w_top_prev = itime_w_top_next;
+            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+            const int iotime1 = int(itime_w_top_next / iiotimeprec);
 
-    //        // Copy of data from next to prev. time
-    //        w_top_prev = w_top_next;
+            // Copy of data from next to prev. time
+            w_top_prev = w_top_next;
 
-    //        // Read new w_top slice.
-    //        read_xy_slice(w_top_next, "w_top", iotime1);
-    //    }
+            // Read new w_top slice.
+            read_xy_slice(w_top_next, "w_top", iotime1);
+        }
 
-    //    // Interpolate `w_top` field in time.
-    //    for (int n=0; n<gd.ijcells; ++n)
-    //        w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
-    //}
-    //else
-    //{
-    //    const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
-    //    std::fill(w_top.begin(), w_top.end(), w_top_int);
-    //}
+        // Interpolate `w_top` field in time.
+        for (int n=0; n<gd.ijcells; ++n)
+            w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
+    }
+    else
+    {
+        const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
+        std::fill(w_top.begin(), w_top.end(), w_top_int);
+    }
 
-    //// Interpolate boundaries in time.
-    //if (md.mpicoordx == 0)
-    //{
-    //    for (auto& it : lbc_w)
-    //        interpolate_lbc_kernel(
-    //            lbc_w.at(it.first).data(),
-    //            lbc_w_in.at(it.first).data(),
-    //            gd.kcells*gd.jcells,
-    //            t0, f0);
-    //}
+    // Interpolate boundaries in time.
+    if (md.mpicoordx == 0)
+    {
+        for (auto& it : lbc_w)
+        {
+            const int ngc = (it.first == "u") ? gd.igc+1 : gd.igc;
 
-    //if (md.mpicoordx == md.npx-1)
-    //{
-    //    for (auto& it : lbc_e)
-    //        interpolate_lbc_kernel(
-    //                lbc_e.at(it.first).data(),
-    //                lbc_e_in.at(it.first).data(),
-    //                gd.kcells*gd.jcells,
-    //                t0, f0);
-    //}
+            interpolate_lbc_kernel(
+                    lbc_w.at(it.first).data(),
+                    lbc_w_in.at(it.first).data(),
+                    gd.kcells*gd.jcells*ngc,
+                    t0, f0);
+        }
+    }
 
-    //if (md.mpicoordy == 0)
-    //{
-    //    for (auto& it : lbc_s)
-    //        interpolate_lbc_kernel(
-    //                lbc_s.at(it.first).data(),
-    //                lbc_s_in.at(it.first).data(),
-    //                gd.kcells*gd.icells,
-    //                t0, f0);
-    //}
+    if (md.mpicoordx == md.npx-1)
+    {
+        for (auto& it : lbc_e)
+            interpolate_lbc_kernel(
+                    lbc_e.at(it.first).data(),
+                    lbc_e_in.at(it.first).data(),
+                    gd.kcells*gd.jcells*gd.igc,
+                    t0, f0);
+    }
 
-    //if (md.mpicoordy == md.npy-1)
-    //{
-    //    for (auto& it : lbc_n)
-    //        interpolate_lbc_kernel(
-    //                lbc_n.at(it.first).data(),
-    //                lbc_n_in.at(it.first).data(),
-    //                gd.kcells*gd.icells,
-    //                t0, f0);
-    //}
+    if (md.mpicoordy == 0)
+    {
+        for (auto& it : lbc_s)
+        {
+            const int ngc = (it.first == "v") ? gd.jgc+1 : gd.jgc;
+            interpolate_lbc_kernel(
+                    lbc_s.at(it.first).data(),
+                    lbc_s_in.at(it.first).data(),
+                    gd.kcells*ngc*gd.icells,
+                    t0, f0);
+        }
+    }
+
+    if (md.mpicoordy == md.npy-1)
+    {
+        for (auto& it : lbc_n)
+            interpolate_lbc_kernel(
+                    lbc_n.at(it.first).data(),
+                    lbc_n_in.at(it.first).data(),
+                    gd.kcells*gd.jgc*gd.icells,
+                    t0, f0);
+    }
 }
 
 

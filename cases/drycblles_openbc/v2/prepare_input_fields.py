@@ -4,6 +4,8 @@ import xarray as xr
 from numba import jit
 
 # from interpolation_tools import calc_w_from_uv
+dtype = np.float32
+ngc = 3
 
 pl.close('all')
 
@@ -73,22 +75,21 @@ y = np.arange(dy/2, ysize , dy)
 zh = np.arange(0, zsize - dz/2, dz)
 z = np.arange(dz/2, zsize , dz)
 
-u = np.fromfile('u.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
-v = np.fromfile('v.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
-#w = np.fromfile('w.0000000', dtype=np.float64).reshape(ktot, jtot, itot)
-w = np.zeros((ktot+1, jtot, itot), dtype=np.float64)
+u = np.fromfile('u.0000000', dtype=dtype).reshape(ktot, jtot, itot)
+v = np.fromfile('v.0000000', dtype=dtype).reshape(ktot, jtot, itot)
+w = np.zeros((ktot+1, jtot, itot), dtype=dtype)
 
-rhoref_raw = np.fromfile('rhoref.0000000', dtype=np.float64)
+rhoref_raw = np.fromfile('rhoref.0000000', dtype=dtype)
 rhoref = rhoref_raw[:ktot]
 rhorefh = rhoref_raw[ktot:]
 
 lbc = xr.open_dataset('drycblles_lbc_input.nc')
 
-u_west = lbc.u_west[0].values
-u_east = lbc.u_east[0].values
+u_west = lbc.u_west[0,:,ngc:-ngc,-1].values
+u_east = lbc.u_east[0,:,ngc:-ngc,0].values
 
-v_south = lbc.v_south[0].values
-v_north = lbc.v_north[0].values
+v_south = lbc.v_south[0,:,-1,ngc:-ngc].values
+v_north = lbc.v_north[0,:,0,ngc:-ngc].values
 
 u[:, :, :] = (u_west[:,:,None] + (u_east[:,:,None] - u_west[:,:,None])    * xh[None,None,:] / xsize)
 v[:, :, :] = (v_south[:,None,:] + (v_north[:,None,:] - v_south[:,None,:]) * yh[None,:,None] / ysize)
@@ -113,14 +114,18 @@ print('<w_top> = ', w[-1,:,:].mean())
 
 pl.figure()
 k = 10
-pl.subplot(131)
+pl.subplot(221)
 pl.imshow(u[k,:,:], origin='lower')
 pl.colorbar()
 
-pl.subplot(132)
+pl.subplot(222)
 pl.imshow(v[k,:,:], origin='lower')
 pl.colorbar()
 
-pl.subplot(133)
+pl.subplot(223)
 pl.imshow(w[k,:,:], origin='lower')
+pl.colorbar()
+
+pl.subplot(224)
+pl.imshow(w[-1,:,:], origin='lower')
 pl.colorbar()
