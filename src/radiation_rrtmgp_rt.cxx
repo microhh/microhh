@@ -883,7 +883,7 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         {
             Float h2o = gas_concs.get_vmr("h2o")({1, ilay});
 
-            Float q = h2o * Constants::xmh2o<Float> / Constants::xmair<Float>;
+            Float q = h2o * Constants::ep<Float> / (TF(1.) + h2o * Constants::ep<Float>);
             Float qsat = Thermo_moist_functions::qsat(p_lay({1, ilay}), t_lay({1, ilay}));
             rh({1, ilay}) = std::max(std::min(q / qsat, TF(1.)), TF(0.));
         }
