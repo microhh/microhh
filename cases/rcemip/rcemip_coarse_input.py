@@ -12,6 +12,8 @@ q_0 = 0.01864 # for 300 K SST.
 #T_0 = 305.
 #q_0 = 0.02400 # for 305 K SST.
 
+eps = 18.01528 / 28.9647 # molar mass water / molar mass air
+
 def q_sat(T, p):
     Tc = T - 273.15
 
@@ -77,8 +79,10 @@ z  = np.arange(dz/2, z_top, dz)
 zh = np.arange(   0, z_top-dz/2, dz)
 zh = np.append(zh, z_top)
 
-p_lay, h2o, T_lay, _, o3 = calc_p_q_T_thl_o3( z)
-p_lev,   _, T_lev, _,  _ = calc_p_q_T_thl_o3(zh)
+p_lay, q, T_lay, _, o3 = calc_p_q_T_thl_o3( z)
+p_lev, _, T_lev, _,  _ = calc_p_q_T_thl_o3(zh)
+
+h2o = q / (eps - eps*q)
 
 co2 =  348.e-6
 ch4 = 1650.e-9
@@ -165,6 +169,8 @@ if (z.size != kmax):
 
 _, qt, _, thl, o3 = calc_p_q_T_thl_o3(z)
 
+h2o = qt / (eps - eps*qt)
+
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))
 nc_z[:] = z[:]
@@ -194,7 +200,7 @@ nc_CO2[:] = co2
 nc_CH4[:] = ch4
 nc_N2O[:] = n2o
 nc_O3 [:] = o3
-nc_H2O[:] = qt[:]
+nc_H2O[:] = h2o[:]
 nc_N2 [:] = n2
 nc_O2 [:] = o2
 
