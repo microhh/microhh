@@ -67,7 +67,7 @@ def calc_p_q_T_thl_o3(z):
 
     return p, q, T, thl, o3
 
-nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
+nc_file = nc.Dataset("rcemip_coarse_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 ### RADIATION INIT ###
 # Radiation profiles.
@@ -140,7 +140,7 @@ nc_CCL4 [:] = 0.
 
 ### INITIAL PROFILES ###
 # Get number of vertical levels and size from .ini file
-with open('rcemip.ini') as f:
+with open('rcemip_coarse.ini') as f:
     for line in f:
         if(line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
