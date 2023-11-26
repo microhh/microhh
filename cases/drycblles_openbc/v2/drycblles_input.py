@@ -1,32 +1,64 @@
 import numpy as np
 import netCDF4 as nc
+import xarray as xr
+import sys
 
 from lbc_input import lbc_input
+import microhh_tools as mht
+
+domain = sys.argv[1]
 
 #float_type = "f8"
 float_type = "f4"
 
-# Get number of vertical levels and size from .ini file
-with open('drycblles.ini') as f:
-    for line in f:
-        if(line.split('=')[0]=='itot'):
-            itot = int(line.split('=')[1])
-        if(line.split('=')[0]=='jtot'):
-            jtot = int(line.split('=')[1])
-        if(line.split('=')[0]=='ktot'):
-            ktot = int(line.split('=')[1])
-        if(line.split('=')[0]=='xsize'):
-            xsize = float(line.split('=')[1])
-        if(line.split('=')[0]=='ysize'):
-            ysize = float(line.split('=')[1])
-        if(line.split('=')[0]=='zsize'):
-            zsize = float(line.split('=')[1])
+swadvec = '2'   # needed for correct # gcs.
 
+ini = mht.Read_namelist('drycblles.ini.base')
+
+"""
+Grid & nesting settings.
+"""
+# Grid settings outer domain.
+itot = 64
+jtot = 64
+ktot = 64
+
+xsize = 6400
+ysize = 6400
+zsize = 3200
+
+dx = xsize / itot
+dy = ysize / jtot
 dz = zsize / ktot
 
+# Nest settings.
+refinement_fac = 3
+
+i0_nest = 16
+j0_nest = 16
+
+# Size domain in parent coordinates!
+# The nest itself has `refinement_fac` times as many grid points.
+itot_nest = 32
+jtot_nest = 32
+
+xstart_nest = i0_nest*dx
+ystart_nest = j0_nest*dy
+
+xend_nest = xstart_nest + itot_nest * dx
+yend_nest = ystart_nest + jtot_nest * dy
+
+xsize_nest = xend_nest - xstart_nest
+ysize_nest = yend_nest - ystart_nest
+
+dx_nest = xsize_nest / (itot_nest * refinement_fac)
+dy_nest = ysize_nest / (jtot_nest * refinement_fac)
+
+"""
+Define initial fields/profiles.
+"""
 dthetadz = 0.003
 
-# set the height
 z  = np.arange(0.5*dz, zsize, dz)
 zh = np.arange(0, zsize, dz)
 
@@ -34,27 +66,12 @@ u  = np.zeros(np.size(z))
 v  = np.zeros(np.size(z))
 th = np.zeros(np.size(z))
 
-# linearly stratified profile
 for k in range(ktot):
     th[k] = 300. + dthetadz*z[k]
 
 """
-# well mixed profile with jump
-h    = 1000.
-dth  = 10.
-dthz = 100.
-
-for k in range(ktot):
-    if(z[k] <= h - 0.5*dthz):
-        th[k] = 300.
-    elif(z[k] <= h + 0.5*dthz):
-        th[k] = 300. + dth/dthz * (z[k]-(h-0.5*dthz))
-    else:
-        th[k] = 300. + dth + dthetadz*(z[k]-(h+0.5*dthz))
-    thls[k] = 2.*(z[k]/zsize - 0.5) / 3600.
-    wls [k] = -0.01*(z[k]/zsize)
+Write case_input.nc
 """
-
 nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", ktot)
@@ -66,94 +83,152 @@ nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
 nc_th = nc_group_init.createVariable("th", float_type, ("z"))
 
 nc_z [:] = z [:]
-nc_u [:] = u [:]
-nc_v [:] = v [:]
+nc_u [:] = u [:] + 1
+nc_v [:] = v [:] + 1
 nc_th[:] = th[:]
 
 nc_file.close()
 
 """
+Update .ini file.
+"""
+ini['advec']['swadvec'] = swadvec
+
+if domain == 'outer':
+
+    yz = np.array([
+        xstart_nest-1.5*dx, xstart_nest-0.5*dx, xstart_nest+0.5*dx,
+        xend_nest-0.5*dx, xend_nest+0.5*dx, xend_nest+1.5*dx])
+    xz = np.array([
+        ystart_nest-1.5*dy, ystart_nest-0.5*dy, ystart_nest+0.5*dy,
+        yend_nest-0.5*dy, yend_nest+0.5*dy, yend_nest+1.5*dy])
+
+    ini['grid']['itot'] = itot
+    ini['grid']['jtot'] = jtot
+    ini['grid']['ktot'] = ktot
+
+    ini['grid']['xsize'] = xsize
+    ini['grid']['ysize'] = ysize
+    ini['grid']['zsize'] = zsize
+
+    ini['cross']['yz'] = list(yz)
+    ini['cross']['xz'] = list(xz)
+
+    ini['pres']['swopenbc']=False
+    ini['boundary']['sw_inoutflow']=False
+
+elif domain == 'inner':
+
+    ini['grid']['itot'] = itot_nest * refinement_fac
+    ini['grid']['jtot'] = jtot_nest * refinement_fac
+    ini['grid']['ktot'] = ktot
+
+    ini['grid']['xsize'] = xsize_nest
+    ini['grid']['ysize'] = ysize_nest
+    ini['grid']['zsize'] = zsize
+
+    ini['cross']['yz'] = (xend_nest+xstart_nest)/2
+    ini['cross']['xz'] = (yend_nest+ystart_nest)/2
+
+    ini['pres']['swopenbc']=True
+    ini['boundary']['sw_inoutflow']=True
+
+ini.save('drycblles.ini', allow_overwrite=True)
+
+
+"""
 Create lateral boundaries
 """
-dx = xsize / itot
-dy = ysize / jtot
+if domain == 'inner':
 
-x = np.arange(dx/2, xsize, dx)
-xh = np.arange(0, xsize, dx)
-y = np.arange(dy/2, ysize, dy)
-yh = np.arange(0, ysize, dy)
+    fields = ['u', 'v', 'w', 'th', 's']
 
-time = np.array([0, 3600, 10800])
-fields = ['th','s', 'u', 'v', 'w']
-nghost = 3
+    if swadvec == '2':
+        nghost = 1
+    elif swadvec == '2i4':
+        nghost = 2
+    elif swadvec == '2i5':
+        nghost = 3
 
-lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
+    # Read cross-sections.
+    xz = {}
+    yz = {}
+    for fld in fields:
+        xz[fld] = xr.open_dataset(f'outer/{fld}.xz.nc', decode_times=False)
+        yz[fld] = xr.open_dataset(f'outer/{fld}.yz.nc', decode_times=False)
+    time = xz[list(xz.keys())[0]].time.values
 
-lbc.th_west [:,:,:,:] = th[None,:,None,None]
-lbc.th_east [:,:,:,:] = th[None,:,None,None]
-lbc.th_south[:,:,:,:] = th[None,:,None,None]
-lbc.th_north[:,:,:,:] = th[None,:,None,None]
+    # Define nest grid.
+    x = np.arange(dx_nest/2, xsize_nest, dx_nest)
+    xh = np.arange(0, xsize_nest, dx_nest)
+    y = np.arange(dy_nest/2, ysize_nest, dy_nest)
+    yh = np.arange(0, ysize_nest, dy_nest)
 
-lbc.u_west[0,:,:,:]  = 0
-lbc.u_west[1,:,:,:]  = 0.1
-lbc.u_west[2,:,:,:]  = 0.1
+    lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost)
 
-#w = np.linspace(0, 0.1, 
-dwdz = 0.1/3200
-w = zh*dwdz
+    # Add offsets for easier interpolation.
+    for v in lbc.variables:
+        if 'x' in v:
+            lbc[v] = lbc[v] + xstart_nest
+        if 'y' in v:
+            lbc[v] = lbc[v] + ystart_nest
 
-lbc.w_west[:,:,:,:]  = w[None, :, None, None]
-lbc.w_east[:,:,:,:]  = w[None, :, None, None]
-lbc.w_south[:,:,:,:] = w[None, :, None, None]
-lbc.w_north[:,:,:,:] = w[None, :, None, None]
+    # West boundaries
+    for loc in ['west', 'east', 'north', 'south']:
+        for fld in fields:
+            # Short cuts.
+            lbc_in = lbc[f'{fld}_{loc}']
+            dims = lbc_in.dims
 
-#for fld in fields:
-#    for loc in ['west', 'east', 'south', 'north']:
-#
-#        lbc_ref = lbc[f'{fld}_{loc}']
-#        dims = lbc_ref.shape
-#
-#        for t in range(dims[0]):
-#            for k in range(dims[1]):
-#                for j in range(dims[2]):
-#                    for i in range(dims[3]):
-#                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
+            # Dimensions in LBC file.
+            xloc, yloc = dims[3], dims[2]
 
-lbc.to_netcdf('drycblles_lbc_input.nc')
+            # Dimensions in cross-section.
+            xloc_in = 'xh' if 'xh' in xloc else 'x'
+            yloc_in = 'yh' if 'yh' in yloc else 'y'
 
-#lbc.s_west [0,:] = 0
-#lbc.s_south[0,:] = 0
-#lbc.s_north[0,:] = 0
-#lbc.s_east [0,:] = 0
-#
-#lbc.s_west [1,:] = 10
-#lbc.s_south[1,:] = 0
-#lbc.s_north[1,:] = 0
-#lbc.s_east [1,:] = 0
+            # Switch between yz and xz crosses.
+            cc = yz if loc in ['west','east'] else xz
 
-#u_west = 2.1
-#u_east = 0.
-#v_south = 0.
-#v_north = 2.
+            # Interpolate!
+            ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]})
+            lbc_in[:] = ip[fld].values
 
-#u_west = 0
-#u_east = 0.
-#v_south = 0.
-#v_north = 0.
+    lbc.to_netcdf('drycblles_lbc_input.nc')
 
-#rnd_amp = 0 #0.01
-#
-#def make_rand(n0, n1, n2):
-#    rnd = np.random.rand(n0, n1, n2)
-#    return rnd - rnd.mean()
-#
-#lbc.u_west[:, :, :]  = u_west + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-#lbc.u_east[:, :, :]  = u_east + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-#lbc.u_south[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-#lbc.u_north[:, :, :] = u_west + (u_east - u_west) * xh[None, None, :]/xsize + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-#
-#lbc.v_west[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-#lbc.v_east[:, :, :]  = v_south + (v_north - v_south) * yh[None, None, :]/ysize + rnd_amp * make_rand(2, ktot, jtot) * (zsize - z[None, :, None])/zsize
-#lbc.v_south[:, :, :] = v_south + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
-#lbc.v_north[:, :, :] = v_north + rnd_amp * make_rand(2, ktot, itot) * (zsize - z[None, :, None])/zsize
+
+    #lbc.th_west [:,:,:,:] = th[None,:,None,None]
+    #lbc.th_east [:,:,:,:] = th[None,:,None,None]
+    #lbc.th_south[:,:,:,:] = th[None,:,None,None]
+    #lbc.th_north[:,:,:,:] = th[None,:,None,None]
+    #
+    #lbc.u_west[0,:,:,:]  = 0
+    #lbc.u_west[1,:,:,:]  = 0.1
+    #lbc.u_west[2,:,:,:]  = 0.1
+    #
+    ##w = np.linspace(0, 0.1,
+    #dwdz = 0.1/3200
+    #w = zh*dwdz
+    #
+    #lbc.w_west[:,:,:,:]  = w[None, :, None, None]
+    #lbc.w_east[:,:,:,:]  = w[None, :, None, None]
+    #lbc.w_south[:,:,:,:] = w[None, :, None, None]
+    #lbc.w_north[:,:,:,:] = w[None, :, None, None]
+
+    ##for fld in fields:
+    ##    for loc in ['west', 'east', 'south', 'north']:
+    ##
+    ##        lbc_ref = lbc[f'{fld}_{loc}']
+    ##        dims = lbc_ref.shape
+    ##
+    ##        for t in range(dims[0]):
+    ##            for k in range(dims[1]):
+    ##                for j in range(dims[2]):
+    ##                    for i in range(dims[3]):
+    ##                        lbc_ref[t,k,j,i] = t*1000 + k*100 + j*10 + i
+
+    #lbc.to_netcdf('drycblles_lbc_input.nc')
+
+
+
 
