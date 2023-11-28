@@ -59,11 +59,11 @@ sw_inoutflow_w=true
 sw_neumann_w=false
 sw_timedep=true
 
-#sw_sponge=true
-#n_sponge=4
-#tau_nudge=50
-#w_diff=0.002
-#
+sw_sponge=true
+n_sponge=3
+w_diff=0.002
+tau_nudge=1e9
+
 #sw_perturb=true
 #perturb_list=th,s
 #perturb_width=4

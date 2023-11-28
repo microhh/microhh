@@ -19,9 +19,9 @@ ini = mht.Read_namelist('drycblles.ini.base')
 Grid & nesting settings.
 """
 # Grid settings outer domain.
-itot = 64
-jtot = 64
-ktot = 64
+itot = 128
+jtot = 128
+ktot = 128
 
 xsize = 6400
 ysize = 6400
@@ -32,15 +32,15 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Nest settings.
-refinement_fac = 3
+refinement_fac = 1
 
-i0_nest = 16
-j0_nest = 16
+i0_nest = 32
+j0_nest = 32
 
 # Size domain in parent coordinates!
 # The nest itself has `refinement_fac` times as many grid points.
-itot_nest = 32
-jtot_nest = 32
+itot_nest = 64
+jtot_nest = 64
 
 xstart_nest = i0_nest*dx
 ystart_nest = j0_nest*dy
@@ -83,8 +83,8 @@ nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
 nc_th = nc_group_init.createVariable("th", float_type, ("z"))
 
 nc_z [:] = z [:]
-nc_u [:] = u [:] + 1
-nc_v [:] = v [:] + 1
+nc_u [:] = u [:] #+ 1
+nc_v [:] = v [:] #+ 0.5
 nc_th[:] = th[:]
 
 nc_file.close()
