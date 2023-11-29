@@ -523,19 +523,20 @@ namespace
 
                         // Calculate diffusion term over 3x3x3 stencil.
                         // Offset block near lateral boundaries to avoid using ghost cells.
-                        const int io =
-                                (mpiidx == 0 && i == istart) ? 1 :
-                                (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
+                        //const int io =
+                        //        (mpiidx == 0 && i == istart) ? 1 :
+                        //        (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
 
-                        const int jo =
-                                (location == Lbc_location::South && n==1) ? 1 :
-                                (location == Lbc_location::North && n==1) ? -1 : 0;
+                        //const int jo =
+                        //        (location == Lbc_location::South && n==1) ? 1 :
+                        //        (location == Lbc_location::North && n==1) ? -1 : 0;
 
                         const int ko =
                                 (k == kstart) ? 1 :
                                 (k == kend-1) ? -1 : 0;
 
-                        const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+                        //const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+                        const int ijkc = i + j*icells + (k+ko)*(ijcells);
 
                         const TF a_diff = diffusion_3x3x3(
                                 a, ijkc, icells, ijcells);
@@ -1480,6 +1481,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
     for (auto& fld : inoutflow_s)
         set_gcs(fld);
 
+
     // Set vertical velocity at domain top.
     if (sw_inoutflow_uv)
     {
@@ -1536,8 +1538,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
         set_corner_ghost_cell_wrapper(fields.mp.at("w")->fld, gd.kend+1);
     }
-
-
 
     //auto set_ghost_cell_s_wrapper = [&]<Lbc_location location>(
     //        std::map<std::string, std::vector<TF>>& lbc_map,
@@ -1796,7 +1796,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
         //set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
-
 
     //if (sw_perturb)
     //{
