@@ -263,6 +263,7 @@ namespace
     template<typename TF>
     TF diffusion_3x3x3(
         const TF* const restrict fld,
+        const TF lbc_val,
         const int ijk,
         const int icells,
         const int ijcells)
@@ -273,16 +274,24 @@ namespace
             return ijk + i3-1 + (j3-1)*icells + (k3-1)*ijcells;
         };
 
-        const TF fld_diff =
-                - TF(1) * fld[index(0,0,0)] + TF(2) * fld[index(0,1,0)] - TF(1) * fld[index(0,2,0)]
-                + TF(2) * fld[index(1,0,0)] - TF(4) * fld[index(1,1,0)] + TF(2) * fld[index(1,2,0)]
-                - TF(1) * fld[index(2,0,0)] + TF(2) * fld[index(2,1,0)] - TF(1) * fld[index(2,2,0)]
-                + TF(2) * fld[index(0,0,1)] - TF(4) * fld[index(0,1,1)] + TF(2) * fld[index(0,2,1)]
-                - TF(4) * fld[index(1,0,1)] + TF(8) * fld[index(1,1,1)] - TF(4) * fld[index(1,2,1)]
-                + TF(2) * fld[index(2,0,1)] - TF(4) * fld[index(2,1,1)] + TF(2) * fld[index(2,2,1)]
-                - TF(1) * fld[index(0,0,2)] + TF(2) * fld[index(0,1,2)] - TF(1) * fld[index(0,2,2)]
-                + TF(2) * fld[index(1,0,2)] - TF(4) * fld[index(1,1,2)] + TF(2) * fld[index(1,2,2)]
-                - TF(1) * fld[index(2,0,2)] + TF(2) * fld[index(2,1,2)] - TF(1) * fld[index(2,2,2)];
+        //const TF fld_diff =
+        //        - TF(1) * fld[index(0,0,0)] + TF(2) * fld[index(0,1,0)] - TF(1) * fld[index(0,2,0)]
+        //        + TF(2) * fld[index(1,0,0)] - TF(4) * fld[index(1,1,0)] + TF(2) * fld[index(1,2,0)]
+        //        - TF(1) * fld[index(2,0,0)] + TF(2) * fld[index(2,1,0)] - TF(1) * fld[index(2,2,0)]
+        //        + TF(2) * fld[index(0,0,1)] - TF(4) * fld[index(0,1,1)] + TF(2) * fld[index(0,2,1)]
+        //        - TF(4) * fld[index(1,0,1)] + TF(8) * fld[index(1,1,1)] - TF(4) * fld[index(1,2,1)]
+        //        + TF(2) * fld[index(2,0,1)] - TF(4) * fld[index(2,1,1)] + TF(2) * fld[index(2,2,1)]
+        //        - TF(1) * fld[index(0,0,2)] + TF(2) * fld[index(0,1,2)] - TF(1) * fld[index(0,2,2)]
+        //        + TF(2) * fld[index(1,0,2)] - TF(4) * fld[index(1,1,2)] + TF(2) * fld[index(1,2,2)]
+        //        - TF(1) * fld[index(2,0,2)] + TF(2) * fld[index(2,1,2)] - TF(1) * fld[index(2,2,2)];
+
+        const TF vc = lbc_val - fld[ijk];
+        const TF v1 = lbc_val - fld[ijk-1];
+        const TF v2 = lbc_val - fld[ijk+1];
+        const TF v3 = lbc_val - fld[ijk-icells];
+        const TF v4 = lbc_val - fld[ijk+icells];
+
+        const TF fld_diff = v1 + v2 + v3 + v3 - TF(4) * vc;
 
         return fld_diff;
     }
@@ -314,7 +323,8 @@ namespace
             for (int j=jstart; j<jend; ++j)
             {
                 const int ilbc = (location==Lbc_location::West) ? igc : 0;
-                const int jk = ilbc + j*igc + k*igc*jcells;
+                const int igc_pad = (location==Lbc_location::West) ? igc+1 : igc;
+                const int jk = ilbc + j*igc_pad + k*igc_pad*jcells;
 
                 for (int n=2; n<=N_sponge; ++n)
                 {
@@ -329,21 +339,23 @@ namespace
                     //        (mpiidy == 0 && j == jstart) ? 1 :
                     //        (mpiidy == npy-1 && j == jend-1) ? -1 : 0;
 
-                    const int ko =
-                            (k == kstart) ? 1 :
-                            (k == kend-1) ? -1 : 0;
+                    //const int ko =
+                    //        (k == kstart) ? 1 :
+                    //        (k == kend-1) ? -1 : 0;
 
                     //const int ijkc = i + (j+jo)*icells + (k+ko)*(ijcells);
-                    const int ijkc = i + j*icells + (k+ko)*(ijcells);
+                    //const int ijkc = i + j*icells + (k+ko)*(ijcells);
 
                     const TF u_diff = diffusion_3x3x3(
-                            u, ijkc, icells, ijcells);
+                            u, lbc_u[jk], ijk, icells, ijcells);
 
                     // Nudge coefficient.
-                    const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
+                    const TF f_sponge = (TF(1)+N_sponge-n) / N_sponge;
+                    const TF w1n = w_dt * f_sponge;
+                    const TF w2n = w_diff * f_sponge;
 
-                    ut[ijk] += w1*(lbc_u[jk]-u[ijk]);
-                    ut[ijk] -= w_diff*u_diff;
+                    ut[ijk] += w1n * (lbc_u[jk]-u[ijk]);
+                    ut[ijk] -= w2n * u_diff;
                 }
             }
     }
@@ -375,7 +387,8 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int jlbc = (location==Lbc_location::South) ? jgc : 0;
-                const int ik = i + jlbc*icells + k*icells*jgc;
+                const int jgc_pad = (location==Lbc_location::South) ? jgc+1 : jgc;
+                const int ik = i + jlbc*icells + k*icells*jgc_pad;
 
                 for (int n=2; n<=N_sponge; ++n)
                 {
@@ -390,21 +403,23 @@ namespace
                     //        (mpiidx == 0 && i == istart) ? 1 :
                     //        (mpiidx == npx-1 && i == iend-1) ? -1 : 0;
 
-                    const int ko =
-                            (k == kstart) ? 1 :
-                            (k == kend-1) ? -1 : 0;
+                    //const int ko =
+                    //        (k == kstart) ? 1 :
+                    //        (k == kend-1) ? -1 : 0;
 
                     //const int ijkc = i+io + j*icells + (k+ko)*(ijcells);
-                    const int ijkc = i + j*icells + (k+ko)*(ijcells);
+                    //const int ijkc = i + j*icells + (k+ko)*(ijcells);
 
                     const TF v_diff = diffusion_3x3x3(
-                            v, ijkc, icells, ijcells);
+                            v, lbc_v[ik], ijk, icells, ijcells);
 
                     // Nudge coefficient.
-                    const TF w1 = w_dt * (TF(1)+N_sponge-n) / N_sponge;
+                    const TF f_sponge = (TF(1)+N_sponge-n) / N_sponge;
+                    const TF w1n = w_dt * f_sponge;
+                    const TF w2n = w_diff * f_sponge;
 
-                    vt[ijk] += w1*(lbc_v[ik]-v[ijk]);
-                    vt[ijk] -= w_diff*v_diff;
+                    vt[ijk] += w1n * (lbc_v[ik]-v[ijk]);
+                    vt[ijk] -= w2n * v_diff;
                 }
             }
     }
@@ -463,26 +478,24 @@ namespace
                         //        (mpiidy == 0 && j == jstart) ? 1 :
                         //        (mpiidy == npy-1 && j == jend-1) ? -1 : 0;
 
-                        const int ko =
-                                (k == kstart) ? 1 :
-                                (k == kend-1) ? -1 : 0;
+                        //const int ko =
+                        //        (k == kstart) ? 1 :
+                        //        (k == kend-1) ? -1 : 0;
 
-                        const int ijkc = i + j*icells + (k+ko)*(ijcells);
+                        //const int ijkc = i + j*icells + (k+ko)*(ijcells);
                         //const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
 
                         const TF a_diff = diffusion_3x3x3(
-                                a, ijk, icells, ijcells);
+                                a, lbc[jk], ijk, icells, ijcells);
 
                         // Nudge coefficient.
                         const TF f_sponge = (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
-                        const TF w1 = w_dt * f_sponge;
-
-                        const TF lbc_val = lbc[jk];
-                        const TF fld_val = a[ijk];
+                        const TF w1n = w_dt * f_sponge;
+                        const TF w2n = w_diff * f_sponge;
 
                         // Apply nudge and sponge tendencies.
-                        at[ijk] += w1*(lbc[jk]-a[ijk]);
-                        at[ijk] -= w_diff*a_diff;
+                        at[ijk] += w1n * (lbc[jk]-a[ijk]);
+                        at[ijk] -= w2n * a_diff;
 
                         // Turbulence recycling.
                         //if (sw_recycle)
@@ -531,22 +544,23 @@ namespace
                         //        (location == Lbc_location::South && n==1) ? 1 :
                         //        (location == Lbc_location::North && n==1) ? -1 : 0;
 
-                        const int ko =
-                                (k == kstart) ? 1 :
-                                (k == kend-1) ? -1 : 0;
+                        //const int ko =
+                        //        (k == kstart) ? 1 :
+                        //        (k == kend-1) ? -1 : 0;
 
-                        //const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
-                        const int ijkc = i + j*icells + (k+ko)*(ijcells);
+                        ////const int ijkc = (i+io) + (j+jo)*icells + (k+ko)*(ijcells);
+                        //const int ijkc = i + j*icells + (k+ko)*(ijcells);
 
                         const TF a_diff = diffusion_3x3x3(
-                                a, ijkc, icells, ijcells);
+                                a, lbc[ik], ijk, icells, ijcells);
 
                         // Nudge coefficient.
                         const TF f_sponge = (TF(1)+N_sponge-(n+TF(0.5))) / N_sponge;
-                        const TF w1 = w_dt * f_sponge;
+                        const TF w1n = w_dt * f_sponge;
+                        const TF w2n = w1n; //w_diff * f_sponge;
 
-                        at[ijk] += w1*(lbc[ik]-a[ijk]);
-                        at[ijk] -= w_diff*a_diff;
+                        at[ijk] += w1n*(lbc[ik]-a[ijk]);
+                        at[ijk] -= w2n*a_diff;
 
                         //if (sw_recycle)
                         //{
@@ -1653,16 +1667,6 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_uv)
     {
-        if (md.mpicoordy == 0)
-        {
-            sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
-            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        }
-        if (md.mpicoordy == md.npy-1)
-        {
-            sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
-            sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        }
         if (md.mpicoordx == 0)
         {
             sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
@@ -1672,6 +1676,16 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
         {
             sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
             sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
+        }
+        if (md.mpicoordy == 0)
+        {
+            sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
+            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        }
+        if (md.mpicoordy == md.npy-1)
+        {
+            sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
+            sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
         }
     }
 
@@ -1796,6 +1810,14 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
         //set_corner_ghost_cell_wrapper(fields.ap.at(fld)->fld, gd.kend);
     }
+
+    //dump_vector(fields.ap.at("u")->fld, "u");
+    //dump_vector(fields.ap.at("v")->fld, "v");
+
+    //dump_vector(fields.at.at("u")->fld, "ut");
+    //dump_vector(fields.at.at("v")->fld, "vt");
+
+    //throw 1;
 
     //if (sw_perturb)
     //{

@@ -1,3 +1,4 @@
+import matplotlib.pyplot as pl
 import numpy as np
 import netCDF4 as nc
 import xarray as xr
@@ -5,6 +6,8 @@ import sys
 
 from lbc_input import lbc_input
 import microhh_tools as mht
+
+pl.close('all')
 
 domain = sys.argv[1]
 
@@ -17,6 +20,33 @@ ini = mht.Read_namelist('drycblles.ini.base')
 
 """
 Grid & nesting settings.
+"""
+
+# Grid settings outer domain.
+itot = 128
+jtot = 128
+ktot = 128
+
+xsize = 6400
+ysize = 6400
+zsize = 3200
+
+dx = xsize / itot
+dy = ysize / jtot
+dz = zsize / ktot
+
+# Nest settings.
+refinement_fac = 1
+
+i0_nest = 32
+j0_nest = 32
+
+# Size domain in parent coordinates!
+# The nest itself has `refinement_fac` times as many grid points.
+itot_nest = 64
+jtot_nest = 64
+32
+32
 """
 # Grid settings outer domain.
 itot = 128
@@ -41,6 +71,7 @@ j0_nest = 32
 # The nest itself has `refinement_fac` times as many grid points.
 itot_nest = 64
 jtot_nest = 64
+"""
 
 xstart_nest = i0_nest*dx
 ystart_nest = j0_nest*dy
@@ -83,8 +114,8 @@ nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
 nc_th = nc_group_init.createVariable("th", float_type, ("z"))
 
 nc_z [:] = z [:]
-nc_u [:] = u [:] #+ 1
-nc_v [:] = v [:] #+ 0.5
+nc_u [:] = u [:] + 2
+nc_v [:] = v [:] + 1
 nc_th[:] = th[:]
 
 nc_file.close()
@@ -97,11 +128,11 @@ ini['advec']['swadvec'] = swadvec
 if domain == 'outer':
 
     yz = np.array([
-        xstart_nest-1.5*dx, xstart_nest-0.5*dx, xstart_nest+0.5*dx,
-        xend_nest-0.5*dx, xend_nest+0.5*dx, xend_nest+1.5*dx])
+        xstart_nest-2.5*dx, xstart_nest-1.5*dx, xstart_nest-0.5*dx, xstart_nest+0.5*dx,
+        xend_nest-0.5*dx, xend_nest+0.5*dx, xend_nest+1.5*dx, xend_nest+2.5*dx])
     xz = np.array([
-        ystart_nest-1.5*dy, ystart_nest-0.5*dy, ystart_nest+0.5*dy,
-        yend_nest-0.5*dy, yend_nest+0.5*dy, yend_nest+1.5*dy])
+        ystart_nest-2.5*dy, ystart_nest-1.5*dy, ystart_nest-0.5*dy, ystart_nest+0.5*dy,
+        yend_nest-0.5*dy, yend_nest+0.5*dy, yend_nest+1.5*dy, yend_nest+2.5*dy])
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
@@ -142,6 +173,11 @@ Create lateral boundaries
 if domain == 'inner':
 
     fields = ['u', 'v', 'w', 'th', 's']
+
+    #noise_ampl = {
+    #        'u': 1e-2,
+    #        'v': 1e-2,
+    #        'th': 1e-1}
 
     if swadvec == '2':
         nghost = 1
@@ -192,6 +228,11 @@ if domain == 'inner':
 
             # Interpolate!
             ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]})
+
+            # Check if interpolation was success.
+            if np.any(np.isnan(ip[fld].values)):
+                raise Exception('Interpolated BCs contain NaNs!')
+
             lbc_in[:] = ip[fld].values
 
     lbc.to_netcdf('drycblles_lbc_input.nc')
