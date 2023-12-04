@@ -11,8 +11,7 @@ pl.close('all')
 
 domain = sys.argv[1]
 
-#float_type = "f8"
-float_type = "f4"
+float_type = np.float32
 
 swadvec = '2'   # needed for correct # gcs.
 
@@ -36,7 +35,7 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Nest settings.
-refinement_fac = 3
+refinement_fac = 1
 
 i0_nest = 32
 j0_nest = 32
@@ -111,32 +110,25 @@ ini['advec']['swadvec'] = swadvec
 
 if domain == 'outer':
 
-    x0 = xstart_nest - nghost * dx_nest
-    x1 = xstart_nest + nbuffer * dx_nest
+    x0 = np.floor((xstart_nest - nghost  * dx_nest) / dx) * dx
+    x1 = np.ceil ((xstart_nest + nbuffer * dx_nest) / dx) * dx
     yzw = np.arange(x0, x1+1e-3, dx)
 
-    x0 = xend_nest - nbuffer * dx_nest
-    x1 = xend_nest + nghost * dx_nest
+    x0 = np.floor((xend_nest - nbuffer * dx_nest) / dx) * dx
+    x1 = np.ceil ((xend_nest + nghost  * dx_nest) / dx) * dx
     yze = np.arange(x0, x1+1e-3, dx)
 
     yz = np.concatenate((yzw, yze))
 
-    y0 = ystart_nest - nghost * dy_nest
-    y1 = ystart_nest + nbuffer * dy_nest
+    y0 = np.floor((ystart_nest - nghost  * dy_nest) / dy) * dy
+    y1 = np.ceil ((ystart_nest + nbuffer * dy_nest) / dy) * dy
     xzs = np.arange(y0, y1+1e-3, dy)
 
-    y0 = yend_nest - nbuffer * dy_nest
-    y1 = yend_nest + nghost * dy_nest
+    y0 = np.floor((yend_nest - nbuffer * dy_nest) / dy) * dy
+    y1 = np.ceil ((yend_nest + nghost  * dy_nest) / dy) * dy
     xzn = np.arange(y0, y1+1e-3, dy)
 
     xz = np.concatenate((xzs, xzn))
-
-#    #yz = np.array([
-#    #    xstart_nest-2.5*dx, xstart_nest-1.5*dx, xstart_nest-0.5*dx, xstart_nest+0.5*dx,
-#    #    xend_nest-0.5*dx, xend_nest+0.5*dx, xend_nest+1.5*dx, xend_nest+2.5*dx])
-#    #xz = np.array([
-#    #    ystart_nest-2.5*dy, ystart_nest-1.5*dy, ystart_nest-0.5*dy, ystart_nest+0.5*dy,
-#    #    yend_nest-0.5*dy, yend_nest+0.5*dy, yend_nest+1.5*dy, yend_nest+2.5*dy])
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
@@ -164,6 +156,7 @@ elif domain == 'inner':
 
     ini['cross']['yz'] = (xend_nest+xstart_nest)/2
     ini['cross']['xz'] = (yend_nest+ystart_nest)/2
+
 
     ini['pres']['swopenbc']=True
     ini['boundary']['sw_inoutflow']=True
@@ -219,7 +212,8 @@ if domain == 'inner':
             cc = yz if loc in ['west','east'] else xz
 
             # Interpolate!
-            ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]})
+            ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]}, method='nearest')
+            #ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]})
 
             # Check if interpolation was success.
             if np.any(np.isnan(ip[fld].values)):
@@ -227,4 +221,24 @@ if domain == 'inner':
 
             lbc_in[:] = ip[fld].values
 
+    # Check divergence.
+    # NOTE: only works for:
+    # - Single ghost cell
+    # - Equidistant vertical grid.
+    # - Density == 1
+    #for t in range(time.size):
+    #
+    #    u_west = lbc['u_west'][t, :, 1:-1,  1]
+    #    u_east = lbc['u_east'][t, :, 1:-1, -1]
+    #    v_south = lbc['v_south'][t, :,  1, 1:-1]
+    #    v_north = lbc['v_north'][t, :, -1, 1:-1]
+    #
+    #    div_x = (u_east - u_west).sum() * ysize_nest * zsize
+    #    div_y = (v_north - v_south).sum() * xsize_nest * zsize
+    #    w = -(div_x + div_y) / (xsize_nest * ysize_nest)
+    #
+    #    print(t, div_x.values, div_y.values, w.values)
+
     lbc.to_netcdf('drycblles_lbc_input.nc')
+
+

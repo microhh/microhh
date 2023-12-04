@@ -94,6 +94,7 @@ def convert_to_nc(variables):
                     elif val == []:
                         ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
+                stop = False
                 for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
                         index = indexes_local[k]
@@ -110,6 +111,7 @@ def convert_to_nc(variables):
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:
                             print (ex)
+                            stop = True
                             break
 
                         print(
@@ -128,6 +130,10 @@ def convert_to_nc(variables):
                             ncfile.var[t, :, :, k] = fin.read(n)
 
                         fin.close()
+
+                    if stop:
+                        break
+
                 ncfile.close()
 
             except Exception as ex:
