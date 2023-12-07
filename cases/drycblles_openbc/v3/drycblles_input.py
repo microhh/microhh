@@ -2,6 +2,7 @@ import matplotlib.pyplot as pl
 import numpy as np
 import netCDF4 as nc
 import xarray as xr
+from numba import njit
 import sys
 
 from lbc_input import lbc_input
@@ -194,7 +195,6 @@ if domain == 'inner':
         if 'y' in v:
             lbc[v] = lbc[v] + ystart_nest
 
-    # West boundaries
     for loc in ['west', 'east', 'north', 'south']:
         for fld in fields:
             # Short cuts.
@@ -221,23 +221,43 @@ if domain == 'inner':
 
             lbc_in[:] = ip[fld].values
 
+    """
+    # DEBUG!
+    @njit
+    def fill(array, tsize, ksize, jsize, isize):
+        for t in range(tsize):
+            for k in range(ksize):
+                for j in range(jsize):
+                    for i in range(isize):
+                        array[t,k,j,i] = t*1000 + k*100 + j*10 + i
+
+    for loc in ['west', 'east', 'north', 'south']:
+        for fld in fields:
+            # Short cuts.
+            lbc_in = lbc[f'{fld}_{loc}']
+            dims = lbc_in.dims
+            fill(lbc_in.values, lbc_in.shape[0], lbc_in.shape[1], lbc_in.shape[2], lbc_in.shape[3])
+    """
+
+    """
     # Check divergence.
     # NOTE: only works for:
     # - Single ghost cell
     # - Equidistant vertical grid.
     # - Density == 1
-    #for t in range(time.size):
-    #
-    #    u_west = lbc['u_west'][t, :, 1:-1,  1]
-    #    u_east = lbc['u_east'][t, :, 1:-1, -1]
-    #    v_south = lbc['v_south'][t, :,  1, 1:-1]
-    #    v_north = lbc['v_north'][t, :, -1, 1:-1]
-    #
-    #    div_x = (u_east - u_west).sum() * ysize_nest * zsize
-    #    div_y = (v_north - v_south).sum() * xsize_nest * zsize
-    #    w = -(div_x + div_y) / (xsize_nest * ysize_nest)
-    #
-    #    print(t, div_x.values, div_y.values, w.values)
+    for t in range(time.size):
+
+        u_west = lbc['u_west'][t, :, 1:-1,  1]
+        u_east = lbc['u_east'][t, :, 1:-1, -1]
+        v_south = lbc['v_south'][t, :,  1, 1:-1]
+        v_north = lbc['v_north'][t, :, -1, 1:-1]
+
+        div_x = (u_east - u_west).sum() * ysize_nest * zsize
+        div_y = (v_north - v_south).sum() * xsize_nest * zsize
+        w = -(div_x + div_y) / (xsize_nest * ysize_nest)
+
+        print(t, div_x.values, div_y.values, w.values)
+    """
 
     lbc.to_netcdf('drycblles_lbc_input.nc')
 

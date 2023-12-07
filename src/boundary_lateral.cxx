@@ -162,18 +162,19 @@ namespace
         const int kk = ijcells;
 
         const int igc_pad = (location==Lbc_location::West) ? igc+1 : igc;
+        const int nstart = (location==Lbc_location::West) ? 2 : 1;
         const int jstride_lbc = igc_pad+nsponge;
 
         const TF w_dt = TF(1) / tau_nudge;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
-                for (int n=2; n<=nsponge; ++n)
+                for (int n=nstart; n<=nsponge; ++n)
                 {
                     const int ilbc = (location==Lbc_location::West) ? igc+n-1 : nsponge-n;
                     const int ijk_lbc = ilbc + j*jstride_lbc + k*jstride_lbc*jcells;
 
-                    const int i = (location==Lbc_location::West) ? istart+(n-1) : iend-(n-1);
+                    const int i = (location==Lbc_location::West) ? istart+(n-1) : iend-n;
                     const int ijk = i + j*icells + k*ijcells;
 
                     const TF u_diff = diffusion_3x3x3(
@@ -316,7 +317,7 @@ namespace
                     }
                 }
         }
-        else if (location == Lbc_location::South || location == Lbc_location::North)
+        if (location == Lbc_location::South || location == Lbc_location::North)
         {
             for (int k=kstart; k<kend; ++k)
                 for (int n=1; n<=nsponge; ++n)
@@ -693,14 +694,14 @@ namespace
 
         if (location == Lbc_location::North)
         {
-            const int jstride_n= icells;
+            const int jstride_n = icells;
             const int kstride_n = jstride_n * (ngc + nsponge);
 
             for (int k=kstart; k<kend; k++)
                 for (int j=0; j<ngc; j++)
                     for (int i=istart; i<iend; i++)
                     {
-                        const int ijk_in = (i+nsponge) + j*jstride_n + k*kstride_n;
+                        const int ijk_in = i + (j+nsponge)*jstride_n + k*kstride_n;
                         const int ijk_out = i + (j+jend)*jstride_out + k*kstride_out;
                         fld[ijk_out] = lbc[ijk_in];
                     }
@@ -1404,26 +1405,27 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     if (sw_inoutflow_uv)
     {
+        // NOTE: order of calls here is important; the `_u` and `_v` wrappers don't take
+        //       the offset in corners into account, so always first call the `_u` and `_v`
+        //       wrappers, followed by the generic `sponge_layer_wrapper()`.
+
         if (md.mpicoordx == 0)
-        {
             sponge_layer_u_wrapper.template operator()<Lbc_location::West>(lbc_w);
-            sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
-        }
         if (md.mpicoordx == md.npx-1)
-        {
             sponge_layer_u_wrapper.template operator()<Lbc_location::East>(lbc_e);
-            sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
-        }
         if (md.mpicoordy == 0)
-        {
             sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "u");
-            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
-        }
         if (md.mpicoordy == md.npy-1)
-        {
             sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "u");
+
+        if (md.mpicoordy == 0)
+            sponge_layer_v_wrapper.template operator()<Lbc_location::South>(lbc_s);
+        if (md.mpicoordy == md.npy-1)
             sponge_layer_v_wrapper.template operator()<Lbc_location::North>(lbc_n);
-        }
+        if (md.mpicoordx == 0)
+            sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
+        if (md.mpicoordx == md.npx-1)
+            sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
     }
 
     if (sw_inoutflow_w)
@@ -1474,9 +1476,13 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 
     //dump_vector(fields.ap.at("u")->fld, "u");
     //dump_vector(fields.ap.at("v")->fld, "v");
+    //dump_vector(fields.ap.at("w")->fld, "w");
+    //dump_vector(fields.ap.at("th")->fld, "th");
 
     //dump_vector(fields.at.at("u")->fld, "ut");
     //dump_vector(fields.at.at("v")->fld, "vt");
+    //dump_vector(fields.at.at("w")->fld, "wt");
+    //dump_vector(fields.at.at("th")->fld, "tht");
 
     //throw 1;
 
