@@ -744,9 +744,6 @@ namespace
                     const int ijk_w = iw + j*jstride_w + k*kstride_w + t*tstride_w;
                     const int ijk_e = ie + j*jstride_e + k*kstride_e + t*tstride_e;
 
-                    const TF v1 = lbc_u_east[ijk_e];
-                    const TF v2 = lbc_u_west[ijk_w];
-
                     div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * (lbc_u_east[ijk_e] - lbc_u_west[ijk_w]);
                 }
         }
@@ -845,7 +842,7 @@ Boundary_lateral<TF>::Boundary_lateral(
         //    }
         //}
 
-        //// Turbulence recycling.
+        // Turbulence recycling.
         //recycle_list = inputin.get_list<std::string>("boundary", "recycle_list", "", std::vector<std::string>());
         //if (recycle_list.size() > 0)
         //{
@@ -1086,8 +1083,8 @@ void Boundary_lateral<TF>::create(
                     gd.igc, gd.itot+gd.igc,
                     gd.ktot, gd.itot+(2*gd.igc));
 
-        if (!sw_timedep)
-        {
+        //if (!sw_timedep)
+        //{
             if (md.mpicoordx == 0)
             {
                 for (int n=0; n < nlbc_w * gd.jcells * gd.kcells; ++n)
@@ -1111,7 +1108,7 @@ void Boundary_lateral<TF>::create(
                 for (int n=0; n < gd.icells * nlbc_n * gd.kcells; ++n)
                     lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
             }
-        }
+        //}
     };
 
     if (sw_inoutflow_uv)
@@ -1136,12 +1133,17 @@ void Boundary_lateral<TF>::create(
             {
                 // Find previous and next times.
                 const double time = timeloop.get_time();
+                const unsigned long itime = timeloop.get_itime();
                 const double ifactor = timeloop.get_ifactor();
                 unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+                unsigned long iloadtime = ifactor * wtop_2d_loadtime + 0.5;
 
                 // Read first two input times
-                itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
-                itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+                //itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
+                //itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+
+                itime_w_top_prev = (itime / iloadtime) * iloadtime;
+                itime_w_top_next = itime_w_top_prev + iloadtime;
 
                 // IO time accounting for iotimeprec
                 const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
@@ -1536,20 +1538,40 @@ void Boundary_lateral<TF>::update_time_dependent(
 
     // Find index in time array.
     double time = timeloop.get_time();
+    unsigned long itime = timeloop.get_itime();
+    unsigned long ifactor = timeloop.get_ifactor();
 
     // CvH: this is an UGLY hack, because it only works for RK4.
     // We need to know from the time whether we are in the last iter.
     // Also, it will fail miserably if we perturb the velocities at the walls
     if (pres_fix && timeloop.get_substep() == 4)
+    {
         time += timeloop.get_dt();
+        itime += timeloop.get_idt();
+    }
 
-    int t0;
+    int t0 = -1;
     for (int i=0; i<time_in.size()-1; ++i)
-        if (time_in[i] <= time and time_in[i+1] > time)
+    {
+        const unsigned long itime_in = ifactor * time_in[i] + 0.5;
+        const unsigned long itime_next_in = ifactor * time_in[i+1] + 0.5;
+
+        if (itime_in <= itime && itime_next_in > itime)
         {
-            t0=i;
+            t0 = i;
             break;
         }
+    }
+
+    if (t0 == -1)
+    {
+        // BvS: This is anoying... Since we are setting `w_top` at `t+dt`, this
+        // fails close to `endtime`, as `time_in` gets out of bounds,
+        // and the reading of `w_top` below fails.
+        // Not sure how to best fix this correctly....
+        master.print_warning("Timedep boundary_lateral out-of-bounds at t+dt, skipping update.\n");
+        return;
+    }
 
     // Interpolation factor.
     const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
@@ -1558,9 +1580,7 @@ void Boundary_lateral<TF>::update_time_dependent(
     // Interpolate mean domain top velocity
     if (sw_wtop_2d)
     {
-        unsigned long itime = timeloop.get_itime();
-
-        if (itime > itime_w_top_next)
+        if (itime >= itime_w_top_next)
         {
             // Read new w_top field
             const double ifactor = timeloop.get_ifactor();
