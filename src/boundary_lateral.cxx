@@ -297,23 +297,23 @@ namespace
                         at[ijk] -= w2n * a_diff;
 
                         // Turbulence recycling.
-                        //if (sw_recycle)
-                        //{
-                        //    // Recycle strength; 0 at boundary, 1 at edge nudging zone.
-                        //    const TF f_recycle = TF(1) - f_sponge;
+                        if (sw_recycle)
+                        {
+                            // Recycle strength; 0 at boundary, 1 at edge nudging zone.
+                            const TF f_recycle = TF(1) - f_sponge;
 
-                        //    // Source of recycling.
-                        //    const int offset = (location == Lbc_location::West) ? recycle_offset : -recycle_offset;
-                        //    const int ijko = (i+offset) + j*icells + k*ijcells;
+                            // Source of recycling.
+                            const int offset = (location == Lbc_location::West) ? recycle_offset : -recycle_offset;
+                            const int ijko = (i+offset) + j*icells + k*ijcells;
 
-                        //    TF a_mean = 0;
-                        //    for (int jc=-3; jc<4; ++jc)
-                        //        for (int ic=-3; ic<4; ++ic)
-                        //            a_mean += a[ijko + ic + jc*icells];
-                        //    a_mean /= TF(49.);
+                            TF a_mean = 0;
+                            for (int jc=-3; jc<4; ++jc)
+                                for (int ic=-3; ic<4; ++ic)
+                                    a_mean += a[ijko + ic + jc*icells];
+                            a_mean /= TF(49.);
 
-                        //    at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[jk]));
-                        //}
+                            at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[ijk_lbc]));
+                        }
                     }
                 }
         }
@@ -345,23 +345,23 @@ namespace
                         at[ijk] += w1n*(lbc[ijk_lbc]-a[ijk]);
                         at[ijk] -= w2n*a_diff;
 
-                        //if (sw_recycle)
-                        //{
-                        //    // Recycle strength; 0 at boundary, 1 at edge nudging zone.
-                        //    const TF f_recycle = TF(1) - f_sponge;
+                        if (sw_recycle)
+                        {
+                            // Recycle strength; 0 at boundary, 1 at edge nudging zone.
+                            const TF f_recycle = TF(1) - f_sponge;
 
-                        //    // Source of recycling.
-                        //    const int offset = (location == Lbc_location::South) ? recycle_offset : -recycle_offset;
-                        //    const int ijko = i + (j+offset)*icells + k*ijcells;
+                            // Source of recycling.
+                            const int offset = (location == Lbc_location::South) ? recycle_offset : -recycle_offset;
+                            const int ijko = i + (j+offset)*icells + k*ijcells;
 
-                        //    TF a_mean = 0;
-                        //    for (int jc=-3; jc<4; ++jc)
-                        //        for (int ic=-3; ic<4; ++ic)
-                        //            a_mean += a[ijko + ic + jc*icells];
-                        //    a_mean /= TF(49.);
+                            TF a_mean = 0;
+                            for (int jc=-3; jc<4; ++jc)
+                                for (int ic=-3; ic<4; ++ic)
+                                    a_mean += a[ijko + ic + jc*icells];
+                            a_mean /= TF(49.);
 
-                        //    at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[ik]));
-                        //}
+                            at[ijk] += f_recycle * r_dt * ((a[ijko] - a_mean) - (a[ijk] - lbc[ijk_lbc]));
+                        }
                     }
                 }
         }
@@ -826,7 +826,7 @@ Boundary_lateral<TF>::Boundary_lateral(
             w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
         }
 
-        //// Inflow perturbations
+        // Inflow perturbations
         //sw_perturb = inputin.get_item<bool>("boundary", "sw_perturb", "", false);
         //if (sw_perturb)
         //{
@@ -843,12 +843,14 @@ Boundary_lateral<TF>::Boundary_lateral(
         //}
 
         // Turbulence recycling.
-        //recycle_list = inputin.get_list<std::string>("boundary", "recycle_list", "", std::vector<std::string>());
-        //if (recycle_list.size() > 0)
-        //{
-        //    tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
-        //    recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
-        //}
+        sw_recycle = inputin.get_item<bool>("boundary", "sw_recycle", "", false);
+        if (sw_recycle)
+        {
+            recycle_list = inputin.get_list<std::string>(
+                "boundary", "recycle_list", "", std::vector<std::string>());
+            tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
+            recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
+        }
     }
 }
 
@@ -867,16 +869,16 @@ void Boundary_lateral<TF>::init()
     auto& md = master.get_MPI_data();
 
     // Checks!
-    //if (recycle_list.size() > 0)
-    //{
-    //    if (!sw_sponge)
-    //        throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
+    if (sw_recycle)
+    {
+        if (!sw_sponge)
+            throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
 
-    //    if (n_sponge+recycle_offset > gd.imax+gd.igc)
-    //        throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
-    //    if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
-    //        throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
-    //}
+        if (n_sponge+recycle_offset > gd.imax+gd.igc)
+            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
+        if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
+            throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
+    }
 
     auto add_lbc = [&](const std::string& name)
     {

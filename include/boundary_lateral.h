@@ -82,6 +82,7 @@ class Boundary_lateral
         std::map<std::string, TF> perturb_ampl;
 
         // Turbulence recycling.
+        bool sw_recycle;
         std::vector<std::string> recycle_list;
         TF tau_recycle;
         int recycle_offset;
