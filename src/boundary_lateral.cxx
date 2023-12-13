@@ -934,7 +934,6 @@ void Boundary_lateral<TF>::create(
 
     // Read NetCDF file with boundary data.
     Netcdf_file input_nc = Netcdf_file(master, sim_name + "_lbc_input.nc", Netcdf_mode::Read);
-
     const int ntime = input_nc.get_dimension_size("time");
     time_in = input_nc.get_variable<TF>("time", {ntime});
 
@@ -1002,6 +1001,56 @@ void Boundary_lateral<TF>::create(
                 std::forward_as_tuple(std::move(fld_out)));
     };
 
+    auto read_binary = [&](
+            std::vector<TF>& vec,
+            const std::string file_name,
+            const unsigned long size)
+    {
+        master.print_message("Loading \"%s\" ... ", file_name.c_str());
+
+        FILE *pFile;
+        pFile = fopen(file_name.c_str(), "rb");
+
+        if (pFile == NULL)
+        {
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: reading binary failed." << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error("ERROR: reading binary failed");
+            #endif
+        }
+
+        vec.resize(size);
+
+        if (fread(vec.data(), sizeof(TF), size, pFile) != (unsigned)size)
+        {
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: reading binary data failed." << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error("ERROR: reading binary failed");
+            #endif
+        }
+
+        fclose(pFile);
+        master.print_message("OK\n");
+    };
+
+    auto print_minmax = [&](const std::vector<TF>& vec)
+    {
+        TF min_val = 1e9;
+        TF max_val = -1e9;
+
+        for (auto & val : vec)
+        {
+            min_val = std::min(min_val, val);
+            max_val = std::max(max_val, val);
+        }
+
+        master.print_message(" - min=%f, max=%f\n", min_val, max_val);
+    };
+
     auto copy_boundaries = [&](const std::string& name)
     {
         // `u` at west boundary and `v` at south boundary also contain `u` at `istart`
@@ -1015,15 +1064,20 @@ void Boundary_lateral<TF>::create(
         const int nlbc_s = jgc_pad + n_sponge;
         const int nlbc_n = gd.jgc + n_sponge;
 
-        // Read full boundaries for entire domain.
-        std::vector<TF> lbc_w_full =
-                input_nc.get_variable<TF>(name + "_west",  {ntime, gd.ktot, gd.jtot+2*gd.jgc, nlbc_w});
-        std::vector<TF> lbc_e_full =
-                input_nc.get_variable<TF>(name + "_east",  {ntime, gd.ktot, gd.jtot+2*gd.jgc, nlbc_e});
-        std::vector<TF> lbc_s_full =
-                input_nc.get_variable<TF>(name + "_south", {ntime, gd.ktot, nlbc_s, gd.itot+2*gd.igc});
-        std::vector<TF> lbc_n_full =
-                input_nc.get_variable<TF>(name + "_north", {ntime, gd.ktot, nlbc_n, gd.itot+2*gd.igc});
+        std::vector<TF> lbc_w_full;
+        std::vector<TF> lbc_e_full;
+        std::vector<TF> lbc_s_full;
+        std::vector<TF> lbc_n_full;
+
+        read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w);
+        read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e);
+        read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc));
+        read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc));
+
+        print_minmax(lbc_w_full);
+        print_minmax(lbc_e_full);
+        print_minmax(lbc_s_full);
+        print_minmax(lbc_n_full);
 
         if (md.mpicoordx == 0)
             copy_boundary(
