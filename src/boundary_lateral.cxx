@@ -1011,22 +1011,20 @@ void Boundary_lateral<TF>::create(
         FILE *pFile;
         pFile = fopen(file_name.c_str(), "rb");
 
+        bool success = true;
         if (pFile == NULL)
+            success = false;
+
+        if (success)
+        {
+            if (fread(vec.data(), sizeof(TF), size, pFile) != (unsigned)size)
+                success = false;
+        }
+
+        if (!success)
         {
             #ifdef USEMPI
             std::cout << "SINGLE PROCESS EXCEPTION: reading binary failed." << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            #else
-            throw std::runtime_error("ERROR: reading binary failed");
-            #endif
-        }
-
-        vec.resize(size);
-
-        if (fread(vec.data(), sizeof(TF), size, pFile) != (unsigned)size)
-        {
-            #ifdef USEMPI
-            std::cout << "SINGLE PROCESS EXCEPTION: reading binary data failed." << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
             #else
             throw std::runtime_error("ERROR: reading binary failed");
@@ -1064,16 +1062,31 @@ void Boundary_lateral<TF>::create(
         const int nlbc_s = jgc_pad + n_sponge;
         const int nlbc_n = gd.jgc + n_sponge;
 
+        const int ncells_w = ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w;
+        const int ncells_e = ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e;
+        const int ncells_s = ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc);
+        const int ncells_n = ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc);
+
         std::vector<TF> lbc_w_full;
         std::vector<TF> lbc_e_full;
         std::vector<TF> lbc_s_full;
         std::vector<TF> lbc_n_full;
 
+        if (md.mpicoordx == 0)
+            lbc_w_full.resize(ncells_w);
+        if (md.mpicoordx == md.npx-1)
+            lbc_e_full.resize(ncells_e);
+        if (md.mpicoordy == 0)
+            lbc_s_full.resize(ncells_s);
+        if (md.mpicoordy == md.npy-1)
+            lbc_n_full.resize(ncells_n);
 
         if (md.mpicoordx == 0)
-	{
-            read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w);
-            print_minmax(lbc_w_full);
+        {
+            // One proc reads full west boundary, and broadcasts it to all mpicoordx=0 tasks.
+            if (md.mpicoordy == 0)
+                read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ncells_w);
+            master.broadcast_y(lbc_w_full.data(), ncells_w, 0);
 
             copy_boundary(
                     lbc_w_in, lbc_w_full,
@@ -1081,12 +1094,13 @@ void Boundary_lateral<TF>::create(
                     nlbc_w, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "west");
-	}
+        }
 
         if (md.mpicoordx == md.npx-1)
-	{
-            read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e);
-            print_minmax(lbc_e_full);
+        {
+            if (md.mpicoordy == md.npy-1)
+                read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ncells_e);
+            master.broadcast_y(lbc_e_full.data(), ncells_e, md.npy-1);
 
             copy_boundary(
                     lbc_e_in, lbc_e_full,
@@ -1094,33 +1108,36 @@ void Boundary_lateral<TF>::create(
                     nlbc_e, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "east");
-	}
+	    }
 
         if (md.mpicoordy == 0)
-	{
-            read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc));
-            print_minmax(lbc_s_full);
+	    {
+            if (md.mpicoordx == md.npx-1)
+                read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ncells_s);
+            master.broadcast_x(lbc_s_full.data(), ncells_s, md.npx-1);
 
             copy_boundary(
                     lbc_s_in, lbc_s_full,
                     gd.itot+2*gd.igc, nlbc_s,
-                    gd.icells,        nlbc_s,
+                    gd.icells, nlbc_s,
                     md.mpicoordx*gd.imax, 0,
                     name, "south");
-	}
+	    }
 
         if (md.mpicoordy == md.npy-1)
-	{
-            read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc));
-            print_minmax(lbc_n_full);
+	    {
+            if (md.mpicoordx == 0)
+                read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ncells_n);
+            master.broadcast_x(lbc_n_full.data(), ncells_n, 0);
 
             copy_boundary(
                     lbc_n_in, lbc_n_full,
                     gd.itot+2*gd.igc, nlbc_n,
-                    gd.icells,        nlbc_n,
+                    gd.icells, nlbc_n,
                     md.mpicoordx*gd.imax, 0,
                     name, "north");
-	}
+	    }
+
 
         // Calculate domain total mass imbalance in kg s-1.
         //if (name == "u")

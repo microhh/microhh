@@ -230,6 +230,26 @@ void Master::broadcast(float* data, int datasize, int mpiid_to_send)
     MPI_Bcast(data, datasize, MPI_FLOAT, mpiid_to_send, md.commxy);
 }
 
+void Master::broadcast_x(double* data, int datasize, int mpiid_to_send)
+{
+    MPI_Bcast(data, datasize, MPI_DOUBLE, mpiid_to_send, md.commx);
+}
+
+void Master::broadcast_x(float* data, int datasize, int mpiid_to_send)
+{
+    MPI_Bcast(data, datasize, MPI_FLOAT, mpiid_to_send, md.commx);
+}
+
+void Master::broadcast_y(double* data, int datasize, int mpiid_to_send)
+{
+    MPI_Bcast(data, datasize, MPI_DOUBLE, mpiid_to_send, md.commy);
+}
+
+void Master::broadcast_y(float* data, int datasize, int mpiid_to_send)
+{
+    MPI_Bcast(data, datasize, MPI_FLOAT, mpiid_to_send, md.commy);
+}
+
 void Master::sum(int* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, md.commxy);

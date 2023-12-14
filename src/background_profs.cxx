@@ -81,8 +81,8 @@ Background<TF>::~Background()
 template <typename TF>
 void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
-    //if (!sw_update_background)
-    //    return;
+    if (!sw_update_background)
+        return;
 
     // Allocate (`.resize`) arrays.
     idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
@@ -91,8 +91,8 @@ void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
     n_era_layers = rad_nc.get_dimension_size("lay");
     n_era_levels = rad_nc.get_dimension_size("lev");
 
-    if (!sw_update_background)
-        return;
+    //if (!sw_update_background)
+    //    return;
 
     // temperature, pressure and moisture
     t_lay.resize(n_era_layers);

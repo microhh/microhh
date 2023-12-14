@@ -12,7 +12,7 @@ pl.close('all')
 
 domain = sys.argv[1]
 
-float_type = np.float32
+float_type = np.float64
 
 swadvec = '2'   # needed for correct # gcs.
 
@@ -261,4 +261,8 @@ if domain == 'inner':
 
     lbc.to_netcdf('drycblles_lbc_input.nc')
 
+    for fld in fields:
+        for loc in ['west', 'east', 'north', 'south']:
+            lbc_in = lbc[f'{fld}_{loc}']
+            lbc_in.values.astype(float_type).tofile('lbc_{}_{}.0000000'.format(fld, loc))
 

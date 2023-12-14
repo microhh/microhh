@@ -73,6 +73,11 @@ class Master
         void broadcast(float*, int, int mpiid_to_send=0);
         void broadcast(unsigned long*, int, int mpiid_to_send=0);
 
+        void broadcast_x(double*, int, int mpiid_to_send=0);
+        void broadcast_x(float*, int, int mpiid_to_send=0);
+        void broadcast_y(double*, int, int mpiid_to_send=0);
+        void broadcast_y(float*, int, int mpiid_to_send=0);
+
         // Overload the sum function.
         void sum(int*, int);
         void sum(double*, int);
