@@ -1069,75 +1069,86 @@ void Boundary_lateral<TF>::create(
         std::vector<TF> lbc_s_full;
         std::vector<TF> lbc_n_full;
 
-        read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w);
-        read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e);
-        read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc));
-        read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc));
-
-        print_minmax(lbc_w_full);
-        print_minmax(lbc_e_full);
-        print_minmax(lbc_s_full);
-        print_minmax(lbc_n_full);
 
         if (md.mpicoordx == 0)
+	{
+            read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w);
+            print_minmax(lbc_w_full);
+
             copy_boundary(
                     lbc_w_in, lbc_w_full,
                     nlbc_w, gd.jtot+2*gd.jgc,
                     nlbc_w, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "west");
+	}
 
         if (md.mpicoordx == md.npx-1)
+	{
+            read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e);
+            print_minmax(lbc_e_full);
+
             copy_boundary(
                     lbc_e_in, lbc_e_full,
                     nlbc_e, gd.jtot+2*gd.jgc,
                     nlbc_e, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "east");
+	}
 
         if (md.mpicoordy == 0)
+	{
+            read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc));
+            print_minmax(lbc_s_full);
+
             copy_boundary(
                     lbc_s_in, lbc_s_full,
                     gd.itot+2*gd.igc, nlbc_s,
                     gd.icells,        nlbc_s,
                     md.mpicoordx*gd.imax, 0,
                     name, "south");
+	}
 
         if (md.mpicoordy == md.npy-1)
+	{
+            read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc));
+            print_minmax(lbc_n_full);
+
             copy_boundary(
                     lbc_n_in, lbc_n_full,
                     gd.itot+2*gd.igc, nlbc_n,
                     gd.icells,        nlbc_n,
                     md.mpicoordx*gd.imax, 0,
                     name, "north");
+	}
 
         // Calculate domain total mass imbalance in kg s-1.
-        if (name == "u")
-            calc_div_x(
-                    div_u.data(),
-                    lbc_w_full.data(),
-                    lbc_e_full.data(),
-                    fields.rhoref.data(),
-                    gd.dz.data(),
-                    gd.dy,
-                    n_sponge,
-                    ntime,
-                    gd.igc, gd.kgc,
-                    gd.jgc, gd.jtot+gd.jgc,
-                    gd.ktot, gd.jtot+(2*gd.jgc));
-        else if (name == "v")
-            calc_div_y(
-                    div_v.data(),
-                    lbc_s_full.data(),
-                    lbc_n_full.data(),
-                    fields.rhoref.data(),
-                    gd.dz.data(),
-                    gd.dx,
-                    n_sponge,
-                    ntime,
-                    gd.jgc, gd.kgc,
-                    gd.igc, gd.itot+gd.igc,
-                    gd.ktot, gd.itot+(2*gd.igc));
+        //if (name == "u")
+        //    calc_div_x(
+        //            div_u.data(),
+        //            lbc_w_full.data(),
+        //            lbc_e_full.data(),
+        //            fields.rhoref.data(),
+        //            gd.dz.data(),
+        //            gd.dy,
+        //            n_sponge,
+        //            ntime,
+        //            gd.igc, gd.kgc,
+        //            gd.jgc, gd.jtot+gd.jgc,
+        //            gd.ktot, gd.jtot+(2*gd.jgc));
+        //else if (name == "v")
+        //    calc_div_y(
+        //            div_v.data(),
+        //            lbc_s_full.data(),
+        //            lbc_n_full.data(),
+        //            fields.rhoref.data(),
+        //            gd.dz.data(),
+        //            gd.dx,
+        //            n_sponge,
+        //            ntime,
+        //            gd.jgc, gd.kgc,
+        //            gd.igc, gd.itot+gd.igc,
+        //            gd.ktot, gd.itot+(2*gd.igc));
 
         //if (!sw_timedep)
         //{
