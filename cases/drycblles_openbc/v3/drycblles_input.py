@@ -23,9 +23,9 @@ Grid & nesting settings.
 """
 
 # Grid settings outer domain.
-itot = 128
-jtot = 128
-ktot = 128
+itot = 64
+jtot = 64
+ktot = 64
 
 xsize = 6400
 ysize = 6400
@@ -38,13 +38,13 @@ dz = zsize / ktot
 # Nest settings.
 refinement_fac = 1
 
-i0_nest = 32
-j0_nest = 32
+i0_nest = 16
+j0_nest = 16
 
 # Size domain in parent coordinates!
 # The nest itself has `refinement_fac` times as many grid points.
-itot_nest = 64
-jtot_nest = 64
+itot_nest = 32
+jtot_nest = 32
 
 # Number of lateral buffer points.
 nbuffer = 5

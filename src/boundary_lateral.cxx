@@ -709,11 +709,10 @@ namespace
     };
 
 
-    template<typename TF>
+    template<typename TF, Lbc_location lbc_location>
     void calc_div_x(
             TF* const restrict div,
-            const TF* const restrict lbc_u_west,
-            const TF* const restrict lbc_u_east,
+            const TF* const restrict lbc_u,
             const TF* const restrict rhoref,
             const TF* const restrict dz,
             const TF dy,
@@ -736,24 +735,24 @@ namespace
         const int ie = nsponge;
 
         for (int t=0; t<ntime; ++t)
-        {
-            div[t] = 0;
             for (int k=0; k<ktot; ++k)
                 for (int j=jstart; j<jend; ++j)
                 {
                     const int ijk_w = iw + j*jstride_w + k*kstride_w + t*tstride_w;
                     const int ijk_e = ie + j*jstride_e + k*kstride_e + t*tstride_e;
 
-                    div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * (lbc_u_east[ijk_e] - lbc_u_west[ijk_w]);
+                    // Div = east-west.
+                    if (lbc_location == Lbc_location::East)
+                        div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_e];
+                    else
+                        div[t] -= rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_w];
                 }
-        }
     }
 
-    template<typename TF>
+    template<typename TF, Lbc_location lbc_location>
     void calc_div_y(
             TF* const restrict div,
-            const TF* const restrict lbc_v_south,
-            const TF* const restrict lbc_v_north,
+            const TF* const restrict lbc_v,
             const TF* const restrict rhoref,
             const TF* const restrict dz,
             const TF dx,
@@ -776,20 +775,18 @@ namespace
         const int jn = nsponge;
 
         for (int t=0; t<ntime; ++t)
-        {
-            div[t] = 0;
             for (int k=0; k<ktot; ++k)
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk_s = i + js*jstride_s + k*kstride_s + t*tstride_s;
                     const int ijk_n = i + jn*jstride_n + k*kstride_n + t*tstride_n;
 
-                    const TF v1 = lbc_v_north[ijk_n];
-                    const TF v2 = lbc_v_south[ijk_s];
-
-                    div[t] += rhoref[k+kgc] * dx * dz[k+kgc] * (lbc_v_north[ijk_n] - lbc_v_south[ijk_s]);
+                    // Div = north-south.
+                    if (lbc_location == Lbc_location::North)
+                        div[t] += rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_n];
+                    else
+                        div[t] -= rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_s];
                 }
-        }
     }
 }
 
@@ -945,6 +942,9 @@ void Boundary_lateral<TF>::create(
         div_u.resize(ntime);
         div_v.resize(ntime);
         w_top.resize(gd.ijcells);
+
+        std::fill(div_u.begin(), div_u.end(), TF(0));
+        std::fill(div_v.begin(), div_v.end(), TF(0));
     }
 
     auto dump_vector = [&](
@@ -1006,7 +1006,9 @@ void Boundary_lateral<TF>::create(
             const std::string file_name,
             const unsigned long size)
     {
-        master.print_message("Loading \"%s\" ... ", file_name.c_str());
+        // Only single tasks reads, so safe (and necessary!) to printf().
+        //master.print_message("Loading \"%s\" ... ", file_name.c_str());
+        printf("Loading \"%s\" at mpiidx=%d, mpiidy=%d ... ", file_name.c_str(), md.mpicoordx, md.mpicoordy);
 
         FILE *pFile;
         pFile = fopen(file_name.c_str(), "rb");
@@ -1032,10 +1034,10 @@ void Boundary_lateral<TF>::create(
         }
 
         fclose(pFile);
-        master.print_message("OK\n");
+        printf("OK\n");
     };
 
-    auto print_minmax = [&](const std::vector<TF>& vec)
+    auto print_minmax = [&](const std::vector<TF>& vec, const std::string& name)
     {
         TF min_val = 1e9;
         TF max_val = -1e9;
@@ -1046,7 +1048,7 @@ void Boundary_lateral<TF>::create(
             max_val = std::max(max_val, val);
         }
 
-        master.print_message(" - min=%f, max=%f\n", min_val, max_val);
+        printf(" - %s @ %d : min=%f, max=%f\n", name.c_str(), md.mpiid, min_val, max_val);
     };
 
     auto copy_boundaries = [&](const std::string& name)
@@ -1083,7 +1085,6 @@ void Boundary_lateral<TF>::create(
 
         if (md.mpicoordx == 0)
         {
-            // One proc reads full west boundary, and broadcasts it to all mpicoordx=0 tasks.
             if (md.mpicoordy == 0)
                 read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ncells_w);
             master.broadcast_y(lbc_w_full.data(), ncells_w, 0);
@@ -1094,6 +1095,20 @@ void Boundary_lateral<TF>::create(
                     nlbc_w, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "west");
+
+            // Calculate total inflow over west boundary.
+            if (name == "u" && md.mpicoordy == 0)
+                calc_div_x<TF, Lbc_location::West>(
+                        div_u.data(),
+                        lbc_w_full.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.dy,
+                        n_sponge,
+                        ntime,
+                        gd.igc, gd.kgc,
+                        gd.jgc, gd.jtot+gd.jgc,
+                        gd.ktot, gd.jtot+(2*gd.jgc));
         }
 
         if (md.mpicoordx == md.npx-1)
@@ -1108,6 +1123,20 @@ void Boundary_lateral<TF>::create(
                     nlbc_e, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
                     name, "east");
+
+            // Calculate total outflow over east boundary.
+            if (name == "u" && md.mpicoordy == md.npy-1)
+                calc_div_x<TF, Lbc_location::East>(
+                        div_u.data(),
+                        lbc_e_full.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.dy,
+                        n_sponge,
+                        ntime,
+                        gd.igc, gd.kgc,
+                        gd.jgc, gd.jtot+gd.jgc,
+                        gd.ktot, gd.jtot+(2*gd.jgc));
 	    }
 
         if (md.mpicoordy == 0)
@@ -1122,6 +1151,19 @@ void Boundary_lateral<TF>::create(
                     gd.icells, nlbc_s,
                     md.mpicoordx*gd.imax, 0,
                     name, "south");
+
+            if (name == "v" && md.mpicoordx == md.npx-1)
+                calc_div_y<TF, Lbc_location::South>(
+                        div_v.data(),
+                        lbc_s_full.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.dx,
+                        n_sponge,
+                        ntime,
+                        gd.jgc, gd.kgc,
+                        gd.igc, gd.itot+gd.igc,
+                        gd.ktot, gd.itot+(2*gd.igc));
 	    }
 
         if (md.mpicoordy == md.npy-1)
@@ -1136,36 +1178,26 @@ void Boundary_lateral<TF>::create(
                     gd.icells, nlbc_n,
                     md.mpicoordx*gd.imax, 0,
                     name, "north");
+
+            if (name == "v" && md.mpicoordx == 0)
+                calc_div_y<TF, Lbc_location::North>(
+                        div_v.data(),
+                        lbc_n_full.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.dx,
+                        n_sponge,
+                        ntime,
+                        gd.jgc, gd.kgc,
+                        gd.igc, gd.itot+gd.igc,
+                        gd.ktot, gd.itot+(2*gd.igc));
 	    }
 
-
-        // Calculate domain total mass imbalance in kg s-1.
-        //if (name == "u")
-        //    calc_div_x(
-        //            div_u.data(),
-        //            lbc_w_full.data(),
-        //            lbc_e_full.data(),
-        //            fields.rhoref.data(),
-        //            gd.dz.data(),
-        //            gd.dy,
-        //            n_sponge,
-        //            ntime,
-        //            gd.igc, gd.kgc,
-        //            gd.jgc, gd.jtot+gd.jgc,
-        //            gd.ktot, gd.jtot+(2*gd.jgc));
-        //else if (name == "v")
-        //    calc_div_y(
-        //            div_v.data(),
-        //            lbc_s_full.data(),
-        //            lbc_n_full.data(),
-        //            fields.rhoref.data(),
-        //            gd.dz.data(),
-        //            gd.dx,
-        //            n_sponge,
-        //            ntime,
-        //            gd.jgc, gd.kgc,
-        //            gd.igc, gd.itot+gd.igc,
-        //            gd.ktot, gd.itot+(2*gd.igc));
+        // Inflow is calculated at south+west edges,
+        // outflow at north+east edges. Take sum, to get
+        // the net inflow in both directions.
+        master.sum(div_u.data(), ntime);
+        master.sum(div_v.data(), ntime);
 
         //if (!sw_timedep)
         //{
