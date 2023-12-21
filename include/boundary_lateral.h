@@ -105,7 +105,7 @@ class Boundary_lateral
         std::vector<TF> w_top_in;
         std::vector<TF> w_top;
 
-        unsigned int wtop_2d_loadtime;
+        unsigned int lbc_load_freq;
         unsigned long itime_w_top_prev;
         unsigned long itime_w_top_next;
 

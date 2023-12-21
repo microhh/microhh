@@ -1,6 +1,6 @@
 [master]
 npx=2
-npy=4
+npy=2
 
 [grid]
 itot=64
@@ -58,6 +58,7 @@ sw_inoutflow_uv=true
 sw_inoutflow_w=true
 sw_neumann_w=false
 sw_timedep=true
+lbc_load_freq=60
 
 sw_sponge=true
 n_sponge=5

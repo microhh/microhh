@@ -811,8 +811,7 @@ Boundary_lateral<TF>::Boundary_lateral(
             throw std::runtime_error("Cant have both \"sw_inoutflow_w\" and \"sw_neumann_w\" = true!");
 
         sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
-        if (sw_wtop_2d && sw_timedep)
-            wtop_2d_loadtime = inputin.get_item<int>("boundary", "wtop_2d_loadtime", "");
+        lbc_load_freq = inputin.get_item<int>("boundary", "lbc_load_freq", "");
 
         // Lateral sponge / diffusion layer.
         sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", false);
@@ -929,10 +928,13 @@ void Boundary_lateral<TF>::create(
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // Read NetCDF file with boundary data.
-    Netcdf_file input_nc = Netcdf_file(master, sim_name + "_lbc_input.nc", Netcdf_mode::Read);
-    const int ntime = input_nc.get_dimension_size("time");
-    time_in = input_nc.get_variable<TF>("time", {ntime});
+    // Determine total number of input time steps,
+    // and calculate load times to mimic old NetCDF behaviour.
+    const double endtime = timeloop.get_endtime();
+    const int ntime = (endtime / lbc_load_freq) + 1;
+    time_in = std::vector<TF>(ntime);
+    for (int n=0; n<ntime; ++n)
+        time_in[n] = n * lbc_load_freq;
 
     TF* rhoref = fields.rhoref.data();
 
@@ -1193,11 +1195,6 @@ void Boundary_lateral<TF>::create(
                         gd.ktot, gd.itot+(2*gd.igc));
 	    }
 
-        // Inflow is calculated at south+west edges,
-        // outflow at north+east edges. Take sum, to get
-        // the net inflow in both directions.
-        master.sum(div_u.data(), ntime);
-        master.sum(div_v.data(), ntime);
 
         //if (!sw_timedep)
         //{
@@ -1239,6 +1236,12 @@ void Boundary_lateral<TF>::create(
     for (auto& fld : inoutflow_s)
         copy_boundaries(fld);
 
+    // Inflow is calculated at south+west edges,
+    // outflow at north+east edges. Take sum, to get
+    // the net inflow in both directions.
+    master.sum(div_u.data(), ntime);
+    master.sum(div_v.data(), ntime);
+
     // Calculate domain mean vertical velocity.
     if (sw_inoutflow_uv)
     {
@@ -1252,7 +1255,7 @@ void Boundary_lateral<TF>::create(
                 const unsigned long itime = timeloop.get_itime();
                 const double ifactor = timeloop.get_ifactor();
                 unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-                unsigned long iloadtime = ifactor * wtop_2d_loadtime + 0.5;
+                unsigned long iloadtime = ifactor * lbc_load_freq + 0.5;
 
                 // Read first two input times
                 //itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
@@ -1703,7 +1706,7 @@ void Boundary_lateral<TF>::update_time_dependent(
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_w_top_prev = itime_w_top_next;
-            itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
+            itime_w_top_next = itime_w_top_prev + lbc_load_freq*ifactor;
             const int iotime1 = int(itime_w_top_next / iiotimeprec);
 
             // Copy of data from next to prev. time

@@ -79,6 +79,7 @@ class Timeloop
         double get_time() const { return time; }
         double get_dt() const { return dt; }
         double get_ifactor() const { return ifactor; }
+        double get_endtime() const { return endtime; }
         unsigned long get_iiotimeprec() const { return iiotimeprec; }
         unsigned long get_itime() const { return itime; }
         unsigned long get_idt() const { return idt; }
