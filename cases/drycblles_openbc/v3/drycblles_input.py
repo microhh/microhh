@@ -142,8 +142,8 @@ if domain == 'outer':
     ini['cross']['yz'] = list(yz)
     ini['cross']['xz'] = list(xz)
 
-    ini['pres']['swopenbc']=False
-    ini['boundary']['sw_inoutflow']=False
+    ini['pres']['sw_openbc'] = False
+    ini['boundary_lateral']['sw_openbc'] = False
 
 elif domain == 'inner':
 
@@ -159,8 +159,8 @@ elif domain == 'inner':
     ini['cross']['xz'] = (yend_nest+ystart_nest)/2
 
 
-    ini['pres']['swopenbc']=True
-    ini['boundary']['sw_inoutflow']=True
+    ini['pres']['sw_openbc'] = True
+    ini['boundary_lateral']['sw_openbc'] = True
 
 ini.save('drycblles.ini', allow_overwrite=True)
 
@@ -221,48 +221,8 @@ if domain == 'inner':
 
             lbc_in[:] = ip[fld].values
 
-    """
-    # DEBUG!
-    @njit
-    def fill(array, tsize, ksize, jsize, isize):
-        for t in range(tsize):
-            for k in range(ksize):
-                for j in range(jsize):
-                    for i in range(isize):
-                        array[t,k,j,i] = t*1000 + k*100 + j*10 + i
-
-    for loc in ['west', 'east', 'north', 'south']:
-        for fld in fields:
-            # Short cuts.
-            lbc_in = lbc[f'{fld}_{loc}']
-            dims = lbc_in.dims
-            fill(lbc_in.values, lbc_in.shape[0], lbc_in.shape[1], lbc_in.shape[2], lbc_in.shape[3])
-    """
-
-    """
-    # Check divergence.
-    # NOTE: only works for:
-    # - Single ghost cell
-    # - Equidistant vertical grid.
-    # - Density == 1
-    for t in range(time.size):
-
-        u_west = lbc['u_west'][t, :, 1:-1,  1]
-        u_east = lbc['u_east'][t, :, 1:-1, -1]
-        v_south = lbc['v_south'][t, :,  1, 1:-1]
-        v_north = lbc['v_north'][t, :, -1, 1:-1]
-
-        div_x = (u_east - u_west).sum() * ysize_nest * zsize
-        div_y = (v_north - v_south).sum() * xsize_nest * zsize
-        w = -(div_x + div_y) / (xsize_nest * ysize_nest)
-
-        print(t, div_x.values, div_y.values, w.values)
-    """
-
-    lbc.to_netcdf('drycblles_lbc_input.nc')
-
+    # Save as binary input files.
     for fld in fields:
         for loc in ['west', 'east', 'north', 'south']:
             lbc_in = lbc[f'{fld}_{loc}']
             lbc_in.values.astype(float_type).tofile('lbc_{}_{}.0000000'.format(fld, loc))
-

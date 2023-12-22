@@ -14,7 +14,7 @@ zsize=3200
 swspatialorder=2
 
 [pres]
-swopenbc=None
+sw_openbc=None
 
 [advec]
 swadvec=None
@@ -52,20 +52,29 @@ swboundary=surface
 z0m=0.1
 z0h=0.1
 
-sw_inoutflow=None
-inoutflow_slist=s,th
-sw_inoutflow_uv=true
-sw_inoutflow_w=true
+[boundary_lateral]
+sw_openbc=None
+sw_openbc_uv=true
+sw_openbc_w=true
 sw_neumann_w=false
-sw_timedep=true
-lbc_load_freq=60
 
+slist=s,th
+sw_timedep=true
+loadfreq=60
+
+# Lateral sponge layer.
 sw_sponge=true
 n_sponge=5
+tau_sponge=60
 w_diff=0.000
-#w_diff=0.003
-tau_nudge=60
 
+# Turbulence recycling
+sw_recycle=False
+recycle_list=th
+tau_recycle=60
+recycle_offset=10
+
+# Inflow perturbations (not implemented):
 #sw_perturb=true
 #perturb_list=th,s
 #perturb_width=4
@@ -93,7 +102,7 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=10800
+endtime=7200
 dt=6.
 dtmax=20.
 savetime=3600

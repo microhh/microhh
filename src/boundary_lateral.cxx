@@ -145,7 +145,7 @@ namespace
             TF* const restrict ut,
             const TF* const restrict u,
             const TF* const restrict lbc_u,
-            const TF tau_nudge,
+            const TF tau_sponge,
             const TF w_diff,
             const int nsponge,
             const int npy,
@@ -165,7 +165,7 @@ namespace
         const int nstart = (location==Lbc_location::West) ? 2 : 1;
         const int jstride_lbc = igc_pad+nsponge;
 
-        const TF w_dt = TF(1) / tau_nudge;
+        const TF w_dt = TF(1) / tau_sponge;
 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
@@ -195,7 +195,7 @@ namespace
             TF* const restrict vt,
             const TF* const restrict v,
             const TF* const restrict lbc_v,
-            const TF tau_nudge,
+            const TF tau_sponge,
             const TF w_diff,
             const int nsponge,
             const int npx,
@@ -213,7 +213,7 @@ namespace
 
         const int jgc_pad = (location==Lbc_location::South) ? jgc+1 : jgc;
 
-        const TF w_dt = TF(1) / tau_nudge;
+        const TF w_dt = TF(1) / tau_sponge;
 
         for (int k=kstart; k<kend; ++k)
             for (int i=istart; i<iend; ++i)
@@ -244,7 +244,7 @@ namespace
             TF* const restrict at,
             const TF* const restrict a,
             const TF* const restrict lbc,
-            const TF tau_nudge,
+            const TF tau_sponge,
             const TF w_diff,
             const int nsponge,
             const TF tau_recycle,
@@ -262,7 +262,7 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        const TF w_dt = TF(1) / tau_nudge;
+        const TF w_dt = TF(1) / tau_sponge;
         const TF r_dt = TF(1) / tau_recycle;
 
         if (location == Lbc_location::West || location == Lbc_location::East)
@@ -796,30 +796,30 @@ Boundary_lateral<TF>::Boundary_lateral(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
         master(masterin), grid(gridin), fields(fieldsin), field3d_io(masterin, gridin)
 {
-    sw_inoutflow = inputin.get_item<bool>("boundary", "sw_inoutflow", "", false);
+    sw_openbc = inputin.get_item<bool>("boundary_lateral", "sw_openbc", "", false);
 
-    if (sw_inoutflow)
+    if (sw_openbc)
     {
-        sw_inoutflow_uv = inputin.get_item<bool>("boundary", "sw_inoutflow_uv", "", true);
-        sw_inoutflow_w = inputin.get_item<bool>("boundary", "sw_inoutflow_w", "", false);
-        sw_neumann_w = inputin.get_item<bool>("boundary", "sw_neumann_w", "", true);
-        sw_wtop_2d = inputin.get_item<bool>("boundary", "sw_wtop_2d", "", false);
-        inoutflow_s = inputin.get_list<std::string>("boundary", "inoutflow_slist", "", std::vector<std::string>());
+        sw_openbc_uv = inputin.get_item<bool>("boundary_lateral", "sw_openbc_uv", "", true);
+        sw_openbc_w = inputin.get_item<bool>("boundary_lateral", "sw_openbc_w", "", false);
+        sw_neumann_w = inputin.get_item<bool>("boundary_lateral", "sw_neumann_w", "", true);
+        sw_wtop_2d = inputin.get_item<bool>("boundary_lateral", "sw_wtop_2d", "", false);
+        slist = inputin.get_list<std::string>("boundary_lateral", "slist", "", std::vector<std::string>());
 
         // Check....
-        if (sw_inoutflow_w && sw_neumann_w)
-            throw std::runtime_error("Cant have both \"sw_inoutflow_w\" and \"sw_neumann_w\" = true!");
+        if (sw_openbc_w && sw_neumann_w)
+            throw std::runtime_error("Cant have both \"sw_openbc_w\" and \"sw_neumann_w\" = true!");
 
-        sw_timedep = inputin.get_item<bool>("boundary", "sw_timedep", "", false);
-        lbc_load_freq = inputin.get_item<int>("boundary", "lbc_load_freq", "");
+        sw_timedep = inputin.get_item<bool>("boundary_lateral", "sw_timedep", "", false);
+        loadfreq = inputin.get_item<int>("boundary_lateral", "loadfreq", "");
 
         // Lateral sponge / diffusion layer.
-        sw_sponge = inputin.get_item<bool>("boundary", "sw_sponge", "", false);
+        sw_sponge = inputin.get_item<bool>("boundary_lateral", "sw_sponge", "", false);
         if (sw_sponge)
         {
-            n_sponge = inputin.get_item<int>("boundary", "n_sponge", "", 5);
-            tau_nudge = inputin.get_item<TF>("boundary", "tau_nudge", "", 60);
-            w_diff = inputin.get_item<TF>("boundary", "w_diff", "", 0.0033);
+            n_sponge = inputin.get_item<int>("boundary_lateral", "n_sponge", "", 5);
+            tau_sponge = inputin.get_item<TF>("boundary_lateral", "tau_sponge", "", 60);
+            w_diff = inputin.get_item<TF>("boundary_lateral", "w_diff", "", 0.0033);
         }
 
         // Inflow perturbations
@@ -839,13 +839,13 @@ Boundary_lateral<TF>::Boundary_lateral(
         //}
 
         // Turbulence recycling.
-        sw_recycle = inputin.get_item<bool>("boundary", "sw_recycle", "", false);
+        sw_recycle = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "", false);
         if (sw_recycle)
         {
             recycle_list = inputin.get_list<std::string>(
-                "boundary", "recycle_list", "", std::vector<std::string>());
-            tau_recycle = inputin.get_item<TF>("boundary", "tau_recycle", "");
-            recycle_offset = inputin.get_item<int>("boundary", "recycle_offset", "");
+                "boundary_lateral", "recycle_list", "", std::vector<std::string>());
+            tau_recycle = inputin.get_item<TF>("boundary_lateral", "tau_recycle", "");
+            recycle_offset = inputin.get_item<int>("boundary_lateral", "recycle_offset", "");
         }
     }
 }
@@ -858,7 +858,7 @@ Boundary_lateral<TF>::~Boundary_lateral()
 template <typename TF>
 void Boundary_lateral<TF>::init()
 {
-    if (!sw_inoutflow)
+    if (!sw_openbc)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -896,16 +896,16 @@ void Boundary_lateral<TF>::init()
             lbc_n.emplace(name, std::vector<TF>(gd.icells * nlbc_n * gd.kcells));
     };
 
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         add_lbc("u");
         add_lbc("v");
     }
 
-    if (sw_inoutflow_w)
+    if (sw_openbc_w)
         add_lbc("w");
 
-    for (auto& fld : inoutflow_s)
+    for (auto& fld : slist)
         add_lbc(fld);
 
     //// Make sure every MPI task has different seed.
@@ -922,7 +922,7 @@ void Boundary_lateral<TF>::create(
         Timeloop<TF>& timeloop,
         const std::string& sim_name)
 {
-    if (!sw_inoutflow)
+    if (!sw_openbc)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -931,15 +931,15 @@ void Boundary_lateral<TF>::create(
     // Determine total number of input time steps,
     // and calculate load times to mimic old NetCDF behaviour.
     const double endtime = timeloop.get_endtime();
-    const int ntime = (endtime / lbc_load_freq) + 1;
+    const int ntime = (endtime / loadfreq) + 1;
     time_in = std::vector<TF>(ntime);
     for (int n=0; n<ntime; ++n)
-        time_in[n] = n * lbc_load_freq;
+        time_in[n] = n * loadfreq;
 
     TF* rhoref = fields.rhoref.data();
 
     // Domain total divergence in u and v direction.
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         div_u.resize(ntime);
         div_v.resize(ntime);
@@ -1224,16 +1224,16 @@ void Boundary_lateral<TF>::create(
         //}
     };
 
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         copy_boundaries("u");
         copy_boundaries("v");
     }
 
-    if (sw_inoutflow_w)
+    if (sw_openbc_w)
         copy_boundaries("w");
 
-    for (auto& fld : inoutflow_s)
+    for (auto& fld : slist)
         copy_boundaries(fld);
 
     // Inflow is calculated at south+west edges,
@@ -1243,7 +1243,7 @@ void Boundary_lateral<TF>::create(
     master.sum(div_v.data(), ntime);
 
     // Calculate domain mean vertical velocity.
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         if (sw_wtop_2d)
         {
@@ -1255,7 +1255,7 @@ void Boundary_lateral<TF>::create(
                 const unsigned long itime = timeloop.get_itime();
                 const double ifactor = timeloop.get_ifactor();
                 unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-                unsigned long iloadtime = ifactor * lbc_load_freq + 0.5;
+                unsigned long iloadtime = ifactor * loadfreq + 0.5;
 
                 // Read first two input times
                 //itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
@@ -1315,11 +1315,10 @@ void Boundary_lateral<TF>::create(
 }
 
 
-
 template <typename TF>
 void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
 {
-    if (!sw_inoutflow)
+    if (!sw_openbc)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -1377,21 +1376,21 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             set_lbc_gcs_wrapper(fld, lbc_n.at(fld), Lbc_location::North);
     };
 
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         set_gcs("u");
         set_gcs("v");
     }
 
-    if (sw_inoutflow_w)
+    if (sw_openbc_w)
         set_gcs("w");
 
-    for (auto& fld : inoutflow_s)
+    for (auto& fld : slist)
         set_gcs(fld);
 
 
     // Set vertical velocity at domain top.
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         const int k = gd.kend;
         for (int j=gd.jstart; j<gd.jend; ++j)
@@ -1461,7 +1460,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 fields.at.at(name)->fld.data(),
                 fields.ap.at(name)->fld.data(),
                 lbc_map.at(name).data(),
-                tau_nudge,
+                tau_sponge,
                 w_diff,
                 n_sponge,
                 tau_recycle,
@@ -1487,7 +1486,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 fields.mt.at("u")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 lbc_map.at("u").data(),
-                tau_nudge,
+                tau_sponge,
                 w_diff,
                 n_sponge,
                 md.npy,
@@ -1511,7 +1510,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 fields.mt.at("v")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 lbc_map.at("v").data(),
-                tau_nudge,
+                tau_sponge,
                 w_diff,
                 n_sponge,
                 md.npx,
@@ -1524,7 +1523,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
                 gd.ijcells);
     };
 
-    if (sw_inoutflow_uv)
+    if (sw_openbc_uv)
     {
         // NOTE: order of calls here is important; the `_u` and `_v` wrappers don't take
         //       the offset in corners into account, so always first call the `_u` and `_v`
@@ -1549,7 +1548,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
     }
 
-    if (sw_inoutflow_w)
+    if (sw_openbc_w)
     {
         if (md.mpicoordx == 0)
             sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "w");
@@ -1561,7 +1560,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "w");
     }
 
-    for (auto& fld : inoutflow_s)
+    for (auto& fld : slist)
     {
         const bool sw_recycle = in_list<std::string>(fld, recycle_list);
 
@@ -1649,7 +1648,7 @@ void Boundary_lateral<TF>::update_time_dependent(
         Timeloop<TF>& timeloop,
         const bool pres_fix)
 {
-    if (!sw_inoutflow || !sw_timedep)
+    if (!sw_openbc || !sw_timedep)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -1706,7 +1705,7 @@ void Boundary_lateral<TF>::update_time_dependent(
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_w_top_prev = itime_w_top_next;
-            itime_w_top_next = itime_w_top_prev + lbc_load_freq*ifactor;
+            itime_w_top_next = itime_w_top_prev + loadfreq*ifactor;
             const int iotime1 = int(itime_w_top_next / iiotimeprec);
 
             // Copy of data from next to prev. time

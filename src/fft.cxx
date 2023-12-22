@@ -42,7 +42,7 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin, Input& inputin) :
     fftoutj = nullptr;
 
     // FFT type based on open/periodic pressure solver.
-    sw_openbc = inputin.get_item<bool>  ("pres", "swopenbc", "", false);
+    sw_openbc = inputin.get_item<bool>  ("pres", "sw_openbc", "", false);
 
     if (sw_openbc)
         fft_type = FFT_type::DCT;

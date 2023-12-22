@@ -57,19 +57,19 @@ class Boundary_lateral
         void read_xy_slice(
                 std::vector<TF>&, const std::string&, const int);
 
-        bool sw_inoutflow;
-        bool sw_inoutflow_uv;
-        bool sw_inoutflow_w;
+        bool sw_openbc;
+        bool sw_openbc_uv;
+        bool sw_openbc_w;
         bool sw_neumann_w;
         bool sw_timedep;
         bool sw_wtop_2d;
 
-        std::vector<std::string> inoutflow_s;
+        std::vector<std::string> slist;
 
         // Sponge/diffusion layer:
         bool sw_sponge;
         int n_sponge;
-        TF tau_nudge;
+        TF tau_sponge;
         TF w_diff;
 
         // Boundary perturbations:
@@ -105,7 +105,7 @@ class Boundary_lateral
         std::vector<TF> w_top_in;
         std::vector<TF> w_top;
 
-        unsigned int lbc_load_freq;
+        unsigned int loadfreq;
         unsigned long itime_w_top_prev;
         unsigned long itime_w_top_next;
 

@@ -36,7 +36,7 @@ Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT
     Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
     boundary_cyclic(master, grid)
 {
-    sw_openbc = inputin.get_item<bool>  ("pres", "swopenbc", "", false);
+    sw_openbc = inputin.get_item<bool>  ("pres", "sw_openbc", "", false);
 
     #ifdef USECUDA
     a_g = 0;
