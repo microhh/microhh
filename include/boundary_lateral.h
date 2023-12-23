@@ -37,6 +37,9 @@ template<typename> class Field3d_io;
 enum class Lbc_location {West, East, South, North};
 
 template<typename TF>
+using Lbc_map = std::map<std::string, std::vector<TF>>;
+
+template<typename TF>
 class Boundary_lateral
 {
     public:
@@ -47,6 +50,7 @@ class Boundary_lateral
         void create(Input&, Timeloop<TF>&, const std::string&);
         void set_ghost_cells(Timeloop<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
+        void read_input(TF&, TF&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, const int);
 
     private:
         Master& master;
@@ -73,13 +77,13 @@ class Boundary_lateral
         TF w_diff;
 
         // Boundary perturbations:
-        bool sw_perturb;
-        int perturb_width;
-        int perturb_block;
-        int perturb_seed;
-        int perturb_kend;
-        std::vector<std::string> perturb_list;
-        std::map<std::string, TF> perturb_ampl;
+        //bool sw_perturb;
+        //int perturb_width;
+        //int perturb_block;
+        //int perturb_seed;
+        //int perturb_kend;
+        //std::vector<std::string> perturb_list;
+        //std::map<std::string, TF> perturb_ampl;
 
         // Turbulence recycling.
         bool sw_recycle;
@@ -87,29 +91,35 @@ class Boundary_lateral
         TF tau_recycle;
         int recycle_offset;
 
-        // Current (time interpolated) boundary conditions:
-        std::map<std::string, std::vector<TF>> lbc_w;
-        std::map<std::string, std::vector<TF>> lbc_s;
-        std::map<std::string, std::vector<TF>> lbc_e;
-        std::map<std::string, std::vector<TF>> lbc_n;
+        // Current (constant or time interpolated) BCs:
+        Lbc_map<TF> lbc_w;
+        Lbc_map<TF> lbc_s;
+        Lbc_map<TF> lbc_e;
+        Lbc_map<TF> lbc_n;
 
-        // Input from NetCDF, for local MPI subdomain:
-        std::vector<TF> time_in;
-        std::map<std::string, std::vector<TF>> lbc_w_in;
-        std::map<std::string, std::vector<TF>> lbc_s_in;
-        std::map<std::string, std::vector<TF>> lbc_e_in;
-        std::map<std::string, std::vector<TF>> lbc_n_in;
+        // Previous and next BCs, for time dependent LBCs.
+        Lbc_map<TF> lbc_w_prev;
+        Lbc_map<TF> lbc_e_prev;
+        Lbc_map<TF> lbc_s_prev;
+        Lbc_map<TF> lbc_n_prev;
 
-        std::vector<TF> div_u;
-        std::vector<TF> div_v;
-        std::vector<TF> w_top_in;
-        std::vector<TF> w_top;
+        Lbc_map<TF> lbc_w_next;
+        Lbc_map<TF> lbc_e_next;
+        Lbc_map<TF> lbc_s_next;
+        Lbc_map<TF> lbc_n_next;
 
         unsigned int loadfreq;
-        unsigned long itime_w_top_prev;
-        unsigned long itime_w_top_next;
+        unsigned long prev_itime;
+        unsigned long next_itime;
 
-        std::vector<TF> w_top_prev;
-        std::vector<TF> w_top_next;
+        // Spatially constant (calculated) `w_top`.
+        TF w_top;
+        TF w_top_prev;
+        TF w_top_next;
+
+        // Spatially varying (input) `w_top`.
+        std::vector<TF> w_top_2d;
+        std::vector<TF> w_top_2d_prev;
+        std::vector<TF> w_top_2d_next;
 };
 #endif

@@ -546,18 +546,14 @@ namespace
     template<typename TF>
     void interpolate_lbc_kernel(
             TF* const restrict fld,
-            const TF* const restrict fld_in,
-            const int stride,
-            const int t0,
+            const TF* const restrict fld_prev,
+            const TF* const restrict fld_next,
+            const int size,
             const TF f0)
     {
-        for (int n=0; n<stride; ++n)
-        {
-            const int n0 = n + t0*stride;
-            const int n1 = n + (t0+1)*stride;
-
-            fld[n] = f0 * fld_in[n0] + (TF(1)-f0) * fld_in[n1];
-        }
+        const TF f1 = TF(1) - f0;
+        for (int n=0; n<size; ++n)
+            fld[n] = f0 * fld_prev[n] + f1 * fld_next[n];
     }
 
 
@@ -711,13 +707,13 @@ namespace
 
     template<typename TF, Lbc_location lbc_location>
     void calc_div_x(
-            TF* const restrict div,
+            TF& div,
             const TF* const restrict lbc_u,
             const TF* const restrict rhoref,
             const TF* const restrict dz,
             const TF dy,
             const int nsponge,
-            const int ntime,
+            const int t,
             const int ngc, const int kgc,
             const int jstart, const int jend,
             const int ktot,
@@ -734,30 +730,29 @@ namespace
         const int iw = ngc;
         const int ie = nsponge;
 
-        for (int t=0; t<ntime; ++t)
-            for (int k=0; k<ktot; ++k)
-                for (int j=jstart; j<jend; ++j)
-                {
-                    const int ijk_w = iw + j*jstride_w + k*kstride_w + t*tstride_w;
-                    const int ijk_e = ie + j*jstride_e + k*kstride_e + t*tstride_e;
+        for (int k=0; k<ktot; ++k)
+            for (int j=jstart; j<jend; ++j)
+            {
+                const int ijk_w = iw + j*jstride_w + k*kstride_w;
+                const int ijk_e = ie + j*jstride_e + k*kstride_e;
 
-                    // Div = east-west.
-                    if (lbc_location == Lbc_location::East)
-                        div[t] += rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_e];
-                    else
-                        div[t] -= rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_w];
-                }
+                // Div = east-west.
+                if (lbc_location == Lbc_location::East)
+                    div += rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_e];
+                else
+                    div -= rhoref[k+kgc] * dy * dz[k+kgc] * lbc_u[ijk_w];
+            }
     }
 
     template<typename TF, Lbc_location lbc_location>
     void calc_div_y(
-            TF* const restrict div,
+            TF& div,
             const TF* const restrict lbc_v,
             const TF* const restrict rhoref,
             const TF* const restrict dz,
             const TF dx,
             const int nsponge,
-            const int ntime,
+            const int t,
             const int ngc, const int kgc,
             const int istart, const int iend,
             const int ktot,
@@ -774,19 +769,18 @@ namespace
         const int js = ngc;
         const int jn = nsponge;
 
-        for (int t=0; t<ntime; ++t)
-            for (int k=0; k<ktot; ++k)
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk_s = i + js*jstride_s + k*kstride_s + t*tstride_s;
-                    const int ijk_n = i + jn*jstride_n + k*kstride_n + t*tstride_n;
+        for (int k=0; k<ktot; ++k)
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk_s = i + js*jstride_s + k*kstride_s;
+                const int ijk_n = i + jn*jstride_n + k*kstride_n;
 
-                    // Div = north-south.
-                    if (lbc_location == Lbc_location::North)
-                        div[t] += rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_n];
-                    else
-                        div[t] -= rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_s];
-                }
+                // Div = north-south.
+                if (lbc_location == Lbc_location::North)
+                    div += rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_n];
+                else
+                    div -= rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_s];
+            }
     }
 }
 
@@ -876,7 +870,12 @@ void Boundary_lateral<TF>::init()
             throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
     }
 
-    auto add_lbc = [&](const std::string& name)
+    auto add_lbc_var = [&](
+            Lbc_map<TF>& lbc_w_in,
+            Lbc_map<TF>& lbc_e_in,
+            Lbc_map<TF>& lbc_s_in,
+            Lbc_map<TF>& lbc_n_in,
+            const std::string& name)
     {
         const int igc_pad = (name == "u") ? gd.igc+1 : gd.igc;
         const int jgc_pad = (name == "v") ? gd.jgc+1 : gd.jgc;
@@ -887,26 +886,43 @@ void Boundary_lateral<TF>::init()
         const int nlbc_n = gd.jgc + n_sponge;
 
         if (md.mpicoordx == 0)
-            lbc_w.emplace(name, std::vector<TF>(nlbc_w * gd.kcells * gd.jcells));
+            lbc_w_in.emplace(name, std::vector<TF>(nlbc_w * gd.kcells * gd.jcells));
         if (md.mpicoordx == md.npx-1)
-            lbc_e.emplace(name, std::vector<TF>(nlbc_e * gd.kcells * gd.jcells));
+            lbc_e_in.emplace(name, std::vector<TF>(nlbc_e * gd.kcells * gd.jcells));
         if (md.mpicoordy == 0)
-            lbc_s.emplace(name, std::vector<TF>(gd.icells * nlbc_s * gd.kcells));
+            lbc_s_in.emplace(name, std::vector<TF>(gd.icells * nlbc_s * gd.kcells));
         if (md.mpicoordy == md.npy-1)
-            lbc_n.emplace(name, std::vector<TF>(gd.icells * nlbc_n * gd.kcells));
+            lbc_n_in.emplace(name, std::vector<TF>(gd.icells * nlbc_n * gd.kcells));
     };
 
-    if (sw_openbc_uv)
+    auto add_lbcs = [&](
+            Lbc_map<TF>& lbc_w_in,
+            Lbc_map<TF>& lbc_e_in,
+            Lbc_map<TF>& lbc_s_in,
+            Lbc_map<TF>& lbc_n_in)
     {
-        add_lbc("u");
-        add_lbc("v");
+        if (sw_openbc_uv)
+        {
+            add_lbc_var(lbc_w_in, lbc_e_in, lbc_s_in, lbc_n_in, "u");
+            add_lbc_var(lbc_w_in, lbc_e_in, lbc_s_in, lbc_n_in, "v");
+        }
+
+        if (sw_openbc_w)
+            add_lbc_var(lbc_w_in, lbc_e_in, lbc_s_in, lbc_n_in, "w");
+
+        for (auto& fld : slist)
+            add_lbc_var(lbc_w_in, lbc_e_in, lbc_s_in, lbc_n_in, fld);
+    };
+
+    // Create fixed/constant (or time interpolated in case of `sw_timedep`) LBC arrays.
+    add_lbcs(lbc_w, lbc_e, lbc_s, lbc_n);
+
+    if (sw_timedep)
+    {
+        // Add LBC arrays at previous and next time steps.
+        add_lbcs(lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev);
+        add_lbcs(lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next);
     }
-
-    if (sw_openbc_w)
-        add_lbc("w");
-
-    for (auto& fld : slist)
-        add_lbc(fld);
 
     //// Make sure every MPI task has different seed.
     //if (sw_perturb)
@@ -917,37 +933,16 @@ void Boundary_lateral<TF>::init()
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::create(
-        Input& inputin,
-        Timeloop<TF>& timeloop,
-        const std::string& sim_name)
+void Boundary_lateral<TF>::read_input(
+        TF& div_u, TF& div_v,
+        Lbc_map<TF>& lbc_w_in,
+        Lbc_map<TF>& lbc_e_in,
+        Lbc_map<TF>& lbc_s_in,
+        Lbc_map<TF>& lbc_n_in,
+        const int time_index)
 {
-    if (!sw_openbc)
-        return;
-
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
-
-    // Determine total number of input time steps,
-    // and calculate load times to mimic old NetCDF behaviour.
-    const double endtime = timeloop.get_endtime();
-    const int ntime = (endtime / loadfreq) + 1;
-    time_in = std::vector<TF>(ntime);
-    for (int n=0; n<ntime; ++n)
-        time_in[n] = n * loadfreq;
-
-    TF* rhoref = fields.rhoref.data();
-
-    // Domain total divergence in u and v direction.
-    if (sw_openbc_uv)
-    {
-        div_u.resize(ntime);
-        div_v.resize(ntime);
-        w_top.resize(gd.ijcells);
-
-        std::fill(div_u.begin(), div_u.end(), TF(0));
-        std::fill(div_v.begin(), div_v.end(), TF(0));
-    }
 
     auto dump_vector = [&](
             std::vector<TF>& fld,
@@ -965,52 +960,15 @@ void Boundary_lateral<TF>::create(
         fclose(pFile);
     };
 
-    auto copy_boundary = [&](
-            std::map<std::string, std::vector<TF>>& map_out,
-            const std::vector<TF>& fld_in,
-            const int isize_in, const int jsize_in,
-            const int isize_out, const int jsize_out,
-            const int istart_in, const int jstart_in,
-            const std::string& name, const std::string& loc)
-    {
-        const int size_in = ntime * gd.ktot * jsize_in * isize_in;
-        const int size_out = ntime * gd.kcells * jsize_out * isize_out;
-
-        std::vector<TF> fld_out = std::vector<TF>(size_out);
-
-        const int jstride_in = isize_in;
-        const int kstride_in = jstride_in * jsize_in;
-        const int tstride_in = kstride_in * gd.ktot;
-
-        const int jstride_out = isize_out;
-        const int kstride_out = jstride_out * jsize_out;
-        const int tstride_out = kstride_out * gd.kcells;
-
-        for (int t=0; t<ntime; t++)
-            for (int k=0; k<gd.ktot; k++)
-                for (int j=0; j<jsize_out; j++)
-                    for (int i=0; i<isize_out; i++)
-                    {
-                        const int ijk_in = i+istart_in + (j+jstart_in)*jstride_in + k*kstride_in + t*tstride_in;
-                        const int ijk_out = i + j*jstride_out + (k+gd.kstart)*kstride_out + t*tstride_out;
-
-                        fld_out[ijk_out] = fld_in[ijk_in];
-                    }
-
-        map_out.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(name),
-                std::forward_as_tuple(std::move(fld_out)));
-    };
 
     auto read_binary = [&](
             std::vector<TF>& vec,
             const std::string file_name,
-            const unsigned long size)
+            const unsigned long size,
+            const unsigned long time_index)
     {
-        // Only single tasks reads, so safe (and necessary!) to printf().
-        //master.print_message("Loading \"%s\" ... ", file_name.c_str());
-        printf("Loading \"%s\" at mpiidx=%d, mpiidy=%d ... ", file_name.c_str(), md.mpicoordx, md.mpicoordy);
+        // Only single tasks reads, so necessary to use `printf()` instead of `master.print_message()`.
+        //printf("Loading \"%s\" at mpiidx=%d, mpiidy=%d ... ", file_name.c_str(), md.mpicoordx, md.mpicoordy);
 
         FILE *pFile;
         pFile = fopen(file_name.c_str(), "rb");
@@ -1021,6 +979,10 @@ void Boundary_lateral<TF>::create(
 
         if (success)
         {
+            // Jump to offset & read requested chunk.
+            const size_t offset = time_index * size * sizeof(TF);
+            fseek(pFile, offset, SEEK_SET);
+
             if (fread(vec.data(), sizeof(TF), size, pFile) != (unsigned)size)
                 success = false;
         }
@@ -1036,27 +998,57 @@ void Boundary_lateral<TF>::create(
         }
 
         fclose(pFile);
-        printf("OK\n");
+        //printf("OK\n");
     };
 
-    auto print_minmax = [&](const std::vector<TF>& vec, const std::string& name)
+
+    auto copy_boundary = [&](
+            Lbc_map<TF>& map_out,
+            const std::vector<TF>& fld_in,
+            const int isize_in, const int jsize_in,
+            const int isize_out, const int jsize_out,
+            const int istart_in, const int jstart_in,
+            const std::string& name, const std::string& loc)
     {
-        TF min_val = 1e9;
-        TF max_val = -1e9;
+        // Copy LBC data from vector `fld_in`, which holds an entire
+        // domain edge with data for all MPI tasks, to the `Lbc_map`
+        // containing only data needed for the current MPI subdomain.
 
-        for (auto & val : vec)
-        {
-            min_val = std::min(min_val, val);
-            max_val = std::max(max_val, val);
-        }
+        const int size_in = gd.ktot * jsize_in * isize_in;
+        const int size_out = gd.kcells * jsize_out * isize_out;
 
-        printf(" - %s @ %d : min=%f, max=%f\n", name.c_str(), md.mpiid, min_val, max_val);
+        std::vector<TF> fld_out = std::vector<TF>(size_out);
+
+        const int jstride_in = isize_in;
+        const int kstride_in = jstride_in * jsize_in;
+
+        const int jstride_out = isize_out;
+        const int kstride_out = jstride_out * jsize_out;
+
+        for (int k=0; k<gd.ktot; k++)
+            for (int j=0; j<jsize_out; j++)
+                for (int i=0; i<isize_out; i++)
+                {
+                    const int ijk_in = i+istart_in + (j+jstart_in)*jstride_in + k*kstride_in;
+                    const int ijk_out = i + j*jstride_out + (k+gd.kstart)*kstride_out;
+
+                    fld_out[ijk_out] = fld_in[ijk_in];
+                }
+
+        map_out.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(name),
+                std::forward_as_tuple(std::move(fld_out)));
     };
+
 
     auto copy_boundaries = [&](const std::string& name)
     {
-        // `u` at west boundary and `v` at south boundary also contain `u` at `istart`
-        // and `v` at `jstart`, and are therefore larger.
+        // Read LBC data from binary files, and copy out the
+        // part needed on the current MPI subdomain.
+
+        // `u` at west boundary and `v` at south boundary also contain
+        // `u` at `istart` and `v` at `jstart`, and are therefore larger.
         const int igc_pad = (name == "u") ? gd.igc+1 : gd.igc;
         const int jgc_pad = (name == "v") ? gd.jgc+1 : gd.jgc;
 
@@ -1066,11 +1058,14 @@ void Boundary_lateral<TF>::create(
         const int nlbc_s = jgc_pad + n_sponge;
         const int nlbc_n = gd.jgc + n_sponge;
 
-        const int ncells_w = ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w;
-        const int ncells_e = ntime * gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e;
-        const int ncells_s = ntime * gd.ktot * nlbc_s * (gd.itot+2*gd.igc);
-        const int ncells_n = ntime * gd.ktot * nlbc_n * (gd.itot+2*gd.igc);
+        const int ncells_w = gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_w;
+        const int ncells_e = gd.ktot * (gd.jtot+2*gd.jgc) * nlbc_e;
+        const int ncells_s = gd.ktot * nlbc_s * (gd.itot+2*gd.igc);
+        const int ncells_n = gd.ktot * nlbc_n * (gd.itot+2*gd.igc);
 
+        // Arrays which hold data for the full domain edge,
+        // i.e. for all MPI tasks. The `copy_boundary()` function
+        // later copies out the local data needed on each MPI subdomain.
         std::vector<TF> lbc_w_full;
         std::vector<TF> lbc_e_full;
         std::vector<TF> lbc_s_full;
@@ -1085,10 +1080,11 @@ void Boundary_lateral<TF>::create(
         if (md.mpicoordy == md.npy-1)
             lbc_n_full.resize(ncells_n);
 
+
         if (md.mpicoordx == 0)
         {
             if (md.mpicoordy == 0)
-                read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ncells_w);
+                read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ncells_w, time_index);
             master.broadcast_y(lbc_w_full.data(), ncells_w, 0);
 
             copy_boundary(
@@ -1101,13 +1097,13 @@ void Boundary_lateral<TF>::create(
             // Calculate total inflow over west boundary.
             if (name == "u" && md.mpicoordy == 0)
                 calc_div_x<TF, Lbc_location::West>(
-                        div_u.data(),
+                        div_u,
                         lbc_w_full.data(),
                         fields.rhoref.data(),
                         gd.dz.data(),
                         gd.dy,
                         n_sponge,
-                        ntime,
+                        time_index,
                         gd.igc, gd.kgc,
                         gd.jgc, gd.jtot+gd.jgc,
                         gd.ktot, gd.jtot+(2*gd.jgc));
@@ -1116,7 +1112,7 @@ void Boundary_lateral<TF>::create(
         if (md.mpicoordx == md.npx-1)
         {
             if (md.mpicoordy == md.npy-1)
-                read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ncells_e);
+                read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ncells_e, time_index);
             master.broadcast_y(lbc_e_full.data(), ncells_e, md.npy-1);
 
             copy_boundary(
@@ -1129,13 +1125,13 @@ void Boundary_lateral<TF>::create(
             // Calculate total outflow over east boundary.
             if (name == "u" && md.mpicoordy == md.npy-1)
                 calc_div_x<TF, Lbc_location::East>(
-                        div_u.data(),
+                        div_u,
                         lbc_e_full.data(),
                         fields.rhoref.data(),
                         gd.dz.data(),
                         gd.dy,
                         n_sponge,
-                        ntime,
+                        time_index,
                         gd.igc, gd.kgc,
                         gd.jgc, gd.jtot+gd.jgc,
                         gd.ktot, gd.jtot+(2*gd.jgc));
@@ -1144,7 +1140,7 @@ void Boundary_lateral<TF>::create(
         if (md.mpicoordy == 0)
 	    {
             if (md.mpicoordx == md.npx-1)
-                read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ncells_s);
+                read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ncells_s, time_index);
             master.broadcast_x(lbc_s_full.data(), ncells_s, md.npx-1);
 
             copy_boundary(
@@ -1156,13 +1152,13 @@ void Boundary_lateral<TF>::create(
 
             if (name == "v" && md.mpicoordx == md.npx-1)
                 calc_div_y<TF, Lbc_location::South>(
-                        div_v.data(),
+                        div_v,
                         lbc_s_full.data(),
                         fields.rhoref.data(),
                         gd.dz.data(),
                         gd.dx,
                         n_sponge,
-                        ntime,
+                        time_index,
                         gd.jgc, gd.kgc,
                         gd.igc, gd.itot+gd.igc,
                         gd.ktot, gd.itot+(2*gd.igc));
@@ -1171,7 +1167,7 @@ void Boundary_lateral<TF>::create(
         if (md.mpicoordy == md.npy-1)
 	    {
             if (md.mpicoordx == 0)
-                read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ncells_n);
+                read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ncells_n, time_index);
             master.broadcast_x(lbc_n_full.data(), ncells_n, 0);
 
             copy_boundary(
@@ -1183,51 +1179,28 @@ void Boundary_lateral<TF>::create(
 
             if (name == "v" && md.mpicoordx == 0)
                 calc_div_y<TF, Lbc_location::North>(
-                        div_v.data(),
+                        div_v,
                         lbc_n_full.data(),
                         fields.rhoref.data(),
                         gd.dz.data(),
                         gd.dx,
                         n_sponge,
-                        ntime,
+                        time_index,
                         gd.jgc, gd.kgc,
                         gd.igc, gd.itot+gd.igc,
                         gd.ktot, gd.itot+(2*gd.igc));
 	    }
-
-
-        //if (!sw_timedep)
-        //{
-            if (md.mpicoordx == 0)
-            {
-                for (int n=0; n < nlbc_w * gd.jcells * gd.kcells; ++n)
-                    lbc_w.at(name)[n] = lbc_w_in.at(name)[n];
-            }
-
-            if (md.mpicoordx == md.npx-1)
-            {
-                for (int n=0; n < nlbc_e * gd.jcells * gd.kcells; ++n)
-                    lbc_e.at(name)[n] = lbc_e_in.at(name)[n];
-            }
-
-            if (md.mpicoordy == 0)
-            {
-                for (int n=0; n < gd.icells * nlbc_s * gd.kcells; ++n)
-                    lbc_s.at(name)[n] = lbc_s_in.at(name)[n];
-            }
-
-            if (md.mpicoordy == md.npy-1)
-            {
-                for (int n=0; n < gd.icells * nlbc_n * gd.kcells; ++n)
-                    lbc_n.at(name)[n] = lbc_n_in.at(name)[n];
-            }
-        //}
     };
 
     if (sw_openbc_uv)
     {
         copy_boundaries("u");
         copy_boundaries("v");
+
+        // Inflow is calculated at south+west edges, outflow at north+east edges.
+        // Take sum, to get the net inflow in both directions.
+        master.sum(&div_u, 1);
+        master.sum(&div_v, 1);
     }
 
     if (sw_openbc_w)
@@ -1235,71 +1208,111 @@ void Boundary_lateral<TF>::create(
 
     for (auto& fld : slist)
         copy_boundaries(fld);
+}
 
-    // Inflow is calculated at south+west edges,
-    // outflow at north+east edges. Take sum, to get
-    // the net inflow in both directions.
-    master.sum(div_u.data(), ntime);
-    master.sum(div_v.data(), ntime);
+template <typename TF>
+void Boundary_lateral<TF>::create(
+        Input& inputin,
+        Timeloop<TF>& timeloop,
+        const std::string& sim_name)
+{
+    if (!sw_openbc)
+        return;
 
-    // Calculate domain mean vertical velocity.
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+    TF* rhoref = fields.rhoref.data();
+
+    // Domain total divergence in u and v direction.
     if (sw_openbc_uv)
     {
+        w_top_2d.resize(gd.ijcells);
+
+        if (sw_timedep)
+        {
+            w_top_2d_prev.resize(gd.ijcells);
+            w_top_2d_next.resize(gd.ijcells);
+        }
+    }
+
+    if (!sw_timedep)
+    {
+        // Read LBC data directly into `lbc_{w/e/n/s}`.
+        TF div_u = 0;
+        TF div_v = 0;
+        const int time_index = 0;
+        read_input(div_u, div_v, lbc_w, lbc_e, lbc_s, lbc_n, time_index);
+
+        if (sw_wtop_2d)
+            read_xy_slice(w_top_2d, "w_top", 0);
+        else
+        {
+            const TF w_top_mean = -(div_u + div_v) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+            std::fill(w_top_2d.begin(), w_top_2d.end(), w_top_mean);
+
+            std::string message =
+                    "- div(u) = " + std::to_string(div_u)
+                  + ", div(v) = " + std::to_string(div_v)
+                  + ", w_top = " + std::to_string(w_top_mean*100) + " cm/s";
+            master.print_message(message);
+        }
+    }
+    else
+    {
+        // Read previous and next input times.
+        const double time = timeloop.get_time();
+        const unsigned long itime = timeloop.get_itime();
+        const double ifactor = timeloop.get_ifactor();
+        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+        unsigned long iloadtime = ifactor * loadfreq + 0.5;
+
+        // Determine time index for LBCs.
+        const int prev_index = itime / iloadtime;
+        const int next_index = prev_index + 1;
+
+        // Determine `iotime` for `w_top` fields.
+        prev_itime = prev_index * iloadtime;
+        next_itime = next_index * iloadtime;
+
+        unsigned long prev_iotime = prev_index / iiotimeprec;
+        unsigned long next_iotime = next_index / iiotimeprec;
+
+        // Read previous and next LBC values.
+        TF div_u_prev = 0;
+        TF div_v_prev = 0;
+
+        TF div_u_next = 0;
+        TF div_v_next = 0;
+
+        read_input(div_u_prev, div_v_prev, lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev, prev_index);
+        read_input(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+
         if (sw_wtop_2d)
         {
-            // Read constant or time varying w_top fields.
-            if (sw_timedep)
-            {
-                // Find previous and next times.
-                const double time = timeloop.get_time();
-                const unsigned long itime = timeloop.get_itime();
-                const double ifactor = timeloop.get_ifactor();
-                unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-                unsigned long iloadtime = ifactor * loadfreq + 0.5;
-
-                // Read first two input times
-                //itime_w_top_prev = ifactor * int(time/wtop_2d_loadtime) * wtop_2d_loadtime;
-                //itime_w_top_next = itime_w_top_prev + wtop_2d_loadtime*ifactor;
-
-                itime_w_top_prev = (itime / iloadtime) * iloadtime;
-                itime_w_top_next = itime_w_top_prev + iloadtime;
-
-                // IO time accounting for iotimeprec
-                const unsigned long iotime0 = int(itime_w_top_prev / iiotimeprec);
-                const unsigned long iotime1 = int(itime_w_top_next / iiotimeprec);
-
-                w_top_prev.resize(gd.ijcells);
-                w_top_next.resize(gd.ijcells);
-
-                // Read the first two w_top fields.
-                read_xy_slice(w_top_prev, "w_top", iotime0);
-                read_xy_slice(w_top_next, "w_top", iotime1);
-            }
-            else
-                read_xy_slice(w_top, "w_top", 0);
+            read_xy_slice(w_top_2d_prev, "w_top", prev_iotime);
+            read_xy_slice(w_top_2d_next, "w_top", next_iotime);
         }
         else
         {
-            // Calculate domain mean `w_top`.
-            w_top_in.resize(ntime);
+            w_top_prev = -(div_u_prev + div_v_prev) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+            w_top_next = -(div_u_next + div_v_next) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
 
-            for (int t=0; t<ntime; ++t)
-            {
-                // `w_top` is the total mass in/outflow at the top divided by the total area and the local density.
-                w_top_in[t] = -(div_u[t] + div_v[t]) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+            std::string message1 =
+                    "- div(u) = " + std::to_string(div_u_prev)
+                    + ", div(v) = " + std::to_string(div_v_prev)
+                    + ", w_top = " + std::to_string(w_top_prev*100)
+                    + " cm/s @ t= " + std::to_string(prev_index*loadfreq) + " sec.";
+            master.print_message(message1);
 
-                std::string message=
-                        "- div(u) = " + std::to_string(div_u[t])
-                      + ", div(v) = " + std::to_string(div_v[t])
-                      + ", w_top = " + std::to_string(w_top_in[t])
-                      + " m/s @ t=" + std::to_string(time_in[t]) + " sec.";
-                master.print_message(message);
-            }
-
-            if (!sw_timedep)
-                std::fill(w_top.begin(), w_top.end(), w_top_in[0]);
+            std::string message2 =
+                    "- div(u) = " + std::to_string(div_u_next)
+                    + ", div(v) = " + std::to_string(div_v_next)
+                    + ", w_top = " + std::to_string(w_top_next*100)
+                    + " cm/s @ t= " + std::to_string(next_index*loadfreq) + " sec.";
+            master.print_message(message2);
         }
     }
+
 
     //if (sw_perturb)
     //{
@@ -1398,7 +1411,7 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             {
                 const int ijk = i + j*gd.icells + k*gd.ijcells;
                 const int ij = i + j*gd.icells;
-                fields.mp.at("w")->fld[ijk] = w_top[ij];
+                fields.mp.at("w")->fld[ijk] = w_top_2d[ij];
             }
     }
 
@@ -1656,8 +1669,12 @@ void Boundary_lateral<TF>::update_time_dependent(
 
     // Find index in time array.
     double time = timeloop.get_time();
+    double endtime = timeloop.get_endtime();
     unsigned long itime = timeloop.get_itime();
     unsigned long ifactor = timeloop.get_ifactor();
+    unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+    unsigned long iloadtime = ifactor * loadfreq + 0.5;
+    unsigned long iendtime = ifactor * endtime + 0.5;
 
     // CvH: this is an UGLY hack, because it only works for RK4.
     // We need to know from the time whether we are in the last iter.
@@ -1668,61 +1685,73 @@ void Boundary_lateral<TF>::update_time_dependent(
         itime += timeloop.get_idt();
     }
 
-    int t0 = -1;
-    for (int i=0; i<time_in.size()-1; ++i)
+    // BvS: We are setting `w_top` for the next time step;
+    //      skip if next time is beyond the endtime.
+    if (itime > iendtime)
     {
-        const unsigned long itime_in = ifactor * time_in[i] + 0.5;
-        const unsigned long itime_next_in = ifactor * time_in[i+1] + 0.5;
-
-        if (itime_in <= itime && itime_next_in > itime)
-        {
-            t0 = i;
-            break;
-        }
-    }
-
-    if (t0 == -1)
-    {
-        // BvS: This is anoying... Since we are setting `w_top` at `t+dt`, this
-        // fails close to `endtime`, as `time_in` gets out of bounds,
-        // and the reading of `w_top` below fails.
-        // Not sure how to best fix this correctly....
         master.print_warning("Timedep boundary_lateral out-of-bounds at t+dt, skipping update.\n");
         return;
     }
 
-    // Interpolation factor.
-    const TF f0 = TF(1) - ((time - time_in[t0]) / (time_in[t0+1] - time_in[t0]));
+    if (itime >= next_itime)
+    {
+        // Advance time and read new files.
+        prev_itime = next_itime;
+        next_itime = prev_itime + iloadtime;
+        unsigned long next_iotime = next_itime / iiotimeprec;
+
+        // Move LBCs from next to previous values.
+        for (auto& it : lbc_w_next)
+            lbc_w_prev.at(it.first) = it.second;
+        for (auto& it : lbc_e_next)
+            lbc_e_prev.at(it.first) = it.second;
+        for (auto& it : lbc_s_next)
+            lbc_s_prev.at(it.first) = it.second;
+        for (auto& it : lbc_n_next)
+            lbc_n_prev.at(it.first) = it.second;
+
+        // Read new LBC values.
+        const int next_index = next_itime / iloadtime;
+
+        TF div_u_next = 0;
+        TF div_v_next = 0;
+        read_input(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+
+        // Read in or calculate new `w_top`.
+        if (sw_wtop_2d)
+        {
+            w_top_2d_prev = w_top_2d_next;
+            read_xy_slice(w_top_2d_next, "w_top", next_iotime);
+        }
+        else
+        {
+            w_top_prev = w_top_next;
+            w_top_next = -(div_u_next + div_v_next) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+
+            std::string message2 =
+                    "- div(u) = " + std::to_string(div_u_next)
+                    + ", div(v) = " + std::to_string(div_v_next)
+                    + ", w_top = " + std::to_string(w_top_next*100)
+                    + " cm/s @ t= " + std::to_string(next_index*loadfreq) + " sec.";
+            master.print_message(message2);
+        }
+    }
+
+    // Interpolate LBCs and w_top to current time.
+    const TF f0 = TF(1) - ((itime - prev_itime) / iloadtime);
     const TF f1 = TF(1) - f0;
 
     // Interpolate mean domain top velocity
     if (sw_wtop_2d)
     {
-        if (itime >= itime_w_top_next)
-        {
-            // Read new w_top field
-            const double ifactor = timeloop.get_ifactor();
-            unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-
-            itime_w_top_prev = itime_w_top_next;
-            itime_w_top_next = itime_w_top_prev + loadfreq*ifactor;
-            const int iotime1 = int(itime_w_top_next / iiotimeprec);
-
-            // Copy of data from next to prev. time
-            w_top_prev = w_top_next;
-
-            // Read new w_top slice.
-            read_xy_slice(w_top_next, "w_top", iotime1);
-        }
-
         // Interpolate `w_top` field in time.
         for (int n=0; n<gd.ijcells; ++n)
-            w_top[n] = f0 * w_top_prev[n] + f1 * w_top_next[n];
+            w_top_2d[n] = f0 * w_top_2d_prev[n] + f1 * w_top_2d_next[n];
     }
     else
     {
-        const TF w_top_int = f0 * w_top_in[t0] + f1 * w_top_in[t0+1];
-        std::fill(w_top.begin(), w_top.end(), w_top_int);
+        const TF w_top = f0 * w_top_prev + f1 * w_top_next;
+        std::fill(w_top_2d.begin(), w_top_2d.end(), w_top);
     }
 
     // Interpolate boundaries in time.
@@ -1733,9 +1762,10 @@ void Boundary_lateral<TF>::update_time_dependent(
             const int ngc = (it.first == "u") ? gd.igc+1 : gd.igc;
             interpolate_lbc_kernel(
                     lbc_w.at(it.first).data(),
-                    lbc_w_in.at(it.first).data(),
+                    lbc_w_prev.at(it.first).data(),
+                    lbc_w_next.at(it.first).data(),
                     gd.kcells * gd.jcells * (ngc+n_sponge),
-                    t0, f0);
+                    f0);
         }
     }
 
@@ -1744,9 +1774,10 @@ void Boundary_lateral<TF>::update_time_dependent(
         for (auto& it : lbc_e)
             interpolate_lbc_kernel(
                     lbc_e.at(it.first).data(),
-                    lbc_e_in.at(it.first).data(),
+                    lbc_e_prev.at(it.first).data(),
+                    lbc_e_next.at(it.first).data(),
                     gd.kcells * gd.jcells * (gd.igc+n_sponge),
-                    t0, f0);
+                    f0);
     }
 
     if (md.mpicoordy == 0)
@@ -1756,9 +1787,10 @@ void Boundary_lateral<TF>::update_time_dependent(
             const int ngc = (it.first == "v") ? gd.jgc+1 : gd.jgc;
             interpolate_lbc_kernel(
                     lbc_s.at(it.first).data(),
-                    lbc_s_in.at(it.first).data(),
+                    lbc_s_prev.at(it.first).data(),
+                    lbc_s_next.at(it.first).data(),
                     gd.kcells * (ngc+n_sponge) * gd.icells,
-                    t0, f0);
+                    f0);
         }
     }
 
@@ -1767,9 +1799,10 @@ void Boundary_lateral<TF>::update_time_dependent(
         for (auto& it : lbc_n)
             interpolate_lbc_kernel(
                     lbc_n.at(it.first).data(),
-                    lbc_n_in.at(it.first).data(),
+                    lbc_n_prev.at(it.first).data(),
+                    lbc_n_next.at(it.first).data(),
                     gd.kcells * (gd.jgc+n_sponge) * gd.icells,
-                    t0, f0);
+                    f0);
     }
 }
 
