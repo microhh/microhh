@@ -721,11 +721,9 @@ namespace
     {
         const int jstride_w = ngc + nsponge + 1;
         const int kstride_w = jstride_w * jcells;
-        const int tstride_w = kstride_w * ktot;
 
         const int jstride_e = ngc + nsponge;
         const int kstride_e = jstride_e * jcells;
-        const int tstride_e = kstride_e * ktot;
 
         const int iw = ngc;
         const int ie = nsponge;
@@ -933,7 +931,7 @@ void Boundary_lateral<TF>::init()
 }
 
 template <typename TF>
-void Boundary_lateral<TF>::read_input(
+void Boundary_lateral<TF>::read_lbc(
         TF& div_u, TF& div_v,
         Lbc_map<TF>& lbc_w_in,
         Lbc_map<TF>& lbc_e_in,
@@ -961,15 +959,27 @@ void Boundary_lateral<TF>::read_input(
     };
 
 
+    auto print_minmax = [&](const std::vector<TF>& vec, const std::string& name)
+    {
+        TF min_val = 1e9;
+        TF max_val = -1e9;
+
+        for (auto & val : vec)
+        {
+            min_val = std::min(min_val, val);
+            max_val = std::max(max_val, val);
+        }
+
+        printf(" - %s @ %d : min=%f, max=%f\n", name.c_str(), md.mpiid, min_val, max_val);
+    };
+
+
     auto read_binary = [&](
             std::vector<TF>& vec,
             const std::string file_name,
             const unsigned long size,
             const unsigned long time_index)
     {
-        // Only single tasks reads, so necessary to use `printf()` instead of `master.print_message()`.
-        //printf("Loading \"%s\" at mpiidx=%d, mpiidy=%d ... ", file_name.c_str(), md.mpicoordx, md.mpicoordy);
-
         FILE *pFile;
         pFile = fopen(file_name.c_str(), "rb");
 
@@ -998,12 +1008,11 @@ void Boundary_lateral<TF>::read_input(
         }
 
         fclose(pFile);
-        //printf("OK\n");
     };
 
 
     auto copy_boundary = [&](
-            Lbc_map<TF>& map_out,
+            std::vector<TF>& fld_out,
             const std::vector<TF>& fld_in,
             const int isize_in, const int jsize_in,
             const int isize_out, const int jsize_out,
@@ -1016,8 +1025,6 @@ void Boundary_lateral<TF>::read_input(
 
         const int size_in = gd.ktot * jsize_in * isize_in;
         const int size_out = gd.kcells * jsize_out * isize_out;
-
-        std::vector<TF> fld_out = std::vector<TF>(size_out);
 
         const int jstride_in = isize_in;
         const int kstride_in = jstride_in * jsize_in;
@@ -1034,11 +1041,6 @@ void Boundary_lateral<TF>::read_input(
 
                     fld_out[ijk_out] = fld_in[ijk_in];
                 }
-
-        map_out.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(name),
-                std::forward_as_tuple(std::move(fld_out)));
     };
 
 
@@ -1088,7 +1090,7 @@ void Boundary_lateral<TF>::read_input(
             master.broadcast_y(lbc_w_full.data(), ncells_w, 0);
 
             copy_boundary(
-                    lbc_w_in, lbc_w_full,
+                    lbc_w_in.at(name), lbc_w_full,
                     nlbc_w, gd.jtot+2*gd.jgc,
                     nlbc_w, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
@@ -1116,7 +1118,7 @@ void Boundary_lateral<TF>::read_input(
             master.broadcast_y(lbc_e_full.data(), ncells_e, md.npy-1);
 
             copy_boundary(
-                    lbc_e_in, lbc_e_full,
+                    lbc_e_in.at(name), lbc_e_full,
                     nlbc_e, gd.jtot+2*gd.jgc,
                     nlbc_e, gd.jcells,
                     0, md.mpicoordy*gd.jmax,
@@ -1144,7 +1146,7 @@ void Boundary_lateral<TF>::read_input(
             master.broadcast_x(lbc_s_full.data(), ncells_s, md.npx-1);
 
             copy_boundary(
-                    lbc_s_in, lbc_s_full,
+                    lbc_s_in.at(name), lbc_s_full,
                     gd.itot+2*gd.igc, nlbc_s,
                     gd.icells, nlbc_s,
                     md.mpicoordx*gd.imax, 0,
@@ -1171,7 +1173,7 @@ void Boundary_lateral<TF>::read_input(
             master.broadcast_x(lbc_n_full.data(), ncells_n, 0);
 
             copy_boundary(
-                    lbc_n_in, lbc_n_full,
+                    lbc_n_in.at(name), lbc_n_full,
                     gd.itot+2*gd.igc, nlbc_n,
                     gd.icells, nlbc_n,
                     md.mpicoordx*gd.imax, 0,
@@ -1241,7 +1243,7 @@ void Boundary_lateral<TF>::create(
         TF div_u = 0;
         TF div_v = 0;
         const int time_index = 0;
-        read_input(div_u, div_v, lbc_w, lbc_e, lbc_s, lbc_n, time_index);
+        read_lbc(div_u, div_v, lbc_w, lbc_e, lbc_s, lbc_n, time_index);
 
         if (sw_wtop_2d)
             read_xy_slice(w_top_2d, "w_top", 0);
@@ -1284,8 +1286,8 @@ void Boundary_lateral<TF>::create(
         TF div_u_next = 0;
         TF div_v_next = 0;
 
-        read_input(div_u_prev, div_v_prev, lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev, prev_index);
-        read_input(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+        read_lbc(div_u_prev, div_v_prev, lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev, prev_index);
+        read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
 
         if (sw_wtop_2d)
         {
@@ -1715,7 +1717,7 @@ void Boundary_lateral<TF>::update_time_dependent(
 
         TF div_u_next = 0;
         TF div_v_next = 0;
-        read_input(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+        read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
 
         // Read in or calculate new `w_top`.
         if (sw_wtop_2d)

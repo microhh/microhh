@@ -50,7 +50,6 @@ class Boundary_lateral
         void create(Input&, Timeloop<TF>&, const std::string&);
         void set_ghost_cells(Timeloop<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
-        void read_input(TF&, TF&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, const int);
 
     private:
         Master& master;
@@ -58,6 +57,7 @@ class Boundary_lateral
         Fields<TF>& fields;
         Field3d_io<TF> field3d_io;
 
+        void read_lbc(TF&, TF&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, Lbc_map<TF>&, const int);
         void read_xy_slice(
                 std::vector<TF>&, const std::string&, const int);
 
