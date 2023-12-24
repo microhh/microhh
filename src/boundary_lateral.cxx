@@ -1687,19 +1687,20 @@ void Boundary_lateral<TF>::update_time_dependent(
         itime += timeloop.get_idt();
     }
 
-    // BvS: We are setting `w_top` for the next time step;
-    //      skip if next time is beyond the endtime.
-    if (itime > iendtime)
-    {
-        master.print_warning("Timedep boundary_lateral out-of-bounds at t+dt, skipping update.\n");
-        return;
-    }
-
     if (itime >= next_itime)
     {
+        // BvS: We are setting `w_top` for the next time step;
+        //      skip if next time is beyond the endtime.
+        if (next_itime + iloadtime > iendtime)
+        {
+            master.print_warning("Timedep boundary_lateral out-of-bounds at t+dt, skipping update.\n");
+            return;
+        }
+
         // Advance time and read new files.
         prev_itime = next_itime;
         next_itime = prev_itime + iloadtime;
+
         unsigned long next_iotime = next_itime / iiotimeprec;
 
         // Move LBCs from next to previous values.
