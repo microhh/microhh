@@ -1276,8 +1276,8 @@ void Boundary_lateral<TF>::create(
         prev_itime = prev_index * iloadtime;
         next_itime = next_index * iloadtime;
 
-        unsigned long prev_iotime = prev_index / iiotimeprec;
-        unsigned long next_iotime = next_index / iiotimeprec;
+        unsigned long prev_iotime = prev_index * iloadtime / iiotimeprec;
+        unsigned long next_iotime = next_index * iloadtime / iiotimeprec;
 
         // Read previous and next LBC values.
         TF div_u_prev = 0;
@@ -1741,7 +1741,7 @@ void Boundary_lateral<TF>::update_time_dependent(
     }
 
     // Interpolate LBCs and w_top to current time.
-    const TF f0 = TF(1) - ((itime - prev_itime) / iloadtime);
+    const TF f0 = TF(1) - ((itime - prev_itime) / TF(iloadtime));
     const TF f1 = TF(1) - f0;
 
     // Interpolate mean domain top velocity
