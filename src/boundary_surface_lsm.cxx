@@ -249,6 +249,39 @@ namespace
         }
     }
 
+    template<typename TF>
+    void calc_z0_charnock(
+            TF* const restrict z0m,
+            TF* const restrict z0h,
+            const TF* const restrict ustar,
+            const int* const restrict water_mask,
+            const TF alpha_m, const TF alpha_ch, const TF alpha_h,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const TF visc = TF(1.5e-5);
+        const TF gi = TF(1)/Constants::grav<TF>;
+        const TF min_ustar = TF(1e-8);
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*icells;
+
+                if (water_mask[ij])
+                {
+                    // Limit u* to prevent div/0:
+                    const TF ustar_lim = std::max(ustar[ij], min_ustar);
+
+                    // Roughness lengths, like IFS:
+                    z0m[ij] = alpha_m * visc/ustar_lim + alpha_ch * fm::pow2(ustar_lim) * gi;
+                    z0h[ij] = alpha_h * visc/ustar_lim;
+                    // NOTE: what to do with `z0q`?
+                }
+            }
+    }
 }
 
 template<typename TF>
@@ -272,6 +305,18 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     // BvS: for now, read surface emission from radiation group. This needs
     // to be coupled correctly, also for 2D varying emissivities.
     emis_sfc = inputin.get_item<TF>("radiation", "emis_sfc", "");
+
+    // z0 as function of u* (Charnock relation).
+    sw_charnock = inputin.get_item<bool>("land_surface", "swcharnock", "", false);
+    if (sw_charnock && sw_constant_z0)
+        throw std::runtime_error("\"swcharnock=true\" requires \"swconstantz0=false\"");
+
+    if (sw_charnock)
+    {
+        alpha_m  = inputin.get_item<TF>("land_surface", "alpha_m", "");
+        alpha_ch = inputin.get_item<TF>("land_surface", "alpha_ch", "");
+        alpha_h  = inputin.get_item<TF>("land_surface", "alpha_h", "");
+    }
 
     // Create prognostic 2D and 3D fields;
     fields.init_prognostic_soil_field("t", "Soil temperature", "K");
@@ -333,6 +378,23 @@ void Boundary_surface_lsm<TF>::exec(
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
+
+    // Update roughness lengths when Charnock relation is used,
+    // using friction velocity from previous time step (?).
+    if (sw_charnock)
+    {
+        calc_z0_charnock(
+                z0m.data(), z0h.data(),
+                ustar.data(),
+                water_mask.data(),
+                alpha_m, alpha_ch, alpha_h,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
+        boundary_cyclic.exec_2d(z0m.data());
+        boundary_cyclic.exec_2d(z0h.data());
+    }
 
     //
     // Calculate tile independant properties
@@ -396,7 +458,6 @@ void Boundary_surface_lsm<TF>::exec(
     auto theta_mean_n = fields.get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
-
     const int iter = timeloop.get_iteration();
     const int subs = timeloop.get_substep();
     const int mpiid = master.get_mpiid();
@@ -1338,7 +1399,7 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "z0m", "z0h"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1568,6 +1629,10 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
             cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
         else if (it == "obuk")
             cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
+        else if (it == "z0m")
+            cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
+        else if (it == "z0h")
+            cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (it == "wl")
             cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, "wl", iotime);
     }

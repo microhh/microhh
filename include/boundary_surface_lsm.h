@@ -155,6 +155,11 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_tile_stats_col;
         bool sw_homogenize_sfc;
 
+        bool sw_charnock;
+        TF alpha_m;
+        TF alpha_ch;
+        TF alpha_h;
+
         TF emis_sfc;
 
         std::vector<std::string> tile_names {"veg", "soil" ,"wet"};
@@ -166,6 +171,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         std::vector<TF> z0m;
         std::vector<TF> z0h;
+        std::vector<TF> z0q;
 
         std::vector<TF> ustar;
         std::vector<TF> obuk;

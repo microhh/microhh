@@ -93,6 +93,9 @@ void Boundary_surface_lsm<TF>::exec(
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
     TF* du_tot = tmp1->fld_bot_g;
 
+    if (sw_charnock)
+        throw std::runtime_error("Charnock not (yet) implemented on the GPU...");
+
     bsk::calc_dutot_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
         du_tot,
         fields.mp.at("u")->fld_g,
