@@ -262,7 +262,11 @@ namespace
     {
         const TF visc = TF(1.5e-5);
         const TF gi = TF(1)/Constants::grav<TF>;
-        const TF min_ustar = TF(1e-8);
+
+        // `min_ustar` needs to be relatively high, otherwise the
+        // visc/ustar terms becomes very large, resulting in unrealistic
+        // z0's at low wind speeds.
+        const TF min_ustar = TF(1e-3);
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -278,7 +282,7 @@ namespace
                     // Roughness lengths, like IFS:
                     z0m[ij] = alpha_m * visc/ustar_lim + alpha_ch * fm::pow2(ustar_lim) * gi;
                     z0h[ij] = alpha_h * visc/ustar_lim;
-                    // NOTE: what to do with `z0q`?
+                    // What to do with `z0q`?
                 }
             }
     }
@@ -1081,7 +1085,7 @@ void Boundary_surface_lsm<TF>::init_surface_layer(Input& input)
 
     // Also initialise ustar at small number, to prevent div/0
     // in calculation surface gradients during cold start.
-    std::fill(ustar.begin(), ustar.end(), Constants::dsmall);
+    std::fill(ustar.begin(), ustar.end(), 0.1);
 }
 
 template<typename TF>
@@ -1622,7 +1626,7 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
     auto& gd = grid.get_grid_data();
     auto tmp1 = fields.get_tmp();
     TF no_offset = 0.;
-    
+
     for (auto& it : cross_list)
     {
         if (it == "ustar")
