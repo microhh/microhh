@@ -35,6 +35,7 @@
 #include "advec_2i4.h"
 #include "advec_2i5.h"
 #include "advec_2i62.h"
+#include "advec_2i6.h"
 #include "advec_4.h"
 #include "advec_4m.h"
 
@@ -70,6 +71,8 @@ std::shared_ptr<Advec<TF>> Advec<TF>::factory(
             return std::make_shared<Advec_2i5<TF>>(masterin, gridin, fieldsin, inputin);
         else if (swadvec == "2i62")
             return std::make_shared<Advec_2i62<TF>>(masterin, gridin, fieldsin, inputin);
+        else if (swadvec == "2i6")
+            return std::make_shared<Advec_2i6<TF>>(masterin, gridin, fieldsin, inputin);
         else
         {
             std::string msg = "swadvec = \"" + swadvec +  "\" is an illegal value with swspatialorder = \"2\"";

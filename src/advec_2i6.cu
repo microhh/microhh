@@ -20,54 +20,43 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "advec_2i6.h"
+//#include "advec_2i6_kernels.cuh"
 #include "grid.h"
 #include "fields.h"
-#include "constants.h"
-#include "master.h"
 #include "stats.h"
+#include "tools.h"
+#include "constants.h"
+#include "finite_difference.h"
+#include "field3d_operators.h"
+#include "cuda_launcher.h"
 
-#include "advec.h"
-#include "advec_disabled.h"
 
+#ifdef USECUDA
 template<typename TF>
-Advec_disabled<TF>::Advec_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    Advec<TF>(masterin, gridin, fieldsin, inputin)
+unsigned long Advec_2i6<TF>::get_time_limit(unsigned long idt, double dt)
 {
+    throw std::runtime_error("advec_2i6 is not (yet) implemented on the GPU.");
 }
 
-template<typename TF>
-Advec_disabled<TF>::~Advec_disabled() {}
 
 template<typename TF>
-unsigned long Advec_disabled<TF>::get_time_limit(unsigned long idt, const double dt)
+double Advec_2i6<TF>::get_cfl(const double dt)
 {
-    return Constants::ulhuge;
+    throw std::runtime_error("advec_2i6 is not (yet) implemented on the GPU.");
 }
 
-template<typename TF>
-double Advec_disabled<TF>::get_cfl(const double dt)
-{
-    return cflmin;
-}
 
 template<typename TF>
-void Advec_disabled<TF>::create(Stats<TF>& stats)
+void Advec_2i6<TF>::exec(Stats<TF>& stats)
 {
+    throw std::runtime_error("advec_2i6 is not (yet) implemented on the GPU.");
 }
-
-template<typename TF>
-void Advec_disabled<TF>::exec(Stats<TF>&) {}
-
-template<typename TF>
-void Advec_disabled<TF>::get_advec_flux(
-        Field3d<TF>& advec_flux, const Field3d<TF>& fld)
-{
-    std::fill(advec_flux.fld.begin(), advec_flux.fld.end(), TF(0.));
-}
+#endif
 
 
 #ifdef FLOAT_SINGLE
-template class Advec_disabled<float>;
+template class Advec_2i6<float>;
 #else
-template class Advec_disabled<double>;
+template class Advec_2i6<double>;
 #endif

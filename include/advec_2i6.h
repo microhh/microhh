@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_2I62_H
-#define ADVEC_2I62_H
+#ifndef ADVEC_2i6_H
+#define ADVEC_2i6_H
 
 #include "advec.h"
 
@@ -32,14 +32,14 @@ template<typename> class Fields;
 class Input;
 
 /**
- * Derived class for 2nd order advection scheme.
+ * Derived class for 2nd order advection scheme with 6th order interpolations.
  */
 template<typename TF>
-class Advec_2i62 : public Advec<TF>
+class Advec_2i6 : public Advec<TF>
 {
     public:
-        Advec_2i62(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
-        ~Advec_2i62(); ///< Destructor of the advection class.
+        Advec_2i6(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the advection class.
+        ~Advec_2i6(); ///< Destructor of the advection class.
 
         void create(Stats<TF>&);
         void exec(Stats<TF>&); ///< Execute the advection scheme.
@@ -47,7 +47,7 @@ class Advec_2i62 : public Advec<TF>
         double get_cfl(double); ///< Get the CFL number.
 
         void get_advec_flux(Field3d<TF>&, const Field3d<TF>&);
-        Advection_type get_switch() const { return Advection_type::Advec_2i62; }
+        Advection_type get_switch() const { return Advection_type::Advec_2i6; }
 
     private:
         using Advec<TF>::master;
@@ -60,9 +60,5 @@ class Advec_2i62 : public Advec<TF>
 
         const std::string tend_name = "advec";
         const std::string tend_longname = "Advection";
-
-        std::vector<std::string> fluxlimit_list;
-        std::vector<std::string> sp_limit;
-        std::vector<std::string> sp_no_limit;
 };
 #endif

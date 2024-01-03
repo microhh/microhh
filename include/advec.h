@@ -35,7 +35,7 @@ template<typename> class Stats;
 
 enum class Advection_type {
     Disabled, Advec_2, Advec_4, Advec_4m,
-    Advec_2i4, Advec_2i5, Advec_2i62};
+    Advec_2i4, Advec_2i5, Advec_2i6, Advec_2i62};
 
 /**
  * Base class for the advection scheme. This class is abstract and only
@@ -56,7 +56,7 @@ class Advec
         virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
         virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
 
-        virtual void get_advec_flux(Field3d<TF>&, const Field3d<TF>&, const Field3d<TF>&) = 0;
+        virtual void get_advec_flux(Field3d<TF>&, const Field3d<TF>&) = 0;
         virtual Advection_type get_switch() const = 0;
 
     protected:
