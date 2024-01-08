@@ -72,7 +72,7 @@ def check_grid_decomposition(itot, jtot, ktot, npx, npy):
 
 
 @run_async
-def interp_lbcs(lbc_ds, fld, loc, xz, yz, interpolation_method, output_dir):
+def interp_lbcs(lbc_ds, fld, loc, xz, yz, interpolation_method, float_type, output_dir):
     """
     Interpolate single LBC, and write as binary input file for MicroHH.
     """
@@ -99,12 +99,12 @@ def interp_lbcs(lbc_ds, fld, loc, xz, yz, interpolation_method, output_dir):
     if np.any(np.isnan(ip[fld].values)):
         raise Exception('Interpolated BCs contain NaNs!')
 
-    ip[fld].values.astype(float_type).tofile(f'{domain.work_dir}/lbc_{fld}_{loc}.0000000')
+    ip[fld].values.astype(float_type).tofile(f'{output_dir}/lbc_{fld}_{loc}.0000000')
 
     del ip
 
 
-if __name__ == '__main__':
+def main():
 
     if len(sys.argv) != 2:
         raise Exception('Provide domain number as argument (0...N)')
@@ -412,8 +412,12 @@ if __name__ == '__main__':
             for loc in ['north', 'west', 'east', 'south']:
                 calls.append(
                         interp_lbcs(
-                            lbc_ds, fld, loc, xz, yz,
-                            interpolation_method, domain.work_dir))
+                            lbc_ds,
+                            fld, loc,
+                            xz, yz,
+                            interpolation_method,
+                            float_type,
+                            domain.work_dir))
 
         loop = asyncio.get_event_loop()
         looper = asyncio.gather(*calls)
@@ -553,3 +557,9 @@ if __name__ == '__main__':
 #
 #    st = os.stat(runscript)
 #    os.chmod(runscript, st.st_mode | stat.S_IEXEC)
+
+
+
+
+if __name__ == '__main__':
+    main()
