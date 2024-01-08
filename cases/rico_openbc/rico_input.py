@@ -26,6 +26,41 @@ def grid_linear_stretched(dz0, alpha, ktot):
     return z, zh, zsize
 
 
+def check_grid_decomposition(itot, jtot, ktot, npx, npy):
+    """
+    Check whether grid / MPI decomposition is valid
+    """
+
+    err = False
+    if itot%npx != 0:
+        print('ERROR in grid: itot%npx != 0')
+        err = True
+
+    if itot%npy != 0:
+        print('ERROR in grid: itot%npy != 0')
+        err = True
+
+    if jtot%npx != 0 and npy > 1:
+        print('ERROR in grid: jtot%npx != 0')
+        err = True
+
+    if jtot%npy != 0:
+        print('ERROR in grid: jtot%npy != 0')
+        err = True
+
+    if ktot%npx != 0:
+        print('ERROt in grid: ktot%npx != 0')
+        err = True
+
+    if err:
+        print('Grid: itot={}, jtot={}, ktot={}, npx={}, npy={}'.format(
+            itot, jtot, ktot, npx, npy))
+        raise Exception('Invalid grid configuration!')
+    else:
+        print('Grid: itot={}, jtot={}, ktot={}, npx={}, npy={}: OKAY!'.format(
+            itot, jtot, ktot, npx, npy))
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
@@ -36,8 +71,10 @@ if __name__ == '__main__':
     Case settings.
     """
     # Work directory. Each domain is placed in its own sub-directory.
-    work_path = '.'
+    #work_path = '.'
+    work_path = '/home/stratum2/scratch/rico_2i6'
 
+    """
     # Outer domain with doubly-periodic BCs.
     d0 = mlt.Domain(
             name = 'dom_0',
@@ -75,10 +112,52 @@ if __name__ == '__main__':
 
     d0.child = d1
     d1.child = d2
+    """
+
+    # Outer domain with doubly-periodic BCs.
+    d0 = mlt.Domain(
+            name = 'dom_0',
+            itot = 768,
+            jtot = 432,
+            dx = 360,
+            dy = 360,
+            end_time = 72*3600,
+            work_path = work_path)
+
+    # Inner domains with open BCs.
+    d1 = mlt.Domain(
+            name = 'dom_1',
+            itot = 1536,
+            jtot = 864,
+            dx = 120,
+            dy = 120,
+            center_in_parent = True,
+            start_offset = 14400,
+            end_offset = -40*3600,
+            parent = d0,
+            work_path = work_path)
+
+    d2 = mlt.Domain(
+            name = 'dom_2',
+            itot = 1536,
+            jtot = 864,
+            dx = 40,
+            dy = 40,
+            center_in_parent = True,
+            start_offset = 0,
+            end_offset = 0,
+            parent = d1,
+            work_path = work_path)
+
+    d0.child = d1
+    d1.child = d2
 
     float_type = np.float64
-    microhh_path = '/home/bart/meteo/models/microhh'
-    microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
+    #microhh_path = '/home/bart/meteo/models/microhh'
+    #microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
+
+    microhh_path = '/home/stratum2/models/microhh'
+    microhh_bin = '/home/stratum2/models/microhh/build_dp_cpumpi/microhh'
     
     #case = 'gcss'  # Original RICO
     case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
@@ -111,8 +190,8 @@ if __name__ == '__main__':
     ini = mht.Read_namelist('rico.ini.base')
     
     # Linearly stretched vertical grid.
-    ktot = 96
-    z, zh, zsize = grid_linear_stretched(dz0=25, alpha=0.01, ktot=ktot)
+    ktot = 144
+    z, zh, zsize = grid_linear_stretched(dz0=20, alpha=0.007, ktot=ktot)
     
     # Define fields and vertical profiles.
     thl   = np.zeros(ktot)
@@ -234,6 +313,7 @@ if __name__ == '__main__':
     Create LBCs & initial fields from parent domain.
     """
     if domain.parent is not None:
+        print('Creating LBCs...')
 
         interpolation_method = 'linear'
         fields = ['thl', 'qt', 'qr', 'nr', 'u' ,'v', 'w']
@@ -276,7 +356,6 @@ if __name__ == '__main__':
                 dtype = float_type)
 
         # Add offset of child in parent domain, for easy interpolation with Xarray.
-
         for v in lbc_ds.variables:
             if 'x' in v:
                 lbc_ds[v] = lbc_ds[v] + xstart
@@ -286,6 +365,7 @@ if __name__ == '__main__':
         print('Interpolating LBCs...')
         for loc in ['north', 'west', 'east', 'south']:
             for fld in fields:
+                print(f' - {fld}-{loc}')
 
                 # Short cuts.
                 lbc_in = lbc_ds[f'{fld}_{loc}']
@@ -311,9 +391,11 @@ if __name__ == '__main__':
                 lbc_in[:] = ip[fld].values
 
         # DEBUG:
-        lbc_ds.to_netcdf('test.nc')
+        print('Saving as NetCDF...')
+        lbc_ds.to_netcdf(f'{domain.work_dir}/rico_lbc_input.nc')
 
         # Write binary input files for MicroHH.
+        print('Saving as binaries...')
         mlt.write_dataset_as_binaries(lbc_ds, float_type, output_dir=domain.work_dir)
 
         """
@@ -381,6 +463,8 @@ if __name__ == '__main__':
     ini['grid']['xsize'] = domain.xsize
     ini['grid']['ysize'] = domain.ysize
     ini['grid']['zsize'] = zsize
+
+    ini['buffer']['zstart'] = 0.8*zsize
 
     ini['boundary']['sbot[thl]'] = ths
     ini['boundary']['sbot[qt]'] = qs
