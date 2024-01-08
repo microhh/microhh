@@ -209,7 +209,7 @@ def get_lbc_xr_dataset(
 
     def add_var(name, dims):
         dim_size = get_dim_size(dims)
-        ds[name] = (dims, np.zeros(dim_size, dtype=dtype))
+        ds[name] = (dims, np.empty(dim_size, dtype=dtype))
 
     for fld in fields:
         if fld not in ('u','v','w'):

@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 import stat
 import sys
@@ -10,6 +11,15 @@ import numpy as np
 # Custom modules, from `microhh_root/python` directory.
 import microhh_lbc_tools as mlt
 import microhh_tools as mht
+
+
+def run_async(f):
+    """
+    Decorator to run processes asynchronous with `asyncio`.
+    """
+    def wrapped(*args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+    return wrapped
 
 
 def grid_linear_stretched(dz0, alpha, ktot):
@@ -61,6 +71,39 @@ def check_grid_decomposition(itot, jtot, ktot, npx, npy):
             itot, jtot, ktot, npx, npy))
 
 
+@run_async
+def interp_lbcs(lbc_ds, fld, loc, xz, yz, interpolation_method, output_dir):
+    """
+    Interpolate single LBC, and write as binary input file for MicroHH.
+    """
+    print(f' - Processing {fld}-{loc}')
+
+    # Short cuts.
+    name = f'{fld}_{loc}'
+    dims = lbc_ds[name].dims
+
+    # Dimensions in LBC file.
+    xloc, yloc = dims[3], dims[2]
+
+    # Dimensions in cross-section.
+    xloc_in = 'xh' if 'xh' in xloc else 'x'
+    yloc_in = 'yh' if 'yh' in yloc else 'y'
+
+    # Switch between yz and xz crosses.
+    cc = yz if loc in ['west','east'] else xz
+
+    # Interpolate!
+    ip = cc[fld].interp({yloc_in: lbc_ds[yloc], xloc_in: lbc_ds[xloc]}, method=interpolation_method)
+
+    # Check if interpolation was success.
+    if np.any(np.isnan(ip[fld].values)):
+        raise Exception('Interpolated BCs contain NaNs!')
+
+    ip[fld].values.astype(float_type).tofile(f'{domain.work_dir}/lbc_{fld}_{loc}.0000000')
+
+    del ip
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
@@ -71,10 +114,9 @@ if __name__ == '__main__':
     Case settings.
     """
     # Work directory. Each domain is placed in its own sub-directory.
-    #work_path = '.'
-    work_path = '/home/stratum2/scratch/rico_2i6'
+    work_path = '.'
+    #work_path = '/home/stratum2/scratch/rico_2i6'
 
-    """
     # Outer domain with doubly-periodic BCs.
     d0 = mlt.Domain(
             name = 'dom_0',
@@ -82,7 +124,7 @@ if __name__ == '__main__':
             jtot = 56,
             dx = 360,
             dy = 360,
-            end_time = 6*3600,
+            end_time = 3*3600,
             work_path = work_path)
 
     # Inner domains with open BCs.
@@ -93,8 +135,8 @@ if __name__ == '__main__':
             dx = 120,
             dy = 120,
             center_in_parent = True,
-            start_offset = 0, #7200,
-            end_offset = 0,
+            start_offset = 3600,
+            end_offset = -3600,
             parent = d0,
             work_path = work_path)
 
@@ -112,8 +154,8 @@ if __name__ == '__main__':
 
     d0.child = d1
     d1.child = d2
-    """
 
+    """
     # Outer domain with doubly-periodic BCs.
     d0 = mlt.Domain(
             name = 'dom_0',
@@ -148,6 +190,7 @@ if __name__ == '__main__':
             end_offset = 0,
             parent = d1,
             work_path = work_path)
+    """
 
     d0.child = d1
     d1.child = d2
@@ -361,42 +404,21 @@ if __name__ == '__main__':
                 lbc_ds[v] = lbc_ds[v] + xstart
             if 'y' in v:
                 lbc_ds[v] = lbc_ds[v] + ystart
+
     
         print('Interpolating LBCs...')
-        for loc in ['north', 'west', 'east', 'south']:
-            for fld in fields:
-                print(f' - {fld}-{loc}')
+        calls = []
+        for fld in fields:
+            for loc in ['north', 'west', 'east', 'south']:
+                calls.append(
+                        interp_lbcs(
+                            lbc_ds, fld, loc, xz, yz,
+                            interpolation_method, domain.work_dir))
 
-                # Short cuts.
-                lbc_in = lbc_ds[f'{fld}_{loc}']
-                dims = lbc_in.dims
-    
-                # Dimensions in LBC file.
-                xloc, yloc = dims[3], dims[2]
-    
-                # Dimensions in cross-section.
-                xloc_in = 'xh' if 'xh' in xloc else 'x'
-                yloc_in = 'yh' if 'yh' in yloc else 'y'
-    
-                # Switch between yz and xz crosses.
-                cc = yz if loc in ['west','east'] else xz
-    
-                # Interpolate!
-                ip = cc[fld].interp({yloc_in: lbc_ds[yloc], xloc_in: lbc_ds[xloc]}, method=interpolation_method)
-    
-                # Check if interpolation was success.
-                if np.any(np.isnan(ip[fld].values)):
-                    raise Exception('Interpolated BCs contain NaNs!')
-    
-                lbc_in[:] = ip[fld].values
+        loop = asyncio.get_event_loop()
+        looper = asyncio.gather(*calls)
+        results = loop.run_until_complete(looper)
 
-        # DEBUG:
-        print('Saving as NetCDF...')
-        lbc_ds.to_netcdf(f'{domain.work_dir}/rico_lbc_input.nc')
-
-        # Write binary input files for MicroHH.
-        print('Saving as binaries...')
-        mlt.write_dataset_as_binaries(lbc_ds, float_type, output_dir=domain.work_dir)
 
         """
         Interpolate initial fields from parent domain.
