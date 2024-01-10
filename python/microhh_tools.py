@@ -58,9 +58,9 @@ def _convert_value(value):
     """ Helper function: convert namelist value or list """
     if ',' in value:
         value = value.split(',')
-        return [_int_or_float_or_str(val) for val in value]
+        return [_int_or_float_or_str(val.strip()) for val in value]
     else:
-        return _int_or_float_or_str(value)
+        return _int_or_float_or_str(value.strip())
 
 
 def _find_namelist_file():
@@ -104,7 +104,7 @@ class Read_namelist:
                         curr_group_name = lstrip[1:-1]
                         self.groups[curr_group_name] = {}
                     elif ("=" in line):
-                        var_name = lstrip.split('=')[0]
+                        var_name = lstrip.split('=')[0].strip()
                         value    = lstrip.split('=')[1]
 
                         if ducktype:
@@ -322,29 +322,6 @@ class Create_ncfile():
             precision = 'f4'
         else:
             precision = 'f8'
-
-        half_level_vars = [
-            'w',
-            'sw_flux_dn', 'sw_flux_dn_dir', 'sw_flux_up',
-            'sw_flux_dn_clear', 'sw_flux_dn_dir_clear', 'sw_flux_up_clear',
-            'lw_flux_dn', 'lw_flux_up'
-            'lw_flux_dn_clear', 'lw_flux_up_clear']
-
-        if(varname == 'u'):
-            try:
-                dimensions['xh'] = dimensions.pop('x')
-            except KeyError:
-                pass
-        if(varname == 'v'):
-            try:
-                dimensions['yh'] = dimensions.pop('y')
-            except KeyError:
-                pass
-        if(varname in half_level_vars):
-            try:
-                dimensions['zh'] = dimensions.pop('z')
-            except KeyError:
-                pass
 
         # create dimensions in netCDF file
         self.dim = {}

@@ -269,7 +269,7 @@ namespace
             const int icells, const int ijcells)
     {
         #pragma omp parallel for
-        for (int k=kstart-1; k<kend+1; ++k)
+        for (int k=kstart; k<kend; ++k)
         {
             if (nmask[k])
             {
@@ -1385,7 +1385,7 @@ void Stats<TF>::calc_mask_mean_profile(
     // kend, so I send kcells-1 as the limit. This is not elegant, yet it works.
     calc_mean(
             prof.data(), fld.fld.data(), mfield.data(), flag, nmask,
-            gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells-1, gd.icells, gd.ijcells);
+            gd.istart, gd.iend, gd.jstart, gd.jend, 1, gd.kcells, gd.icells, gd.ijcells);
 
     master.sum(prof.data(), gd.kcells);
 }
@@ -1412,7 +1412,7 @@ void Stats<TF>::calc_mask_stats(
                 mfield.data(), flag, nmask,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
+                gd.kstart, gd.kend + fld.loc[2],
                 gd.icells, gd.ijcells);
 
         master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
@@ -1464,7 +1464,7 @@ void Stats<TF>::calc_stats_mean(
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, gd.kend + fld.loc[2],
                     gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
@@ -1530,85 +1530,19 @@ void Stats<TF>::calc_stats_w(
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         auto advec_flux = fields.get_tmp();
-        auto fld_prime = fields.get_tmp();
-        auto w_prime = fields.get_tmp();
+        advec.get_advec_flux(*advec_flux, fld);
 
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
-            // Subtract mean from `var` to get turbulent fluctuations.
-            calc_mean(
-                    w_prime->fld_mean.data(),
-                    fields.mp.at("w")->fld.data(),
-                    mfield.data(),
-                    flag, nmask,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend+1,
-                    gd.icells, gd.ijcells);
-            master.sum(w_prime->fld_mean.data(), gd.kcells);
-
-            calc_mean(
-                    fld_prime->fld_mean.data(),
-                    fld.fld.data(),
-                    mfield.data(),
-                    flag, nmask,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-            master.sum(fld_prime->fld_mean.data(), gd.kcells);
-
-            subtract_mean(
-                    fld_prime->fld.data(),
-                    fld.fld.data(),
-                    fld_prime->fld_mean.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend+1,
-                    gd.icells, gd.ijcells);
-
-
-            // Set flag for `w` level
-            const int w_loc = 1;
-            set_flag(flag, nmask, m.second, w_loc);
-
-            // Calculate w_mean and w_prime over the mask at half level.
-            calc_mean(
-                    w_prime->fld_mean.data(),
-                    fields.mp.at("w")->fld.data(),
-                    mfield.data(), flag, nmask,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend+1,
-                    gd.icells, gd.ijcells);
-
-            master.sum(w_prime->fld_mean.data(), gd.kcells);
-
-            subtract_mean(
-                    w_prime->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    w_prime->fld_mean.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend+1,
-                    gd.icells, gd.ijcells);
-
-            fld_prime->loc = gd.wloc;
-            advec.get_advec_flux(*advec_flux, *fld_prime, *w_prime);
-
-            // Switch flag to flux location of `fld`.
-            // set_flag(flag, nmask, m.second, !fld.loc[2]);
-
             calc_mean(
                     m.second.profs.at(name).data.data(),
-                    // fld_prime->fld.data(),
                     advec_flux->fld.data(),
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1616,8 +1550,6 @@ void Stats<TF>::calc_stats_w(
         }
 
         fields.release_tmp(advec_flux);
-        fields.release_tmp(fld_prime);
-        fields.release_tmp(w_prime);
     }
 }
 
@@ -1649,7 +1581,7 @@ void Stats<TF>::calc_stats_diff(
                     mfield.data(), flag, nmask,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
+                    gd.kstart, gd.kend+(1-fld.loc[2]),
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1867,7 +1799,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
             calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend+fld.loc[2], gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
 
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);

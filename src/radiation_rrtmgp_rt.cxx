@@ -530,11 +530,15 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     }
     else
     {
-        lat = inputin.get_item<Float>("grid", "lat", "");
-        lon = inputin.get_item<Float>("grid", "lon", "");
+        //Test whether lat/lon exist in the input file
+        if (sw_shortwave)
+        {
+            inputin.get_item<TF>("grid", "lat", "");
+            inputin.get_item<TF>("grid", "lon", "");
+        }
     }
 
-    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_bg", "", std::vector<std::string>());
+    gaslist = inputin.get_list<std::string>("radiation", "timedeplist_gas", "", std::vector<std::string>());
 
     const std::vector<std::string> possible_gases = {
             "h2o", "co2" ,"o3", "n2o", "co", "ch4", "o2", "n2",
@@ -550,7 +554,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
         }
         else
         {
-            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_bg" << std::endl;
+            std::cout << "Unsupported gas \"" + it + "\" in timedeplist_gas" << std::endl;
         }
     }
 
@@ -879,7 +883,7 @@ void Radiation_rrtmgp_rt<TF>::solve_shortwave_column(
         {
             Float h2o = gas_concs.get_vmr("h2o")({1, ilay});
 
-            Float q = h2o * Constants::xmh2o<Float> / Constants::xmair<Float>;
+            Float q = h2o * Constants::ep<Float> / (TF(1.) + h2o * Constants::ep<Float>);
             Float qsat = Thermo_moist_functions::qsat(p_lay({1, ilay}), t_lay({1, ilay}));
             rh({1, ilay}) = std::max(std::min(q / qsat, TF(1.)), TF(0.));
         }

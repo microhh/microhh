@@ -30,6 +30,7 @@ import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
+    half_level_vars = ['w', 'lflx', 'sflx']
     
     for variable in variables:
         filename = "{0}.nc".format(variable)
@@ -42,7 +43,7 @@ def convert_to_nc(variables):
             dim['xh'] = dim.pop('x')
         if variable == 'v':
             dim['yh'] = dim.pop('y')
-        if variable == 'w':
+        if variable in half_level_vars:
             dim['zh'] = dim.pop('z')
         try:
             def convert(otime, tout):

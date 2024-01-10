@@ -480,9 +480,17 @@ std::map<std::string, int> Netcdf_handle::get_variable_dimensions(const std::str
     int ndims;
     int dimids[NC_MAX_VAR_DIMS];
 
-    if (master.get_mpiid() == mpiid_to_write)
-        nc_check_code = nc_inq_var(ncid, var_id, NULL, NULL, &ndims, dimids, NULL);
-    nc_check(master, nc_check_code, mpiid_to_write);
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_var(ncid, var_id, NULL, NULL, &ndims, dimids, NULL);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+            std::string error = "Netcdf dimension " + name + " not found";
+            throw std::runtime_error(error);
+    }
 
     // Broadcast ndims
     master.broadcast(&ndims, 1, mpiid_to_write);
@@ -552,15 +560,20 @@ template<typename TF>
 TF Netcdf_handle::get_variable(
         const std::string& name)
 {
-    // std::string message = "Retrieving from NetCDF (single value): " + name;
-    // master.print_message(message);
-
     int nc_check_code = 0;
     int var_id;
 
-    if (master.get_mpiid() == 0)
-        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-    nc_check(master, nc_check_code, mpiid_to_write);
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        std::string error = "Netcdf variable " + name + " not found";
+        throw std::runtime_error(error);
+    }
 
     TF value = 0;
     if (master.get_mpiid() == 0)
@@ -580,18 +593,23 @@ std::vector<TF> Netcdf_handle::get_variable(
         const std::string& name,
         const std::vector<int>& i_count)
 {
-    // std::string message = "Retrieving from NetCDF (full array): " + name;
-    // master.print_message(message);
-
     const std::vector<size_t> i_start_size_t(i_count.size());
     const std::vector<size_t> i_count_size_t(i_count.begin(), i_count.end());
 
     int nc_check_code = 0;
     int var_id;
 
-    if (master.get_mpiid() == mpiid_to_write)
-        nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
-    nc_check(master, nc_check_code, mpiid_to_write);
+    try
+    {
+        if (master.get_mpiid() == mpiid_to_write)
+            nc_check_code = nc_inq_varid(ncid, name.c_str(), &var_id);
+        nc_check(master, nc_check_code, mpiid_to_write);
+    }
+    catch (std::runtime_error& e)
+    {
+        std::string error = "Netcdf variable " + name + " not found";
+        throw std::runtime_error(error);
+    }
 
     int total_count = std::accumulate(i_count.begin(), i_count.end(), 1, std::multiplies<>());
     master.broadcast(&total_count, 1);
@@ -613,8 +631,6 @@ void Netcdf_handle::get_variable(
         const std::vector<int>& i_start,
         const std::vector<int>& i_count, const bool required_read)
 {
-    // std::string message = "Retrieving from NetCDF: " + name;
-    // master.print_message(message);
     const std::vector<size_t> i_start_size_t (i_start.begin(), i_start.end());
     const std::vector<size_t> i_count_size_t (i_count.begin(), i_count.end());
 
