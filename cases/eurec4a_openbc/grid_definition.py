@@ -64,37 +64,38 @@ ysize_outer = jtot_outer * dy_outer
 """
 Horizontal projection.
 """
-if 'proj_str' not in locals():
-    proj_str = '+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs +type=crs'
-    
-    central_lon = -57.7
-    central_lat = 13.3
-    
-    hgrid_inner = mlt.Projection(
-            xsize_inner, ysize_inner,
-            itot_inner, jtot_inner,
-            central_lon, central_lat,
-            anchor='center',
-            proj_str=proj_str)
-    
-    # Parent is biased in location towards NE,
-    istart_in_parent = 144
-    jstart_in_parent = 144
-    w_spacing = dx_outer * istart_in_parent
-    s_spacing = dx_outer * jstart_in_parent
-    sw_lon, sw_lat = hgrid_inner.to_lonlat(-w_spacing, -s_spacing)
-    
-    hgrid_outer = mlt.Projection(
-            xsize_outer, ysize_outer,
-            itot_outer, jtot_outer,
-            sw_lon, sw_lat,
-            anchor='southwest',
-            proj_str=proj_str)
+proj_str = '+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs +type=crs'
 
+central_lon = -57.7
+central_lat = 13.3
+
+hgrid_inner = mlt.Projection(
+        xsize_inner, ysize_inner,
+        itot_inner, jtot_inner,
+        central_lon, central_lat,
+        anchor='center',
+        proj_str=proj_str)
+
+# Parent is biased in location towards NE.
+istart_in_parent = 144
+jstart_in_parent = 144
+w_spacing = dx_outer * istart_in_parent
+s_spacing = dx_outer * jstart_in_parent
+sw_lon, sw_lat = hgrid_inner.to_lonlat(-w_spacing, -s_spacing)
+
+hgrid_outer = mlt.Projection(
+        xsize_outer, ysize_outer,
+        itot_outer, jtot_outer,
+        sw_lon, sw_lat,
+        anchor='southwest',
+        proj_str=proj_str)
+
+"""
 pl.figure()
 pl.plot(hgrid_inner.bbox_lon, hgrid_inner.bbox_lat, label=f'$\Delta={hgrid_inner.dx:.1f} m$')
 pl.plot(hgrid_outer.bbox_lon, hgrid_outer.bbox_lat, label=f'$\Delta={hgrid_outer.dx:.1f} m$')
 pl.legend()
+"""
 
 """
 Vertical grid.
