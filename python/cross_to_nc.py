@@ -36,6 +36,8 @@ def convert_to_nc(variables):
     # Loop over the different variables and crosssections
     for variable in variables:
         for mode in modes:
+            print('Processing {}_{}'.format(variable, mode))
+
             try:
                 otime = int(round(starttime / 10**iotimeprec))
                 if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
@@ -114,9 +116,9 @@ def convert_to_nc(variables):
                             stop = True
                             break
 
-                        print(
-                            "Processing %8s, time=%7i, index=%4i" %
-                            (variable, otime, index))
+                        #print(
+                        #    "Processing %8s, time=%7i, index=%4i" %
+                        #    (variable, otime, index))
 
                         ncfile.dimvar['time'][t] = time
 
