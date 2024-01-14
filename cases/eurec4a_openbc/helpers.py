@@ -144,7 +144,7 @@ class Calc_z_interpolation_factors:
 
 
 @jit(nopython=True, nogil=True, fastmath=True, parallel=True)
-def interpolate_cosmo(
+def interpolate_cosmo_3d(
         fld_out, fld_cosmo,
         il, jl, kl,
         fx, fy, fz,
@@ -184,6 +184,60 @@ def interpolate_cosmo(
                         fxr * fyr * fzr * fld_cosmo[kll+1, jll+1, ill+1]
 
 
+@jit(nopython=True, nogil=True, fastmath=True, parallel=True)
+def interpolate_cosmo_2d(
+        fld_out, fld_cosmo,
+        il, jl,
+        fx, fy,
+        TF=np.float64):
+    """
+    Fast bi-linear interpolation of ERA5 onto LES grid.
+    """
+    jtot_les, itot_les = fld_out.shape
+    jtot_cosmo, itot_cosmo = fld_cosmo.shape
+
+    for j in prange(jtot_les):
+        for i in prange(itot_les):
+
+            # Short cuts
+            ill = il[j,i]
+            jll = jl[j,i]
+
+            fxl = fx[j,i]
+            fxr = TF(1) - fxl
+
+            fyl = fy[j,i]
+            fyr = TF(1) - fyl
+
+            fld_out[j,i] =  \
+                    fxl * fyl * fld_cosmo[jll,   ill  ] + \
+                    fxr * fyl * fld_cosmo[jll,   ill+1] + \
+                    fxl * fyr * fld_cosmo[jll+1, ill  ] + \
+                    fxr * fyr * fld_cosmo[jll+1, ill+1]
+
+
+def interpolate_cosmo(fld_les, fld_cosmo, if_xy, if_z=None, dtype=np.float64):
+    """
+    Interpolate 2D or 3D field from COSMO to LES grid.
+    """
+    if fld_les.ndim == 2:
+        interpolate_cosmo_2d(
+            fld_les, fld_cosmo,
+            if_xy.il, if_xy.jl,
+            if_xy.fx, if_xy.fy,
+            dtype)
+
+    elif fld_les.ndim == 3:
+        interpolate_cosmo_3d(
+            fld_les, fld_cosmo,
+            if_xy.il, if_xy.jl, if_z.kl,
+            if_xy.fx, if_xy.fy, if_z.fz,
+            dtype)
+
+    else:
+        raise Exception('Can only interpolate 2D (xy) or 3D (xyz) fields!')
+
+
 def check_grid_decomposition(itot, jtot, ktot, npx, npy):
     """
     Check whether grid / MPI decomposition is valid
@@ -220,13 +274,13 @@ def check_grid_decomposition(itot, jtot, ktot, npx, npy):
 
 
 class Grid_stretched_manual:
-    def __init__(self, kmax, dz0, heights, factors):
-        self.kmax = kmax
+    def __init__(self, ktot, dz0, heights, factors):
+        self.ktot = ktot
         self.dz0  = dz0
 
-        self.z = np.zeros(kmax)
-        self.zh = np.zeros(kmax+1)
-        self.dz = np.zeros(kmax)
+        self.z = np.zeros(ktot)
+        self.zh = np.zeros(ktot+1)
+        self.dz = np.zeros(ktot)
         self.zsize = None
 
         self.z[0]  = dz0/2.
@@ -235,11 +289,11 @@ class Grid_stretched_manual:
         def index(z, goal):
             return np.where(z-goal>0)[0][0]-1
 
-        for k in range(1, kmax):
+        for k in range(1, ktot):
             self.dz[k] = self.dz[k-1] * factors[index(heights, self.z[k-1])]
             self.z[k] = self.z[k-1] + self.dz[k]
 
-        self.zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
+        self.zsize = self.z[ktot-1] + 0.5*self.dz[ktot-1]
 
         self.zh[1:-1] = self.z[1:] - self.z[:-1]
         self.zh[-1] = self.zsize

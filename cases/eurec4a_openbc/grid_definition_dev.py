@@ -33,14 +33,14 @@ n_ghost = 3
 n_buffer = 5
 
 # Inner domain:
-npx_inner = 48  # = 144/3
-npy_inner = 64  # = 16*192/48
+npx_inner = 2
+npy_inner = 4
 
-xsize_inner = 500_000
-ysize_inner = 300_000
+xsize_inner = 64*100
+ysize_inner = 64*100
 
-itot_inner = 4800
-jtot_inner = 2880
+itot_inner = 64
+jtot_inner = 64
 
 dx_inner = xsize_inner / itot_inner
 dy_inner = ysize_inner / jtot_inner
@@ -49,14 +49,14 @@ dy_inner = ysize_inner / jtot_inner
 #hlp.check_grid_decomposition(itot_inner, jtot_inner, ktot, npx_inner, npy_inner)
 
 # Outer domain:
-npx_outer = 48  # = 144/3
-npy_outer = 32  # = 8*192/48
+npx_outer = 2  # = 144/3
+npy_outer = 4  # = 8*192/48
 
-itot_outer = int(itot_inner/2)
-jtot_outer = int(jtot_inner/2)
+itot_outer = 64
+jtot_outer = 64
 
-dx_outer = 4*dx_inner
-dy_outer = 4*dy_inner
+dx_outer = 3*dx_inner
+dy_outer = 3*dy_inner
 
 xsize_outer = itot_outer * dx_outer
 ysize_outer = jtot_outer * dy_outer
@@ -80,11 +80,8 @@ hgrid_inner = mlt.Projection(
         proj_str=proj_str)
 
 # Parent is biased in location towards NE.
-#istart_in_parent = 144
-#jstart_in_parent = 144
-
-istart_in_parent = 150
-jstart_in_parent = 150
+istart_in_parent = 8
+jstart_in_parent = 8
 
 w_spacing = dx_outer * istart_in_parent
 s_spacing = dx_outer * jstart_in_parent
@@ -126,7 +123,7 @@ heights = [0, 4000, 10000]
 factors = [1.01, 1.02]
 vgrid = hlp.Grid_stretched_manual(ktot, 20, heights, factors)
 
-
+"""
 pl.close('all')
 
 pl.figure()
@@ -140,4 +137,5 @@ pl.plot(hgrid_outer.bbox_lon, hgrid_outer.bbox_lat, color='tab:blue', label=f'$\
 pl.plot(hgrid_inner_pad.bbox_lon, hgrid_inner_pad.bbox_lat, '--', color='tab:red')
 pl.plot(hgrid_outer_pad.bbox_lon, hgrid_outer_pad.bbox_lat, '--', color='tab:blue')
 pl.legend()
+"""
 
