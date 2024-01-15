@@ -20,8 +20,12 @@
 # along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import xarray as xr
 import numpy as np
 from numba import jit, prange
+from datetime import timedelta
+
+import constants
 
 
 @jit(nopython=True, nogil=True, fastmath=True)
@@ -298,3 +302,59 @@ class Grid_stretched_manual:
         self.zh[1:-1] = self.z[1:] - self.z[:-1]
         self.zh[-1] = self.zsize
 
+
+def esat_liq(T):
+    """
+    Calculate saturation vapor pressure at absolute temperature T
+    """
+    x = np.maximum(-75., T-constants.T0);
+    return constants.c00+x*(constants.c10+x*(constants.c20+x*(constants.c30+x*(constants.c40+x*(constants.c50+x*(constants.c60+x*(constants.c70+x*(constants.c80+x*(constants.c90+x*constants.c100)))))))))
+
+
+def qsat_liq(T, p):
+    """
+    Calculate saturation specific humidity from absolute temperature and pressure.
+    """
+    return constants.ep*esat_liq(T)/(p-(1.-constants.ep)*esat_liq(T))
+
+
+def exner(p):
+    """
+    Calculate exner function as function of absolute pressure p.
+    """
+    return (p/constants.p0)**(constants.Rd/constants.cp)
+
+
+def read_cosmo(date, cosmo_path, lon_slice, lat_slice):
+    """
+    Read COSMO for single time step (hour).
+    """
+    base_name = f'lffd{date.year:04d}{date.month:02d}{date.day:02d}{date.hour:02d}0000'
+
+    ds_2d = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_2D/{base_name}.nc').squeeze()
+    ds_3d = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_3D/{base_name}z.nc').squeeze()
+
+    ds_2d = ds_2d.sel(rlon=lon_slice, rlat=lat_slice)
+    d3_2d = ds_3d.sel(rlon=lon_slice, rlat=lat_slice)
+
+    # Calculate derived properties.
+    dims_2d = ('rlat', 'rlon')
+    dims_3d = ('altitude', 'rlat', 'rlon')
+
+    exner_2d = exner(ds_2d['PS'].values)
+    exner_3d = exner(ds_3d['P'].values)
+
+    ds_2d['qsat_s'] = (dims_2d, qsat_liq(ds_2d['T_S'].values, ds_2d['PS'].values))
+    ds_2d['thl_s'] = (dims_2d, ds_2d['T_S'].values / exner_2d)
+
+    ds_3d['qt'] = (dims_3d, ds_3d['QV'].values + ds_3d['QC'].values + ds_3d['QI'].values)
+    ds_3d['qr'] = (dims_3d, ds_3d['QR'].values + ds_3d['QS'].values)
+    ds_3d['th'] = (dims_3d, ds_3d['T'].values / exner_3d)
+
+    thl = ds_3d['th'].values - \
+            constants.Lv * ds_3d['QC'].values / (constants.cp * exner_3d) - \
+            constants.Ls * ds_3d['QI'].values / (constants.cp * exner_3d)
+
+    ds_3d['thl'] = (dims_3d, thl)
+
+    return ds_2d, ds_3d

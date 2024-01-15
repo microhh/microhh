@@ -32,8 +32,9 @@ remote_url = 'https://swift.dkrz.de/v1/dkrz_0913c8f3-e7b6-4f94-9221-06880d4ccfea
 output_dir = '/home/scratch2/bart/eurec4a_cosmo/'
 
 date = start
-while date < end:
+while date <= end:
     print(f'Downloading {date}')
+
     filename_3d = f'lffd{date.year:04d}{date.month:02d}{date.day:02d}{date.hour:02d}0000z.nc'
     filename_2d = f'lffd{date.year:04d}{date.month:02d}{date.day:02d}{date.hour:02d}0000.nc'
 

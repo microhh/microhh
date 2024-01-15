@@ -126,7 +126,7 @@ heights = [0, 4000, 10000]
 factors = [1.01, 1.02]
 vgrid = hlp.Grid_stretched_manual(ktot, 20, heights, factors)
 
-
+"""
 pl.close('all')
 
 pl.figure()
@@ -140,4 +140,4 @@ pl.plot(hgrid_outer.bbox_lon, hgrid_outer.bbox_lat, color='tab:blue', label=f'$\
 pl.plot(hgrid_inner_pad.bbox_lon, hgrid_inner_pad.bbox_lat, '--', color='tab:red')
 pl.plot(hgrid_outer_pad.bbox_lon, hgrid_outer_pad.bbox_lat, '--', color='tab:blue')
 pl.legend()
-
+"""
