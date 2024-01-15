@@ -66,7 +66,7 @@ if 'era' not in locals():
 
     # Drop variables we don't need or don't overwrite with COSMO data.
     drop = [
-        'zs', 'wls', 'dtthl_advec', 'dtqt_advec', 'dtu_advec', 'dtv_advec', 'ug', 'vg',
+        'zs', 'wls', 'dtthl_advec', 'dtqt_advec', 'dtu_advec', 'dtv_advec',
         't_soil', 'theta_soil' ,'type_soil', 'type_low_veg', 'type_high_veg', 'root_frac_low_veg',
         'root_frac_high_veg', 'lai_low_veg', 'lai_high_veg', 'c_low_veg', 'c_high_veg',
         'z0m', 'z0h', 'sst', 'ts', 'wth', 'wq']

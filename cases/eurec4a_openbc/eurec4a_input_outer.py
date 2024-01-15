@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 
 import matplotlib.pyplot as pl
 import xarray as xr
+import pandas as pd
 import numpy as np
 
 # Custom modules, from `microhh/python/`.
@@ -32,6 +33,12 @@ import microhh_lbc_tools as mlt
 
 # Custom scripts from same directory.
 import helpers as hlp
+import constants
+
+# More help scripts, from (LS)2D repo.
+from microhh_grid import Vertical_grid_2nd
+from microhh_thermo import Basestate_moist
+
 
 pl.close('all')
 
@@ -64,6 +71,19 @@ lat_slice = slice(hgrid.lat.min()-0.5, hgrid.lat.max()+0.5)
 
 
 """
+Read background profiles, and calculate MicroHH basestate.
+Basestate is needed to calculate an initial vertical velcity
+fields that satisfies `dui/dxi==0`.
+`eurec4a_mean_profiles.nc` is created by `create_background.py`.
+"""
+ds_bg = xr.open_dataset('eurec4a_mean_profiles.nc')
+ds_bg = ds_bg.sel(time=slice(start, end))
+
+uhh_gd = Vertical_grid_2nd(vgrid.z, vgrid.zsize)
+uhh_bs = Basestate_moist(uhh_gd, ds_bg.thl[0,:].values, ds_bg.qt[0,:].values, float(ds_bg.ps[0]))
+
+
+"""
 Read grid info, and calculate spatial interpolation factors.
 """
 ds_2d, ds_3d = hlp.read_cosmo(start, cosmo_path, lon_slice, lat_slice)
@@ -90,10 +110,9 @@ if_s = hlp.Calc_xy_interpolation_factors(
 # Calculate vertical interpolation factors.
 if_z = hlp.Calc_z_interpolation_factors(ds_3d.altitude.values, vgrid.z, dtype)
 
-
 """
 Interpolated fields contain ghost cells. Define Numpy slices
-to obtain the inner domain, LBCs, et cetera.
+to obtain the inner domain, LBCs (ghost + sponge cells), et cetera.
 """
 s_inner = np.s_[:, +ngc:-ngc, +ngc:-ngc]
 s_inner_2d = np.s_[+ngc:-ngc, +ngc:-ngc]
@@ -113,13 +132,30 @@ sv_east = np.s_[:, :, -nlbc:]
 sv_south = np.s_[:, :nlbc+1, :]
 sv_north = np.s_[:, -nlbc:, :]
 
+"""
+Create Xarray dataset with correct dimensions/coordinates/.. for LBCs
+"""
+lbc_ds = mlt.get_lbc_xr_dataset(
+        ('u', 'v', 'w', 'thl', 'qt', 'qr', 'nr'),
+        gd.hgrid_outer.xsize,
+        gd.hgrid_outer.ysize,
+        gd.hgrid_outer.itot,
+        gd.hgrid_outer.jtot,
+        vgrid.z, vgrid.zh,
+        ds_bg.time_sec.values,
+        gd.n_ghost,
+        gd.n_buffer,
+        dtype)
+
 
 """
 Process hourly COSMO data.
 """
-date = start
-while date <= end:
-    print(f'Processing {date}')
+dates = pd.date_range(start, end, freq='h')
+for t,date in enumerate(dates):
+    timer = hlp.Timer()
+
+    print(f'Processing {date}, ', end='')
     time = int((date - start).total_seconds())
 
     ds_2d, ds_3d = hlp.read_cosmo(date, cosmo_path, lon_slice, lat_slice)
@@ -142,29 +178,105 @@ while date <= end:
     tmp = np.empty(dim_xyz, dtype)
     for fld in ['thl', 'qt', 'qr']:
         hlp.interpolate_cosmo(tmp, ds_3d[fld].values, if_s, if_z, dtype)
+
         if date == start:
-            tmp[s_inner].tofile(f'{work_path}/{fld}_0.{time:07d}')
+            tmp[s_inner].tofile(f'{work_path}/{fld}_0.0000000')
+
+        # Store LBCs.
+        lbc_ds[f'{fld}_west'][t,:,:,:] = tmp[ss_west]
+        lbc_ds[f'{fld}_east'][t,:,:,:] = tmp[ss_east]
+        lbc_ds[f'{fld}_south'][t,:,:,:] = tmp[ss_south]
+        lbc_ds[f'{fld}_north'][t,:,:,:] = tmp[ss_north]
+
     del tmp
 
     u = np.empty(dim_xyz, dtype)
     v = np.empty(dim_xyz, dtype)
 
-    hlp.interpolate_cosmo(u, ds_3d['u'].values, if_u, if_z, dtype)
-    hlp.interpolate_cosmo(v, ds_3d['v'].values, if_v, if_z, dtype)
+    hlp.interpolate_cosmo(u, ds_3d['U'].values, if_u, if_z, dtype)
+    hlp.interpolate_cosmo(v, ds_3d['V'].values, if_v, if_z, dtype)
 
     if date == start:
-        u[s_inner].tofile(f'{work_path}/u_0.{time:07d}')
-        v[s_inner].tofile(f'{work_path}/v_0.{time:07d}')
+        u[s_inner].tofile(f'{work_path}/u_0.0000000')
+        v[s_inner].tofile(f'{work_path}/v_0.0000000')
 
-    # Calculate vertical velocity that results in `dui/dxi=0`.
-    # TODO..................
+    # Store LBCs.
+    lbc_ds.u_west[t,:,:,:] = u[su_west]
+    lbc_ds.u_east[t,:,:,:] = u[su_east]
+    lbc_ds.u_south[t,:,:,:] = u[su_south]
+    lbc_ds.u_north[t,:,:,:] = u[su_north]
+
+    lbc_ds.v_west[t,:,:,:] = v[sv_west]
+    lbc_ds.v_east[t,:,:,:] = v[sv_east]
+    lbc_ds.v_south[t,:,:,:] = v[sv_south]
+    lbc_ds.v_north[t,:,:,:] = v[sv_north]
+
+    # Calculate vertical velocity field that satisfies `dui/dxi==0`.
+    w = np.zeros((vgrid.ktot+1, hgrid.jtot, hgrid.itot), dtype)
+
+    hlp.calc_w_from_uv(
+            w, u, v,
+            uhh_bs.rho[uhh_gd.kstart:uhh_gd.kend],
+            uhh_bs.rhoh[uhh_gd.kstart:uhh_gd.kend+1],
+            uhh_gd.dz[uhh_gd.kstart:uhh_gd.kend],
+            1./hgrid.dx,
+            1./hgrid.dy,
+            ngc, hgrid.itot-ngc,
+            ngc, hgrid.jtot-ngc,
+            vgrid.ktot)
+
+    w_top = w[-1, ngc:-ngc, ngc:-ngc]
+    w = w[:-1, +ngc:-ngc, +ngc:-ngc]
+
+    if date == start:
+        w.tofile(f'{work_path}/w_0.0000000'.format(work_path))
+
+    # Save w_top as boundary conditions for MicroHH.
+    w_top.tofile(f'{work_path}/w_top.{time:07d}')
+    print(f'<w_top> = {(w_top.mean()*100):+.9f} cm/s, ', end='')
+
+    del u,v,w
+
+    # Interpolate `w` from COSMO to get the LBC values.
+    # NOTE: this might result in a small inconsistency between
+    #       `w` used for the initial field and the LBCs,
+    #       since the initial fields calculated to guarantee `dui/dxi==0`.
+    w = np.empty(dim_xyz, dtype)
+    hlp.interpolate_cosmo(w, ds_3d['W'].values, if_s, if_z, dtype)
+
+    # Store LBCs.
+    lbc_ds.w_west[t,:-1,:,:] = w[ss_west]
+    lbc_ds.w_east[t,:-1,:,:] = w[ss_east]
+    lbc_ds.w_south[t,:-1,:,:] = w[ss_south]
+    lbc_ds.w_north[t,:-1,:,:] = w[ss_north]
+
+    # Calculate geostrophic wind components.
+    fc = 2*(2*np.pi/86400.) * np.sin(np.deg2rad(hgrid.lat))
+
+    if date == start:
+        fc[s_inner_2d].tofile(f'{work_path}/fc.0000000')
 
 
 
+    #p = np.empty(dim_xyz, dtype)
+    #hlp.interpolate_cosmo(p, ds_3d['P'].values, if_s, if_z, dtype)
+
+    #vg =  1/(uhh_bs.rho[1:-1,None,None] * fc[None,:,:]) * np.gradient(p, axis=2) / hgrid.dx
+    #ug = -1/(uhh_bs.rho[1:-1,None,None] * fc[None,:,:]) * np.gradient(p, axis=1) / hgrid.dy
+
+    #pl.figure()
+    #pl.plot(ug.mean(axis=(1,2)), vgrid.z, 'b-o', label='ug, COSMO')
+    #pl.plot(vg.mean(axis=(1,2)), vgrid.z, 'r-o', label='vg, COSMO')
+    #pl.plot(ds_bg.ug[0,:], ds_bg.z, 'b--', label='ug, ERA')
+    #pl.plot(ds_bg.vg[0,:], ds_bg.z, 'r--', label='vg, ERA')
+    #pl.legend()
+
+    elapsed = timer.stop()
+    print(f'processing took {elapsed}')
 
 
-
-
-
-
-    date += timedelta(hours=1)
+"""
+Save LBCs in binary format.
+"""
+mlt.write_lbcs_as_binaries(
+        lbc_ds, dtype, work_path)

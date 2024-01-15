@@ -23,9 +23,18 @@
 import xarray as xr
 import numpy as np
 from numba import jit, prange
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import constants
+
+
+class Timer:
+    def __init__(self):
+        self.start = datetime.now()
+
+    def stop(self):
+        self.end = datetime.now()
+        return self.end-self.start
 
 
 @jit(nopython=True, nogil=True, fastmath=True)
@@ -240,6 +249,32 @@ def interpolate_cosmo(fld_les, fld_cosmo, if_xy, if_z=None, dtype=np.float64):
 
     else:
         raise Exception('Can only interpolate 2D (xy) or 3D (xyz) fields!')
+
+
+@jit(nopython=True, nogil=True, fastmath=True)
+def calc_w_from_uv(
+        w, u, v,
+        rho, rhoh, dz,
+        dxi, dyi,
+        istart, iend,
+        jstart, jend,
+        ktot):
+    """
+    Calculate vertical velocity from horizontal wind components
+    and boundary conditions, such that the divergence
+    `d(rho * ui)/dxi` is zero.
+    """
+
+    for j in range(jstart, jend):
+        for i in range(istart, iend):
+            w[0,j,i] = 0.
+
+    for k in range(ktot):
+        for j in range(jstart, jend):
+            for i in range(istart, iend):
+                w[k+1,j,i] = -(rho[k] * ((u[k,j,i+1] - u[k,j,i]) * dxi + \
+                                         (v[k,j+1,i] - v[k,j,i]) * dyi) * dz[k] - \
+                                         rhoh[k] * w[k,j,i]) / rhoh[k+1]
 
 
 def check_grid_decomposition(itot, jtot, ktot, npx, npy):

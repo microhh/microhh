@@ -8,6 +8,7 @@ Ls = Lv+Lf
 cp = 1005.
 T0 = 273.15
 ep = Rd/Rv 
+r_earth = 6.371e6
 
 # Coefficients Taylor expansion Arden Buck equation (1981) around T=T0
 c00  = +6.1121000000E+02;

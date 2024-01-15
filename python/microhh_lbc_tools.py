@@ -240,7 +240,7 @@ def get_lbc_xr_dataset(
     return ds
 
 
-def write_dataset_as_binaries(
+def write_lbcs_as_binaries(
         lbc_ds,
         dtype,
         output_dir='.'):
