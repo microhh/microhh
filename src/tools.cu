@@ -345,5 +345,6 @@ template void Tools_g::reduce_all<double>(const double*, double*, int, int, int,
 template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);
 template  __global__ void Tools_g::set_to_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
+template  __global__ void Tools_g::set_to_val(unsigned int* __restrict__, int, unsigned int);
 template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);

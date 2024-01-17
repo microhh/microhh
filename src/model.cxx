@@ -460,10 +460,10 @@ void Model<TF>::exec()
                         #ifdef USECUDA
                         #pragma omp taskwait
                         cpu_up_to_date = true;
-                        fields   ->backward_device();
-                        boundary ->backward_device(*thermo);
-                        thermo   ->backward_device();
-                        microphys->backward_device();
+                        // fields   ->backward_device();
+                        // boundary ->backward_device(*thermo);
+                        // thermo   ->backward_device();
+                        // microphys->backward_device();
                         #endif
 
                         radiation->exec_all_stats(
@@ -628,33 +628,33 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
-        grid     ->exec_stats(*stats);
+        // grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
-        thermo   ->exec_stats(*stats);
-        background ->exec_stats(*stats);
-        microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats, *thermo);
-        budget   ->exec_stats(*stats);
-        boundary ->exec_stats(*stats);
+        // thermo   ->exec_stats(*stats);
+        // background ->exec_stats(*stats);
+        // microphys->exec_stats(*stats, *thermo, dt);
+        // diff     ->exec_stats(*stats, *thermo);
+        // budget   ->exec_stats(*stats);
+        // boundary ->exec_stats(*stats);
     }
 
-    // Save the selected cross sections to disk, cross sections are handled on CPU.
-    if (cross->do_cross(itime))
-    {
-        fields   ->exec_cross(*cross, iotime);
-        thermo   ->exec_cross(*cross, iotime);
-        microphys->exec_cross(*cross, iotime);
-        ib       ->exec_cross(*cross, iotime);
-        boundary ->exec_cross(*cross, iotime);
-    }
+    // // Save the selected cross sections to disk, cross sections are handled on CPU.
+    // if (cross->do_cross(itime))
+    // {
+    //     fields   ->exec_cross(*cross, iotime);
+    //     thermo   ->exec_cross(*cross, iotime);
+    //     microphys->exec_cross(*cross, iotime);
+    //     ib       ->exec_cross(*cross, iotime);
+    //     boundary ->exec_cross(*cross, iotime);
+    // }
 
-    // Save the 3d dumps to disk.
-    if (dump->do_dump(itime, idt))
-    {
-        fields   ->exec_dump(*dump, iotime);
-        thermo   ->exec_dump(*dump, iotime);
-        microphys->exec_dump(*dump, iotime);
-    }
+    // // Save the 3d dumps to disk.
+    // if (dump->do_dump(itime, idt))
+    // {
+    //     fields   ->exec_dump(*dump, iotime);
+    //     thermo   ->exec_dump(*dump, iotime);
+    //     microphys->exec_dump(*dump, iotime);
+    // }
 
     if (stats->do_statistics(itime))
     {
@@ -685,8 +685,9 @@ void Model<TF>::setup_stats()
 
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
-
+std::cout << "SETUP initialize masks" << std::endl;
         stats->initialize_masks();
+std::cout << "SETUP get masks" << std::endl;
         for (auto& mask_name : mask_list)
         {
             // Get the mask from one of the mask providing classes
@@ -706,6 +707,7 @@ void Model<TF>::setup_stats()
                 throw std::runtime_error(error_message);
             }
         }
+        std::cout << "finalize masks" << std::endl;
         stats->finalize_masks();
 
         if (stats->do_tendency())
@@ -723,8 +725,10 @@ void Model<TF>::calc_masks()
 {
     // Prepare all the masks.
     const std::vector<std::string>& mask_list = stats->get_mask_list();
+std::cout << "initialize masks" << std::endl;
 
     stats->initialize_masks();
+std::cout << "get masks" << std::endl;
     for (auto& mask_name : mask_list)
     {
         // Get the mask from one of the mask providing classes
@@ -775,10 +779,10 @@ template<typename TF>
 void Model<TF>::add_statistics_masks()
 {
     const std::vector<std::string>& mask_list = stats->get_mask_list();
-
     // Check whether the mask can be retrieved from any of the mask-providing classes
     for (auto& mask_name : mask_list)
     {
+        std::cout << "add masks "<< mask_name << std::endl;
         if (mask_name == "default")
             stats->add_mask(mask_name);
         else if (fields->has_mask(mask_name))
