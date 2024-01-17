@@ -73,7 +73,7 @@ namespace
         constexpr TF n_mason = TF(1.);
         constexpr TF A_vandriest = TF(26.);
 
-        if (surface_model == Surface_model::Disabled)
+        if constexpr (surface_model == Surface_model::Disabled)
         {
             for (int k=kstart; k<kend; ++k)
             {
