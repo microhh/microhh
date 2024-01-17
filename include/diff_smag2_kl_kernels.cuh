@@ -56,7 +56,7 @@ namespace diff_smag2
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
-            if (surface_model_enabled)
+            if constexpr (surface_model_enabled)
             {
                 TF RitPrratio;
 
