@@ -479,7 +479,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             const TF* const restrict dudz,
             const TF* const restrict dvdz)
     {
-        dk::calc_strain2<TF, Surface_model::Enabled>(
+        dk::calc_strain2<TF, surface_model>(
                 fields.sd.at("evisc")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
@@ -505,7 +505,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         strain2_wrapper.template operator()<Surface_model::Enabled>(dudz.data(), dvdz.data());
     }
     else
-        strain2_wrapper.template operator()<Surface_model::Enabled>(nullptr, nullptr);
+        strain2_wrapper.template operator()<Surface_model::Disabled>(nullptr, nullptr);
 
     // Start with retrieving the stability information
     if (thermo.get_switch() == Thermo_type::Disabled)
