@@ -915,6 +915,8 @@ void Radiation_rrtmgp<TF>::create(
                         sfc_alb_dif({n+1, ij_nogc+1}) = tmp->fld_top[ij_gc];
                     }
                 }
+
+            fields.release_tmp(tmp);
         }
     }
 

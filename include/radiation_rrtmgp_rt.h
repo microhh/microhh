@@ -111,6 +111,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         using Radiation<TF>::grid;
         using Radiation<TF>::fields;
         using Radiation<TF>::field3d_operators;
+        using Radiation<TF>::field3d_io;
 
         void create_column(
                 Input&, Netcdf_handle&, Thermo<TF>&, Stats<TF>&);
@@ -307,6 +308,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Aerosol_optics> aerosol_sw;
 
         // Surface fields that go into solver;
+        bool sw_constant_alb;
         TF emis_sfc_hom;
         TF sfc_alb_dir_hom;
         TF sfc_alb_dif_hom;
