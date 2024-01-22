@@ -24,6 +24,7 @@
 #include <memory>
 #include <vector>
 #include "field3d_operators.h"
+#include "field3d_io.h"
 #include "aerosol.h"
 #include "background_profs.h"
 
@@ -93,6 +94,7 @@ class Radiation
         Grid<TF>& grid;
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
+        Field3d_io<TF> field3d_io;
         std::string swradiation;
 };
 #endif

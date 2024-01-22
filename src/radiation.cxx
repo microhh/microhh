@@ -43,7 +43,7 @@
 
 template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields), field3d_io(master, grid)
 {
 }
 

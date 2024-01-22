@@ -682,8 +682,13 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     // Read representative values for the surface properties that are used in the column calcs.
     // CvH: how to deal with this for heterogeneous surfaces?
     emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
-    sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
-    sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+
+    sw_constant_alb = inputin.get_item<bool>("radiation", "swconstant_alb", "", true);
+    if (sw_constant_alb)
+    {
+        sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
+        sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+    }
 
     #ifndef USECUDA
     if (sw_homogenize_sfc_sw || sw_homogenize_sfc_lw || sw_homogenize_hr_sw || sw_homogenize_hr_lw)
@@ -863,8 +868,54 @@ void Radiation_rrtmgp<TF>::create(
         const int n_bnd = kdist_sw->get_nband();
         sfc_alb_dir.set_dims({n_bnd, gd.imax*gd.jmax});
         sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
-        sfc_alb_dir.fill(sfc_alb_dir_hom);
-        sfc_alb_dif.fill(sfc_alb_dif_hom);
+
+        if (sw_constant_alb)
+        {
+            // Set albedo to spatially constant values.
+            sfc_alb_dir.fill(sfc_alb_dir_hom);
+            sfc_alb_dif.fill(sfc_alb_dif_hom);
+        }
+        else
+        {
+            auto tmp = fields.get_tmp();
+            int nerror = 0;
+
+            // Read input files.
+            auto load_2d_field = [&](
+                TF* const restrict field, const std::string& name, const int time)
+            {
+                char filename[256];
+                std::sprintf(filename, "%s.%07d", name.c_str(), time);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                if (field3d_io.load_xy_slice(
+                        field, tmp->fld.data(), filename))
+                {
+                    master.print_message("FAILED\n");
+                    nerror += 1;
+                }
+                else
+                    master.print_message("OK\n");
+            };
+
+            // Load fields (with ghost cells) in `top` and `bot` slices.
+            load_2d_field(tmp->fld_bot.data(), "alb_dir", 0);
+            load_2d_field(tmp->fld_top.data(), "alb_dif", 0);
+
+            // Strip ghost cells.
+            for (int j=0; j<gd.jmax; ++j)
+                for (int i=0; i<gd.imax; ++i)
+                {
+                    const int ij_nogc = i + j * gd.imax;
+                    const int ij_gc = (i+gd.igc) + (j+gd.jgc) * gd.icells;
+
+                    for (int n=0; n<n_bnd; ++n)
+                    {
+                        sfc_alb_dir({n+1, ij_nogc+1}) = tmp->fld_bot[ij_gc];
+                        sfc_alb_dif({n+1, ij_nogc+1}) = tmp->fld_top[ij_gc];
+                    }
+                }
+        }
     }
 
     if (sw_longwave)

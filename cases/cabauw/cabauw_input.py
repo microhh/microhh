@@ -153,6 +153,9 @@ def create_case_input(
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
 
+    if (use_rrtmgp or use_rt) and not use_homogeneous_ls:
+        ini['radiation']['swconstant_alb'] = False
+
     if use_aerosols:
         ini['aerosol']['swaerosol'] = 1
     else:
@@ -357,6 +360,12 @@ def create_case_input(
 
         lsm_data.lai[ mask] = ini['land_surface']['lai']
         lsm_data.lai[~mask] = ini['land_surface']['lai']/2.
+
+        lsm_data.alb_dir[mask] = 0.1
+        lsm_data.alb_dir[~mask] = 0.2
+
+        lsm_data.alb_dif[mask] = 0.1
+        lsm_data.alb_dif[~mask] = 0.2
 
         # Non-patched / homogeneous fields:
         lsm_data.gD[:,:] = ini['land_surface']['gD']

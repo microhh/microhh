@@ -586,8 +586,6 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells,
                     gd.ijcells);
 
-        //dump_field(tile.second.ustar.data(), "dump_cpu", gd.ijcells);
-        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes(
@@ -622,7 +620,6 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart, sgd.kend,
                 gd.icells, gd.ijcells,
                 use_cs_veg, tile.first);
-
     }
 
     // Override grid point with water

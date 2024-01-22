@@ -103,6 +103,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         using Radiation<TF>::grid;
         using Radiation<TF>::fields;
         using Radiation<TF>::field3d_operators;
+        using Radiation<TF>::field3d_io;
 
         Boundary_cyclic<TF> boundary_cyclic;
 
@@ -282,13 +283,14 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Aerosol_optics> aerosol_sw;
 
         // Surface fields that go into solver;
-        TF emis_sfc_hom;
+        bool sw_constant_alb;
         TF sfc_alb_dir_hom;
         TF sfc_alb_dif_hom;
+        TF emis_sfc_hom;
 
-        Array<Float,2> emis_sfc;
         Array<Float,2> sfc_alb_dir;
         Array<Float,2> sfc_alb_dif;
+        Array<Float,2> emis_sfc;
 
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
