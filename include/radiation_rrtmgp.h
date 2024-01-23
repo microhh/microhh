@@ -192,6 +192,15 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
+
+        void exec_shortwave(
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const bool, const int);
+
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
