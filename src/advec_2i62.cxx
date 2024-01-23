@@ -508,28 +508,28 @@ void Advec_2i62<TF>::exec(Stats<TF>& stats)
 
 template<typename TF>
 void Advec_2i62<TF>::get_advec_flux(
-        Field3d<TF>& advec_flux, const Field3d<TF>& fld, const Field3d<TF>& w)
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
     auto& gd = grid.get_grid_data();
 
     if (fld.loc == gd.uloc)
     {
         advec_flux_u(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.vloc)
     {
         advec_flux_v(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.wloc)
     {
         advec_flux_w(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
@@ -537,12 +537,12 @@ void Advec_2i62<TF>::get_advec_flux(
     {
         if (std::find(sp_limit.begin(), sp_limit.end(), fld.name) != sp_limit.end())
             advec_flux_s_lim(
-                    advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         else
             advec_flux_s(
-                    advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                    advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
     }
