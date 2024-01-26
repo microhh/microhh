@@ -192,7 +192,6 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
-
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
