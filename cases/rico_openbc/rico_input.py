@@ -4,6 +4,7 @@ import stat
 import sys
 import os
 
+import matplotlib.pyplot as pl
 import netCDF4 as nc
 import xarray as xr
 import numpy as np
@@ -12,6 +13,7 @@ import numpy as np
 import microhh_lbc_tools as mlt
 import microhh_tools as mht
 
+pl.close('all')
 
 def run_async(f):
     """
@@ -104,7 +106,7 @@ def interp_lbcs(lbc_ds, fld, loc, xz, yz, interpolation_method, float_type, outp
     del ip
 
 
-def main():
+if __name__ == '__main__': # main():
 
     if len(sys.argv) != 2:
         raise Exception('Provide domain number as argument (0...N)')
@@ -132,7 +134,7 @@ def main():
             work_path = work_path)
 
     d1 = mlt.Domain(
-            name = 'dom_1_100',
+            name = 'dom_1',
             itot = 96,
             jtot = 96,
             dx = 100,
@@ -144,7 +146,7 @@ def main():
             work_path = work_path)
 
     d2 = mlt.Domain(
-            name = 'dom_1_50',
+            name = 'dom_2',
             itot = 192,
             jtot = 192,
             dx = 50,
@@ -156,7 +158,7 @@ def main():
             work_path = work_path)
 
     d3 = mlt.Domain(
-            name = 'dom_1_33',
+            name = 'dom_3',
             itot = 288,
             jtot = 288,
             dx = 100/3.,
@@ -168,7 +170,7 @@ def main():
             work_path = work_path)
 
     d4 = mlt.Domain(
-            name = 'dom_1_11',
+            name = 'dom_4',
             itot = 864,
             jtot = 864,
             dx = 100/9.,
@@ -179,7 +181,9 @@ def main():
             parent = d0,
             work_path = work_path)
 
-    d0.child = d1_100
+    # All children have the exact same spatial location.
+    # Otherwise, this would not work.
+    d0.child = d1
 
     """
     # Outer domain with doubly-periodic BCs.
@@ -263,14 +267,14 @@ def main():
 
 
     float_type = np.float64
-    #microhh_path = '/home/bart/meteo/models/microhh'
-    #microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
+    microhh_path = '/home/bart/meteo/models/microhh'
+    microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
 
-    microhh_path = '/home/stratum2/models/microhh'
-    microhh_bin = '/home/stratum2/models/microhh/build_dp_cpumpi/microhh'
+    #microhh_path = '/home/stratum2/models/microhh'
+    #microhh_bin = '/home/stratum2/models/microhh/build_dp_cpumpi/microhh'
 
-    #case = 'gcss'  # Original RICO
-    case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
+    case = 'gcss'  # Original RICO
+    #case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
     #case = 'test' # More moist mixed-layer for testing
 
     sw_advec = '2i6'
@@ -278,6 +282,16 @@ def main():
     n_ghost = 3
     n_sponge = 5 if sw_sponge else 0
     lbc_freq = 60
+
+    # Conditionally sample statistics over 2D mask.
+    sample_domain = d1    # or None to disable it.
+    sample_margin = 500
+
+    x0_sampling = sample_domain.i0_in_parent * sample_domain.parent.dx + sample_margin
+    x1_sampling = x0_sampling + sample_domain.xsize - sample_margin
+
+    y0_sampling = sample_domain.j0_in_parent * sample_domain.parent.dy + sample_margin
+    y1_sampling = y0_sampling + sample_domain.ysize - sample_margin
 
     """
     Generate case input.
@@ -553,6 +567,16 @@ def main():
     """
     Create mask for conditionally sampled statistics.
     """
+    if sample_domain is not None:
+        sample_mask = np.zeros((domain.jtot, domain.itot), dtype=float_type)
+
+        x = np.arange(domain.dx/2, domain.xsize, domain.dx)
+        y = np.arange(domain.dy/2, domain.ysize, domain.dy)
+
+        xx,yy = np.meshgrid(x,y)
+        sample_mask[(xx >= x0_sampling) & (xx <= x1_sampling) & (yy >= y0_sampling) & (yy <= y1_sampling)] = 1.
+
+        sample_mask.tofile('inner_domain.0000000')
 
 
     """
@@ -591,6 +615,9 @@ def main():
         ini['cross']['yz'] = list(yz)
 
     ini['cross']['sampletime'] = lbc_freq
+
+    if sample_domain is not None:
+        ini['stats']['xymasklist'] = 'inner_domain'
 
     ini.save(f'{domain.work_dir}/rico.ini', allow_overwrite=True)
 
@@ -637,5 +664,5 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
