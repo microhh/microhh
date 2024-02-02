@@ -116,8 +116,8 @@ if __name__ == '__main__': # main():
     Case settings.
     """
     # Work directory. Each domain is placed in its own sub-directory.
-    work_path = '.'
-    #work_path = '/home/stratum2/scratch/rico_2i6'
+    #work_path = '.'
+    work_path = '/home/stratum2/scratch/rico_nested'
 
     """
     Grid refinement test with:
@@ -267,31 +267,22 @@ if __name__ == '__main__': # main():
 
 
     float_type = np.float64
-    microhh_path = '/home/bart/meteo/models/microhh'
-    microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
+    #microhh_path = '/home/bart/meteo/models/microhh'
+    #microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
 
-    #microhh_path = '/home/stratum2/models/microhh'
-    #microhh_bin = '/home/stratum2/models/microhh/build_dp_cpumpi/microhh'
+    microhh_path = '/home/stratum2/models/microhh'
+    microhh_bin = '/home/stratum2/models/microhh/build_dp_cpumpi/microhh'
 
     case = 'gcss'  # Original RICO
     #case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
     #case = 'test' # More moist mixed-layer for testing
 
-    sw_advec = '2i6'
+    sw_advec = '2i5'
     sw_sponge = True
     n_ghost = 3
     n_sponge = 5 if sw_sponge else 0
     lbc_freq = 60
 
-    # Conditionally sample statistics over 2D mask.
-    sample_domain = d1    # or None to disable it.
-    sample_margin = 500
-
-    x0_sampling = sample_domain.i0_in_parent * sample_domain.parent.dx + sample_margin
-    x1_sampling = x0_sampling + sample_domain.xsize - sample_margin
-
-    y0_sampling = sample_domain.j0_in_parent * sample_domain.parent.dy + sample_margin
-    y1_sampling = y0_sampling + sample_domain.ysize - sample_margin
 
     """
     Generate case input.
@@ -309,6 +300,24 @@ if __name__ == '__main__': # main():
         domain = d4
     else:
         raise Exception('Domain number out of range!')
+
+    # Conditionally sample statistics over 2D mask.
+    sample_domain = d1    # or None to disable it.
+    sample_margin = 500
+
+    if domain.name == 'dom_0':
+        x0_sampling = sample_domain.i0_in_parent * sample_domain.parent.dx + sample_margin
+        x1_sampling = x0_sampling + sample_domain.xsize - sample_margin
+
+        y0_sampling = sample_domain.j0_in_parent * sample_domain.parent.dy + sample_margin
+        y1_sampling = y0_sampling + sample_domain.ysize - sample_margin
+
+    else:
+        x0_sampling = sample_margin
+        x1_sampling = domain.xsize - sample_margin
+
+        y0_sampling = sample_margin
+        y1_sampling = domain.ysize - sample_margin
 
     # Create work directory.
     if not os.path.exists(domain.work_dir):
@@ -531,12 +540,12 @@ if __name__ == '__main__': # main():
             dim_y = ds[fld].dims[1]  # x or xh
             dim_x = ds[fld].dims[2]  # y or yh
 
-            ds.interp({
+            dsi = ds.interp({
                 dim_x: dims[dim_x],
                 dim_y: dims[dim_y]}, method=interpolation_method)
 
             # Save as binary file.
-            ds[fld].values.astype(float_type).tofile(f'{domain.work_dir}/{fld}_0.0000000')
+            dsi[fld].values.astype(float_type).tofile(f'{domain.work_dir}/{fld}_0.0000000')
 
 
     """
@@ -576,7 +585,7 @@ if __name__ == '__main__': # main():
         xx,yy = np.meshgrid(x,y)
         sample_mask[(xx >= x0_sampling) & (xx <= x1_sampling) & (yy >= y0_sampling) & (yy <= y1_sampling)] = 1.
 
-        sample_mask.tofile('inner_domain.0000000')
+        sample_mask.tofile(f'{domain.work_dir}/inner_domain.0000000')
 
 
     """
