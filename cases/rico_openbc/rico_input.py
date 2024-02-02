@@ -120,6 +120,35 @@ if __name__ == '__main__': # main():
     work_path = '/home/stratum2/scratch/rico_nested'
 
     """
+    DEBUG....
+    """
+    """
+    d0 = mlt.Domain(
+            name = 'dom_0',
+            itot = 64,
+            jtot = 64,
+            dx = 100,
+            dy = 100,
+            end_time = 4*3600,
+            work_path = work_path)
+
+    d1 = mlt.Domain(
+            name = 'dom_1',
+            itot = 48,
+            jtot = 48,
+            dx = 100,
+            dy = 100,
+            center_in_parent = True,
+            start_offset = 3*3600,
+            end_offset = 0,
+            parent = d0,
+            work_path = work_path)
+
+    d0.child = d1
+    """
+
+
+    """
     Grid refinement test with:
     - Periodic outer domain @ 100 m
     - Open BC inner domains @ (100, 50, 33, 11) m.
@@ -265,8 +294,8 @@ if __name__ == '__main__': # main():
     d1.child = d2
     """
 
-
     float_type = np.float64
+
     #microhh_path = '/home/bart/meteo/models/microhh'
     #microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh'
 
@@ -281,7 +310,8 @@ if __name__ == '__main__': # main():
     sw_sponge = True
     n_ghost = 3
     n_sponge = 5 if sw_sponge else 0
-    lbc_freq = 60
+    lbc_freq = 5
+    interpolation_method = 'nearest'  # {linear, nearest}
 
 
     """
@@ -305,19 +335,20 @@ if __name__ == '__main__': # main():
     sample_domain = d1    # or None to disable it.
     sample_margin = 500
 
-    if domain.name == 'dom_0':
-        x0_sampling = sample_domain.i0_in_parent * sample_domain.parent.dx + sample_margin
-        x1_sampling = x0_sampling + sample_domain.xsize - sample_margin
+    if sample_domain is not None:
+        if domain.name == 'dom_0':
+            x0_sampling = sample_domain.i0_in_parent * sample_domain.parent.dx + sample_margin
+            x1_sampling = x0_sampling + sample_domain.xsize - 2*sample_margin
 
-        y0_sampling = sample_domain.j0_in_parent * sample_domain.parent.dy + sample_margin
-        y1_sampling = y0_sampling + sample_domain.ysize - sample_margin
+            y0_sampling = sample_domain.j0_in_parent * sample_domain.parent.dy + sample_margin
+            y1_sampling = y0_sampling + sample_domain.ysize - 2*sample_margin
 
-    else:
-        x0_sampling = sample_margin
-        x1_sampling = domain.xsize - sample_margin
+        else:
+            x0_sampling = sample_margin
+            x1_sampling = domain.xsize - sample_margin
 
-        y0_sampling = sample_margin
-        y1_sampling = domain.ysize - sample_margin
+            y0_sampling = sample_margin
+            y1_sampling = domain.ysize - sample_margin
 
     # Create work directory.
     if not os.path.exists(domain.work_dir):
@@ -452,8 +483,8 @@ if __name__ == '__main__': # main():
     if domain.parent is not None:
         print('Creating LBCs...')
 
-        interpolation_method = 'linear'
         fields = ['thl', 'qt', 'qr', 'nr', 'u' ,'v', 'w']
+        fields_sfc = ['thl_bot', 'qt_bot', 'dbdz_mo', 'dudz_mo', 'dvdz_mo']
 
         # Offset of current domain in parent domain.
         xstart = domain.i0_in_parent * domain.parent.dx
@@ -547,6 +578,28 @@ if __name__ == '__main__': # main():
             # Save as binary file.
             dsi[fld].values.astype(float_type).tofile(f'{domain.work_dir}/{fld}_0.0000000')
 
+        """
+        Interpolate surface restart files.
+        """
+        for fld in fields_sfc:
+            ds = xr.open_dataset(f'{domain.parent.work_dir}/{fld}.nc', decode_times=False)
+
+            # Select start time.
+            ds = ds.sel(time=domain.start_offset)
+
+            # Interpolate to correct coordinates
+            dim_y = ds[fld].dims[1]  # x or xh
+            dim_x = ds[fld].dims[2]  # y or yh
+
+            dsi = ds.interp({
+                dim_x: dims[dim_x],
+                dim_y: dims[dim_y]}, method=interpolation_method)
+
+            # Save as binary file.
+            dsi[fld].values.astype(float_type).tofile(f'{domain.work_dir}/{fld}_0.0000000')
+
+
+
 
     """
     Calculate location of nest for cross-sections.
@@ -586,6 +639,10 @@ if __name__ == '__main__': # main():
         sample_mask[(xx >= x0_sampling) & (xx <= x1_sampling) & (yy >= y0_sampling) & (yy <= y1_sampling)] = 1.
 
         sample_mask.tofile(f'{domain.work_dir}/inner_domain.0000000')
+
+
+        pl.figure()
+        pl.pcolormesh(x, y, sample_mask)
 
 
     """
@@ -645,31 +702,40 @@ if __name__ == '__main__': # main():
         if not os.path.exists(target):
             shutil.copy(f, domain.work_dir)
 
-#    """
-#    Yes, I'm lazy: create run script.
-#    """
-#    runscript = f'{domain.work_dir}/init_run.sh'
-#    with open(runscript, 'w') as f:
-#        f.write('mpiexec -n 8 ./microhh init rico\n\n')
-#
-#        f.write('mv thl_0.0000000 thl.0000000\n')
-#        f.write('mv qt_0.0000000 qt.0000000\n')
-#        f.write('mv qr_0.0000000 qr.0000000\n')
-#        f.write('mv nr_0.0000000 nr.0000000\n')
-#        f.write('mv u_0.0000000 u.0000000\n')
-#        f.write('mv v_0.0000000 v.0000000\n')
-#        f.write('mv w_0.0000000 w.0000000\n\n')
-#
-#        f.write('mpiexec -n 8 ./microhh run rico\n\n')
-#
-#        if domain.child is not None:
-#            tstart = domain.child.start_offset
-#            f.write(f'python cross_to_nc.py -n 12\n')
-#            f.write(f'python 3d_to_nc.py -v thl qt qr nr u v w -t0 {tstart} -t1 {tstart} -n 6')
-#
-#    st = os.stat(runscript)
-#    os.chmod(runscript, st.st_mode | stat.S_IEXEC)
 
+    """
+    Yes, I'm lazy: create run script.
+    """
+    runscript = f'{domain.work_dir}/init_run.sh'
+    with open(runscript, 'w') as f:
+        f.write('mpiexec -n 8 ./microhh init rico\n\n')
+
+        if domain.parent is not None:
+            f.write('mv thl_0.0000000 thl.0000000\n')
+            f.write('mv qt_0.0000000 qt.0000000\n')
+            f.write('mv qr_0.0000000 qr.0000000\n')
+            f.write('mv nr_0.0000000 nr.0000000\n')
+            f.write('mv u_0.0000000 u.0000000\n')
+            f.write('mv v_0.0000000 v.0000000\n')
+            f.write('mv w_0.0000000 w.0000000\n\n')
+
+            f.write('mv thl_bot_0.0000000 thl_bot.0000000\n')
+            f.write('mv qt_bot_0.0000000 qt_bot.0000000\n')
+            f.write('mv dbdz_mo_0.0000000 dbdz_mo.0000000\n')
+            f.write('mv dudz_mo_0.0000000 dudz_mo.0000000\n')
+            f.write('mv dvdz_mo_0.0000000 dvdz_mo.0000000\n\n')
+
+        f.write('mpiexec -n 8 ./microhh run rico\n\n')
+
+        f.write(f'python cross_to_nc.py -n 12\n\n')
+
+        if domain.child is not None:
+            tstart = domain.child.start_offset
+            f.write(f'python 3d_to_nc.py -v thl qt qr nr u v w -t0 {tstart} -t1 {tstart} -n 6\n')
+            f.write(f'python 3d_to_nc.py -v thl_bot qt_bot dbdz_mo dudz_mo dvdz_mo -kmax 1 -t0 {tstart} -t1 {tstart} -n 6\n')
+
+    st = os.stat(runscript)
+    os.chmod(runscript, st.st_mode | stat.S_IEXEC)
 
 
 

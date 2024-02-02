@@ -39,9 +39,9 @@ def convert_to_nc(variables):
             'z': range(kmax),
             'y': range(jtot),
             'x': range(itot)}
-        if variable == 'u':
+        if variable == 'u' or variable == 'dudz_mo':
             dim['xh'] = dim.pop('x')
-        if variable == 'v':
+        if variable == 'v' or variable == 'dvdz_mo':
             dim['yh'] = dim.pop('y')
         if variable in half_level_vars:
             dim['zh'] = dim.pop('z')

@@ -35,6 +35,12 @@ swthermo=moist
 pbot=101540.
 swupdatebasestate=1
 
+#swbasestate=boussinesq
+#swthermo=moist
+#pbot=101540.
+#swupdatebasestate=0
+#thvref0=300
+
 [micro]
 swmicro=2mom_warm
 swmicrobudget=1
@@ -77,6 +83,8 @@ slist=thl,qt,qr,nr
 sw_timedep=true
 loadfreq=None
 
+sw_wtop_2d=false
+
 # Lateral sponge layer.
 sw_sponge=None
 n_sponge=5
@@ -84,7 +92,7 @@ tau_sponge=30
 w_diff=0.002
 
 # Turbulence recycling
-sw_recycle=False
+sw_recycle=false
 recycle_list=th
 tau_recycle=60
 recycle_offset=10
@@ -137,7 +145,7 @@ xy=20,200
 
 [dump]
 swdump=0
-sampletime=900
+sampletime=3600
 dumplist=ql
 
 [limiter]
