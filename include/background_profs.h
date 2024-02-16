@@ -53,7 +53,7 @@ public:
     Background(Master&, Grid<TF>&, Fields<TF>&, Input&);
     ~Background();
 
-    void init(Netcdf_handle&, Timeloop<TF>&);
+    void init(Netcdf_handle&);
     void create(Input&, Netcdf_handle&, Stats<TF>&);
     void exec_stats(Stats<TF>&);
     void update_time_dependent(Timeloop<TF>&);

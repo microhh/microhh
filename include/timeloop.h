@@ -44,6 +44,7 @@ struct Interpolation_factors
     TF fac1;
 };
 
+
 template<typename TF>
 class Timeloop
 {
@@ -139,4 +140,11 @@ class Timeloop
 
         const double ifactor;
 };
+
+
+inline unsigned long convert_to_itime(const double time_var)
+{
+    constexpr double ifactor = 1e9;
+    return static_cast<unsigned long>(ifactor * time_var + 0.5);
+}
 #endif
