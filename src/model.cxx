@@ -204,10 +204,10 @@ void Model<TF>::init()
     aerosol->init();
     background->init(*input_nc);
 
-    stats->init(timeloop->get_ifactor());
-    column->init(timeloop->get_ifactor());
-    cross->init(timeloop->get_ifactor());
-    dump->init(timeloop->get_ifactor());
+    stats->init();
+    column->init();
+    cross->init();
+    dump->init();
 }
 
 template<typename TF>

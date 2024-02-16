@@ -46,8 +46,7 @@ Timeloop<TF>::Timeloop(
     grid(gridin),
     soil_grid(soilgridin),
     fields(fieldsin),
-    flag_utc_time(false),
-    ifactor(1e9)
+    flag_utc_time(false)
 {
     setenv("TZ", "utc", 1);
 

@@ -38,7 +38,7 @@ class Column
         Column(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Column();
 
-        void init(double);
+        void init();
         void create(Input&, Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);
