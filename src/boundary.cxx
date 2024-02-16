@@ -355,7 +355,8 @@ void Boundary<TF>::process_time_dependent(
 
     if (swtimedep_sbot_2d)
     {
-        sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+        const int sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+        iloadtime_sbot_2d = convert_to_itime(sbot_2d_loadtime);
 
         for (auto& fld : sbot_2d_list)
         {
@@ -363,13 +364,13 @@ void Boundary<TF>::process_time_dependent(
             sbot_2d_next.emplace(fld, std::vector<TF>(gd.ijcells));
         }
 
-        const double time = timeloop.get_time();
-        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+        const unsigned long itime = timeloop.get_itime();
+        const unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
         // Read first two input times
         // IO time in integer format
-        itime_sbot_2d_prev = ifactor * int(time/sbot_2d_loadtime) * sbot_2d_loadtime;
-        itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+        itime_sbot_2d_prev = itime/iloadtime_sbot_2d * iloadtime_sbot_2d;
+        itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
 
         // IO time accounting for iotimeprec
         const unsigned long iotime0 = int(itime_sbot_2d_prev / iiotimeprec);
@@ -492,7 +493,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_sbot_2d_prev = itime_sbot_2d_next;
-            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
             const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
 
             int nerror = 0;
