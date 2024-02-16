@@ -27,7 +27,8 @@
 #include "fast_math.h"
 #include "monin_obukhov.h"
 
-namespace diff_les {
+namespace Diff_les_kernels
+{
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
 
@@ -51,8 +52,8 @@ namespace diff_les {
                 const TF dxi, const TF dyi)
         {
             const int ii = 1;
-            const int jj = gd.jj;
-            const int kk = gd.kk;
+            const int jj = gd.jstride;
+            const int kk = gd.kstride;
             const int ij  = i*ii + j*jj;
             const int ijk = i*ii + j*jj + k*kk;
 
@@ -142,9 +143,9 @@ namespace diff_les {
                 const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefhi,
                 const TF visc)
         {
-            const int ii = gd.ii;
-            const int jj = gd.jj;
-            const int kk = gd.kk;
+            const int ii = gd.istride;
+            const int jj = gd.jstride;
+            const int kk = gd.kstride;
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + k*kk;
 
@@ -286,9 +287,9 @@ namespace diff_les {
                 const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                 const TF tPri, const TF visc)
         {
-            const int ii = gd.ii;
-            const int jj = gd.jj;
-            const int kk = gd.kk;
+            const int ii = gd.istride;
+            const int jj = gd.jstride;
+            const int kk = gd.kstride;
             const int ij  = i*ii + j*jj;
             const int ijk = i*ii + j*jj + k*kk;
 

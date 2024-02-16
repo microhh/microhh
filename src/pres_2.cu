@@ -37,158 +37,163 @@
 #include "field3d_operators.h"
 #include "stats.h"
 
+// Kernel/CUDA launcher:
+#include "pres_2_kernels.cuh"
+#include "cuda_launcher.h"
+#include "cuda_tiling.h"
+
 namespace
 {
-    template<typename TF> __global__
-    void pres_in_g(TF* __restrict__ p,
-                   TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
-                   TF* __restrict__ ut,  TF* __restrict__ vt,     TF* __restrict__ wt,
-                   const TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
-                   TF dxi, TF dyi, TF dti,
-                   const int jj, const int kk,
-                   const int jjp, const int kkp,
-                   const int imax, const int jmax, const int kmax,
-                   const int igc, const int jgc, const int kgc)
-    {
-        const int ii = 1;
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y;
-        const int k  = blockIdx.z;
+    //template<typename TF> __global__
+    //void pres_in_g(TF* __restrict__ p,
+    //               TF* __restrict__ u ,  TF* __restrict__ v ,     TF* __restrict__ w ,
+    //               TF* __restrict__ ut,  TF* __restrict__ vt,     TF* __restrict__ wt,
+    //               const TF* __restrict__ dzi, TF* __restrict__ rhoref, TF* __restrict__ rhorefh,
+    //               TF dxi, TF dyi, TF dti,
+    //               const int jj, const int kk,
+    //               const int jjp, const int kkp,
+    //               const int imax, const int jmax, const int kmax,
+    //               const int igc, const int jgc, const int kgc)
+    //{
+    //    const int ii = 1;
+    //    const int i  = blockIdx.x*blockDim.x + threadIdx.x;
+    //    const int j  = blockIdx.y*blockDim.y + threadIdx.y;
+    //    const int k  = blockIdx.z;
 
-        if (i < imax && j < jmax && k < kmax)
-        {
-            const int ijkp = i + j*jjp + k*kkp;
-            const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+    //    if (i < imax && j < jmax && k < kmax)
+    //    {
+    //        const int ijkp = i + j*jjp + k*kkp;
+    //        const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
 
-            p[ijkp] = rhoref [k+kgc]   * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
-                    + rhoref [k+kgc]   * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
-                  + ( rhorefh[k+kgc+1] * (  wt[ijk+kk] + w[ijk+kk] * dti)
-                    - rhorefh[k+kgc  ] * (  wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
-        }
-    }
+    //        p[ijkp] = rhoref [k+kgc]   * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+    //                + rhoref [k+kgc]   * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+    //              + ( rhorefh[k+kgc+1] * (  wt[ijk+kk] + w[ijk+kk] * dti)
+    //                - rhorefh[k+kgc  ] * (  wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
+    //    }
+    //}
 
-    template<typename TF> __global__
-    void pres_out_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
-                    TF* __restrict__ p,
-                    const TF* __restrict__ dzhi, const TF dxi, const TF dyi,
-                    const int jj, const int kk,
-                    const int istart, const int jstart, const int kstart,
-                    const int iend, const int jend, const int kend)
-    {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k  = blockIdx.z + kstart;
-        const int ii = 1;
+    //template<typename TF> __global__
+    //void pres_out_g(TF* __restrict__ ut, TF* __restrict__ vt, TF* __restrict__ wt,
+    //                TF* __restrict__ p,
+    //                const TF* __restrict__ dzhi, const TF dxi, const TF dyi,
+    //                const int jj, const int kk,
+    //                const int istart, const int jstart, const int kstart,
+    //                const int iend, const int jend, const int kend)
+    //{
+    //    const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+    //    const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+    //    const int k  = blockIdx.z + kstart;
+    //    const int ii = 1;
 
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
-            vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
-            wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
-        }
-    }
+    //    if (i < iend && j < jend && k < kend)
+    //    {
+    //        const int ijk = i + j*jj + k*kk;
+    //        ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
+    //        vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
+    //        wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
+    //    }
+    //}
 
-    template<typename TF> __global__
-    void solve_out_g(TF* __restrict__ p, TF* __restrict__ work3d,
-                     const int jj, const int kk,
-                     const int jjp, const int kkp,
-                     const int istart, const int jstart, const int kstart,
-                     const int imax, const int jmax, const int kmax)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-        const int k = blockIdx.z;
+    //template<typename TF> __global__
+    //void solve_out_g(TF* __restrict__ p, TF* __restrict__ work3d,
+    //                 const int jj, const int kk,
+    //                 const int jjp, const int kkp,
+    //                 const int istart, const int jstart, const int kstart,
+    //                 const int imax, const int jmax, const int kmax)
+    //{
+    //    const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    //    const int j = blockIdx.y*blockDim.y + threadIdx.y;
+    //    const int k = blockIdx.z;
 
-        if (i < imax && j < jmax && k < kmax)
-        {
-            const int ijk  = i + j*jj + k*kk;
-            const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
+    //    if (i < imax && j < jmax && k < kmax)
+    //    {
+    //        const int ijk  = i + j*jj + k*kk;
+    //        const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
 
-            p[ijkp] = work3d[ijk];
+    //        p[ijkp] = work3d[ijk];
 
-            if (k == 0)
-                p[ijkp-kkp] = p[ijkp];
-        }
-    }
+    //        if (k == 0)
+    //            p[ijkp-kkp] = p[ijkp];
+    //    }
+    //}
 
-    template<typename TF> __global__
-    void solve_in_g(TF* __restrict__ p,
-                    TF* __restrict__ work3d, TF* __restrict__ b,
-                    TF* __restrict__ a, TF* __restrict__ c,
-                    const TF* __restrict__ dz, const TF* __restrict__ rhoref,
-                    TF* __restrict__ bmati, TF* __restrict__ bmatj,
-                    const int jj, const int kk,
-                    const int imax, const int jmax, const int kmax,
-                    const int kstart)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
-        const int k = blockIdx.z;
+    //template<typename TF> __global__
+    //void solve_in_g(TF* __restrict__ p,
+    //                TF* __restrict__ work3d, TF* __restrict__ b,
+    //                TF* __restrict__ a, TF* __restrict__ c,
+    //                const TF* __restrict__ dz, const TF* __restrict__ rhoref,
+    //                TF* __restrict__ bmati, TF* __restrict__ bmatj,
+    //                const int jj, const int kk,
+    //                const int imax, const int jmax, const int kmax,
+    //                const int kstart)
+    //{
+    //    const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    //    const int j = blockIdx.y*blockDim.y + threadIdx.y;
+    //    const int k = blockIdx.z;
 
-        if (i < imax && j < jmax && k < kmax)
-        {
-            const int ijk = i + j*jj + k*kk;
+    //    if (i < imax && j < jmax && k < kmax)
+    //    {
+    //        const int ijk = i + j*jj + k*kk;
 
-            // CvH this needs to be taken into account in case of an MPI run
-            // iindex = mpi->mpicoordy * iblock + i;
-            // jindex = mpi->mpicoordx * jblock + j;
-            // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-            //  if(iindex == 0 && jindex == 0)
+    //        // CvH this needs to be taken into account in case of an MPI run
+    //        // iindex = mpi->mpicoordy * iblock + i;
+    //        // jindex = mpi->mpicoordx * jblock + j;
+    //        // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+    //        //  if(iindex == 0 && jindex == 0)
 
-            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
-            p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
+    //        b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
+    //        p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
 
-            if (k == 0)
-            {
-                // substitute BC's
-                // ijk = i + j*jj;
-                b[ijk] += a[0];
-            }
-            else if (k == kmax-1)
-            {
-                // for wave number 0, which contains average, set pressure at top to zero
-                if (i == 0 && j == 0)
-                    b[ijk] -= c[k];
-                // set dp/dz at top to zero
-                else
-                    b[ijk] += c[k];
-            }
-        }
-    }
+    //        if (k == 0)
+    //        {
+    //            // substitute BC's
+    //            // ijk = i + j*jj;
+    //            b[ijk] += a[0];
+    //        }
+    //        else if (k == kmax-1)
+    //        {
+    //            // for wave number 0, which contains average, set pressure at top to zero
+    //            if (i == 0 && j == 0)
+    //                b[ijk] -= c[k];
+    //            // set dp/dz at top to zero
+    //            else
+    //                b[ijk] += c[k];
+    //        }
+    //    }
+    //}
 
-    template<typename TF> __global__
-    void tdma_g(TF* __restrict__ a, TF* __restrict__ b, TF* __restrict__ c,
-                TF* __restrict__ p, TF* __restrict__ work3d,
-                const int jj, const int kk,
-                const int imax, const int jmax, const int kmax)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+    //template<typename TF> __global__
+    //void tdma_g(TF* __restrict__ a, TF* __restrict__ b, TF* __restrict__ c,
+    //            TF* __restrict__ p, TF* __restrict__ work3d,
+    //            const int jj, const int kk,
+    //            const int imax, const int jmax, const int kmax)
+    //{
+    //    const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    //    const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-        if (i < imax && j < jmax)
-        {
-            const int ij = i + j*jj;
+    //    if (i < imax && j < jmax)
+    //    {
+    //        const int ij = i + j*jj;
 
-            TF work2d = b[ij];
-            p[ij] /= work2d;
+    //        TF work2d = b[ij];
+    //        p[ij] /= work2d;
 
-            for (int k=1; k<kmax; k++)
-            {
-                const int ijk = ij + k*kk;
-                work3d[ijk] = c[k-1] / work2d;
-                work2d = b[ijk] - a[k]*work3d[ijk];
-                p[ijk] -= a[k]*p[ijk-kk];
-                p[ijk] /= work2d;
-            }
+    //        for (int k=1; k<kmax; k++)
+    //        {
+    //            const int ijk = ij + k*kk;
+    //            work3d[ijk] = c[k-1] / work2d;
+    //            work2d = b[ijk] - a[k]*work3d[ijk];
+    //            p[ijk] -= a[k]*p[ijk-kk];
+    //            p[ijk] /= work2d;
+    //        }
 
-            for (int k=kmax-2; k>=0; k--)
-            {
-                const int ijk = ij + k*kk;
-                p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
-            }
-        }
-    }
+    //        for (int k=kmax-2; k>=0; k--)
+    //        {
+    //            const int ijk = ij + k*kk;
+    //            p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+    //        }
+    //    }
+    //}
 
     template<typename TF> __global__
     void calc_divergence_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
@@ -224,11 +229,11 @@ void Pres_2<TF>::prepare_device()
 
     const int ijmemsize = gd.imax*gd.jmax*sizeof(TF);
 
-    cuda_safe_call(cudaMalloc((void**)&bmati_g,  imemsize));
-    cuda_safe_call(cudaMalloc((void**)&bmatj_g,  jmemsize));
-    cuda_safe_call(cudaMalloc((void**)&a_g,      kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&c_g,      kmemsize));
-    cuda_safe_call(cudaMalloc((void**)&work2d_g, ijmemsize));
+    bmati_g.allocate(gd.itot);
+    bmatj_g.allocate(gd.jtot);
+    a_g.allocate(gd.kmax);
+    c_g.allocate(gd.kmax);
+    work2d_g.allocate(gd.imax*gd.jmax);
 
     cuda_safe_call(cudaMemcpy(bmati_g,  bmati.data(),  imemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bmatj_g,  bmatj.data(),  jmemsize,  cudaMemcpyHostToDevice));
@@ -242,17 +247,39 @@ void Pres_2<TF>::prepare_device()
 template<typename TF>
 void Pres_2<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(bmati_g ));
-    cuda_safe_call(cudaFree(bmatj_g ));
-    cuda_safe_call(cudaFree(a_g     ));
-    cuda_safe_call(cudaFree(c_g     ));
-    cuda_safe_call(cudaFree(work2d_g));
 }
 
 template<typename TF>
 void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+
+    // Grid layout for KL/CL launches over interior, including ghost cells.
+    Grid_layout grid_layout_int = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
+    // Grid layout for KL/CL launches over interior, excluding ghost cells.
+    Grid_layout grid_layout_nogc = {
+            0, gd.imax,
+            0, gd.jmax,
+            0, gd.kmax,
+            1,
+            gd.imax,
+            gd.imax*gd.jmax};
+
+    // Grid layout for KL/CL launches over 2D, excluding ghost cells.
+    Grid_layout grid_layout_2d_nogc = {
+            0, gd.imax,
+            0, gd.jmax,
+            0, 1,
+            1,
+            gd.imax,
+            gd.imax*gd.jmax};
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
@@ -277,57 +304,65 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     boundary_cyclic.exec_g(fields.mt.at("v")->fld_g);
     boundary_cyclic.exec_g(fields.mt.at("w")->fld_g);
 
-    pres_in_g<TF><<<gridGPU, blockGPU>>>(
-        fields.sd.at("p")->fld_g,
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-        gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi, static_cast<TF>(dti),
-        gd.icells, gd.ijcells,
-        gd.imax, gd.imax*gd.jmax,
-        gd.imax, gd.jmax, gd.kmax,
-        gd.igc, gd.jgc, gd.kgc);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernels::pres_in_g<TF>>(
+            grid_layout_nogc,
+            fields.sd.at("p")->fld_g.view(),
+            fields.mp.at("u")->fld_g,
+            fields.mp.at("v")->fld_g,
+            fields.mp.at("w")->fld_g,
+            fields.mt.at("u")->fld_g,
+            fields.mt.at("v")->fld_g,
+            fields.mt.at("w")->fld_g,
+            gd.dzi_g,
+            fields.rhoref_g,
+            fields.rhorefh_g,
+            gd.dxi, gd.dyi,
+            TF(dti),
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart);
 
     fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    solve_in_g<TF><<<gridGPU, blockGPU>>>(
-        fields.sd.at("p")->fld_g,
-        tmp1->fld_g, tmp2->fld_g,
-        a_g, c_g, gd.dz_g, fields.rhoref_g, bmati_g, bmatj_g,
-        gd.imax, gd.imax*gd.jmax,
-        gd.imax, gd.jmax, gd.kmax,
-        gd.kstart);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernels::solve_in_g<TF>>(
+            grid_layout_nogc,
+            fields.sd.at("p")->fld_g.view(),
+            tmp1->fld_g,
+            tmp2->fld_g.view(),
+            a_g, c_g, gd.dz_g,
+            fields.rhoref_g,
+            bmati_g, bmatj_g,
+            gd.kstart, gd.kmax);
 
-    tdma_g<TF><<<grid2dGPU, block2dGPU>>>(
-        a_g, tmp2->fld_g, c_g,
-        fields.sd.at("p")->fld_g, tmp1->fld_g,
-        gd.imax, gd.imax*gd.jmax,
-        gd.imax, gd.jmax, gd.kmax);
-    cuda_check_error();
+    // DOES NOT WORK (YET):
+    launch_grid_kernel<Pres_2_kernels::tdma_g<TF>>(
+            grid_layout_2d_nogc,
+            a_g,
+            tmp2->fld_g,
+            c_g,
+            fields.sd.at("p")->fld_g.view(),
+            tmp1->fld_g.view(),
+            gd.kmax);
 
     fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
-    solve_out_g<TF><<<gridGPU, blockGPU>>>(
-        fields.sd.at("p")->fld_g, tmp1->fld_g,
-        gd.imax, gd.imax*gd.jmax,
-        gd.icells, gd.ijcells,
-        gd.istart, gd.jstart, gd.kstart,
-        gd.imax, gd.jmax, gd.kmax);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernels::solve_out_g<TF>>(
+            grid_layout_nogc,
+            fields.sd.at("p")->fld_g.view(),
+            tmp1->fld_g,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.icells, gd.ijcells);
 
     boundary_cyclic.exec_g(fields.sd.at("p")->fld_g);
 
-    pres_out_g<TF><<<gridGPU, blockGPU>>>(
-        fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
-        fields.sd.at("p")->fld_g,
-        gd.dzhi_g, TF(1.)/gd.dx, TF(1.)/gd.dy,
-        gd.icells, gd.ijcells,
-        gd.istart,  gd.jstart, gd.kstart,
-        gd.iend,    gd.jend,   gd.kend);
-    cuda_check_error();
+    launch_grid_kernel<Pres_2_kernels::pres_out_g<TF>>(
+            grid_layout_int,
+            fields.mt.at("u")->fld_g.view(),
+            fields.mt.at("v")->fld_g.view(),
+            fields.mt.at("w")->fld_g.view(),
+            fields.sd.at("p")->fld_g,
+            gd.dzhi_g, TF(1.)/gd.dx, TF(1.)/gd.dy);
 
     fields.release_tmp_g(tmp1);
     fields.release_tmp_g(tmp2);
