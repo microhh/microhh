@@ -877,7 +877,7 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::exec_shortwave(
         Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_dn_dir, Array_gpu<Float,2>& flux_net,
-        Array<Float, 1>&aod550,
+        Array<Float, 1>& aod550,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
         const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
@@ -1028,8 +1028,9 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     dynamic_cast<Optical_props_2str_gpu&>(*optical_props_subset_in),
                     dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
 
-            if (do_radiation_stats)
-            sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550, aod550_g);
+            // calculate aerosol optical depth when calculating radiation for the whole domain (not for individual column stats)
+            if (do_radiation_stats && aod550.size()!=0)
+                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550, aod550_g);
 
         }
 
@@ -1057,7 +1058,8 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 fluxes.get_flux_up().ptr(), fluxes.get_flux_dn().ptr(), fluxes.get_flux_dn_dir().ptr(), fluxes.get_flux_net().ptr());
     };
 
-    if (sw_aerosol && do_radiation_stats)
+    // write aerosol optical depth when calculating radiation for the whole domain (not for individual column stats)
+    if (sw_aerosol && do_radiation_stats && aod550.size() != 0)
     {
         const int nmemsize = gd.imax*gd.jmax * sizeof(TF);
         cuda_safe_call(cudaMemcpy(aod550.ptr(), aod550_g, nmemsize, cudaMemcpyDeviceToHost));
@@ -1706,7 +1708,6 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
     {
         Array_gpu<Float,2> flux_dn_dir({n_stat_col, gd.ktot+1});
         Array<Float,1> aod550_column_stats;
-        aod550_column_stats.set_dims({n_col});
 
         // Single column solve of background profile for TOA conditions
         if (!sw_fixed_sza)

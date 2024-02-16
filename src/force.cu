@@ -35,6 +35,11 @@
 #include "thermo.h"
 #include "force.h"
 
+// Kernel/CUDA launcher:
+#include "force_kernels.cuh"
+#include "cuda_launcher.h"
+#include "cuda_tiling.h"
+
 using namespace Finite_difference::O2;
 
 namespace
@@ -54,28 +59,6 @@ namespace
         {
             const int ijk = i + j*jj + k*kk;
             ut[ijk] += fbody;
-        }
-    }
-
-    template<typename TF> __global__
-    void coriolis_2nd_g(TF* const __restrict__ ut, TF* const __restrict__ vt,
-                        TF* const __restrict__ u,  TF* const __restrict__ v,
-                        TF* const __restrict__ ug, TF* const __restrict__ vg,
-                        const TF fc, const TF ugrid, const TF vgrid,
-                        const int jj, const int kk,
-                        const int istart, const int jstart, const int kstart,
-                        const int iend,   const int jend,   const int kend)
-    {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k  = blockIdx.z + kstart;
-        const int ii = 1;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            ut[ijk] += fc * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
-            vt[ijk] -= fc * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
         }
     }
 
@@ -114,115 +97,27 @@ namespace
         }
     }
 
-    template<typename TF> __global__
-    void advec_wls_2nd_mean_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (wls[k] > 0.)
-                st[ijk] -= wls[k] * (s[k]-s[k-1])*dzhi[k];
-            else
-                st[ijk] -= wls[k] * (s[k+1]-s[k])*dzhi[k+1];
-        }
-    }
 
     template<typename TF> __global__
-    void advec_wls_2nd_local_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzhi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
+    void nudging_tendency_g(
+        TF* const __restrict__ st,
+        const TF* const __restrict__ smn,
+        const TF* const __restrict__ snudge,
+        const TF* const __restrict__ nudge_fac,
+        const int kstart, const int kend)
     {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
+        const int k = blockIdx.x*blockDim.x + threadIdx.x + kstart;
 
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (wls[k] > 0.)
-                st[ijk] -= wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
-            else
-                st[ijk] -= wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
-        }
+        if (k < kend)
+            st[k] = -nudge_fac[k] * (smn[k]-snudge[k]);
     }
 
-
-    template<typename TF> __global__
-    void advec_wls_2nd_local_w_g(
-            TF* const __restrict__ st, const TF* const __restrict__ s,
-            const TF* const __restrict__ wls, const TF* const __restrict__ dzi,
-            const int istart, const int jstart, const int kstart,
-            const int iend,   const int jend,   const int kend,
-            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart + 1;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            if (interp2( wls[k-1], wls[k] ) > 0.)
-                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
-            else
-                st[ijk] -= interp2( wls[k-1], wls[k] ) * (s[ijk+kk]-s[ijk])*dzi[k];
-        }
-    }
-
-    template<typename TF> __global__
-    void large_scale_source_g(TF* const __restrict__ st, TF* const __restrict__ sls,
-                              const int istart, const int jstart, const int kstart,
-                              const int iend,   const int jend,   const int kend,
-                              const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-            st[ijk] += sls[k];
-        }
-    }
-
-    template<typename TF> __global__
-    void nudging_tendency_g(TF* const __restrict__ st, TF* const __restrict__ smn,
-                            TF* const __restrict__ snudge, TF* const __restrict__ nudge_fac,
-                            const int istart, const int jstart, const int kstart,
-                            const int iend,   const int jend,   const int kend,
-                            const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            st[ijk] += - nudge_fac[k] * (smn[k]-snudge[k]);
-
-        }
-    }
 
     template<typename TF>
-    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    int calc_zi(
+            const TF* const restrict fldmean,
+            const int kstart, const int kend,
+            const int plusminus)
     {
         TF maxgrad = 0.;
         TF grad = 0.;
@@ -250,10 +145,11 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_time_dependent_prof_g(TF* const __restrict__ prof, const TF* const __restrict__ data,
-                                    const double fac0, const double fac1,
-                                    const int index0,  const int index1,
-                                    const int kmax,    const int kgc)
+    void calc_time_dependent_prof_g(
+            TF* const __restrict__ prof, const TF* const __restrict__ data,
+            const double fac0, const double fac1,
+            const int index0,  const int index1,
+            const int kmax,    const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -272,8 +168,8 @@ void Force<TF>::prepare_device()
 
     if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        cuda_safe_call(cudaMalloc(&ug_g, nmemsize));
-        cuda_safe_call(cudaMalloc(&vg_g, nmemsize));
+        ug_g.allocate(gd.kcells);
+        vg_g.allocate(gd.kcells);
 
         cuda_safe_call(cudaMemcpy(ug_g, ug.data(), nmemsize, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(vg_g, vg.data(), nmemsize, cudaMemcpyHostToDevice));
@@ -283,8 +179,7 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : lslist)
         {
-            lsprofs_g.emplace(it, nullptr);
-            cuda_safe_call(cudaMalloc(&lsprofs_g.at(it), nmemsize));
+            lsprofs_g.emplace(it, cuda_vector<TF>(gd.kcells));
             cuda_safe_call(cudaMemcpy(lsprofs_g.at(it), lsprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
     }
@@ -293,18 +188,18 @@ void Force<TF>::prepare_device()
     {
         for (auto& it : nudgelist)
         {
-            nudgeprofs_g.emplace(it, nullptr);
-            cuda_safe_call(cudaMalloc(&nudgeprofs_g.at(it), nmemsize));
+            nudgeprofs_g.emplace(it, cuda_vector<TF>(gd.kcells));
             cuda_safe_call(cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), nmemsize, cudaMemcpyHostToDevice));
         }
-        cuda_safe_call(cudaMalloc(&nudge_factor_g, nmemsize));
+        nudge_factor_g.allocate(gd.kcells);
+        nudge_tend_g.allocate(gd.kcells);
         cuda_safe_call(cudaMemcpy(nudge_factor_g, nudge_factor.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field ||
         swwls == Large_scale_subsidence_type::Local_field)
     {
-        cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
+        wls_g.allocate(gd.kcells);
         cuda_safe_call(cudaMemcpy(wls_g, wls.data(), nmemsize, cudaMemcpyHostToDevice));
     }
 }
@@ -314,34 +209,25 @@ void Force<TF>::clear_device()
 {
     if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        cuda_safe_call(cudaFree(ug_g));
-        cuda_safe_call(cudaFree(vg_g));
         for (auto& it : tdep_geo)
             it.second->clear_device();
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
     {
-        for (auto& it : lsprofs_g)
-            cuda_safe_call(cudaFree(it.second));
         for (auto& it : tdep_ls)
             it.second->clear_device();
     }
 
     if (swnudge == Nudging_type::Enabled)
     {
-        for (auto& it : nudgeprofs_g)
-            cuda_safe_call(cudaFree(it.second));
-        cuda_safe_call(cudaFree(nudge_factor_g));
         for (auto& it : tdep_nudge)
             it.second->clear_device();
-
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field ||
         swwls == Large_scale_subsidence_type::Local_field)
     {
-        cuda_safe_call(cudaFree(wls_g));
         tdep_wls->clear_device();
     }
 }
@@ -351,6 +237,16 @@ template<typename TF>
 void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+
+    // Grid layout for KL/CL launches over interior.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -402,14 +298,14 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         
         if (grid.get_spatial_order() == Grid_order::Second)
         {
-            coriolis_2nd_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g,
-                fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g,
-                ug_g, vg_g, fc, gd.utrans, gd.vtrans,
-                gd.icells, gd.ijcells,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::coriolis_2nd_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("u")->fld_g,
+                    fields.mp.at("v")->fld_g,
+                    ug_g, vg_g, fc,
+                    gd.utrans, gd.vtrans);
         }
         else if (grid.get_spatial_order() == Grid_order::Fourth)
         {
@@ -432,12 +328,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         for (auto& it : lslist)
         {
-            large_scale_source_g<TF><<<gridGPU, blockGPU>>>(
-                fields.at.at(it)->fld_g, lsprofs_g.at(it),
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::add_profile_g<TF>>(
+                    grid_layout,
+                    fields.at.at(it)->fld_g.view(),
+                    lsprofs_g.at(it));
+
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.at.at(it), tend_name_ls);
         }
@@ -456,13 +351,27 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                 cudaMemcpy(nudgeprofs_g.at(it), nudgeprofs.at(it).data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
             }
 
+            // Calculate nudging tendency profile.
+            const int blocki = 32;
+            const int gridi  = gd.kmax/blocki + (gd.kmax%blocki > 0);
+
+            dim3 gridGPU (gridi);
+            dim3 blockGPU(blocki);
+
+            // Calculate nudging tendency as single profile.
             nudging_tendency_g<TF><<<gridGPU, blockGPU>>>(
-                fields.at.at(it)->fld_g, fields.ap.at(it)->fld_mean_g,
-                nudgeprofs_g.at(it), nudge_factor_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+                    nudge_tend_g.view(),
+                    fields.ap.at(it)->fld_mean_g,
+                    nudgeprofs_g.at(it),
+                    nudge_factor_g,
+                    gd.kstart, gd.kend);
+
+            // Add tendency profile to 3D tendency field.
+            launch_grid_kernel<Force_kernels::add_profile_g<TF>>(
+                    grid_layout,
+                    fields.at.at(it)->fld_g.view(),
+                    nudge_tend_g);
+
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.at.at(it), tend_name_nudge);
         }
@@ -472,26 +381,20 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mp.at("u")->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mp.at("u")->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("v")->fld_g,
-                fields.mp.at("v")->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("v")->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
@@ -499,14 +402,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_mean_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g,
-                fields.sp.at(it.first)->fld_mean_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_mean_g<TF>>(
+                    grid_layout,
+                    fields.st.at(it.first)->fld_g.view(),
+                    fields.sp.at(it.first)->fld_mean_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*it.second, tend_name_subs);
@@ -516,38 +416,38 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("u")->fld_g,
-                fields.mp.at("u")->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("u")->fld_g.view(),
+                    fields.mp.at("u")->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("u"), tend_name_subs);
 
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("v")->fld_g,
-                fields.mp.at("v")->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.mt.at("v")->fld_g.view(),
+                    fields.mp.at("v")->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("v"), tend_name_subs);
 
-            advec_wls_2nd_local_w_g<TF><<<gridGPU, blockGPU>>>(
-                fields.mt.at("w")->fld_g,
-                fields.mp.at("w")->fld_g,
-                wls_g, gd.dzi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            // Modified `grid_layout`, which starts at kstart+1 (for w subsidence).
+            Grid_layout grid_layout_kp1 = {
+                    gd.istart,   gd.iend,
+                    gd.jstart,   gd.jend,
+                    gd.kstart+1, gd.kend,
+                    gd.istride,
+                    gd.jstride,
+                    gd.kstride};
+
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_w_g<TF>>(
+                    grid_layout_kp1,
+                    fields.mt.at("w")->fld_g.view(),
+                    fields.mp.at("w")->fld_g,
+                    wls_g, gd.dzi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.mt.at("w"), tend_name_subs);
@@ -555,14 +455,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
 
         for (auto& it : fields.st)
         {
-            advec_wls_2nd_local_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st.at(it.first)->fld_g,
-                fields.sp.at(it.first)->fld_g,
-                wls_g, gd.dzhi_g,
-                gd.istart, gd.jstart, gd.kstart,
-                gd.iend,   gd.jend,   gd.kend,
-                gd.icells, gd.ijcells);
-            cuda_check_error();
+            launch_grid_kernel<Force_kernels::advec_wls_2nd_local_g<TF>>(
+                    grid_layout,
+                    fields.st.at(it.first)->fld_g.view(),
+                    fields.sp.at(it.first)->fld_g,
+                    wls_g, gd.dzhi_g);
 
             cudaDeviceSynchronize();
             stats.calc_tend(*it.second, tend_name_subs);

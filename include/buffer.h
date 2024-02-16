@@ -68,7 +68,9 @@ class Buffer
         bool swupdate; ///< Switch for enabling runtime updating of buffer profile.
 
         // GPU functions and variables
-        std::map<std::string, TF*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
+        std::map<std::string, cuda_vector<TF>> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
+        cuda_vector<TF> sigma_z;
+        cuda_vector<TF> sigma_zh;
 
         const std::string tend_name = "damp";
         const std::string tend_longname = "Damping";

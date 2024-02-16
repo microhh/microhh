@@ -177,15 +177,23 @@ void Timeloop<TF>::exec()
                 cuda_vector<TF>& fld,
                 cuda_vector<TF>& tend)
         {
+            Grid_layout grid_layout = {
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.istride,
+                    gd.jstride,
+                    gd.kstride};
+
             if (substep == 0)
-                launch_grid_kernel<timeloop::rk3_g<TF, 0>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 0>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
-                launch_grid_kernel<timeloop::rk3_g<TF, 1>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 1>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
-                launch_grid_kernel<timeloop::rk3_g<TF, 2>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk3_g<TF, 2>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
         };
 
         // Atmospheric fields
@@ -259,21 +267,29 @@ void Timeloop<TF>::exec()
                 cuda_vector<TF>& fld,
                 cuda_vector<TF>& tend)
         {
+            Grid_layout grid_layout = {
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.istride,
+                    gd.jstride,
+                    gd.kstride};
+
             if (substep == 0)
-                launch_grid_kernel<timeloop::rk4_g<TF, 0>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 0>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 1)
-                launch_grid_kernel<timeloop::rk4_g<TF, 1>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 1>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 2)
-                launch_grid_kernel<timeloop::rk4_g<TF, 2>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 2>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 3)
-                launch_grid_kernel<timeloop::rk4_g<TF, 3>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 3>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
             else if (substep == 4)
-                launch_grid_kernel<timeloop::rk4_g<TF, 4>>(
-                        gd, fld.view(), tend.view(), TF(dt));
+                launch_grid_kernel<Timeloop_kernels::rk4_g<TF, 4>>(
+                        grid_layout, fld.view(), tend.view(), TF(dt));
         };
 
         // Atmospheric fields
