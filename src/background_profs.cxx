@@ -84,15 +84,15 @@ void Background<TF>::init(Netcdf_handle& input_nc)
     // Always get dimensions background levels, if radiation group is present.
     if (input_nc.group_exists("radiation"))
     {
-        n_era_layers = 0;
-        n_era_levels = 0;
+        n_lay = 0;
+        n_lev = 0;
 
         Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
         if (rad_nc.variable_exists("lay"))
-            n_era_layers = rad_nc.get_dimension_size("lay");
+            n_lay = rad_nc.get_dimension_size("lay");
         if (rad_nc.variable_exists("lev"))
-            n_era_levels = rad_nc.get_dimension_size("lev");
+            n_lev = rad_nc.get_dimension_size("lev");
     }
 
     if (!sw_update_background)
@@ -101,27 +101,27 @@ void Background<TF>::init(Netcdf_handle& input_nc)
     idt_rad = convert_to_itime(dt_rad);
 
     // temperature, pressure and moisture
-    t_lay.resize(n_era_layers);
-    t_lev.resize(n_era_levels);
-    p_lay.resize(n_era_layers);
-    p_lev.resize(n_era_levels);
-    h2o.resize(n_era_layers);
+    t_lay.resize(n_lay);
+    t_lev.resize(n_lev);
+    p_lay.resize(n_lay);
+    p_lev.resize(n_lev);
+    h2o.resize(n_lay);
 
     for (auto& it : gaslist)
-        gasprofs[it] = std::vector<TF>(n_era_layers);
+        gasprofs[it] = std::vector<TF>(n_lay);
 
     // aerosols
-    aermr01.resize(n_era_layers);
-    aermr02.resize(n_era_layers);
-    aermr03.resize(n_era_layers);
-    aermr04.resize(n_era_layers);
-    aermr05.resize(n_era_layers);
-    aermr06.resize(n_era_layers);
-    aermr07.resize(n_era_layers);
-    aermr08.resize(n_era_layers);
-    aermr09.resize(n_era_layers);
-    aermr10.resize(n_era_layers);
-    aermr11.resize(n_era_layers);
+    aermr01.resize(n_lay);
+    aermr02.resize(n_lay);
+    aermr03.resize(n_lay);
+    aermr04.resize(n_lay);
+    aermr05.resize(n_lay);
+    aermr06.resize(n_lay);
+    aermr07.resize(n_lay);
+    aermr08.resize(n_lay);
+    aermr09.resize(n_lay);
+    aermr10.resize(n_lay);
+    aermr11.resize(n_lay);
 }
 
 template <typename TF>
@@ -137,80 +137,79 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
     // temperature, pressure and moisture
     tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", sw_update_background);
-    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
     tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", sw_update_background);
-    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
+    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
     tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", sw_update_background);
-    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
     tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", sw_update_background);
-    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_levels);
+    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
     tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o_bg", sw_update_background);
-    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
 
     // gasses
     for (auto& it : tdep_gases)
-        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_era_layers);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
 
     //aerosols
     if (sw_aerosol && sw_aerosol_timedep)
     {
         std::string timedep_dim = "time_aerosols";
         tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", sw_update_background);
-        tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", sw_update_background);
-        tdep_aermr02->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr02->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", sw_update_background);
-        tdep_aermr03->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr03->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", sw_update_background);
-        tdep_aermr04->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr04->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", sw_update_background);
-        tdep_aermr05->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr05->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", sw_update_background);
-        tdep_aermr06->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr06->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", sw_update_background);
-        tdep_aermr07->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr07->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", sw_update_background);
-        tdep_aermr08->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr08->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", sw_update_background);
-        tdep_aermr09->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr09->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", sw_update_background);
-        tdep_aermr10->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr10->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", sw_update_background);
-        tdep_aermr11->create_timedep_prof(input_nc, offset, timedep_dim, n_era_layers);
+        tdep_aermr11->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
     }
 
     // Prepare statistics.
     const std::string group_name = "default";
-    stats.add_dimension("era_layers", n_era_layers);
-    stats.add_dimension("era_levels", n_era_levels);
+    stats.add_dimension("lay", n_lay);
+    stats.add_dimension("lev", n_lev);
 
     // temperature, pressure and moisture
-    stats.add_prof("t_lay_bg", "temperature at model layers of background profile", "K", "era_layers", group_name);
-    stats.add_prof("t_lev_bg", "temperature at model levels of background profile", "K", "era_levels", group_name);
-    stats.add_prof("p_lay_bg", "pressure at model layers of background profile", "Pa", "era_layers", group_name);
-    stats.add_prof("p_lev_bg", "pressure at model levels of background profile", "Pa", "era_levels", group_name);
-    stats.add_prof("h2o_bg", "h2o", "kg Kg-1", "era_layers", group_name);
+    stats.add_prof("t_lay_bg", "temperature at model layers of background profile", "K", "lay", group_name);
+    stats.add_prof("t_lev_bg", "temperature at model levels of background profile", "K", "lev", group_name);
+    stats.add_prof("p_lay_bg", "pressure at model layers of background profile", "Pa", "lay", group_name);
+    stats.add_prof("p_lev_bg", "pressure at model levels of background profile", "Pa", "lev", group_name);
+    stats.add_prof("h2o_bg", "h2o", "kg Kg-1", "lay", group_name);
 
     // gasses
     if (std::find(gaslist.begin(), gaslist.end(), "o3") != gaslist.end())
-        stats.add_prof("o3_bg", "o3", "kg Kg-1", "era_layers", group_name);
+        stats.add_prof("o3_bg", "o3", "kg Kg-1", "lay", group_name);
 
     // aerosols
     if (sw_aerosol && sw_aerosol_timedep)
     {
-        stats.add_prof("aermr01_bg", "Sea salt (0.03 - 0.5 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr02_bg", "Sea salt (0.5 - 5 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr03_bg", "Sea salt (5 - 20 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr04_bg", "Dust (0.03 - 0.55 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr05_bg", "Dust (0.55 - 0.9 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr06_bg", "Dust (0.9 - 20 um) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr07_bg", "Organic matter (hydrophilic) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr08_bg", "Organic matter (hydrophobic) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr09_bg", "Black carbon (hydrophilic) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr10_bg", "Black carbon (hydrophobic) mixing ratio", "kg Kg-1", "era_layers", group_name);
-        stats.add_prof("aermr11_bg", "Sulfates mixing ratio", "kg Kg-1", "era_layers", group_name);
+        stats.add_prof("aermr01_bg", "Sea salt (0.03 - 0.5 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr02_bg", "Sea salt (0.5 - 5 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr03_bg", "Sea salt (5 - 20 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr04_bg", "Dust (0.03 - 0.55 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr05_bg", "Dust (0.55 - 0.9 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr06_bg", "Dust (0.9 - 20 um) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr07_bg", "Organic matter (hydrophilic) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr08_bg", "Organic matter (hydrophobic) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr09_bg", "Black carbon (hydrophilic) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr10_bg", "Black carbon (hydrophobic) mixing ratio", "kg Kg-1", "lay", group_name);
+        stats.add_prof("aermr11_bg", "Sulfates mixing ratio", "kg Kg-1", "lay", group_name);
     }
-
 }
 
 template <typename TF>
@@ -224,30 +223,30 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (do_radiation)
     {
         // temperature, pressure and moisture
-        tdep_t_lay   ->update_time_dependent_prof(t_lay, timeloop, n_era_layers);
-        tdep_t_lev   ->update_time_dependent_prof(t_lev, timeloop, n_era_levels);
-        tdep_p_lay   ->update_time_dependent_prof(p_lay, timeloop, n_era_layers);
-        tdep_p_lev   ->update_time_dependent_prof(p_lev, timeloop, n_era_levels);
-        tdep_h2o     ->update_time_dependent_prof(h2o, timeloop, n_era_layers);
+        tdep_t_lay   ->update_time_dependent_prof(t_lay, timeloop, n_lay);
+        tdep_t_lev   ->update_time_dependent_prof(t_lev, timeloop, n_lev);
+        tdep_p_lay   ->update_time_dependent_prof(p_lay, timeloop, n_lay);
+        tdep_p_lev   ->update_time_dependent_prof(p_lev, timeloop, n_lev);
+        tdep_h2o     ->update_time_dependent_prof(h2o, timeloop, n_lay);
 
         // gasses
         for (auto& it : tdep_gases)
-            it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, n_era_layers);
+            it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, n_lay);
 
         // aerosols
         if (sw_aerosol && sw_aerosol_timedep)
         {
-            tdep_aermr01 ->update_time_dependent_prof(aermr01, timeloop, n_era_layers);
-            tdep_aermr02 ->update_time_dependent_prof(aermr02, timeloop, n_era_layers);
-            tdep_aermr03 ->update_time_dependent_prof(aermr03, timeloop, n_era_layers);
-            tdep_aermr04 ->update_time_dependent_prof(aermr04, timeloop, n_era_layers);
-            tdep_aermr05 ->update_time_dependent_prof(aermr05, timeloop, n_era_layers);
-            tdep_aermr06 ->update_time_dependent_prof(aermr06, timeloop, n_era_layers);
-            tdep_aermr07 ->update_time_dependent_prof(aermr07, timeloop, n_era_layers);
-            tdep_aermr08 ->update_time_dependent_prof(aermr08, timeloop, n_era_layers);
-            tdep_aermr09 ->update_time_dependent_prof(aermr09, timeloop, n_era_layers);
-            tdep_aermr10 ->update_time_dependent_prof(aermr10, timeloop, n_era_layers);
-            tdep_aermr11 ->update_time_dependent_prof(aermr11, timeloop, n_era_layers);
+            tdep_aermr01 ->update_time_dependent_prof(aermr01, timeloop, n_lay);
+            tdep_aermr02 ->update_time_dependent_prof(aermr02, timeloop, n_lay);
+            tdep_aermr03 ->update_time_dependent_prof(aermr03, timeloop, n_lay);
+            tdep_aermr04 ->update_time_dependent_prof(aermr04, timeloop, n_lay);
+            tdep_aermr05 ->update_time_dependent_prof(aermr05, timeloop, n_lay);
+            tdep_aermr06 ->update_time_dependent_prof(aermr06, timeloop, n_lay);
+            tdep_aermr07 ->update_time_dependent_prof(aermr07, timeloop, n_lay);
+            tdep_aermr08 ->update_time_dependent_prof(aermr08, timeloop, n_lay);
+            tdep_aermr09 ->update_time_dependent_prof(aermr09, timeloop, n_lay);
+            tdep_aermr10 ->update_time_dependent_prof(aermr10, timeloop, n_lay);
+            tdep_aermr11 ->update_time_dependent_prof(aermr11, timeloop, n_lay);
         }
     }
 }
@@ -294,19 +293,19 @@ void Background<TF>::get_tpm(Array<Float,2>& t_lay_col, Array<Float,2>& t_lev_co
                             Array<Float,2>& p_lay_col, Array<Float,2>& p_lev_col,
                              Gas_concs& gas_concs_col)
 {
-    for (int k=0; k<n_era_layers; ++k)
+    for (int k=0; k<n_lay; ++k)
     {
         t_lay_col({1, k+1}) = t_lay[k];
         p_lay_col({1, k+1}) = p_lay[k];
     }
-    for (int k=0; k<n_era_levels; ++k)
+    for (int k=0; k<n_lev; ++k)
     {
         t_lev_col({1, k+1}) = t_lev[k];
         p_lev_col({1, k+1}) = p_lev[k];
     }
 
-    Array<Float,2> h2o_bg_a({1, int(n_era_layers)});
-    for (int k=0; k<n_era_layers; ++k)
+    Array<Float,2> h2o_bg_a({1, int(n_lay)});
+    for (int k=0; k<n_lay; ++k)
     {
         h2o_bg_a({1, k+1}) = h2o[k];
     }
@@ -318,8 +317,8 @@ void Background<TF>::get_gasses(Gas_concs& gas_concs_col)
 {
     for (auto& it : tdep_gases)
     {
-        Array<Float,2> tmp_array({1, int(n_era_layers)});
-        for (int k=0; k<n_era_layers; ++k)
+        Array<Float,2> tmp_array({1, int(n_lay)});
+        for (int k=0; k<n_lay; ++k)
         {
             tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
         }
@@ -331,19 +330,19 @@ void Background<TF>::get_gasses(Gas_concs& gas_concs_col)
 template<typename TF>
 void Background<TF>::get_aerosols(Aerosol_concs& aerosol_concs_col)
 {
-    Array<Float,2> aermr01_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr02_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr03_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr04_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr05_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr06_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr07_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr08_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr09_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr10_bg_a({1, int(n_era_layers)});
-    Array<Float,2> aermr11_bg_a({1, int(n_era_layers)});
+    Array<Float,2> aermr01_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr02_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr03_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr04_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr05_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr06_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr07_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr08_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr09_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr10_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr11_bg_a({1, int(n_lay)});
 
-    for (int k=0; k<n_era_layers; ++k)
+    for (int k=0; k<n_lay; ++k)
     {
         aermr01_bg_a({1, k+1}) = aermr01[k];
         aermr02_bg_a({1, k+1}) = aermr02[k];
