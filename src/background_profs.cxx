@@ -84,14 +84,14 @@ void Background<TF>::init(Netcdf_handle& input_nc)
     // Always get dimensions background levels, if radiation group is present.
     if (input_nc.group_exists("radiation"))
     {
-        n_lay = 0;
-        n_lev = 0;
+        n_lay = -1;
+        n_lev = -1;
 
         Netcdf_handle& rad_nc = input_nc.get_group("radiation");
 
-        if (rad_nc.variable_exists("lay"))
+        if (rad_nc.dimension_exists("lay"))
             n_lay = rad_nc.get_dimension_size("lay");
-        if (rad_nc.variable_exists("lev"))
+        if (rad_nc.dimension_exists("lev"))
             n_lev = rad_nc.get_dimension_size("lev");
     }
 
@@ -180,7 +180,7 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
     }
 
     // Prepare statistics.
-    const std::string group_name = "default";
+    const std::string group_name = "radiation";
     stats.add_dimension("lay", n_lay);
     stats.add_dimension("lev", n_lev);
 
