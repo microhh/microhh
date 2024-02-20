@@ -37,6 +37,7 @@
 #include "defines.h"
 #include "constants.h"
 
+
 template<typename TF>
 Timeloop<TF>::Timeloop(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
@@ -45,8 +46,7 @@ Timeloop<TF>::Timeloop(
     grid(gridin),
     soil_grid(soilgridin),
     fields(fieldsin),
-    flag_utc_time(false),
-    ifactor(1e9)
+    flag_utc_time(false)
 {
     setenv("TZ", "utc", 1);
 
@@ -98,21 +98,21 @@ Timeloop<TF>::Timeloop(
     iteration = 0;
 
     // set or calculate all the integer times
-    itime      = static_cast<unsigned long>(0);
+    itime      = 0UL;
 
-    // add 0.5 to prevent roundoff errors
-    iendtime   = static_cast<unsigned long>(ifactor * endtime + 0.5);
-    istarttime = static_cast<unsigned long>(ifactor * starttime + 0.5);
-    idt        = static_cast<unsigned long>(ifactor * dt + 0.5);
-    idtmax     = static_cast<unsigned long>(ifactor * dtmax + 0.5);
-    isavetime  = static_cast<unsigned long>(ifactor * savetime + 0.5);
+    iendtime   = convert_to_itime(endtime);
+    istarttime = convert_to_itime(starttime);
+    idt        = convert_to_itime(dt);
+    idtmax     = convert_to_itime(dtmax);
+    isavetime  = convert_to_itime(savetime);
+
     if (sim_mode == Sim_mode::Post)
-        ipostproctime = static_cast<unsigned long>(ifactor * postproctime + 0.5);
+        ipostproctime = convert_to_itime(postproctime);
 
     idtlim = idt;
 
     // take the proper precision for the output files into account
-    iiotimeprec = static_cast<unsigned long>(ifactor * std::pow(10., iotimeprec) + 0.5);
+    iiotimeprec = convert_to_itime(std::pow(10., iotimeprec));
 
     // check whether starttime and savetime are an exact multiple of iotimeprec
     if ((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
@@ -602,13 +602,14 @@ std::string Timeloop<TF>::get_datetime_utc_start_string() const
     return ss.str();
 }
 
+
 template<typename TF>
 Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vector<double>& timevec)
 {
     // 1. Get the indexes and factors for the interpolation in time
     std::vector<unsigned long> itimevec(timevec.size());
     for (size_t t=0; t<timevec.size(); ++t)
-        itimevec[t] = static_cast<unsigned long>(ifactor * timevec[t] + 0.5);
+        itimevec[t] = convert_to_itime(timevec[t]);
 
     Interpolation_factors<TF> ifac;
     ifac.index1 = 0;

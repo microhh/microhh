@@ -591,7 +591,7 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
-    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+    idt_rad = convert_to_itime(dt_rad);
 
     // Check if restarttime is dividable by dt_rad
     if (timeloop.get_isavetime() % idt_rad != 0)
