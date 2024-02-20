@@ -1195,8 +1195,7 @@ void Radiation_rrtmgp<TF>::create_column(
         const int n_lev = rad_nc.get_dimension_size("lev");
         Array<Float,2> p_lev(rad_nc.get_variable<Float>("p_lev", {n_lev, n_col}), {n_col, n_lev});
 
-        stats.add_dimension("p_rad", n_lev);
-        stats.add_dimension("era_levels", n_lev);
+        stats.add_dimension("lev", n_lev);
 
         const std::string group_name = "radiation";
         const std::string root_group= "";
@@ -1204,29 +1203,29 @@ void Radiation_rrtmgp<TF>::create_column(
         stats.add_fixed_prof_raw(
                 "p_rad",
                 "Pressure of radiation reference column",
-                "Pa", "p_rad", root_group,
+                "Pa", "lev", root_group,
                 p_lev.v());
 
         if (sw_update_background || !sw_fixed_sza)
         {
             stats.add_prof("sw_flux_up_ref",
                            "Shortwave upwelling flux of reference column",
-                           "W m-2", "era_levels", group_name);
+                           "W m-2", "lev", group_name);
             stats.add_prof("sw_flux_dn_ref",
                            "Shortwave downwelling flux of reference column",
-                           "W m-2", "era_levels", group_name);
+                           "W m-2", "lev", group_name);
             stats.add_prof("sw_flux_dn_dir_ref",
                            "Shortwave direct downwelling flux of reference column",
-                           "W m-2", "era_levels", group_name);
+                           "W m-2", "lev", group_name);
         }
         if (sw_update_background)
         {
             stats.add_prof("lw_flux_up_ref",
                            "Longwave upwelling flux of reference column",
-                           "W m-2", "era_levels", group_name);
+                           "W m-2", "lev", group_name);
             stats.add_prof("lw_flux_dn_ref",
                            "Longwave downwelling flux of reference column",
-                           "W m-2", "era_levels", group_name);
+                           "W m-2", "lev", group_name);
         }
     }
 
@@ -1318,13 +1317,13 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
         stats.add_fixed_prof_raw(
                 "lw_flux_up_ref",
                 "Longwave upwelling flux of reference column",
-                "W m-2", "p_rad", group_name,
+                "W m-2", "lev", group_name,
                 lw_flux_up_col.v());
 
         stats.add_fixed_prof_raw(
                 "lw_flux_dn_ref",
                 "Longwave downwelling flux of reference column",
-                "W m-2", "p_rad", group_name,
+                "W m-2", "lev", group_name,
                 lw_flux_dn_col.v());
     }
 }
@@ -1394,17 +1393,17 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
                 stats.add_fixed_prof_raw(
                         "sw_flux_up_ref",
                         "Shortwave upwelling flux of reference column",
-                        "W m-2", "p_rad", group_name,
+                        "W m-2", "lev", group_name,
                         sw_flux_up_col.v());
                 stats.add_fixed_prof_raw(
                         "sw_flux_dn_ref",
                         "Shortwave downwelling flux of reference column",
-                        "W m-2", "p_rad", group_name,
+                        "W m-2", "lev", group_name,
                         sw_flux_dn_col.v());
                 stats.add_fixed_prof_raw(
                         "sw_flux_dn_dir_ref",
                         "Shortwave direct downwelling flux of reference column",
-                        "W m-2", "p_rad", group_name,
+                        "W m-2", "lev", group_name,
                         sw_flux_dn_dir_col.v());
             }
         }

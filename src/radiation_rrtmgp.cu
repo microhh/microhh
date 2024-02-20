@@ -220,7 +220,7 @@ namespace
         dim3 grid_gpu(grid_col);
         dim3 block_gpu(block_col);
 
-        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd, aod);
+        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd-1, aod);
     }
 
     std::vector<std::string> get_variable_string(
@@ -1030,7 +1030,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             // calculate aerosol optical depth when calculating radiation for the whole domain (not for individual column stats)
             if (do_radiation_stats && aod550.size()!=0)
-                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550-1, aod550_g);
+                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550, aod550_g);
 
         }
 
