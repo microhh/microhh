@@ -48,7 +48,7 @@ Background<TF>::Background(
 
     if (!sw_update_background)
         return;
-    
+
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
     sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
@@ -81,15 +81,24 @@ Background<TF>::~Background()
 template <typename TF>
 void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
-    // Allocate (`.resize`) arrays.
+    // Always get dimensions background levels, if radiation group is present.
+    if (input_nc.group_exists("radiation"))
+    {
+        n_era_layers = 0;
+        n_era_levels = 0;
+
+        Netcdf_handle& rad_nc = input_nc.get_group("radiation");
+
+        if (rad_nc.variable_exists("lay"))
+            n_era_layers = rad_nc.get_dimension_size("lay");
+        if (rad_nc.variable_exists("lev"))
+            n_era_levels = rad_nc.get_dimension_size("lev");
+    }
+
     if (!sw_update_background)
         return;
 
     idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
-
-    Netcdf_handle& rad_nc = input_nc.get_group("radiation");
-    n_era_layers = rad_nc.get_dimension_size("lay");
-    n_era_levels = rad_nc.get_dimension_size("lev");
 
     // temperature, pressure and moisture
     t_lay.resize(n_era_layers);
@@ -100,7 +109,7 @@ void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 
     for (auto& it : gaslist)
         gasprofs[it] = std::vector<TF>(n_era_layers);
-    
+
     // aerosols
     aermr01.resize(n_era_layers);
     aermr02.resize(n_era_layers);

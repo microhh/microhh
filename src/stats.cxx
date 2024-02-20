@@ -1107,6 +1107,7 @@ void Stats<TF>::add_prof(
         else if ((zloc == "era_levels") || (zloc == "era_layers"))
         {
             const TF n_era_levels = background.get_n_era_levels();
+
             Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_era_levels), level};
 
             m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
