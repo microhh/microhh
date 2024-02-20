@@ -26,12 +26,11 @@
 #include "finite_difference.h"
 #include "cuda_tiling.h"
 
-namespace advec_2i5
+namespace Advec_2i5_kernels
 {
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
     using namespace Finite_difference::O6;
-
 
     template<typename TF>
     struct advec_u_g
@@ -46,15 +45,15 @@ namespace advec_2i5
                         const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                         const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
-            const int ii1 = 1*g.ii;
-            const int ii2 = 2*g.ii;
-            const int ii3 = 3*g.ii;
-            const int jj1 = 1*g.jj;
-            const int jj2 = 2*g.jj;
-            const int jj3 = 3*g.jj;
-            const int kk1 = 1*g.kk;
-            const int kk2 = 2*g.kk;
-            const int kk3 = 3*g.kk;
+            const int ii1 = 1*g.istride;
+            const int ii2 = 2*g.istride;
+            const int ii3 = 3*g.istride;
+            const int jj1 = 1*g.jstride;
+            const int jj2 = 2*g.jstride;
+            const int jj3 = 3*g.jstride;
+            const int kk1 = 1*g.kstride;
+            const int kk2 = 2*g.kstride;
+            const int kk3 = 3*g.kstride;
 
             const int ijk = g(i, j, k);
 
@@ -149,9 +148,9 @@ namespace advec_2i5
                    const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                    const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
-            const int ii = g.ii;
-            const int jj = g.jj;
-            const int kk = g.kk;
+            const int ii = g.istride;
+            const int jj = g.jstride;
+            const int kk = g.kstride;
 
             const int ii1 = 1*ii;
             const int ii2 = 2*ii;
@@ -257,9 +256,9 @@ namespace advec_2i5
                        const TF* __restrict__ rhoref, const TF* __restrict__ rhorefhi,
                        const TF* __restrict__ dzhi, const TF dxi, const TF dyi)
         {
-            const int ii = g.ii;
-            const int jj = g.jj;
-            const int kk = g.kk;
+            const int ii = g.istride;
+            const int jj = g.jstride;
+            const int kk = g.kstride;
 
             const int ii1 = 1*ii;
             const int ii2 = 2*ii;
@@ -353,9 +352,9 @@ namespace advec_2i5
                 const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                 const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
-            const int ii = g.ii;
-            const int jj = g.jj;
-            const int kk = g.kk;
+            const int ii = g.istride;
+            const int jj = g.jstride;
+            const int kk = g.kstride;
 
             const int ii1 = 1;
             const int ii2 = 2;
@@ -522,13 +521,13 @@ namespace advec_2i5
                         const TF* __restrict__ rhorefi, const TF* __restrict__ rhorefh,
                         const TF* __restrict__ dzi, const TF dxi, const TF dyi)
         {
-            const int ii1 = 1*g.ii;
-            const int ii2 = 2*g.ii;
-            const int jj1 = 1*g.jj;
-            const int jj2 = 2*g.jj;
-            const int kk = g.kk;
-            const int kk1 = 1*g.kk;
-            const int kk2 = 2*g.kk;
+            const int ii1 = 1*g.istride;
+            const int ii2 = 2*g.istride;
+            const int jj1 = 1*g.jstride;
+            const int jj2 = 2*g.jstride;
+            const int kk = g.kstride;
+            const int kk1 = 1*g.kstride;
+            const int kk2 = 2*g.kstride;
 
             const int ijk = i + j*jj1 + k*kk1;
             st[ijk] +=
@@ -585,14 +584,14 @@ namespace advec_2i5
             const int ii1 = 1;
             const int ii2 = 2;
             const int ii3 = 3;
-            const int jj1 = 1*g.jj;
-            const int jj2 = 2*g.jj;
-            const int jj3 = 3*g.jj;
-            const int kk1 = 1*g.kk;
-            const int kk2 = 2*g.kk;
-            const int kk3 = 3*g.kk;
+            const int jj1 = 1*g.jstride;
+            const int jj2 = 2*g.jstride;
+            const int jj3 = 3*g.jstride;
+            const int kk1 = 1*g.kstride;
+            const int kk2 = 2*g.kstride;
+            const int kk3 = 3*g.kstride;
 
-            const int ijk = i + j*g.jj + k*g.kk;
+            const int ijk = i + j*g.jstride+ k*g.kstride;
 
             if (level.distance_to_start() == 0 || level.distance_to_end() == 0)
                 tmp1[ijk] = fabs(interp6_ws(u[ijk-ii2], u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]))*dxi

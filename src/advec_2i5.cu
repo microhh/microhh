@@ -51,8 +51,16 @@ double Advec_2i5<TF>::get_cfl(const double dt)
     const Grid_data<TF>& gd = grid.get_grid_data();
     auto tmp1 = fields.get_tmp_g();
 
-    launch_grid_kernel<advec_2i5::calc_cfl_g<TF>>(
-            gd,
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
+    launch_grid_kernel<Advec_2i5_kernels::calc_cfl_g<TF>>(
+            grid_layout,
             tmp1->fld_g.view(),
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             gd.dzi_g, gd.dxi, gd.dyi);
@@ -72,28 +80,36 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    launch_grid_kernel<advec_2i5::advec_u_g<TF>>(
-            grid,
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
+    launch_grid_kernel<Advec_2i5_kernels::advec_u_g<TF>>(
+            grid_layout,
             fields.mt.at("u")->fld_g.view(),
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
 
-    launch_grid_kernel<advec_2i5::advec_v_g<TF>>(
-            grid,
+    launch_grid_kernel<Advec_2i5_kernels::advec_v_g<TF>>(
+            grid_layout,
             fields.mt.at("v")->fld_g.view(),
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
 
-    launch_grid_kernel<advec_2i5::advec_w_g<TF>>(
-            grid,
+    launch_grid_kernel<Advec_2i5_kernels::advec_w_g<TF>>(
+            grid_layout,
             fields.mt.at("w")->fld_g.view(),
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhoref_g, fields.rhorefhi_g, gd.dzhi_g, gd.dxi, gd.dyi);
 
     for (const std::string& s : sp_limit)
     {
-        launch_grid_kernel<advec_2i5::advec_s_lim_g<TF>>(
-                grid,
+        launch_grid_kernel<Advec_2i5_kernels::advec_s_lim_g<TF>>(
+                grid_layout,
                 fields.st.at(s)->fld_g.view(), fields.sp.at(s)->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
                 fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
@@ -101,8 +117,8 @@ void Advec_2i5<TF>::exec(Stats<TF>& stats)
 
     for (const std::string& s : sp_no_limit)
     {
-        launch_grid_kernel<advec_2i5::advec_s_g<TF>>(
-                grid,
+        launch_grid_kernel<Advec_2i5_kernels::advec_s_g<TF>>(
+                grid_layout,
                 fields.st.at(s)->fld_g.view(), fields.sp.at(s)->fld_g,
                 fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
                 fields.rhorefi_g, fields.rhorefh_g, gd.dzi_g, gd.dxi, gd.dyi);
