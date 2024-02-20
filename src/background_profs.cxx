@@ -304,7 +304,7 @@ void Background<TF>::get_tpm(Array<Float,2>& t_lay_col, Array<Float,2>& t_lev_co
         p_lev_col({1, k+1}) = p_lev[k];
     }
 
-    Array<Float,2> h2o_bg_a({1, int(n_lay)});
+    Array<Float,2> h2o_bg_a({1, n_lay});
     for (int k=0; k<n_lay; ++k)
     {
         h2o_bg_a({1, k+1}) = h2o[k];
@@ -317,7 +317,7 @@ void Background<TF>::get_gasses(Gas_concs& gas_concs_col)
 {
     for (auto& it : tdep_gases)
     {
-        Array<Float,2> tmp_array({1, int(n_lay)});
+        Array<Float,2> tmp_array({1, n_lay});
         for (int k=0; k<n_lay; ++k)
         {
             tmp_array({1, k+1}) = gasprofs.at(it.first)[k];
@@ -330,17 +330,17 @@ void Background<TF>::get_gasses(Gas_concs& gas_concs_col)
 template<typename TF>
 void Background<TF>::get_aerosols(Aerosol_concs& aerosol_concs_col)
 {
-    Array<Float,2> aermr01_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr02_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr03_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr04_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr05_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr06_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr07_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr08_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr09_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr10_bg_a({1, int(n_lay)});
-    Array<Float,2> aermr11_bg_a({1, int(n_lay)});
+    Array<Float,2> aermr01_bg_a({1, n_lay});
+    Array<Float,2> aermr02_bg_a({1, n_lay});
+    Array<Float,2> aermr03_bg_a({1, n_lay});
+    Array<Float,2> aermr04_bg_a({1, n_lay});
+    Array<Float,2> aermr05_bg_a({1, n_lay});
+    Array<Float,2> aermr06_bg_a({1, n_lay});
+    Array<Float,2> aermr07_bg_a({1, n_lay});
+    Array<Float,2> aermr08_bg_a({1, n_lay});
+    Array<Float,2> aermr09_bg_a({1, n_lay});
+    Array<Float,2> aermr10_bg_a({1, n_lay});
+    Array<Float,2> aermr11_bg_a({1, n_lay});
 
     for (int k=0; k<n_lay; ++k)
     {
