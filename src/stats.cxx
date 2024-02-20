@@ -584,7 +584,7 @@ Stats<TF>::~Stats()
 }
 
 template<typename TF>
-void Stats<TF>::init(double ifactor)
+void Stats<TF>::init()
 {
     if (!swstats)
         return;
@@ -593,7 +593,7 @@ void Stats<TF>::init(double ifactor)
 
     boundary_cyclic.init();
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
     statistics_counter = 0;
 
     // Vectors which hold the amount of grid points sampled on each model level.

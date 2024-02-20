@@ -554,11 +554,10 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         if (itime > itime_sbot_2d_next)
         {
             // Read new surface sbot fields
-            const double ifactor = timeloop.get_ifactor();
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_sbot_2d_prev = itime_sbot_2d_next;
-            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
             const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
 
             int nerror = 0;

@@ -79,7 +79,7 @@ Background<TF>::~Background()
 }
 
 template <typename TF>
-void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
+void Background<TF>::init(Netcdf_handle& input_nc)
 {
     // Always get dimensions background levels, if radiation group is present.
     if (input_nc.group_exists("radiation"))
@@ -98,7 +98,7 @@ void Background<TF>::init(Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
     if (!sw_update_background)
         return;
 
-    idt_rad = static_cast<unsigned long>(timeloop.get_ifactor() * dt_rad + 0.5);
+    idt_rad = convert_to_itime(dt_rad);
 
     // temperature, pressure and moisture
     t_lay.resize(n_era_layers);
