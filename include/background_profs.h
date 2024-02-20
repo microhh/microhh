@@ -77,8 +77,8 @@ private:
     double dt_rad;
     unsigned long idt_rad;
 
-    TF n_lay;   // Full levels
-    TF n_lev;   // Half levels
+    int n_lay;   // Full levels
+    int n_lev;   // Half levels
 
     std::map<std::string, Timedep<TF>*> tdep_gases;
     std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
