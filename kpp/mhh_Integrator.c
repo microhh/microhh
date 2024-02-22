@@ -101,30 +101,12 @@
  void WAXPY(int N, double Alpha, double X[], int incX, double Y[], int incY );
  void WSCAL(int N, double Alpha, double X[], int incX);
  double WLAMCH( char C );
- void Ros2 ( int *ros_S, double ros_A[], double ros_C[], 
-             double ros_M[], double ros_E[], 
-	     double ros_Alpha[], double ros_Gamma[], 
-	     char ros_NewF[], double *ros_ELO, char* ros_Name );
- void Ros3 ( int *ros_S, double ros_A[], double ros_C[], 
-             double ros_M[], double ros_E[], 
-	     double ros_Alpha[], double ros_Gamma[], 
-	     char ros_NewF[], double *ros_ELO, char* ros_Name );
- void Ros4 ( int *ros_S, double ros_A[], double ros_C[], 
-             double ros_M[], double ros_E[], 
-	     double ros_Alpha[], double ros_Gamma[], 
-	     char ros_NewF[], double *ros_ELO, char* ros_Name );
- void Rodas3 ( int *ros_S, double ros_A[], double ros_C[], 
-             double ros_M[], double ros_E[], 
-	     double ros_Alpha[], double ros_Gamma[], 
-	     char ros_NewF[], double *ros_ELO, char* ros_Name );
  void Rodas4 ( int *ros_S, double ros_A[], double ros_C[], 
              double ros_M[], double ros_E[], 
 	     double ros_Alpha[], double ros_Gamma[], 
 	     char ros_NewF[], double *ros_ELO, char* ros_Name );
  int  KppDecomp( double A[] );
  void KppSolve ( double A[], double b[] );
- void Update_SUN();
- void Update_RCONST();
  
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void INTEGRATE( double TIN, double TOUT )
@@ -423,20 +405,12 @@ int Rosenbrock(double Y[], double Tstart, double Tend,
   /*~~~>   Initialize the particular Rosenbrock method */
    switch (Method) {
      case 1:
-       Ros2(&ros_S, ros_A, ros_C, ros_M, ros_E, 
-         ros_Alpha, ros_Gamma, ros_NewF, &ros_ELO, ros_Name);
        break;	 
      case 2:
-       Ros3(&ros_S, ros_A, ros_C, ros_M, ros_E, 
-         ros_Alpha, ros_Gamma, ros_NewF, &ros_ELO, ros_Name);
        break;	 
      case 3:
-       Ros4(&ros_S, ros_A, ros_C, ros_M, ros_E, 
-         ros_Alpha, ros_Gamma, ros_NewF, &ros_ELO, ros_Name);
        break;	 
      case 4:
-       Rodas3(&ros_S, ros_A, ros_C, ros_M, ros_E, 
-         ros_Alpha, ros_Gamma, ros_NewF, &ros_ELO, ros_Name);
        break;	 
      case 5:
        Rodas4(&ros_S, ros_A, ros_C, ros_M, ros_E, 
@@ -810,275 +784,6 @@ int ros_ErrorMsg(int Code, double T, double H)
       
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-void Ros2 ( int *ros_S, double ros_A[], double ros_C[], 
-           double ros_M[], double ros_E[], 
-	   double ros_Alpha[], double ros_Gamma[], 
-	   char ros_NewF[], double *ros_ELO, char* ros_Name )
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
-             AN L-STABLE METHOD, 2 stages, order 2
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-{   
-   double g = (double)1.70710678118655; /* 1.0 + 1.0/SQRT(2.0) */
-   
-  /*~~~> Name of the method */
-    strcpy(ros_Name, "ROS-2");  
-        
-  /*~~~> Number of stages */
-    *ros_S = 2;
-   
-  /*~~~> The coefficient matrices A and C are strictly lower triangular.
-    The lower triangular (subdiagonal) elements are stored in row-wise order:
-    A(2,1) = ros_A[0], A(3,1)=ros_A[1], A(3,2)=ros_A[2], etc.
-    The general mapping formula is:
-        A_{i,j} = ros_A[ (i-1)*(i-2)/2 + j -1 ]   */
-    ros_A[0] = 1.0/g;
-    
-  /*~~~>     C_{i,j} = ros_C[ (i-1)*(i-2)/2 + j -1]  */
-    ros_C[0] = (-2.0)/g;
-    
-  /*~~~> does the stage i require a new function evaluation (ros_NewF(i)=TRUE)
-    or does it re-use the function evaluation from stage i-1 (ros_NewF(i)=FALSE) */
-    ros_NewF[0] = 1;
-    ros_NewF[1] = 1;
-    
-  /*~~~> M_i = Coefficients for new step solution */
-    ros_M[0]= (3.0)/(2.0*g);
-    ros_M[1]= (1.0)/(2.0*g);
-    
-  /*~~~> E_i = Coefficients for error estimator */    
-    ros_E[0] = 1.0/(2.0*g);
-    ros_E[1] = 1.0/(2.0*g);
-    
-  /*~~~> ros_ELO = estimator of local order - the minimum between the
-!    main and the embedded scheme orders plus one */
-    *ros_ELO = (double)2.0;   
-     
-  /*~~~> Y_stage_i ~ Y( T + H*Alpha_i ) */
-    ros_Alpha[0] = (double)0.0;
-    ros_Alpha[1] = (double)1.0; 
-    
-  /*~~~> Gamma_i = \sum_j  gamma_{i,j}  */     
-    ros_Gamma[0] =  g;
-    ros_Gamma[1] = -g;
-    
-}  /*  Ros2 */
-
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-void Ros3 ( int *ros_S, double ros_A[], double ros_C[], 
-           double ros_M[], double ros_E[], 
-	   double ros_Alpha[], double ros_Gamma[], 
-	   char ros_NewF[], double *ros_ELO, char* ros_Name )
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
-       AN L-STABLE METHOD, 3 stages, order 3, 2 function evaluations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-{ 
-  /*~~~> Name of the method */
-   strcpy(ros_Name, "ROS-3");   
-
-  /*~~~> Number of stages */
-   *ros_S = 3;
-   
-  /*~~~> The coefficient matrices A and C are strictly lower triangular.
-    The lower triangular (subdiagonal) elements are stored in row-wise order:
-    A(2,1) = ros_A[0], A(3,1)=ros_A[1], A(3,2)=ros_A[2], etc.
-    The general mapping formula is:
-        A_{i,j} = ros_A[ (i-1)*(i-2)/2 + j -1 ]   */
-   ros_A[0]= (double)1.0;
-   ros_A[1]= (double)1.0;
-   ros_A[2]= (double)0.0;
-
-  /*~~~>     C_{i,j} = ros_C[ (i-1)*(i-2)/2 + j -1]  */
-   ros_C[0] = (double)(-1.0156171083877702091975600115545);
-   ros_C[1] = (double)4.0759956452537699824805835358067;
-   ros_C[2] = (double)9.2076794298330791242156818474003;
-   
-  /*~~~> does the stage i require a new function evaluation (ros_NewF(i)=TRUE)
-    or does it re-use the function evaluation from stage i-1 (ros_NewF(i)=FALSE) */
-   ros_NewF[0] = 1;
-   ros_NewF[1] = 1;
-   ros_NewF[2] = 0;
-   
-  /*~~~> M_i = Coefficients for new step solution */
-   ros_M[0] = (double)1.0;
-   ros_M[1] = (double)6.1697947043828245592553615689730;
-   ros_M[2] = (double)(-0.4277225654321857332623837380651);
-   
-  /*~~~> E_i = Coefficients for error estimator */    
-   ros_E[0] = (double)0.5;
-   ros_E[1] = (double)(-2.9079558716805469821718236208017);
-   ros_E[2] = (double)0.2235406989781156962736090927619;
-   
-  /*~~~> ros_ELO = estimator of local order - the minimum between the
-!    main and the embedded scheme orders plus 1 */
-   *ros_ELO = (double)3.0;    
-   
-  /*~~~> Y_stage_i ~ Y( T + H*Alpha_i ) */
-   ros_Alpha[0]= (double)0.0;
-   ros_Alpha[1]= (double)0.43586652150845899941601945119356;
-   ros_Alpha[2]= (double)0.43586652150845899941601945119356;
-   
-  /*~~~> Gamma_i = \sum_j  gamma_{i,j}  */     
-   ros_Gamma[0]= (double)0.43586652150845899941601945119356;
-   ros_Gamma[1]= (double)0.24291996454816804366592249683314;
-   ros_Gamma[2]= (double)2.1851380027664058511513169485832;
-
-}  /*  Ros3 */
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-void Ros4 ( int *ros_S, double ros_A[], double ros_C[], 
-           double ros_M[], double ros_E[], 
-	   double ros_Alpha[], double ros_Gamma[], 
-	   char ros_NewF[], double *ros_ELO, char* ros_Name )
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
-     L-STABLE ROSENBROCK METHOD OF ORDER 4, WITH 4 STAGES
-     L-STABLE EMBEDDED ROSENBROCK METHOD OF ORDER 3 
-
-      E. HAIRER AND G. WANNER, SOLVING ORDINARY DIFFERENTIAL
-      EQUATIONS II. STIFF AND DIFFERENTIAL-ALGEBRAIC PROBLEMS.
-      SPRINGER SERIES IN COMPUTATIONAL MATHEMATICS,
-      SPRINGER-VERLAG (1990)         
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-{   
-  /*~~~> Name of the method */
-   strcpy(ros_Name, "ROS-4");  
-       
-  /*~~~> Number of stages */
-   *ros_S = 4;
-   
-  /*~~~> The coefficient matrices A and C are strictly lower triangular.
-    The lower triangular (subdiagonal) elements are stored in row-wise order:
-    A(2,1) = ros_A[0], A(3,1)=ros_A[1], A(3,2)=ros_A[2], etc.
-    The general mapping formula is:
-       A_{i,j} = ros_A[ (i-1)*(i-2)/2 + j -1 ]  */
-   ros_A[0] = (double)0.2000000000000000e+01;
-   ros_A[1] = (double)0.1867943637803922e+01;
-   ros_A[2] = (double)0.2344449711399156;
-   ros_A[3] = ros_A[1];
-   ros_A[4] = ros_A[2];
-   ros_A[5] = (double)0.0;
-
-  /*~~~>     C(i,j) = (double)ros_C( (i-1)*(i-2)/2 + j )  */
-   ros_C[0] = (double)(-0.7137615036412310e+01);
-   ros_C[1] = (double)( 0.2580708087951457e+01);
-   ros_C[2] = (double)( 0.6515950076447975);
-   ros_C[3] = (double)(-0.2137148994382534e+01);
-   ros_C[4] = (double)(-0.3214669691237626);
-   ros_C[5] = (double)(-0.6949742501781779);
-   
-  /*~~~> does the stage i require a new function evaluation (ros_NewF(i)=TRUE)
-    or does it re-use the function evaluation from stage i-1 (ros_NewF(i)=FALSE) */
-   ros_NewF[0]  = 1;
-   ros_NewF[1]  = 1;
-   ros_NewF[2]  = 1;
-   ros_NewF[3]  = 0;
-   
-  /*~~~> M_i = Coefficients for new step solution */
-   ros_M[0] = (double)0.2255570073418735e+01;
-   ros_M[1] = (double)0.2870493262186792;
-   ros_M[2] = (double)0.4353179431840180;
-   ros_M[3] = (double)0.1093502252409163e+01;
-   
-  /*~~~> E_i  = Coefficients for error estimator */   
-   ros_E[0] = (double)(-0.2815431932141155);
-   ros_E[1] = (double)(-0.7276199124938920e-01);
-   ros_E[2] = (double)(-0.1082196201495311);
-   ros_E[3] = (double)(-0.1093502252409163e+01);
-   
-  /*~~~> ros_ELO  = estimator of local order - the minimum between the
-!    main and the embedded scheme orders plus 1 */
-   *ros_ELO  = (double)4.0;    
-   
-  /*~~~> Y_stage_i ~ Y( T + H*Alpha_i ) */
-   ros_Alpha[0] = (double)0.0;
-   ros_Alpha[1] = (double)0.1145640000000000e+01;
-   ros_Alpha[2] = (double)0.6552168638155900;
-   ros_Alpha[3] = (double)ros_Alpha[2];
-   
-  /*~~~> Gamma_i = \sum_j  gamma_{i,j}  */     
-   ros_Gamma[0] = (double)( 0.5728200000000000);
-   ros_Gamma[1] = (double)(-0.1769193891319233e+01);
-   ros_Gamma[2] = (double)( 0.7592633437920482);
-   ros_Gamma[3] = (double)(-0.1049021087100450);
-
-}  /*  Ros4 */
-   
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-void Rodas3 ( int *ros_S, double ros_A[], double ros_C[], 
-             double ros_M[], double ros_E[], 
-	     double ros_Alpha[], double ros_Gamma[], 
-	     char ros_NewF[], double *ros_ELO, char* ros_Name )
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
-  --- A STIFFLY-STABLE METHOD, 4 stages, order 3
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
-{   
-  /*~~~> Name of the method */
-   strcpy(ros_Name, "RODAS-3");  
-   
-  /*~~~> Number of stages */
-   *ros_S = 4;
-   
-  /*~~~> The coefficient matrices A and C are strictly lower triangular.
-    The lower triangular (subdiagonal) elements are stored in row-wise order:
-    A(2,1) = ros_A[0], A(3,1)=ros_A[1], A(3,2)=ros_A[2], etc.
-    The general mapping formula is:
-        A_{i,j} = ros_A[ (i-1)*(i-2)/2 + j -1 ]  */   
-   ros_A[0] = (double)0.0;
-   ros_A[1] = (double)2.0;
-   ros_A[2] = (double)0.0;
-   ros_A[3] = (double)2.0;
-   ros_A[4] = (double)0.0;
-   ros_A[5] = (double)1.0;
-
-  /*~~~>     C_{i,j} = ros_C[ (i-1)*(i-2)/2 + j -1]  */
-   ros_C[0] = (double)4.0;
-   ros_C[1] = (double)1.0;
-   ros_C[2] = (double)(-1.0);
-   ros_C[3] = (double)1.0;
-   ros_C[4] = (double)(-1.0); 
-   ros_C[5] = (double)(-2.66666666666667); /* -8/3 */ 
-         
-  /*~~~> does the stage i require a new function evaluation (ros_NewF(i)=TRUE)
-    or does it re-use the function evaluation from stage i-1 (ros_NewF(i)=FALSE) */
-   ros_NewF[0]  = 1;
-   ros_NewF[1]  = 0;
-   ros_NewF[2]  = 1;
-   ros_NewF[3]  = 1;
-   
-  /*~~~> M_i = Coefficients for new step solution */
-   ros_M[0] = (double)2.0;
-   ros_M[1] = (double)0.0;
-   ros_M[2] = (double)1.0;
-   ros_M[3] = (double)1.0;
-   
-  /*~~~> E_i  = Coefficients for error estimator */   
-   ros_E[0] = (double)0.0;
-   ros_E[1] = (double)0.0;
-   ros_E[2] = (double)0.0;
-   ros_E[3] = (double)1.0;
-   
-  /*~~~> ros_ELO  = estimator of local order - the minimum between the
-!    main and the embedded scheme orders plus 1 */
-   *ros_ELO  = (double)3.0;
-      
-  /*~~~> Y_stage_i ~ Y( T + H*Alpha_i ) */
-   ros_Alpha[0] = (double)0.0;
-   ros_Alpha[1] = (double)0.0;
-   ros_Alpha[2] = (double)1.0;
-   ros_Alpha[3] = (double)1.0;
-   
-  /*~~~> Gamma_i = \sum_j  gamma_{i,j}  */     
-   ros_Gamma[0] = (double)0.5;
-   ros_Gamma[1] = (double)1.5;
-   ros_Gamma[2] = (double)0.0;
-   ros_Gamma[3] = (double)0.0;
- 
-}  /*  Rodas3 */
-    
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/   
 void Rodas4 ( int *ros_S, double ros_A[], double ros_C[], 
              double ros_M[], double ros_E[], 
 	     double ros_Alpha[], double ros_Gamma[], 
@@ -1226,8 +931,6 @@ void FunTemplate( double T, double Y[], double Ydot[] )
 
    Told = TIME;
    TIME = T;
-   // Update_SUN();
-   // Update_RCONST();
    Fun( Y, FIX, RCONST, Ydot, A );
    TIME = Told;
      
@@ -1248,8 +951,6 @@ void JacTemplate( double T, double Y[], double Jcb[] )
 
    Told = TIME;
    TIME = T ; 
-   // Update_SUN();
-   // Update_RCONST();
    Jac_SP( Y, FIX, RCONST, Jcb );
    TIME = Told;
      

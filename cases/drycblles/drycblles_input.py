@@ -82,5 +82,5 @@ s1_sbot[:, 11:22, 11:22] = 1
 
 # Write as binary input files for MicroHH
 for t in range(nt):
-    th_sbot[t,:].tofile('th_bot.{0:07d}'.format(t*dt))
-    s1_sbot[t,:].tofile('s1_bot.{0:07d}'.format(t*dt))
+    th_sbot[t,:].tofile('th_bot_in.{0:07d}'.format(t*dt))
+    s1_sbot[t,:].tofile('s1_bot_in.{0:07d}'.format(t*dt))
