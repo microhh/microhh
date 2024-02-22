@@ -165,6 +165,10 @@ void Grid<TF>::init()
     gd.jend = gd.jmax + gd.jgc;
     gd.kend = gd.kmax + gd.kgc;
 
+    gd.istride = 1;
+    gd.jstride = gd.icells;
+    gd.kstride = gd.ijcells;
+
     check_ghost_cells();
 
     // allocate all arrays

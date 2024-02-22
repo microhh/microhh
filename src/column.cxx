@@ -58,12 +58,12 @@ Column<TF>::~Column()
 }
 
 template<typename TF>
-void Column<TF>::init(double ifactor)
+void Column<TF>::init()
 {
     if (!swcolumn)
         return;
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
     statistics_counter = 0;
 }
 
