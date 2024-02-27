@@ -54,7 +54,7 @@ namespace
     #include "mhh_LinearAlgebra.c"
     #include "mhh_JacobianSP.c"
     #include "mhh_Jacobian.c"
-    #include "mhh_Rates.c"
+    #include "mhh_Rates.cxx"
 
     double C[NSPEC];                         /* Concentration of all species */
     double * VAR = & C[0];
@@ -304,7 +304,7 @@ namespace
 
                     WCOPY(NVAR, VAR, 1, VAR0, 1);
                     INTEGRATE(TF(0), sdt);  //brings VAR0 --> VAR, with timestep sdt
-
+                    //  Reculculate tendency and add to the tendency of the transported tracers:
                     thno3[ijk] += (VAR[ind_HNO3] - VAR0[ind_HNO3]) * sdt_cfac_i;
                     tn2o5[ijk] += (VAR[ind_N2O5] - VAR0[ind_N2O5]) * sdt_cfac_i;
                     th2o2[ijk] += (VAR[ind_H2O2] - VAR0[ind_H2O2]) * sdt_cfac_i;
