@@ -126,8 +126,8 @@ namespace
             const TF* const restrict vdh2o2,
             const TF* const restrict vdrooh,
             const TF* const restrict vdhcho,
-            const TF* restrict qt,
-            const TF* restrict temp,
+            const TF* const restrict tprof,
+            const TF* const restrict qprof,
             const TF* const restrict dzi,
             const TF* const restrict rhoref,
             TF* restrict rfa,
@@ -157,7 +157,7 @@ namespace
         const TF xmair_i = TF(1) / xmair;
         const TF Na = 6.02214086e23; // Avogadros number [molecules mol-1]
 
-        TF C_M = 2.55e19;  // because of scope KPP generated routines
+        TF C_M = 2.55e19;  // because of scope KPP generated routines 
         TF VAR0[NVAR] ;
         TF erh = TF(0.0);
         TF eno = TF(0.0);
@@ -200,23 +200,9 @@ namespace
                 erh = TF(0);
                 eno = TF(0);
             }
-            // rate constants on horizontal average quantities, note: problems with domain decpmposition to be solved 
-            TF tmp = TF(0);
-            TF tmp1 = TF(0);
-            const int itot = iend - istart + 1;
-            const int jtot = jend - jstart + 1;
-            for (int j=jstart; j<jend; ++j)
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jstride + k*kstride;
-
-                    tmp += temp[ijk];
-                    tmp1 += qt[ijk]; 
-                }
-
-            const TF TEMP = tmp / (itot*jtot);
-            tmp1 /= (itot*jtot);
-            const TF C_H2O = std::max(tmp1 * xmair * C_M * xmh2o_i, TF(1));
+            // rate constants on horizontal average quantities, 
+            const TF TEMP = tprof[k];
+            const TF C_H2O = std::max(qprof[k] * xmair * C_M * xmh2o_i, TF(1));
             //printf("Temp and H2o on layer = %13.5e %13.5e %4i \n", TEMP, C_H2O, k);
 
 
@@ -346,7 +332,7 @@ namespace
 
 template<typename TF>
 Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_operators(master, grid, fields)
 {
     const std::string group_name = "default";
     auto& gd = grid.get_grid_data();
@@ -519,6 +505,8 @@ void Chemistry<TF>::create(
     for (int l=0;l<NREACT*gd.ktot;++l)
         rfa[l] = 0.0;
     trfa = (TF)0.0;
+    qprof.resize(gd.kcells);
+    tprof.resize(gd.kcells);
 
     if (stats.get_switch())
     {
@@ -693,6 +681,12 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
     auto tmp = fields.get_tmp();
     thermo.get_thermo_field(*tmp, "T", true, false);
 
+    // Calculate the mean temperature and water vapor mixing ratio.
+    field3d_operators.calc_mean_profile(tprof.data(), tmp->fld.data());
+    qprof = fields.sp.at("qt")->fld_mean;
+    //field3d_operators.calc_mean_profile(qprof.data(), fields.sp.at("qt")->fld.data());
+ 
+
     pss<TF>(
         fields.st.at("hno3")->fld.data(), fields.sp.at("hno3")->fld.data(),
         fields.st.at("n2o5")->fld.data(), fields.sp.at("n2o5")->fld.data(),
@@ -716,8 +710,8 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
         vdh2o2.data(),
         vdrooh.data(),
         vdhcho.data(),
-        fields.sp.at("qt")->fld.data(),
-        tmp->fld.data(),
+        tprof.data(),
+        qprof.data(),
         gd.dzi.data(),
         fields.rhoref.data(),
         rfa.data(),

@@ -22,7 +22,6 @@
 
 #ifndef CHEMISTRY_H
 #define CHEMISTRY_H
-
 #include <vector>
 #include <string>
 #include <map>
@@ -69,6 +68,8 @@ class Chemistry
 
         bool sw_chemistry;
 
+        Field3d_operators<TF> field3d_operators;
+
         std::shared_ptr<Deposition<TF>> deposition;
 
         Mask<TF> m;     // borrow from Stats to gather statistics chemistry
@@ -91,6 +92,8 @@ class Chemistry
         std::vector<TF> emi_no;
         std::vector<TF> rfa;
         std::vector<TF> rka;
+        std::vector<TF> qprof;
+        std::vector<TF> tprof;
         TF trfa;
 
         // vectors to contain calculated deposition velocities (m/s)
