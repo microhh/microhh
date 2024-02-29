@@ -200,6 +200,76 @@ namespace
                 erh = TF(0);
                 eno = TF(0);
             }
+            // rate constants on horizontal average quantities, note: problems with domain decpmposition to be solved 
+            TF tmp = TF(0);
+            TF tmp1 = TF(0);
+            const int itot = iend - istart + 1;
+            const int jtot = jend - jstart + 1;
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    tmp += temp[ijk];
+                    tmp1 += qt[ijk]; 
+                }
+
+            const TF TEMP = tmp / (itot*jtot);
+            tmp1 /= (itot*jtot);
+            const TF C_H2O = std::max(tmp1 * xmair * C_M * xmh2o_i, TF(1));
+            //printf("Temp and H2o on layer = %13.5e %13.5e %4i \n", TEMP, C_H2O, k);
+
+
+            RCONST[0 ] = ARR3(TF(1.7E-12), TF(-940), TEMP);
+            RCONST[1 ] = ARR3(TF(1.E-14), TF(-490), TEMP);
+            RCONST[2 ] = ARR3(TF(4.8E-11), TF(250), TEMP);
+            RCONST[3 ] = EPR(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
+            RCONST[4 ] = ARR3(TF(2.9E-12), TF(-160), TEMP);
+            RCONST[5 ] = ARR3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
+            RCONST[6 ] = ARR3(TF(3.E-12), TF(-1500), TEMP);
+            RCONST[7 ] = ARR3(TF(1.4E-13), TF(-2470), TEMP);
+            RCONST[8 ] = ARR3(TF(1.8E-11), TF(110), TEMP);
+            RCONST[9 ] = TROE_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
+            RCONST[10] = TROE_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
+            RCONST[11] = ARR3(TF(3.3E-12), TF(270), TEMP);
+            RCONST[12] = TROE_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
+            RCONST[13] = TF(4e-12);
+            RCONST[14] = RK28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
+            RCONST[15] = TF(0.0004);
+            RCONST[16] = ARR3(TF(2.45E-12), TF(-1775), TEMP);
+            RCONST[17] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + ARR3(TF(498), TF(-1160), TEMP))));
+            RCONST[18] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + ARR3(TF(498.), TF(-1160), TEMP)));
+            RCONST[19] = ARR3(TF(2.8E-12), TF(300), TEMP);
+            RCONST[20] = TF(1.2e-12);
+            RCONST[21] = ARR3(TF(3.8E-12), TF(200), TEMP);
+            RCONST[22] = ARR3(TF(5.5E-12), TF(125), TEMP);
+            RCONST[23] = TF(5.8e-16);
+            RCONST[24] = TROE_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
+            RCONST[25] = ARR3(TF(9.5E-14), TF(390), TEMP);
+            RCONST[26] = ARR3(TF(5.5E-15), TF(-1880), TEMP);
+            RCONST[27] = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), C_M, TF(0.5), TEMP);
+            RCONST[28] = ARR3(TF(4.6E-13), TF(-1155), TEMP);
+            RCONST[29] = usr_O3_hv_H2O(TEMP, C_M, C_H2O, jval[Pj_o31d]);
+            RCONST[30] = jval[Pj_no2];
+            RCONST[31] = jval[Pj_n2o5];
+            RCONST[32] = jval[Pj_no3];
+            RCONST[33] = jval[Pj_ch3o2h];
+            RCONST[34] = jval[Pj_ch2om];
+            RCONST[35] = jval[Pj_ch2or];
+            RCONST[36] = jval[Pj_h2o2];
+            RCONST[37] = eno;
+            RCONST[38] = erh;
+            RCONST[39] = TF(0.0);
+            RCONST[40] = TF(0.0);
+            RCONST[41] = TF(0.0);
+            RCONST[42] = TF(0.0);
+            RCONST[43] = TF(0.0);
+            RCONST[44] = TF(0.0);
+            RCONST[45] = TF(0.0);
+
+            FIX[0] = TF(1800e-9) * CFACTOR;  // methane concentation
+            FIX[1] = C_M;                    // air density
+            FIX[2] = TF(1);                  // species added to emit
 
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -209,8 +279,8 @@ namespace
                     const int ij = i + j*jstride;
 
                     // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
-                    const TF C_H2O = std::max(qt[ijk] * xmair * C_M * xmh2o_i, TF(1));
-                    const TF TEMP = temp[ijk];
+                    // const TF C_H2O = std::max(qt[ijk] * xmair * C_M * xmh2o_i, TF(1));
+                    // const TF TEMP = temp[ijk];
 
                     // Convert to molecules per cm3 and add tendenccies of other processes.
                     VAR[ind_HNO3] = std::max((hno3[ijk] + thno3[ijk] * sdt) * CFACTOR, TF(0));
@@ -228,71 +298,19 @@ namespace
                     VAR[ind_NO2]  = std::max((no2[ijk]  + tno2[ijk]  * sdt) * CFACTOR, TF(0));
                     VAR[ind_OH]   = std::max((oh[ijk]   + toh[ijk]   * sdt) * CFACTOR, TF(0));
 
-                    RCONST[0 ] = ARR3(TF(1.7E-12), TF(-940), TEMP);
-                    RCONST[1 ] = ARR3(TF(1.E-14), TF(-490), TEMP);
-                    RCONST[2 ] = ARR3(TF(4.8E-11), TF(250), TEMP);
-                    RCONST[3 ] = EPR(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
-                    RCONST[4 ] = ARR3(TF(2.9E-12), TF(-160), TEMP);
-                    RCONST[5 ] = ARR3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
-                    RCONST[6 ] = ARR3(TF(3.E-12), TF(-1500), TEMP);
-                    RCONST[7 ] = ARR3(TF(1.4E-13), TF(-2470), TEMP);
-                    RCONST[8 ] = ARR3(TF(1.8E-11), TF(110), TEMP);
-                    RCONST[9 ] = TROE_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
-                    RCONST[10] = TROE_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
-                    RCONST[11] = ARR3(TF(3.3E-12), TF(270), TEMP);
-                    RCONST[12] = TROE_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
-                    RCONST[13] = TF(4e-12);
-                    RCONST[14] = RK28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
-                    RCONST[15] = TF(0.0004);
-                    RCONST[16] = ARR3(TF(2.45E-12), TF(-1775), TEMP);
-                    RCONST[17] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + ARR3(TF(498), TF(-1160), TEMP))));
-                    RCONST[18] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + ARR3(TF(498.), TF(-1160), TEMP)));
-                    RCONST[19] = ARR3(TF(2.8E-12), TF(300), TEMP);
-                    RCONST[20] = TF(1.2e-12);
-                    RCONST[21] = ARR3(TF(3.8E-12), TF(200), TEMP);
-                    RCONST[22] = ARR3(TF(5.5E-12), TF(125), TEMP);
-                    RCONST[23] = TF(5.8e-16);
-                    RCONST[24] = TROE_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
-                    RCONST[25] = ARR3(TF(9.5E-14), TF(390), TEMP);
-                    RCONST[26] = ARR3(TF(5.5E-15), TF(-1880), TEMP);
-                    RCONST[27] = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), C_M, TF(0.5), TEMP);
-                    RCONST[28] = ARR3(TF(4.6E-13), TF(-1155), TEMP);
-                    RCONST[29] = usr_O3_hv_H2O(TEMP, C_M, C_H2O, jval[Pj_o31d]);
-                    RCONST[30] = jval[Pj_no2];
-                    RCONST[31] = jval[Pj_n2o5];
-                    RCONST[32] = jval[Pj_no3];
-                    RCONST[33] = jval[Pj_ch3o2h];
-                    RCONST[34] = jval[Pj_ch2om];
-                    RCONST[35] = jval[Pj_ch2or];
-                    RCONST[36] = jval[Pj_h2o2];
-                    RCONST[37] = eno;
-                    RCONST[38] = erh;
-
+                  
                     if (k==kstart)
-                    {
-                        RCONST[39] = vdo3[ij]   * dzi[k];
-                        RCONST[40] = vdno[ij]   * dzi[k];
-                        RCONST[41] = vdno2[ij]  * dzi[k];
-                        RCONST[42] = vdhno3[ij] * dzi[k];
-                        RCONST[43] = vdh2o2[ij] * dzi[k];
-                        RCONST[44] = vdhcho[ij] * dzi[k];
-                        RCONST[45] = vdrooh[ij] * dzi[k];
-                    }
-                    else
-                    {
-                        RCONST[39] = TF(0.0);
-                        RCONST[40] = TF(0.0);
-                        RCONST[41] = TF(0.0);
-                        RCONST[42] = TF(0.0);
-                        RCONST[43] = TF(0.0);
-                        RCONST[44] = TF(0.0);
-                        RCONST[45] = TF(0.0);
-                    }
-
-                    FIX[0] = TF(1800e-9) * CFACTOR;  // methane concentation
-                    FIX[1] = C_M;                    // air density
-                    FIX[2] = TF(1);                  // species added to emit
-
+                        {
+                            RCONST[39] = vdo3[ij]   * dzi[k];
+                            RCONST[40] = vdno[ij]   * dzi[k];
+                            RCONST[41] = vdno2[ij]  * dzi[k];
+                            RCONST[42] = vdhno3[ij] * dzi[k];
+                            RCONST[43] = vdh2o2[ij] * dzi[k];
+                            RCONST[44] = vdhcho[ij] * dzi[k];
+                            RCONST[45] = vdrooh[ij] * dzi[k];
+                        }
+                    
+                            
                     Fun(VAR, FIX, RCONST, Vdot, RF);
 
                     // Get statistics for reaction fluxes:
@@ -320,25 +338,7 @@ namespace
                     tno2[ijk] +=  (VAR[ind_NO2 ] - VAR0[ind_NO2 ]) * sdt_cfac_i;
                     toh[ijk] +=   (VAR[ind_OH  ] - VAR0[ind_OH  ]) * sdt_cfac_i;
 
-                    // tscale[0] = std::min(tscale[0],ABS(h2o2[ijk])/ABS(th2o2[ijk]));
-                    // tscale[1] = std::min(tscale[1],ABS(ch4[ijk])/ABS(tch4[ijk]));
-                    // tscale[2] = std::min(tscale[2],ABS(n2o5[ijk])/ABS(tn2o5[ijk]));
-                    // tscale[3] = std::min(tscale[3],ABS(hald[ijk])/ABS(thald[ijk]));
-                    // tscale[4] = std::min(tscale[4],ABS(co[ijk])/ABS(tco[ijk]));
-                    // tscale[5] = std::min(tscale[5],ABS(hcho[ijk])/ABS(thcho[ijk]));
-                    // tscale[6] = std::min(tscale[6],ABS(isopooh[ijk])/ABS(tisopooh[ijk]));
-                    // tscale[7] = std::min(tscale[7],ABS(isop[ijk])/ABS(tisop[ijk]));
-                    // tscale[8] = std::min(tscale[8],ABS(mvkmacr[ijk])/ABS(tmvkmacr[ijk]));
-                    // tscale[9] = std::min(tscale[9],ABS(xo2[ijk])/ABS(txo2[ijk]));
-                    // tscale[10] = std::min(tscale[10],ABS(isopao2[ijk])/ABS(tisopao2[ijk]));
-                    // tscale[11] = std::min(tscale[11],ABS(no2[ijk])/ABS(tno2[ijk]));
-                    // tscale[12] = std::min(tscale[12],ABS(o3[ijk])/ABS(to3[ijk]));
-                    // tscale[13] = std::min(tscale[13],ABS(no[ijk])/ABS(tno[ijk]));
-                    // tscale[14] = std::min(tscale[14],ABS(ch3o2[ijk])/ABS(tch3o2[ijk]));
-                    // tscale[15] = std::min(tscale[15],ABS(isopbo2[ijk])/ABS(tisopbo2[ijk]));
-                    // tscale[16] = std::min(tscale[16],ABS(no3[ijk])/ABS(tno3[ijk]));
-                    // tscale[17] = std::min(tscale[17],ABS(ho2[ijk])/ABS(tho2[ijk]));
-                    // tscale[18] = std::min(tscale[18],ABS(oh[ijk])/ABS(toh[ijk]));
+ 
                 } // i
         } // k
     }
