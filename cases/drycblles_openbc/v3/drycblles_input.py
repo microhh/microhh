@@ -15,7 +15,7 @@ pl.close('all')
 
 domain = sys.argv[1]
 
-float_type = np.float64
+dtype = np.float64
 
 swadvec = '2'   # needed for correct # gcs.
 
@@ -98,12 +98,12 @@ Write case_input.nc
 nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", ktot)
-nc_z  = nc_file.createVariable("z" , float_type, ("z"))
+nc_z  = nc_file.createVariable("z" , dtype, ("z"))
 
 nc_group_init = nc_file.createGroup("init");
-nc_u  = nc_group_init.createVariable("u" , float_type, ("z"))
-nc_v  = nc_group_init.createVariable("v" , float_type, ("z"))
-nc_th = nc_group_init.createVariable("th", float_type, ("z"))
+nc_u  = nc_group_init.createVariable("u" , dtype, ("z"))
+nc_v  = nc_group_init.createVariable("v" , dtype, ("z"))
+nc_th = nc_group_init.createVariable("th", dtype, ("z"))
 
 nc_z [:] = z [:]
 nc_u [:] = u [:] + 2
@@ -250,7 +250,7 @@ if domain == 'inner':
     for fld in fields:
         for loc in ['west', 'east', 'north', 'south']:
             lbc_in = lbc[f'{fld}_{loc}']
-            lbc_in.values.astype(float_type).tofile('lbc_{}_{}.0000000'.format(fld, loc))
+            lbc_in.values.astype(dtype).tofile('lbc_{}_{}.0000000'.format(fld, loc))
 
     """
     NEW NEW NEW!!!
@@ -269,8 +269,49 @@ if domain == 'inner':
         return wrapped
 
 
+    @run_async
+    def read_and_interp(arr_out, var, edge, loc, t, time, index, nn_i, nn_j, itot, jtot, ktot, parent_dir, dtype):
+        """
+        Read cross-section directly from binary, and interpolate to LBC location.
+        """
+
+        if edge in ('west', 'east'):
+            data = np.zeros((ktot, jtot, index.size), dtype)
+            for i,ii in enumerate(index):
+                raw = np.fromfile(f'{parent_dir}/{var}.yz.{loc}.{ii:05d}.{time:07d}', dtype=dtype)
+                data[:,:,i] = raw.reshape((ktot, jtot))
+
+        else:
+            data = np.zeros((ktot, index.size, itot), dtype)
+            for j,jj in enumerate(index):
+                raw = np.fromfile(f'{parent_dir}/{var}.xz.{loc}.{jj:05d}.{time:07d}', dtype=dtype)
+                data[:,j,:] = raw.reshape((ktot, itot))
+
+        _interpolate(
+                arr_out[t,:,:,:],
+                data,
+                nn_i,
+                nn_j)
+
+
+    @jit(nopython=True, fastmath=True, nogil=True, parallel=True)
+    def _interpolate(arr_out, arr_in, nn_i, nn_j):
+        """
+        Fast NN interpolation using Numba.
+        """
+
+        itot = nn_i.size
+        jtot = nn_j.size
+        ktot = arr_out.shape[0]
+
+        for k in prange(ktot):
+            for j in prange(jtot):
+                for i in prange(itot):
+                    arr_out[k, j, i] = arr_in[k, nn_j[j], nn_i[i]]
+
+
     class LBC_interpolation:
-        def __init__(self, lbc_ds, var, parent_dir, dims_x, dims_y, dims_z, t0, t1, dt, float_type):
+        def __init__(self, lbc_ds, var, parent_dir, dims_x, dims_y, dims_z, t0, t1, dt, dtype):
             """
             Help class to interpolate LBCs directly from binary cross-section files.
             """
@@ -295,7 +336,7 @@ if domain == 'inner':
             self.t1 = t1
             self.dt = dt
 
-            self.float_type = float_type
+            self.dtype = dtype
 
             # NN indexes:
             self.nn_i = {}
@@ -339,7 +380,7 @@ if domain == 'inner':
                     self.nn_j[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_y].values, dims_y)
 
                     self.index[edge] = i_cross
-                    self.data[edge] = np.zeros((ktot, jtot, i_cross.size), float_type)
+                    self.data[edge] = np.zeros((ktot, jtot, i_cross.size), dtype)
 
                 else:
                     cross_glob = f'{parent_dir}/{var}.xz.{self.loc}.*.{t0:07d}'
@@ -349,7 +390,7 @@ if domain == 'inner':
                     self.nn_j[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_y].values, y_cross)
 
                     self.index[edge] = j_cross
-                    self.data[edge] = np.zeros((ktot, j_cross.size, itot), float_type)
+                    self.data[edge] = np.zeros((ktot, j_cross.size, itot), dtype)
 
             # Interpolate!
             self.interpolate()
@@ -360,18 +401,37 @@ if domain == 'inner':
             Interpolate all edges and time steps.
             """
 
+            #for t,time in enumerate(range(self.t0, self.t1+1, self.dt)):
+            #    for edge in self.edges:
+
+            #        # Read new cross-slices directly from binaries:
+            #        data = self.read_cross(edge, time)
+
+            #        # Interpolate to LBC locations:
+            #        self._interpolate(
+            #                self.lbc_ds[f'{self.var}_{edge}'].values,
+            #                self.data[edge],
+            #                self.nn_i[edge],
+            #                self.nn_j[edge],
+            #                t)
+
+            calls = []
             for t,time in enumerate(range(self.t0, self.t1+1, self.dt)):
                 for edge in self.edges:
-                    # Read new cross-slices directly from binaries:
-                    data = self.read_cross(edge, time)
 
-                    # Interpolate to LBC locations:
-                    self._interpolate(
-                            self.lbc_ds[f'{self.var}_{edge}'].values,
-                            self.data[edge],
-                            self.nn_i[edge],
-                            self.nn_j[edge],
-                            t)
+                    calls.append(
+                        read_and_interp(
+                                self.lbc_ds[f'{self.var}_{edge}'].values,
+                                self.var, edge, self.loc,
+                                t, time,
+                                self.index[edge],
+                                self.nn_i[edge], self.nn_j[edge],
+                                self.itot, self.jtot, self.ktot,
+                                self.parent_dir, self.dtype))
+
+            loop = asyncio.get_event_loop()
+            looper = asyncio.gather(*calls)
+            results = loop.run_until_complete(looper)
 
 
         @staticmethod
@@ -395,17 +455,19 @@ if domain == 'inner':
             """
             Read cross-sections from binaries for single time step.
             """
-            indexes = self.index[edge]
 
             if edge in ('west', 'east'):
                 for i,ii in enumerate(self.index[edge]):
-                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.yz.{self.loc}.{ii:05d}.{time:07d}', dtype=self.float_type)
+                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.yz.{self.loc}.{ii:05d}.{time:07d}', dtype=self.dtype)
                     self.data[edge][:, :, i] = raw.reshape((self.ktot, self.jtot))
 
             else:
                 for j,jj in enumerate(self.index[edge]):
-                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.xz.{self.loc}.{jj:05d}.{time:07d}', dtype=self.float_type)
+                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.xz.{self.loc}.{jj:05d}.{time:07d}', dtype=self.dtype)
                     self.data[edge][:, j, :] = raw.reshape((self.ktot, self.itot))
+
+
+
 
 
         def _get_index_and_dims(self, cross_search, dims_in, which):
@@ -465,11 +527,11 @@ if domain == 'inner':
 
     t = Timer()
 
-    lbc_u = LBC_interpolation(lbc_new, 'u',  'outer/', grid.dim['xh'], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, float_type)
-    lbc_v = LBC_interpolation(lbc_new, 'v',  'outer/', grid.dim['x' ], grid.dim['yh'], grid.dim['z' ], t0, t1, dt, float_type)
-    lbc_w = LBC_interpolation(lbc_new, 'w',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['zh'], t0, t1, dt, float_type)
-    lbc_s = LBC_interpolation(lbc_new, 'th', 'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, float_type)
-    lbc_s = LBC_interpolation(lbc_new, 's',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, float_type)
+    lbc_u = LBC_interpolation(lbc_new, 'u',  'outer/', grid.dim['xh'], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
+    lbc_v = LBC_interpolation(lbc_new, 'v',  'outer/', grid.dim['x' ], grid.dim['yh'], grid.dim['z' ], t0, t1, dt, dtype)
+    lbc_w = LBC_interpolation(lbc_new, 'w',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['zh'], t0, t1, dt, dtype)
+    lbc_s = LBC_interpolation(lbc_new, 'th', 'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
+    lbc_s = LBC_interpolation(lbc_new, 's',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
 
     t.stop()
 
