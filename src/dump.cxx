@@ -75,12 +75,12 @@ Dump<TF>::~Dump()
 }
 
 template<typename TF>
-void Dump<TF>::init(double ifactor)
+void Dump<TF>::init()
 {
     if (!swdump)
         return;
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
 }
 
 template<typename TF>

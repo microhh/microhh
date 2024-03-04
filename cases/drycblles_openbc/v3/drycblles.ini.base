@@ -1,6 +1,6 @@
 [master]
 npx=2
-npy=2
+npy=4
 
 [grid]
 itot=64
@@ -102,7 +102,7 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=7200
+endtime=1200
 dt=6.
 dtmax=20.
 savetime=3600

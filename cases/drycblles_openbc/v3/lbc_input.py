@@ -7,6 +7,8 @@ def lbc_input(
         xh, yh, zh,
         time,
         ngc, nbuf,
+        x_offset=0,
+        y_offset=0,
         dtype=np.float64):
     """
     Help function to define an Xarray Dataset with the 
@@ -71,6 +73,14 @@ def lbc_input(
 
         yp[jtot+ngc+i] = y[-1] + (i+1)*dy
         yhp[jtot+ngc+i] = yh[-1] + (i+1)*dy
+
+
+    # Add domain offsets.
+    xp += x_offset
+    xhp += x_offset
+
+    yp += y_offset
+    yhp += y_offset
     
     # Define coordinates.
     coords = {

@@ -49,12 +49,12 @@ namespace Diff_kernels
             const int jj, const int kk)
     {
         const int ii = 1;
-        const int k_offset = (surface_model == Surface_model::Enabled) ? 1 : 0;
+        constexpr int k_offset = (surface_model == Surface_model::Enabled) ? 1 : 0;
 
         const TF zsl = z[kstart];
 
         // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
-        if (surface_model == Surface_model::Enabled)
+        if constexpr (surface_model == Surface_model::Enabled)
         {
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
@@ -165,7 +165,7 @@ namespace Diff_kernels
 
         const int ii = 1;
 
-        if (surface_model == Surface_model::Enabled)
+        if constexpr (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
             for (int j=jstart; j<jend; ++j)
@@ -268,7 +268,7 @@ namespace Diff_kernels
 
         const int ii = 1;
 
-        if (surface_model == Surface_model::Enabled)
+        if constexpr (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
             for (int j=jstart; j<jend; ++j)
@@ -413,7 +413,7 @@ namespace Diff_kernels
         const int ii = 1;
         const TF tPr_i = TF(1)/tPr;
 
-        if (surface_model == Surface_model::Enabled)
+        if constexpr (surface_model == Surface_model::Enabled)
         {
             // bottom boundary
             for (int j=jstart; j<jend; ++j)

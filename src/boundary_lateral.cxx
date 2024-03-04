@@ -1264,9 +1264,8 @@ void Boundary_lateral<TF>::create(
         // Read previous and next input times.
         const double time = timeloop.get_time();
         const unsigned long itime = timeloop.get_itime();
-        const double ifactor = timeloop.get_ifactor();
         unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-        unsigned long iloadtime = ifactor * loadfreq + 0.5;
+        unsigned long iloadtime = convert_to_itime(loadfreq);
 
         // Determine time index for LBCs.
         const int prev_index = itime / iloadtime;
@@ -1673,10 +1672,9 @@ void Boundary_lateral<TF>::update_time_dependent(
     double time = timeloop.get_time();
     double endtime = timeloop.get_endtime();
     unsigned long itime = timeloop.get_itime();
-    unsigned long ifactor = timeloop.get_ifactor();
     unsigned long iiotimeprec = timeloop.get_iiotimeprec();
-    unsigned long iloadtime = ifactor * loadfreq + 0.5;
-    unsigned long iendtime = ifactor * endtime + 0.5;
+    unsigned long iloadtime = convert_to_itime(loadfreq);
+    unsigned long iendtime = convert_to_itime(endtime);
 
     // CvH: this is an UGLY hack, because it only works for RK4.
     // We need to know from the time whether we are in the last iter.

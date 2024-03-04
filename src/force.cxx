@@ -608,13 +608,13 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         if (swtimedep_geo)
         {
             // Find previous and next times.
-            const double time = timeloop.get_time();
-            const double ifactor = timeloop.get_ifactor();
+            unsigned long itime = timeloop.get_itime();
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             // Read first two input times
-            itime_ugeo_prev = ifactor * int(time/ugeo_loadtime) * ugeo_loadtime;
-            itime_ugeo_next = itime_ugeo_prev + ugeo_loadtime*ifactor;
+            unsigned long ugeo_iloadtime = convert_to_itime(ugeo_loadtime);
+            unsigned long itime_ugeo_prev = itime / ugeo_iloadtime * ugeo_iloadtime;
+            unsigned long itime_ugeo_next = itime_ugeo_prev + ugeo_iloadtime;
 
             // IO time accounting for iotimeprec
             const unsigned long iotime_prev = int(itime_ugeo_prev / iiotimeprec);
@@ -936,11 +936,11 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         if (itime > itime_ugeo_next)
         {
             // Read new w_top field
-            const double ifactor = timeloop.get_ifactor();
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+            unsigned long ugeo_iloadtime = convert_to_itime(ugeo_loadtime);
 
             itime_ugeo_prev = itime_ugeo_next;
-            itime_ugeo_next = itime_ugeo_prev + ugeo_loadtime*ifactor;
+            itime_ugeo_next = itime_ugeo_prev + ugeo_iloadtime;
 
             const int iotime1 = int(itime_ugeo_next / iiotimeprec);
 
