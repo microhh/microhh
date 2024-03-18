@@ -146,9 +146,6 @@ parser.add_argument("-t","--time", type=int, help="simulation time step to conve
 parser.add_argument("-p","--path", type=str, help="Path to simulation files, defaults to current directory",default="./")
 args = parser.parse_args()
 
-# Save in single precision by default
-float_type = np.float32
-
 # some constants
 xm_air = 28.97
 xm_h2o = 18.01528
@@ -310,86 +307,86 @@ nc_out.createDimension("yh", jtot+1)
 nc_out.createDimension("zh", nz+1)
 
 # write raytracing grids
-nc_x = nc_out.createVariable("x", float_type, ("x",))
+nc_x = nc_out.createVariable("x", TF, ("x",))
 nc_x[:] = grid.dim['x'][:]
-nc_y = nc_out.createVariable("y", float_type, ("y",))
+nc_y = nc_out.createVariable("y", TF, ("y",))
 nc_y[:] = grid.dim['y'][:]
-nc_z = nc_out.createVariable("z", float_type, ("z",))
+nc_z = nc_out.createVariable("z", TF, ("z",))
 nc_z[:] = grid_z
 
 grid_xh = np.append(grid.dim['xh'][:], grid.dim['xh'][-1] +  (grid.dim['xh'][1] -  grid.dim['xh'][0]))
 grid_yh = np.append(grid.dim['yh'][:], grid.dim['yh'][-1] +  (grid.dim['yh'][1] -  grid.dim['yh'][0]))
 
-nc_xh = nc_out.createVariable("xh", float_type, ("xh",))
+nc_xh = nc_out.createVariable("xh", TF, ("xh",))
 nc_xh[:] = grid_xh
-nc_yh = nc_out.createVariable("yh", float_type, ("yh",))
+nc_yh = nc_out.createVariable("yh", TF, ("yh",))
 nc_yh[:] = grid_yh
-nc_zh = nc_out.createVariable("zh", float_type, ("zh",))
+nc_zh = nc_out.createVariable("zh", TF, ("zh",))
 nc_zh[:] = grid_zh
 
-nc_zlay = nc_out.createVariable("zlay", float_type, ("lay"))
-nc_zlev = nc_out.createVariable("z_lev", float_type, ("lev"))
+nc_zlay = nc_out.createVariable("zlay", TF, ("lay"))
+nc_zlev = nc_out.createVariable("z_lev", TF, ("lev"))
 nc_zlay[:] = zlay
 nc_zlev[:] = zlev
 
 # write pressures
-nc_play = nc_out.createVariable("p_lay", float_type, ("lay","y","x"))
+nc_play = nc_out.createVariable("p_lay", TF, ("lay","y","x"))
 nc_play[:] = np.tile(play.reshape(len(play),1,1), (1, jtot, itot))
-nc_plev = nc_out.createVariable("p_lev", float_type, ("lev","y","x"))
+nc_plev = nc_out.createVariable("p_lev", TF, ("lev","y","x"))
 nc_plev[:] = np.tile(plev.reshape(len(plev),1,1), (1, jtot, itot))
 
 # write density profile
-nc_rho = nc_out.createVariable("rho", float_type, ("z",))
+nc_rho = nc_out.createVariable("rho", TF, ("z",))
 nc_rho[:] = rho
 
 # remaining 3D variables
-nc_h2o = nc_out.createVariable("vmr_h2o", float_type, ("lay","y","x"))
+nc_h2o = nc_out.createVariable("vmr_h2o", TF, ("lay","y","x"))
 nc_h2o[:] = np.append(h2o[:], np.tile(h2o_bg[zmin_idx:][:,None,None], (1, jtot, itot)), axis=0)
-nc_tlay = nc_out.createVariable("t_lay", float_type, ("lay","y","x"))
+nc_tlay = nc_out.createVariable("t_lay", TF, ("lay","y","x"))
 nc_tlay[:] = np.append(tlay[:], np.tile(tlay_bg[zmin_idx:][:,None,None], (1, jtot, itot)), axis=0)
 
 # We do not bother about t_lev yet  because the ray tracer is shortwave-only, but we do need to supply it in the netcdf
-nc_tlev = nc_out.createVariable("t_lev", float_type, ("lev","y","x"))
+nc_tlev = nc_out.createVariable("t_lev", TF, ("lev","y","x"))
 nc_tlev[:] = 0 
 
 # Liquid water path
-nc_lwp = nc_out.createVariable("lwp" , float_type, ("lay","y","x"))
+nc_lwp = nc_out.createVariable("lwp" , TF, ("lay","y","x"))
 nc_lwp[:] = 0
 nc_lwp[:ktot] = lwp
 
 # Liquid water effective radius
-nc_rel = nc_out.createVariable("rel" , float_type, ("lay","y","x"))
+nc_rel = nc_out.createVariable("rel" , TF, ("lay","y","x"))
 nc_rel[:] = 0
 nc_rel[:ktot] = rel
 
 # Ice water path
-nc_iwp = nc_out.createVariable("iwp" , float_type, ("lay","y","x"))
+nc_iwp = nc_out.createVariable("iwp" , TF, ("lay","y","x"))
 nc_iwp[:] = 0
 nc_iwp[:ktot] = iwp
 
 # Ice effective radius
-nc_rei = nc_out.createVariable("rei" , float_type, ("lay","y","x"))
+nc_rei = nc_out.createVariable("rei" , TF, ("lay","y","x"))
 nc_rei[:] = 0
 nc_rei[:ktot] = rei
 
 # surface properties
-nc_alb_dir = nc_out.createVariable("sfc_alb_dir", float_type, ("y","x","band_sw"))
+nc_alb_dir = nc_out.createVariable("sfc_alb_dir", TF, ("y","x","band_sw"))
 nc_alb_dir[:] = nl['radiation']['sfc_alb_dir']
-nc_alb_dif = nc_out.createVariable("sfc_alb_dif", float_type, ("y","x","band_sw"))
+nc_alb_dif = nc_out.createVariable("sfc_alb_dif", TF, ("y","x","band_sw"))
 nc_alb_dif[:] = nl['radiation']['sfc_alb_dif']
-nc_emis = nc_out.createVariable("emis_sfc", float_type, ("y","x","band_lw"))
+nc_emis = nc_out.createVariable("emis_sfc", TF, ("y","x","band_lw"))
 nc_emis[:] = nl['radiation']['emis_sfc']
-nc_tsfc = nc_out.createVariable("t_sfc", float_type, ("y","x"))
+nc_tsfc = nc_out.createVariable("t_sfc", TF, ("y","x"))
 nc_tsfc[:] = 0 # don't bother about longwave for now
 
 # solar angles
-nc_mu = nc_out.createVariable("mu0", float_type, ("y","x"))
+nc_mu = nc_out.createVariable("mu0", TF, ("y","x"))
 nc_mu[:] = mu0
-nc_az = nc_out.createVariable("azi", float_type, ("y","x"))
+nc_az = nc_out.createVariable("azi", TF, ("y","x"))
 nc_az[:] = azi
 
 # Scaling top-of-atmosphere irradiance
-nc_ts = nc_out.createVariable("tsi_scaling", float_type)
+nc_ts = nc_out.createVariable("tsi_scaling", TF)
 nc_ts[:] = tsi_scaling
 
 # add gasses
@@ -411,11 +408,11 @@ for gas in possible_gases:
             else:
                 gas_bg = nc_inp['radiation'][gas]
 
-            nc_out.createVariable("vmr_" + gas, float_type, ("lay", "y", "x"))
+            nc_out.createVariable("vmr_" + gas, TF, ("lay", "y", "x"))
             nc_out["vmr_" + gas][:] = np.tile(np.append(gas_prof[:], gas_bg[zmin_idx:])[:, None, None], (1, jtot, itot))
 
         elif len(nc_inp['radiation'][gas].dimensions) == 0 and len(nc_inp['init'][gas].dimensions) == 0:
-            nc_out.createVariable("vmr_" + gas, float_type)
+            nc_out.createVariable("vmr_" + gas, TF)
             nc_out["vmr_" + gas][:] = nc_inp['radiation'][gas][:]
 
         else:
@@ -441,22 +438,22 @@ if swaerosol:
         else:
             aermr_bg = nc_inp['radiation'][aerosol]
 
-        nc_out.createVariable(aerosol, float_type, ("lay", "y", "x"))
+        nc_out.createVariable(aerosol, TF, ("lay", "y", "x"))
         nc_out[aerosol][:] = np.tile(np.append(aermr[:], aermr_bg[zmin_idx:])[:, None, None], (1, jtot, itot))
 
     # relative humidity
     q = nc_h2o[:] * eps / (1 + nc_h2o[:] * eps)
     qs = qsat(nc_play[:, :, :], nc_tlay[:])
     rh = np.maximum(np.minimum(q / qs, 1), 0)
-    nc_out.createVariable("rh", float_type, ("lay", "y", "x"))
+    nc_out.createVariable("rh", TF, ("lay", "y", "x"))
     nc_out['rh'][:] = rh
 
 # size of null-collision grid
-nc_ng_x = nc_out.createVariable("ngrid_x", float_type)
+nc_ng_x = nc_out.createVariable("ngrid_x", TF)
 nc_ng_x[:] = ng_x
-nc_ng_y = nc_out.createVariable("ngrid_y", float_type)
+nc_ng_y = nc_out.createVariable("ngrid_y", TF)
 nc_ng_y[:] = ng_y
-nc_ng_z = nc_out.createVariable("ngrid_z", float_type)
+nc_ng_z = nc_out.createVariable("ngrid_z", TF)
 nc_ng_z[:] = ng_z
 
 nc_out.close()
