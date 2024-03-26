@@ -1274,6 +1274,7 @@ void Fields<TF>::save_rhoref()
     auto& gd = grid.get_grid_data();
 
     char filename[256];
+    int nerror = 0;
     std::sprintf(filename, "%s.%07d", "rhoref", 0);
     master.print_message("Saving \"%s\" ... ", filename);
 
@@ -1281,12 +1282,65 @@ void Fields<TF>::save_rhoref()
     {
         FILE *pFile;
         pFile = fopen(filename, "ab");
-        fwrite(&rhoref [gd.kstart], sizeof(TF), gd.kmax, pFile);
-        fwrite(&rhorefh[gd.kstart], sizeof(TF), gd.kmax+1, pFile);
-        fclose(pFile);
+
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+        {
+            master.print_message("OK\n");
+
+            fwrite(&rhoref [gd.kstart], sizeof(TF), gd.kmax, pFile);
+            fwrite(&rhorefh[gd.kstart], sizeof(TF), gd.kmax+1, pFile);
+
+            fclose(pFile);
+        }
     }
 
-    master.print_message("OK\n", filename);
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error in writing rhoref.");
+}
+
+
+template<typename TF>
+void Fields<TF>::load_rhoref()
+{
+    auto& gd = grid.get_grid_data();
+
+    char filename[256];
+    int nerror = 0;
+    std::sprintf(filename, "%s.%07d", "rhoref", 0);
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    if (master.get_mpiid() == 0)
+    {
+        FILE* pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master.print_message("OK\n");
+
+            if (fread(&rhoref[gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
+                ++nerror;
+            if (fread(&rhorefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot+1)
+                ++nerror;
+            fclose(pFile);
+        }
+    }
+
+    if (nerror)
+        throw std::runtime_error("Error in loading rhoref");
+
+    master.broadcast(&rhoref[gd.kstart], gd.ktot  );
+    master.broadcast(&rhorefh[gd.kstart], gd.ktot+1);
 }
 
 

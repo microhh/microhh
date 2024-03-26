@@ -260,6 +260,8 @@ void Model<TF>::load()
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
     thermo->load(timeloop->get_iotime());
 
+    fields->load_rhoref();
+
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();

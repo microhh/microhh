@@ -119,6 +119,7 @@ class Fields
         void load(int);
 
         void save_rhoref();
+        void load_rhoref();
 
         TF check_momentum();
         TF check_tke();
