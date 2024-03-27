@@ -151,6 +151,36 @@ namespace
                 }
     }
 
+
+    template<typename TF>
+    void interpolate_geo_3d(
+            TF* const restrict ug,
+            TF* const restrict vg,
+            const TF* const restrict ug_prev,
+            const TF* const restrict vg_prev,
+            const TF* const restrict ug_next,
+            const TF* const restrict vg_next,
+            const TF tfac,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const TF tfac1 = TF(1) - tfac;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    ug[ijk] = tfac * ug_prev[ijk] + tfac1 * ug_next[ijk];
+                    vg[ijk] = tfac * vg_prev[ijk] + tfac1 * vg_next[ijk];
+                }
+    }
+
+
     template<typename TF>
     void calc_coriolis_ls(
             TF* const restrict ut, TF* const restrict vt,
@@ -519,7 +549,6 @@ void Force<TF>::init()
         nudge_factor.resize(gd.kcells);
         for (auto& it : nudgelist)
             nudgeprofs[it] = std::vector<TF>(gd.kcells);
-
     }
 
     boundary_cyclic.init();
@@ -613,21 +642,30 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
             // Read first two input times
             unsigned long ugeo_iloadtime = convert_to_itime(ugeo_loadtime);
-            unsigned long itime_ugeo_prev = itime / ugeo_iloadtime * ugeo_iloadtime;
-            unsigned long itime_ugeo_next = itime_ugeo_prev + ugeo_iloadtime;
+            itime_ugeo_prev = itime / ugeo_iloadtime * ugeo_iloadtime;
+            itime_ugeo_next = itime_ugeo_prev + ugeo_iloadtime;
 
             // IO time accounting for iotimeprec
             const unsigned long iotime_prev = int(itime_ugeo_prev / iiotimeprec);
             const unsigned long iotime_next = int(itime_ugeo_next / iiotimeprec);
 
+            ug_prev.resize(gd.ncells);
+            vg_prev.resize(gd.ncells);
+
             ug_next.resize(gd.ncells);
             vg_next.resize(gd.ncells);
 
             // Read the first two w_top fields.
-            read_3d_binary("ug", ug.data(), iotime_prev);
-            read_3d_binary("vg", vg.data(), iotime_prev);
+            read_3d_binary("ug", ug_prev.data(), iotime_prev);
+            read_3d_binary("vg", vg_prev.data(), iotime_prev);
+
             read_3d_binary("ug", ug_next.data(), iotime_next);
             read_3d_binary("vg", vg_next.data(), iotime_next);
+        }
+        else
+        {
+            read_3d_binary("ug", ug.data(), 0);
+            read_3d_binary("vg", vg.data(), 0);
         }
     }
 
@@ -719,7 +757,7 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             const TF offset = 0;
             tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
         }
-        
+
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
 
@@ -765,11 +803,11 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
 
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
-    {   
+    {
         TF fc_loc = fc;
         if (fc_loc < 0)
             fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
-                    
+
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
             fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
@@ -795,7 +833,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                     fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
                     fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
                     ug.data(), vg.data(), fc_2d.data(),
-                    fields.rhoref.data(), 
+                    fields.rhoref.data(),
                     gd.utrans, gd.vtrans,
                     gd.dxi, gd.dyi,
                     gd.istart, gd.iend,
@@ -944,9 +982,9 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
             const int iotime1 = int(itime_ugeo_next / iiotimeprec);
 
-            // Copy of data from next to prev. time
-            ug = ug_next;
-            vg = vg_next;
+            // Copy of data from next to prev time
+            ug_prev = ug_next;
+            vg_prev = vg_next;
 
             Field3d_io field3d_io(master, grid);
             int nerror = 0;
@@ -978,19 +1016,33 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             read_3d_binary("vg", vg_next.data());
 
             master.sum(&nerror, 1);
-    
+
             if (nerror)
                 throw std::runtime_error("Error in reading time dependent geowind.");
 
             fields.release_tmp(tmp1);
             fields.release_tmp(tmp2);
         }
+
+        // Update 3D geo-wind field.
+        const TF tfac = TF(1) - (TF(itime - itime_ugeo_prev) / TF(itime_ugeo_next - itime_ugeo_prev));
+
+        interpolate_geo_3d(
+                ug.data(),
+                vg.data(),
+                ug_prev.data(),
+                vg_prev.data(),
+                ug_next.data(),
+                vg_next.data(),
+                tfac,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
     }
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
-
-    // Idea: could decide to update interpolated wls to full levels here ? - SvdLinden, 28.04.21
 }
 #endif
 

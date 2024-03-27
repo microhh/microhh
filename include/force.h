@@ -106,6 +106,9 @@ class Force
         unsigned int ugeo_loadtime;
         unsigned long itime_ugeo_prev;
         unsigned long itime_ugeo_next;
+
+        std::vector<TF> ug_prev;
+        std::vector<TF> vg_prev;
         std::vector<TF> ug_next;
         std::vector<TF> vg_next;
 
