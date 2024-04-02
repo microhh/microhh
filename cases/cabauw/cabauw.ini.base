@@ -2,8 +2,8 @@
 # `cabauw_input.py` sets all `None` values, and writes the final `cabauw.ini` input file.
 
 [master]
-npx=1
-npy=1
+npx=None
+npy=None
 wallclocklimit=1e9
 
 [grid]
@@ -128,7 +128,7 @@ savetime=3600
 outputiter=20
 adaptivestep=true
 rkorder=4
-datetime_utc=2016-08-15 06:00:00
+datetime_utc=None
 
 [stats]
 swstats=1

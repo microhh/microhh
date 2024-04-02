@@ -1,3 +1,4 @@
+from datetime import datetime
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
@@ -40,9 +41,23 @@ def copy(f1, f2):
     else:
         raise Exception('Source file {} does not exist!'.format(f1))
 
+
+def check_time_bounds(ds, start_date, end_date):
+    """
+    Check if start and end dates are withing Dataset bounds.
+    """
+    if start_date.minute != 0:
+        raise Exception('Simulation has to start/end at a full hour!')
+
+    if np.datetime64(start_date) < ds.time[0] or np.datetime64(end_date) > ds.time[-1]:
+        raise Exception(f'Start or end date is out-of-bounds. Limits are {ds.time[0].values} to {ds.time[-1].values}')
+
+
 copy_or_link = copy
 
 def create_case_input(
+        start_date,
+        end_date,
         use_htessel,
         use_rrtmgp,
         use_rt,
@@ -52,7 +67,7 @@ def create_case_input(
         gpt_set,
         itot, jtot, ktot,
         xsize, ysize, zsize,
-        endtime, TF,
+        TF,
         npx=1, npy=1):
 
     # Link required files (if not present)
@@ -84,12 +99,22 @@ def create_case_input(
     Read / interpolate (LS)2D initial conditions and forcings
     """
     ls2d = xr.open_dataset('ls2d_20160815.nc')
-    ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
+    check_time_bounds(ls2d, start_date, end_date)
+
+    # Remove top level ERA5 to stay within RRTMGP radiation bounds,
+    # select requested time period, and interpolate to LES levels.
+    ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136), time=slice(start_date, end_date))
     ls2d_z = ls2d.interp(z=z)
 
     if use_aerosols:
         cams = xr.open_dataset('cams_20160815.nc')
+        check_time_bounds(cams, start_date, end_date)
+
+        # Remove top level CAMS to stay within RRTMGP pressure bounds.
         cams = cams.sel(lay=slice(0, 135))
+
+        # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
+        cams = cams.interp(time=ls2d.time)
         cams_z = cams.interp(z=z)
 
     if not use_rrtmgp:
@@ -153,12 +178,14 @@ def create_case_input(
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
 
+
     if use_aerosols:
         ini['aerosol']['swaerosol'] = 1
     else:
         ini['aerosol']['swaerosol'] = 0
 
-    ini['time']['endtime'] = endtime
+    ini['time']['endtime'] = (end_date - start_date).total_seconds()
+    ini['time']['datetime_utc'] = f'{start_date.year}-{start_date.month:02d}-{start_date.day:02d} {start_date.hour:02d}:{start_date.minute:02d}:{start_date.second:02d}'
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -385,7 +412,7 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = True            # False = prescribed radiation from ERA5.
+    use_rrtmgp = True            # False = prescribed surface radiation from ERA5.
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
@@ -393,6 +420,11 @@ if __name__ == '__main__':
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
+
+    # Time period.
+    # NOTE: Included ERA5/CAMS data is limited to 2016-08-15 06:00 - 18:00 UTC.
+    start_date = datetime(year=2016, month=8, day=15, hour=9)
+    end_date   = datetime(year=2016, month=8, day=15, hour=15)
 
     # Simple equidistant grid.
     zsize = 4000
@@ -404,10 +436,10 @@ if __name__ == '__main__':
     xsize = 25600
     ysize = 25600
 
-    endtime = 43200
-
     # Create input files.
     create_case_input(
+            start_date,
+            end_date,
             use_htessel,
             use_rrtmgp,
             use_rt,
@@ -417,5 +449,6 @@ if __name__ == '__main__':
             gpt_set,
             itot, jtot, ktot,
             xsize, ysize, zsize,
-            endtime,
-            TF)
+            TF,
+            npx=2,
+            npy=2)
