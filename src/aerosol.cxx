@@ -88,7 +88,7 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
     {
         // create time dependent profiles
         const TF offset = 0;
-        std::string timedep_dim = "time_aerosols";
+        std::string timedep_dim = "time_rad";
 
         tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01", sw_timedep);
         tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim);

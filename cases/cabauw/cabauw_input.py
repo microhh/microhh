@@ -193,11 +193,12 @@ def create_case_input(
         """
         Add NetCDF variable to `nc` file or group.
         """
-        if dims is None:
-            var = nc.createVariable(name, np.float64)
-        else:
-            var = nc.createVariable(name, np.float64, dims)
-        var[:] = data
+        if name not in nc.variables:
+            if dims is None:
+                var = nc.createVariable(name, np.float64)
+            else:
+                var = nc.createVariable(name, np.float64, dims)
+            var[:] = data
 
     def add_nc_dim(name, size, nc):
         """
@@ -288,20 +289,25 @@ def create_case_input(
         add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
         add_nc_var('h2o',   ('lay'), nc_rad, ls2d_z.h2o_lay.mean(axis=0))
 
-        # Time dependent background profiles T, h2o, o3, ...
-        if use_tdep_background:
+        if use_tdep_background or use_tdep_aerosols:
+            # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
+            add_nc_dim('time_rad', ls2d_z.dims['time'], nc_tdep)
+            add_nc_var('time_rad', ('time_rad'), nc_tdep, ls2d_z.time_sec)
+
             add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
             add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
 
-            add_nc_var('z_lay',  ('time_ls', 'lay'), nc_tdep, ls2d_z.z_lay)
-            add_nc_var('z_lev',  ('time_ls', 'lev'), nc_tdep, ls2d_z.z_lev)
-            add_nc_var('p_lay',  ('time_ls', 'lay'), nc_tdep, ls2d_z.p_lay)
-            add_nc_var('p_lev',  ('time_ls', 'lev'), nc_tdep, ls2d_z.p_lev)
-            add_nc_var('t_lay',  ('time_ls', 'lay'), nc_tdep, ls2d_z.t_lay)
-            add_nc_var('t_lev',  ('time_ls', 'lev'), nc_tdep, ls2d_z.t_lev)
-            add_nc_var('h2o_bg', ('time_ls', 'lay'), nc_tdep, ls2d_z.h2o_lay)
-            add_nc_var('o3_bg',  ('time_ls', 'lay'), nc_tdep, ls2d_z.o3_lay*1e-6)
-            add_nc_var('o3',     ('time_ls', 'z'),   nc_tdep, ls2d_z.o3*1e-6)
+        # Time dependent background profiles T, h2o, o3, ...
+        if use_tdep_background:
+            add_nc_var('z_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.z_lay)
+            add_nc_var('z_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.z_lev)
+            add_nc_var('p_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.p_lay)
+            add_nc_var('p_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.p_lev)
+            add_nc_var('t_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.t_lay)
+            add_nc_var('t_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.t_lev)
+            add_nc_var('h2o_bg', ('time_rad', 'lay'), nc_tdep, ls2d_z.h2o_lay)
+            add_nc_var('o3_bg',  ('time_rad', 'lay'), nc_tdep, ls2d_z.o3_lay*1e-6)
+            add_nc_var('o3',     ('time_rad', 'z'),   nc_tdep, ls2d_z.o3*1e-6)
 
         # Aerosols for domain and background column
         if use_aerosols:
@@ -330,36 +336,29 @@ def create_case_input(
             add_nc_var('aermr11', ('lay'), nc_rad, cams_z.aermr11_lay.mean(axis=0))
 
             if use_tdep_aerosols:
-                # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
-                add_nc_dim('time_aerosols', ls2d_z.dims['time'], nc_tdep)
-                add_nc_var('time_aerosols', ('time_aerosols'), nc_tdep, ls2d_z.time_sec)
+                add_nc_var('aermr01_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr01_lay)
+                add_nc_var('aermr02_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr02_lay)
+                add_nc_var('aermr03_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr03_lay)
+                add_nc_var('aermr04_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr04_lay)
+                add_nc_var('aermr05_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr05_lay)
+                add_nc_var('aermr06_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr06_lay)
+                add_nc_var('aermr07_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr07_lay)
+                add_nc_var('aermr08_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr08_lay)
+                add_nc_var('aermr09_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr09_lay)
+                add_nc_var('aermr10_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr10_lay)
+                add_nc_var('aermr11_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr11_lay)
 
-                add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
-                add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
-
-                add_nc_var('aermr01_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr01_lay)
-                add_nc_var('aermr02_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr02_lay)
-                add_nc_var('aermr03_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr03_lay)
-                add_nc_var('aermr04_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr04_lay)
-                add_nc_var('aermr05_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr05_lay)
-                add_nc_var('aermr06_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr06_lay)
-                add_nc_var('aermr07_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr07_lay)
-                add_nc_var('aermr08_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr08_lay)
-                add_nc_var('aermr09_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr09_lay)
-                add_nc_var('aermr10_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr10_lay)
-                add_nc_var('aermr11_bg', ('time_aerosols', 'lay'), nc_tdep, cams_z.aermr11_lay)
-
-                add_nc_var('aermr01', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr01)
-                add_nc_var('aermr02', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr02)
-                add_nc_var('aermr03', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr03)
-                add_nc_var('aermr04', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr04)
-                add_nc_var('aermr05', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr05)
-                add_nc_var('aermr06', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr06)
-                add_nc_var('aermr07', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr07)
-                add_nc_var('aermr08', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr08)
-                add_nc_var('aermr09', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr09)
-                add_nc_var('aermr10', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr10)
-                add_nc_var('aermr11', ('time_aerosols', 'z'), nc_tdep, cams_z.aermr11)
+                add_nc_var('aermr01', ('time_rad', 'z'), nc_tdep, cams_z.aermr01)
+                add_nc_var('aermr02', ('time_rad', 'z'), nc_tdep, cams_z.aermr02)
+                add_nc_var('aermr03', ('time_rad', 'z'), nc_tdep, cams_z.aermr03)
+                add_nc_var('aermr04', ('time_rad', 'z'), nc_tdep, cams_z.aermr04)
+                add_nc_var('aermr05', ('time_rad', 'z'), nc_tdep, cams_z.aermr05)
+                add_nc_var('aermr06', ('time_rad', 'z'), nc_tdep, cams_z.aermr06)
+                add_nc_var('aermr07', ('time_rad', 'z'), nc_tdep, cams_z.aermr07)
+                add_nc_var('aermr08', ('time_rad', 'z'), nc_tdep, cams_z.aermr08)
+                add_nc_var('aermr09', ('time_rad', 'z'), nc_tdep, cams_z.aermr09)
+                add_nc_var('aermr10', ('time_rad', 'z'), nc_tdep, cams_z.aermr10)
+                add_nc_var('aermr11', ('time_rad', 'z'), nc_tdep, cams_z.aermr11)
 
     """
     Land-surface and soil
@@ -471,17 +470,17 @@ if __name__ == '__main__':
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
-    use_aerosols = True          # False = no aerosols in RRTMGP.
-    use_tdep_background = True   # False = time fixed RRTMGP T + h2o + o3 background profiles.
-    use_tdep_aerosols = True     # False = time fixed RRTMGP aerosol background profiles.
+    use_aerosols = False         # False = no aerosols in RRTMGP.
+    use_tdep_background = False  # False = time fixed RRTMGP T + h2o + o3 background profiles.
+    use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol background profiles.
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
 
     # Time period.
     # NOTE: Included ERA5/CAMS data is limited to 2016-08-15 06:00 - 18:00 UTC.
-    start_date = datetime(year=2016, month=8, day=15, hour=10)
-    end_date   = datetime(year=2016, month=8, day=15, hour=11)
+    start_date = datetime(year=2016, month=8, day=15, hour=6)
+    end_date   = datetime(year=2016, month=8, day=15, hour=18)
 
     # Simple equidistant grid.
     zsize = 4000

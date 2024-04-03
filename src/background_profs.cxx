@@ -133,28 +133,27 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 
     // create time dependent profiles
     const TF offset = 0;
-    std::string timedep_dim_ls = "time_ls";
+    std::string timedep_dim = "time_rad";
 
     // temperature, pressure and moisture
     tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", sw_update_background);
-    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
     tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", sw_update_background);
-    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
+    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim, n_lev);
     tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", sw_update_background);
-    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
     tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", sw_update_background);
-    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
+    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim, n_lev);
     tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o_bg", sw_update_background);
-    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
 
     // gasses
     for (auto& it : tdep_gases)
-        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
 
     //aerosols
     if (sw_aerosol && sw_aerosol_timedep)
     {
-        std::string timedep_dim = "time_aerosols";
         tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", sw_update_background);
         tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
         tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", sw_update_background);

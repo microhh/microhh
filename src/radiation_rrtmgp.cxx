@@ -826,10 +826,10 @@ void Radiation_rrtmgp<TF>::create(
     // Setup timedependent gasses
     auto& gd = grid.get_grid_data();
     const TF offset = 0;
-    std::string timedep_dim_ls = "time_ls";
+    std::string timedep_dim = "time_rad";
 
     for (auto& it : tdep_gases)
-        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, gd.ktot);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim, gd.ktot);
 
     // Initialize the tendency if the radiation is used.
     if (stats.get_switch() && (sw_longwave || sw_shortwave))
