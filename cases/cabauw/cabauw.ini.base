@@ -53,7 +53,7 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
-swupdatecolumn=None
+swtimedep_background=None
 timedeplist_gas=None
 
 [aerosol]

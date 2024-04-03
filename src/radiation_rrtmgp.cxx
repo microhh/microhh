@@ -662,11 +662,12 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_longwave  = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave = inputin.get_item<bool>("radiation", "swshortwave", "", true);
     sw_fixed_sza = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
-    sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
-    sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     sw_delta_cloud = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
+
+    swtimedep_background = inputin.get_item<bool>("radiation", "swtimedep_background", "", false);
+    swtimedep_aerosol = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
 
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
     sw_homogenize_sfc_sw = inputin.get_item<bool>("radiation", "swhomogenizesfc_sw", "", false);
@@ -1206,7 +1207,7 @@ void Radiation_rrtmgp<TF>::create_column(
                 "Pa", "lev", root_group,
                 p_lev.v());
 
-        if (sw_update_background || !sw_fixed_sza)
+        if (swtimedep_background || !sw_fixed_sza)
         {
             stats.add_prof("sw_flux_up_ref",
                            "Shortwave upwelling flux of reference column",
@@ -1218,7 +1219,7 @@ void Radiation_rrtmgp<TF>::create_column(
                            "Shortwave direct downwelling flux of reference column",
                            "W m-2", "lev", group_name);
         }
-        if (sw_update_background)
+        if (swtimedep_background)
         {
             stats.add_prof("lw_flux_up_ref",
                            "Longwave upwelling flux of reference column",
@@ -1310,7 +1311,7 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
             n_lay_col);
 
     // Save the reference profile fluxes in the stats.
-    if (stats.get_switch() && !sw_update_background)
+    if (stats.get_switch() && !swtimedep_background)
     {
         const std::string group_name = "radiation";
 
@@ -1386,7 +1387,7 @@ void Radiation_rrtmgp<TF>::create_column_shortwave(
         // Save the reference profile fluxes in the stats.
         if (stats.get_switch())
         {
-            if (!sw_update_background)
+            if (!swtimedep_background)
             {
                 const std::string group_name = "radiation";
 
@@ -1679,12 +1680,12 @@ void Radiation_rrtmgp<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        if (sw_aerosol && sw_aerosol_timedep)
+        if (sw_aerosol && swtimedep_aerosol)
             aerosol.get_radiation_fields(aerosol_concs);
 
         try
         {
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 // Temperature, pressure and moisture
                 background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
@@ -1692,7 +1693,7 @@ void Radiation_rrtmgp<TF>::exec(
                 // gasses
                 background.get_gasses(gas_concs_col);
                 // aerosols
-                if (sw_aerosol && sw_aerosol_timedep)
+                if (sw_aerosol && swtimedep_aerosol)
                 {
                     background.get_aerosols(aerosol_concs_col);
                 }
@@ -1700,7 +1701,7 @@ void Radiation_rrtmgp<TF>::exec(
 
             if (sw_longwave)
             {
-                if (sw_update_background)
+                if (swtimedep_background)
                 {
                     // Calculate new background column for the longwave.
                     const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
@@ -1771,7 +1772,7 @@ void Radiation_rrtmgp<TF>::exec(
                     set_sun_location(timeloop);
                 }
 
-                if (!sw_fixed_sza || sw_update_background)
+                if (!sw_fixed_sza || swtimedep_background)
                 {
                 // Calculate new background column for the shortwave.
                     if (is_day(this->mu0))
@@ -1989,7 +1990,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
             }
 
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
                 stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
@@ -2028,7 +2029,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 Float mean_aod = total_aod/ncol;
                 stats.set_time_series("AOD550", mean_aod);
             }
-            if (sw_update_background || !sw_fixed_sza)
+            if (swtimedep_background || !sw_fixed_sza)
             {
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
@@ -2141,7 +2142,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
 
     try
     {
-        if (sw_update_background)
+        if (swtimedep_background)
         {
             // Temperature and pressure
             background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col,  gas_concs_col);
@@ -2149,7 +2150,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             // gasses
             background.get_gasses(gas_concs_col);
             // aerosols
-            if (sw_aerosol && sw_aerosol_timedep)
+            if (sw_aerosol && swtimedep_aerosol)
             {
                 background.get_aerosols(aerosol_concs_col);
             }
@@ -2158,7 +2159,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         // Calculate long wave radiation.
         if (sw_longwave)
         {
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 // Calculate new background column for the longwave.
                 const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
@@ -2196,7 +2197,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
                 set_sun_location(timeloop);
             }
 
-            if (!sw_fixed_sza || sw_update_background)
+            if (!sw_fixed_sza || swtimedep_background)
             {
                 // Calculate new background column for the shortwave.
                 if (is_day(this->mu0))

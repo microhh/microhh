@@ -173,7 +173,7 @@ def create_case_input(
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
 
-    ini['radiation']['swupdatecolumn'] = use_tdep_background
+    ini['radiation']['swtimedep_background'] = use_tdep_background
     if use_tdep_background:
         ini['radiation']['timedeplist_gas'] = 'o3'
 
@@ -471,8 +471,8 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
     use_aerosols = False         # False = no aerosols in RRTMGP.
-    use_tdep_background = False  # False = time fixed RRTMGP T + h2o + o3 background profiles.
-    use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol background profiles.
+    use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
+    use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol in domain and background.
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
