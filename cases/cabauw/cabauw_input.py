@@ -52,8 +52,9 @@ def create_case_input(
         use_rrtmgp,
         use_rt,
         use_aerosols,
-        use_tdep_background,
         use_tdep_aerosols,
+        use_tdep_gasses,
+        use_tdep_background,
         use_homogeneous_z0,
         use_homogeneous_ls,
         gpt_set,
@@ -101,16 +102,16 @@ def create_case_input(
     # Subtract start time.
     ls2d_z['time_sec'] = ls2d_z['time_sec'] - ls2d_z['time_sec'][0]
 
-    if use_aerosols:
-        cams = xr.open_dataset('cams_20160815.nc')
-        check_time_bounds(cams, start_date, end_date)
+    # Read CAMS for aerosols and gasses other than ozone.
+    cams = xr.open_dataset('cams_20160815.nc')
+    check_time_bounds(cams, start_date, end_date)
 
-        # Remove top level CAMS to stay within RRTMGP pressure bounds.
-        cams = cams.sel(lay=slice(0, 135))
+    # Remove top level CAMS to stay within RRTMGP pressure bounds.
+    cams = cams.sel(lay=slice(0, 135))
 
-        # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
-        cams = cams.interp(time=ls2d.time)
-        cams_z = cams.interp(z=z)
+    # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
+    cams = cams.interp(time=ls2d.time)
+    cams_z = cams.interp(z=z)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
@@ -174,8 +175,8 @@ def create_case_input(
         ini['radiation']['swtimedep_prescribed'] = True
 
     ini['radiation']['swtimedep_background'] = use_tdep_background
-    if use_tdep_background:
-        ini['radiation']['timedeplist_gas'] = 'o3'
+    if use_tdep_gasses:
+        ini['radiation']['timedeplist_gas'] = ['o3', 'co2', 'ch4']
 
     ini['aerosol']['swaerosol'] = use_aerosols
     ini['aerosol']['swtimedep'] = use_tdep_aerosols
@@ -270,11 +271,11 @@ def create_case_input(
         h2o = qt_mean / (eps - eps * qt_mean)
         add_nc_var('h2o', ('z'), nc_init, h2o)
         add_nc_var('o3',  ('z'), nc_init, ls2d_z.o3[0,:]*1e-6)
+        add_nc_var('co2', ('z'), nc_init, cams_z.co2[0,:]*1e-6)
+        add_nc_var('ch4', ('z'), nc_init, cams_z.ch4[0,:]*1e-6)
 
         # Constant concentrations:
         for group in (nc_init, nc_rad):
-            add_nc_var('co2', None, group, 397e-6)
-            add_nc_var('ch4', None, group, 1.8315e-6)
             add_nc_var('n2o', None, group, 3.2699e-7)
             add_nc_var('n2',  None, group, 0.781)
             add_nc_var('o2',  None, group, 0.209)
@@ -286,16 +287,23 @@ def create_case_input(
         add_nc_var('p_lev', ('lev'), nc_rad, ls2d_z.p_lev.mean(axis=0))
         add_nc_var('t_lay', ('lay'), nc_rad, ls2d_z.t_lay.mean(axis=0))
         add_nc_var('t_lev', ('lev'), nc_rad, ls2d_z.t_lev.mean(axis=0))
-        add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
         add_nc_var('h2o',   ('lay'), nc_rad, ls2d_z.h2o_lay.mean(axis=0))
+        add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
+        add_nc_var('co2',   ('lay'), nc_rad, cams_z.co2_lay.mean(axis=0))
+        add_nc_var('ch4',   ('lay'), nc_rad, cams_z.ch4_lay.mean(axis=0))
 
-        if use_tdep_background or use_tdep_aerosols:
+        if use_tdep_background or use_tdep_aerosols or use_tdep_gasses:
             # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
             add_nc_dim('time_rad', ls2d_z.dims['time'], nc_tdep)
             add_nc_var('time_rad', ('time_rad'), nc_tdep, ls2d_z.time_sec)
 
             add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
             add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
+
+        if use_tdep_gasses:
+            add_nc_var('o3',  ('time_rad', 'z'), nc_tdep, ls2d_z.o3*1e-6)
+            add_nc_var('co2', ('time_rad', 'z'), nc_tdep, cams_z.co2)
+            add_nc_var('ch4', ('time_rad', 'z'), nc_tdep, cams_z.ch4)
 
         # Time dependent background profiles T, h2o, o3, ...
         if use_tdep_background:
@@ -307,7 +315,8 @@ def create_case_input(
             add_nc_var('t_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.t_lev)
             add_nc_var('h2o_bg', ('time_rad', 'lay'), nc_tdep, ls2d_z.h2o_lay)
             add_nc_var('o3_bg',  ('time_rad', 'lay'), nc_tdep, ls2d_z.o3_lay*1e-6)
-            add_nc_var('o3',     ('time_rad', 'z'),   nc_tdep, ls2d_z.o3*1e-6)
+            add_nc_var('co2_bg', ('time_rad', 'lay'), nc_tdep, cams_z.co2_lay)
+            add_nc_var('ch4_bg', ('time_rad', 'lay'), nc_tdep, cams_z.ch4_lay)
 
         # Aerosols for domain and background column
         if use_aerosols:
@@ -471,8 +480,15 @@ if __name__ == '__main__':
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
     use_aerosols = False         # False = no aerosols in RRTMGP.
-    use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
     use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol in domain and background.
+    use_tdep_gasses = False      # False = time fixed ERA5 (o3) and CAMS (co2, ch4) gasses.
+    use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
+
+    """
+    NOTE: `use_tdep_aerosols` and `use_tdep_gasses` specify whether the aerosols and gasses
+          used by RRTMGP are updated inside the LES domain. If `use_tdep_background` is true, the
+          aerosols, gasses, and the temperature & humidity are also updated on the RRTMGP background levels.
+    """
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
@@ -500,8 +516,9 @@ if __name__ == '__main__':
             use_rrtmgp,
             use_rt,
             use_aerosols,
-            use_tdep_background,
             use_tdep_aerosols,
+            use_tdep_gasses,
+            use_tdep_background,
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,

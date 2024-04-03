@@ -54,7 +54,7 @@ sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
 swtimedep_background=None
-timedeplist_gas=None
+#timedeplist_gas=None
 
 [aerosol]
 swaerosol=None
