@@ -199,7 +199,7 @@ rho = nc_stat['thermo']['rho'][t_idx]
 
 ### Read data
 # switches
-swtimedep = nl['radiation']['swupdatecolumn'] if 'swupdatecolumn' in nl['radiation'] else 0
+swtimedep = nl['radiation']['swtimedep_background'] if 'swtimedep_background' in nl['radiation'] else 0
 gaslist = nl['radiation']['timedeplist_gas'] if 'timedeplist_gas' in nl['radiation'] else []
 if 'aerosol' in nl.groups:
     swaerosol = nl['aerosol']['swaerosol'] if 'swaerosol' in nl['aerosol'] else 0
