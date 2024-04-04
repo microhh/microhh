@@ -254,19 +254,19 @@ grid_zh = grid.dim['zh']
 
 # read bg profile
 if swtimedep:
-    f_h2o_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['h2o_bg'], axis=0)
+    f_h2o_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['h2o_bg'], axis=0)
     h2o_bg = f_h2o_bg(time)
-    f_zlay_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['z_lay'], axis=0)
+    f_zlay_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['z_lay'], axis=0)
     zlay_bg = f_zlay_bg(time)
-    f_zlev_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['z_lev'], axis=0)
+    f_zlev_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['z_lev'], axis=0)
     zlev_bg = f_zlev_bg(time)
-    f_play_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['p_lay'], axis=0)
+    f_play_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['p_lay'], axis=0)
     play_bg = f_play_bg(time)
-    f_plev_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['p_lev'], axis=0)
+    f_plev_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['p_lev'], axis=0)
     plev_bg = f_plev_bg(time)
-    f_tlay_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['t_lay'], axis=0)
+    f_tlay_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['t_lay'], axis=0)
     tlay_bg = f_tlay_bg(time)
-    f_tlev_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep']['t_lev'], axis=0)
+    f_tlev_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep']['t_lev'], axis=0)
     tlev_bg = f_tlev_bg(time)
 else:
     h2o_bg = nc_inp['radiation']['h2o']
@@ -397,13 +397,13 @@ for gas in possible_gases:
         if len(nc_inp['radiation'][gas].dimensions) != 0 and len(nc_inp['init'][gas].dimensions) != 0:
             # in the domain
             if gas in gaslist:
-                f_gas = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep'][gas], axis=0)
+                f_gas = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep'][gas], axis=0)
                 gas_prof = f_gas(time)
             else:
                 gas_prof = nc_inp['init'][gas]
             # above the domain
             if gas in gaslist and swtimedep:
-                f_gas_bg = interp1d(nc_inp['timedep']['time_ls'], nc_inp['timedep'][gas + '_bg'], axis=0)
+                f_gas_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep'][gas + '_bg'], axis=0)
                 gas_bg = f_gas_bg(time)
             else:
                 gas_bg = nc_inp['radiation'][gas]
@@ -427,13 +427,13 @@ if swaerosol:
     for aerosol in aerosol_species:
         # in the domain
         if swtimedep_aerosol:
-            f_aermr = interp1d(nc_inp['timedep']['time_aerosols'], nc_inp['timedep'][aerosol], axis=0)
+            f_aermr = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep'][aerosol], axis=0)
             aermr = np.maximum(f_aermr(time), 0)
         else:
             aermr = nc_inp['init'][aerosol]
         # above the domain
         if swtimedep_aerosol and swtimedep:
-            f_aermr_bg = interp1d(nc_inp['timedep']['time_aerosols'], nc_inp['timedep'][aerosol + '_bg'], axis=0)
+            f_aermr_bg = interp1d(nc_inp['timedep']['time_rad'], nc_inp['timedep'][aerosol + '_bg'], axis=0)
             aermr_bg = np.maximum(f_aermr_bg(time), 0)
         else:
             aermr_bg = nc_inp['radiation'][aerosol]
