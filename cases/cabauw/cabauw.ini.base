@@ -2,8 +2,8 @@
 # `cabauw_input.py` sets all `None` values, and writes the final `cabauw.ini` input file.
 
 [master]
-npx=1
-npy=1
+npx=None
+npy=None
 wallclocklimit=1e9
 
 [grid]
@@ -39,6 +39,7 @@ swtimedep_pbot=1
 swmicro=2mom_warm
 cflmax=1.2
 Nc0=200000000
+Ni0=1e5
 
 [radiation]
 swradiation=None
@@ -52,9 +53,12 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
+swtimedep_background=None
+#timedeplist_gas=None
 
 [aerosol]
-swaerosol=1
+swaerosol=None
+swtimedep=None
 
 [boundary]
 swboundary=None
@@ -128,7 +132,7 @@ savetime=3600
 outputiter=20
 adaptivestep=true
 rkorder=4
-datetime_utc=2016-08-15 06:00:00
+datetime_utc=None
 
 [stats]
 swstats=1

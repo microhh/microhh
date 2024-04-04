@@ -44,13 +44,13 @@ Background<TF>::Background(
         master(masterin), grid(gridin), fields(fieldsin)
 {
     // Read `.ini` settings.
-    sw_update_background = inputin.get_item<bool>("radiation", "swupdatecolumn", "", false);
+    swtimedep_background = inputin.get_item<bool>("radiation", "swtimedep_background", "", false);
 
-    if (!sw_update_background)
+    if (!swtimedep_background)
         return;
 
     sw_aerosol = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
-    sw_aerosol_timedep = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
+    swtimedep_aerosol = inputin.get_item<bool>("aerosol", "swtimedep", "", false);
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
     gaslist = inputin.get_list<std::string>("radiation", "timedeplist_gas", "", std::vector<std::string>());
 
@@ -64,7 +64,7 @@ Background<TF>::Background(
     {
         if (std::find(possible_gases.begin(), possible_gases.end(), it) != possible_gases.end())
         {
-            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it+"_bg", sw_update_background));
+            tdep_gases.emplace(it, new Timedep<TF>(master, grid, it+"_bg", swtimedep_background));
         }
         else
         {
@@ -95,7 +95,7 @@ void Background<TF>::init(Netcdf_handle& input_nc)
             n_lev = rad_nc.get_dimension_size("lev");
     }
 
-    if (!sw_update_background)
+    if (!swtimedep_background)
         return;
 
     idt_rad = convert_to_itime(dt_rad);
@@ -130,54 +130,53 @@ template <typename TF>
 void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
 {
     // Read input from NetCDF and prepare statistics output.
-    if (!sw_update_background)
+    if (!swtimedep_background)
         return;
 
     // create time dependent profiles
     const TF offset = 0;
-    std::string timedep_dim_ls = "time_ls";
+    std::string timedep_dim = "time_rad";
 
     // temperature, pressure and moisture
-    tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", sw_update_background);
-    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
-    tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", sw_update_background);
-    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
-    tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", sw_update_background);
-    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
-    tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", sw_update_background);
-    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lev);
-    tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o_bg", sw_update_background);
-    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+    tdep_t_lay = std::make_unique<Timedep<TF>>(master, grid, "t_lay", swtimedep_background);
+    tdep_t_lay->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
+    tdep_t_lev = std::make_unique<Timedep<TF>>(master, grid, "t_lev", swtimedep_background);
+    tdep_t_lev->create_timedep_prof(input_nc, offset, timedep_dim, n_lev);
+    tdep_p_lay = std::make_unique<Timedep<TF>>(master, grid, "p_lay", swtimedep_background);
+    tdep_p_lay->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
+    tdep_p_lev = std::make_unique<Timedep<TF>>(master, grid, "p_lev", swtimedep_background);
+    tdep_p_lev->create_timedep_prof(input_nc, offset, timedep_dim, n_lev);
+    tdep_h2o = std::make_unique<Timedep<TF>>(master, grid, "h2o_bg", swtimedep_background);
+    tdep_h2o->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
 
     // gasses
     for (auto& it : tdep_gases)
-        it.second->create_timedep_prof(input_nc, offset, timedep_dim_ls, n_lay);
+        it.second->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
 
     //aerosols
-    if (sw_aerosol && sw_aerosol_timedep)
+    if (sw_aerosol && swtimedep_aerosol)
     {
-        std::string timedep_dim = "time_aerosols";
-        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", sw_update_background);
+        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01_bg", swtimedep_background);
         tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", sw_update_background);
+        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02_bg", swtimedep_background);
         tdep_aermr02->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", sw_update_background);
+        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03_bg", swtimedep_background);
         tdep_aermr03->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", sw_update_background);
+        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04_bg", swtimedep_background);
         tdep_aermr04->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", sw_update_background);
+        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05_bg", swtimedep_background);
         tdep_aermr05->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", sw_update_background);
+        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06_bg", swtimedep_background);
         tdep_aermr06->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", sw_update_background);
+        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07_bg", swtimedep_background);
         tdep_aermr07->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", sw_update_background);
+        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08_bg", swtimedep_background);
         tdep_aermr08->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", sw_update_background);
+        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09_bg", swtimedep_background);
         tdep_aermr09->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", sw_update_background);
+        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10_bg", swtimedep_background);
         tdep_aermr10->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
-        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", sw_update_background);
+        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11_bg", swtimedep_background);
         tdep_aermr11->create_timedep_prof(input_nc, offset, timedep_dim, n_lay);
     }
 
@@ -198,7 +197,7 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
         stats.add_prof("o3_bg", "o3", "kg Kg-1", "lay", group_name);
 
     // aerosols
-    if (sw_aerosol && sw_aerosol_timedep)
+    if (sw_aerosol && swtimedep_aerosol)
     {
         stats.add_prof("aermr01_bg", "Sea salt (0.03 - 0.5 um) mixing ratio", "kg Kg-1", "lay", group_name);
         stats.add_prof("aermr02_bg", "Sea salt (0.5 - 5 um) mixing ratio", "kg Kg-1", "lay", group_name);
@@ -217,7 +216,7 @@ void Background<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& 
 template <typename TF>
 void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
-    if (!sw_update_background)
+    if (!swtimedep_background)
         return;
 
     const bool do_radiation = ((timeloop.get_itime() % idt_rad == 0) && !timeloop.in_substep()) ;
@@ -236,7 +235,7 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, n_lay);
 
         // aerosols
-        if (sw_aerosol && sw_aerosol_timedep)
+        if (sw_aerosol && swtimedep_aerosol)
         {
             tdep_aermr01 ->update_time_dependent_prof(aermr01, timeloop, n_lay);
             tdep_aermr02 ->update_time_dependent_prof(aermr02, timeloop, n_lay);
@@ -257,7 +256,7 @@ void Background<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 template<typename TF>
 void Background<TF>::exec_stats(Stats<TF>& stats)
 {
-    if (!sw_update_background)
+    if (!swtimedep_background)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -274,7 +273,7 @@ void Background<TF>::exec_stats(Stats<TF>& stats)
         stats.set_prof_background("o3_bg", gasprofs.at("o3"));
 
     //aerosols
-    if (sw_aerosol && sw_aerosol_timedep)
+    if (sw_aerosol && swtimedep_aerosol)
     {
         stats.set_prof_background("aermr01_bg", aermr01);
         stats.set_prof_background("aermr02_bg", aermr02);
