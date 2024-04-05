@@ -394,7 +394,8 @@ void Thermo_dry<TF>::create(
         Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
         Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
-    create_basestate(inputin, input_nc);
+    const bool define_rhoref = false;
+    create_basestate(inputin, input_nc, define_rhoref);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
@@ -412,7 +413,7 @@ void Thermo_dry<TF>::create(
 
 
 template<typename TF>
-void Thermo_dry<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
+void Thermo_dry<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc, const bool overwrite_rhoref)
 {
     auto& gd = grid.get_grid_data();
     fields.set_calc_mean_profs(true);

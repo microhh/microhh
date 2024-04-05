@@ -252,6 +252,7 @@ void Model<TF>::load()
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
+    fields->load_rhoref();
     fields->create_stats(*stats);
     fields->create_column(*column);
 
@@ -260,13 +261,10 @@ void Model<TF>::load()
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
     thermo->load(timeloop->get_iotime());
 
-    fields->load_rhoref();
-
     boundary->load(timeloop->get_iotime(), *thermo);
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
-    // Keep this after `thermo`; requires basestate to be known..
     lbc->create(*input, *timeloop, sim_name);
 
     ib->create();
@@ -316,10 +314,12 @@ void Model<TF>::save()
             timeloop->get_idt(),
             timeloop->get_iteration());
 
-    thermo->create_basestate(*input, *input_nc);
+    // In the `init` mode, `rhoref` is defined and saved below by `save_rhoref`.
+    const bool define_rhoref = true;
+    thermo->create_basestate(*input, *input_nc, define_rhoref);
     thermo->save(timeloop->get_iotime());
 
-    // Save basestate rho after thermo.
+    // Save base state density after thermo has potentially updated it.
     fields->save_rhoref();
 
     boundary->create_cold_start(*input_nc);
