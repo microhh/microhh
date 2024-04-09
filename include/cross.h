@@ -70,6 +70,11 @@ class Cross
 
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
 
+        // Blacklist variables from specific planes.
+        std::vector<std::string> blacklist_xy;
+        std::vector<std::string> blacklist_xz;
+        std::vector<std::string> blacklist_yz;
+
         std::vector<int> jxz;   ///< Index of nearest full y position of xz input
         std::vector<int> ixz;   ///< Index of nearest full x position of yz input
         std::vector<int> kxy;   ///< Index of nearest full height level of xy input

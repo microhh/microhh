@@ -38,6 +38,15 @@
 
 namespace
 {
+    template<typename T>
+    bool is_blacklisted(std::vector<T>& list, const T item)
+    {
+        if (std::find(std::begin(list), std::end(list), item) != std::end(list))
+            return true;
+        return false;
+    }
+
+
     template<typename TF>
     void calc_lngrad_4th(
             const TF* const restrict a, TF* const restrict lngrad,
@@ -279,6 +288,11 @@ Cross<TF>::Cross(
         xz = inputin.get_list<TF>("cross", "xz", "", std::vector<TF>());
         yz = inputin.get_list<TF>("cross", "yz", "", std::vector<TF>());
 
+        // Blacklist cross-sections from planes
+        blacklist_xy = inputin.get_list<std::string>("cross", "blacklist_xy", "", std::vector<std::string>());
+        blacklist_xz = inputin.get_list<std::string>("cross", "blacklist_xz", "", std::vector<std::string>());
+        blacklist_yz = inputin.get_list<std::string>("cross", "blacklist_yz", "", std::vector<std::string>());
+
         // Get the list of vertical soil locations
         xy_soil = inputin.get_list<TF>("cross", "xy_soil", "", std::vector<TF>());
     }
@@ -286,6 +300,9 @@ Cross<TF>::Cross(
     {
         inputin.flag_as_used("cross", "sampletime", "");
         inputin.flag_as_used("cross", "crosslist", "");
+        inputin.flag_as_used("cross", "blacklist_xy", "");
+        inputin.flag_as_used("cross", "blacklist_xz", "");
+        inputin.flag_as_used("cross", "blacklist_yz", "");
         inputin.flag_as_used("cross", "xy", "");
         inputin.flag_as_used("cross", "xz", "");
         inputin.flag_as_used("cross", "yz", "");
@@ -501,7 +518,7 @@ void Cross<TF>::create()
        crosslist by now. If it isnt empty, print warnings for invalid variables */
     if (crosslist.size() > 0)
     {
-    for (auto& it: crosslist)
+        for (auto& it: crosslist)
             master.print_warning("field %s in [cross][crosslist] is illegal\n", it.c_str());
     }
 
@@ -582,64 +599,78 @@ int Cross<TF>::cross_simple(
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
     char locstr[4];
-    std::sprintf(locstr,"%.1u%.1u%.1u",loc[0],loc[1],loc[2]);
-    // Loop over the index arrays to save all xz cross sections.
-    if (loc == gd.vloc)
+    std::sprintf(locstr, "%.1u%.1u%.1u", loc[0], loc[1], loc[2]);
+
+
+    if (!is_blacklisted(blacklist_xz, name))
     {
-        for (auto& it: jxzh)
+        // Loop over the index arrays to save all xz cross sections.
+        if (loc == gd.vloc)
         {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz", locstr, it, iotime);
-            nerror += check_save(
-                    field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            for (auto& it: jxzh)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz", locstr, it, iotime);
+                nerror += check_save(
+                        field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            }
         }
-    }
-    else
-    {
-        for (auto& it: jxz)
+        else
         {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz",  locstr, it, iotime);
-            nerror += check_save(
-                    field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            for (auto& it: jxz)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xz",  locstr, it, iotime);
+                nerror += check_save(
+                        field3d_io.save_xz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            }
         }
     }
 
-    // Loop over the index arrays to save all yz cross sections.
-    if (loc == gd.uloc)
+
+    if (!is_blacklisted(blacklist_yz, name))
     {
-        for (auto& it: ixzh)
+        // Loop over the index arrays to save all yz cross sections.
+        if (loc == gd.uloc)
         {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
-            nerror += check_save(
-                    field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            for (auto& it: ixzh)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
+                nerror += check_save(
+                        field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            }
         }
-    }
-    else
-    {
-        for (auto& it: ixz)
+        else
         {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
-            nerror += check_save(
-                    field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            for (auto& it: ixz)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "yz",  locstr, it, iotime);
+                nerror += check_save(
+                        field3d_io.save_yz_slice(data, offset, tmp, filename, it, gd.kstart, gd.kend), filename);
+            }
         }
     }
 
-    if (loc == gd.wloc)
+
+    if (!is_blacklisted(blacklist_xy, name))
     {
-        // loop over the index arrays to save all xy cross sections
-        for (auto& it: kxyh)
+        if (loc == gd.wloc)
         {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
+            // loop over the index arrays to save all xy cross sections
+            for (auto& it: kxyh)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
+                nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
+            }
+        }
+        else
+        {
+            for (auto& it: kxy)
+            {
+                std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
+                nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
+            }
         }
     }
-    else
-    {
-        for (auto& it: kxy)
-        {
-            std::sprintf(filename, "%s.%s.%s.%05d.%07d", name.c_str(), "xy",  locstr, it, iotime);
-            nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename, it+gd.kgc), filename);
-        }
-    }
+
     fields.release_tmp(tmpfld);
 
     return nerror;
@@ -648,6 +679,9 @@ int Cross<TF>::cross_simple(
 template<typename TF>
 int Cross<TF>::cross_plane(TF* restrict data, TF restrict offset, std::string name, int iotime)
 {
+    if (is_blacklisted(blacklist_xy, name))
+        return 0;
+
     int nerror = 0;
     char filename[256];
 
@@ -655,8 +689,11 @@ int Cross<TF>::cross_plane(TF* restrict data, TF restrict offset, std::string na
     auto tmp = tmpfld->fld.data();
     
     std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy.000", iotime);
+
     nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename), filename);
+
     fields.release_tmp(tmpfld);
+
     return nerror;
 }
 
@@ -667,6 +704,7 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 
     int nerror = 0;
     char filename[256];
+    TF no_offset = 0;
 
     auto lngradfld = fields.get_tmp();
     auto lngrad = lngradfld->fld.data();
@@ -682,28 +720,39 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
                 a, lngrad, gd.dxi, gd.dyi, gd.dzi4.data(),
                 gd.icells, gd.ijcells, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend);
 
-    // loop over the index arrays to save all xz cross sections
-    TF no_offset = 0;
-    for (auto& it: jxz)
+
+    if (!is_blacklisted(blacklist_xz, name))
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz.000", it, iotime);
-        nerror += check_save(
-                field3d_io.save_xz_slice(lngrad, no_offset, tmp, filename, it, gd.kstart, gd.kend),filename);
+        // loop over the index arrays to save all xz cross sections
+        for (auto& it: jxz)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz.000", it, iotime);
+            nerror += check_save(
+                    field3d_io.save_xz_slice(lngrad, no_offset, tmp, filename, it, gd.kstart, gd.kend),filename);
+        }
     }
 
-    // loop over the index arrays to save all yz cross sections
-    for (auto& it: ixz)
+
+    if (!is_blacklisted(blacklist_yz, name))
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz.000", it, iotime);
-        nerror += check_save(
-                field3d_io.save_yz_slice(lngrad, no_offset, tmp, filename, it, gd.kstart, gd.kend),filename);
+        // loop over the index arrays to save all yz cross sections
+        for (auto& it: ixz)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz.000", it, iotime);
+            nerror += check_save(
+                    field3d_io.save_yz_slice(lngrad, no_offset, tmp, filename, it, gd.kstart, gd.kend),filename);
+        }
     }
 
-    // loop over the index arrays to save all xy cross sections
-    for (auto& it: kxy)
+
+    if (!is_blacklisted(blacklist_xy, name))
     {
-        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy.000", it, iotime);
-        nerror += check_save(field3d_io.save_xy_slice(lngrad, no_offset, tmp, filename, it+gd.kgc),filename);
+        // loop over the index arrays to save all xy cross sections
+        for (auto& it: kxy)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy.000", it, iotime);
+            nerror += check_save(field3d_io.save_xy_slice(lngrad, no_offset, tmp, filename, it+gd.kgc),filename);
+        }
     }
 
     fields.release_tmp(tmpfld);
@@ -715,6 +764,8 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 {
+    if (is_blacklisted(blacklist_xy, name))
+        return 0;
 
     int nerror = 0;
     TF no_offset = 0.;
@@ -748,6 +799,8 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_height_threshold(TF* restrict data, TF threshold, Cross_direction direction, std::string name, int iotime)
 {
+    if (is_blacklisted(blacklist_xy, name))
+        return 0;
 
     auto& gd = grid.get_grid_data();
     int nerror = 0;
