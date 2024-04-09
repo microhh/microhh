@@ -1690,51 +1690,50 @@ void Boundary_lateral<TF>::update_time_dependent(
         // BvS: We are setting `w_top` for the next time step;
         //      skip if next time is beyond the endtime.
         if (next_itime + iloadtime > iendtime)
-        {
             master.print_warning("Timedep boundary_lateral out-of-bounds at t+dt, skipping update.\n");
-            return;
-        }
-
-        // Advance time and read new files.
-        prev_itime = next_itime;
-        next_itime = prev_itime + iloadtime;
-
-        unsigned long next_iotime = next_itime / iiotimeprec;
-
-        // Move LBCs from next to previous values.
-        for (auto& it : lbc_w_next)
-            lbc_w_prev.at(it.first) = it.second;
-        for (auto& it : lbc_e_next)
-            lbc_e_prev.at(it.first) = it.second;
-        for (auto& it : lbc_s_next)
-            lbc_s_prev.at(it.first) = it.second;
-        for (auto& it : lbc_n_next)
-            lbc_n_prev.at(it.first) = it.second;
-
-        // Read new LBC values.
-        const int next_index = next_itime / iloadtime;
-
-        TF div_u_next = 0;
-        TF div_v_next = 0;
-        read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
-
-        // Read in or calculate new `w_top`.
-        if (sw_wtop_2d)
-        {
-            w_top_2d_prev = w_top_2d_next;
-            read_xy_slice(w_top_2d_next, "w_top", next_iotime);
-        }
         else
         {
-            w_top_prev = w_top_next;
-            w_top_next = -(div_u_next + div_v_next) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+            // Advance time and read new files.
+            prev_itime = next_itime;
+            next_itime = prev_itime + iloadtime;
 
-            std::string message2 =
-                    "- div(u) = " + std::to_string(div_u_next)
-                    + ", div(v) = " + std::to_string(div_v_next)
-                    + ", w_top = " + std::to_string(w_top_next*100)
-                    + " cm/s @ t= " + std::to_string(next_index*loadfreq) + " sec.";
-            master.print_message(message2);
+            unsigned long next_iotime = next_itime / iiotimeprec;
+
+            // Move LBCs from next to previous values.
+            for (auto& it : lbc_w_next)
+                lbc_w_prev.at(it.first) = it.second;
+            for (auto& it : lbc_e_next)
+                lbc_e_prev.at(it.first) = it.second;
+            for (auto& it : lbc_s_next)
+                lbc_s_prev.at(it.first) = it.second;
+            for (auto& it : lbc_n_next)
+                lbc_n_prev.at(it.first) = it.second;
+
+            // Read new LBC values.
+            const int next_index = next_itime / iloadtime;
+
+            TF div_u_next = 0;
+            TF div_v_next = 0;
+            read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+
+            // Read in or calculate new `w_top`.
+            if (sw_wtop_2d)
+            {
+                w_top_2d_prev = w_top_2d_next;
+                read_xy_slice(w_top_2d_next, "w_top", next_iotime);
+            }
+            else
+            {
+                w_top_prev = w_top_next;
+                w_top_next = -(div_u_next + div_v_next) / (fields.rhorefh[gd.kend] * gd.xsize * gd.ysize);
+
+                std::string message2 =
+                        "- div(u) = " + std::to_string(div_u_next)
+                        + ", div(v) = " + std::to_string(div_v_next)
+                        + ", w_top = " + std::to_string(w_top_next*100)
+                        + " cm/s @ t= " + std::to_string(next_index*loadfreq) + " sec.";
+                master.print_message(message2);
+            }
         }
     }
 
