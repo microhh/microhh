@@ -23,7 +23,7 @@
 from datetime import datetime
 import numpy as np
 
-dtype = np.float32
+dtype = np.float64
 
 cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
 work_path = 'outer'

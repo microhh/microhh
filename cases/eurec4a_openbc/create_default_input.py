@@ -86,11 +86,11 @@ for t, date in enumerate(dates):
 
     thl_s = np.empty(dim_xy, dtype)
     hlp.interpolate_cosmo(thl_s, ds_2d.thl_s.values, if_s, None, dtype)
-    thl_s.tofile(f'{work_path}/thl_sbot_in.{time_sec[t]:07d}')
+    thl_s.tofile(f'{work_path}/thl_bot_in.{time_sec[t]:07d}')
 
     qt_s = np.empty(dim_xy, dtype)
     hlp.interpolate_cosmo(qt_s, ds_2d.qsat_s.values, if_s, None, dtype)
-    qt_s.tofile(f'{work_path}/qt_sbot_in.{time_sec[t]:07d}')
+    qt_s.tofile(f'{work_path}/qt_bot_in.{time_sec[t]:07d}')
 
 
 """
@@ -106,7 +106,7 @@ def add_var(nc_group, name, dims, values):
     var = nc_group.createVariable(name, dtype, dims)
     var[:] = values
 
-nc_file = nc4.Dataset('eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
+nc_file = nc4.Dataset(f'{work_path}/eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 nc_file.createDimension('z', vgrid.ktot)
 add_var(nc_file, 'z', ('z'), vgrid.z)
 
@@ -131,7 +131,7 @@ add_var(nc_tdep, 'u_geo', ('time_ls', 'z'), ds_time.ug.values)
 add_var(nc_tdep, 'v_geo', ('time_ls', 'z'), ds_time.vg.values)
 
 # Radiation.
-
+# TODO...
 
 nc_file.close()
 

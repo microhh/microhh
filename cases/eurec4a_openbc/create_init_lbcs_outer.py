@@ -33,7 +33,7 @@ import microhh_lbc_tools as mlt
 # Custom scripts from same directory.
 import helpers as hlp
 import constants
-from global_settings import dtype, work_path, cosmo_path, start, end
+from global_settings import dtype, work_path, cosmo_path, start_date, end_date
 
 # Grid (horizontal/vertical) definition.
 import grid_definition as gd
@@ -63,8 +63,8 @@ lat_slice = slice(hgrid.lat.min()-0.5, hgrid.lat.max()+0.5)
 uhh_gd = Vertical_grid_2nd(vgrid.z, vgrid.zsize)
 
 # Time (not really needed...)
-dates = pd.date_range(start, end, freq='h')
-time_sec = np.array((dates-dates[0]).total_seconds())
+dates = pd.date_range(start_date, end_date, freq='h')
+time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 
 """
 Read base state density created by `create_basestate.py`.
@@ -77,7 +77,7 @@ rhoh = bs[ktot:]
 """
 #Read grid info, and calculate spatial interpolation factors.
 """
-ds_2d, ds_3d = hlp.read_cosmo(start, cosmo_path, lon_slice, lat_slice)
+ds_2d, ds_3d = hlp.read_cosmo(start_date, cosmo_path, lon_slice, lat_slice)
 
 # Calculate interpolation factors at different locations staggered LES grid.
 if_u = hlp.Calc_xy_interpolation_factors(
@@ -144,11 +144,10 @@ lbc_ds = mlt.get_lbc_xr_dataset(
 """
 Process hourly COSMO data.
 """
-for t,date in enumerate(dates):
+for t, date in enumerate(dates):
     timer = hlp.Timer()
 
     print(f'Processing {date}, ', end='')
-    time = int((date - start).total_seconds())
 
     ds_2d, ds_3d = hlp.read_cosmo(date, cosmo_path, lon_slice, lat_slice)
 
@@ -160,7 +159,7 @@ for t,date in enumerate(dates):
     for fld in ['thl', 'qt', 'qr']:
         hlp.interpolate_cosmo(tmp, ds_3d[fld].values, if_s, if_z, dtype)
 
-        if date == start:
+        if date == start_date:
             tmp[s_inner].tofile(f'{work_path}/{fld}_0.0000000')
 
         # Store LBCs.
@@ -177,7 +176,7 @@ for t,date in enumerate(dates):
     hlp.interpolate_cosmo(u, ds_3d['U'].values, if_u, if_z, dtype)
     hlp.interpolate_cosmo(v, ds_3d['V'].values, if_v, if_z, dtype)
 
-    if date == start:
+    if date == start_date:
         u[s_inner].tofile(f'{work_path}/u_0.0000000')
         v[s_inner].tofile(f'{work_path}/v_0.0000000')
 
@@ -208,11 +207,11 @@ for t,date in enumerate(dates):
     w_top = w[-1, ngc:-ngc, ngc:-ngc]
     w = w[:-1, +ngc:-ngc, +ngc:-ngc]
 
-    if date == start:
+    if date == start_date:
         w.tofile(f'{work_path}/w_0.0000000'.format(work_path))
 
     # Save w_top as boundary conditions for MicroHH.
-    w_top.tofile(f'{work_path}/w_top.{time:07d}')
+    w_top.tofile(f'{work_path}/w_top.{time_sec[t]:07d}')
     print(f'<w_top> = {(w_top.mean()*100):+.9f} cm/s, ', end='')
 
     del u,v,w
