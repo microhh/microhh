@@ -54,12 +54,12 @@ settings = {
     'start_date'  : start,
     'end_date'    : end,
     'case_name'   : 'eurec4a_openbc',
-    'era5_path'   : '/home/scratch1/bart/LS2D/'}
+    'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/'}
 
 
 if 'era' not in locals():
     era = ls2d.Read_era5(settings)
-    era.calculate_forcings(n_av=8, method='2nd')
+    era.calculate_forcings(n_av=6, method='2nd')
     
     les_input = era.get_les_input(z_out)
     les_input = les_input.sel(lay=slice(0,135), lev=slice(0,136))

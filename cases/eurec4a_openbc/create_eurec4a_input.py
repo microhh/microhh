@@ -171,7 +171,6 @@ for t,date in enumerate(dates):
     hlp.interpolate_cosmo(qt_s, ds_2d.qsat_s.values, if_s, None, dtype)
     qt_s[s_inner_2d].tofile(f'{work_path}/qt_sbot_in.{time:07d}')
 
-
     """
     Process atmospheric fields and LBCs.
     """
@@ -255,8 +254,6 @@ for t,date in enumerate(dates):
 
     if date == start:
         fc[s_inner_2d].tofile(f'{work_path}/fc.0000000')
-
-
 
     #p = np.empty(dim_xyz, dtype)
     #hlp.interpolate_cosmo(p, ds_3d['P'].values, if_s, if_z, dtype)
