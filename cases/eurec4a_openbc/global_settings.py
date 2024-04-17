@@ -28,8 +28,8 @@ dtype = np.float32
 cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
 work_path = 'outer'
 
-start = datetime(year=2020, month=2, day=1, hour=0)
-end   = datetime(year=2020, month=2, day=2, hour=0)
+start_date = datetime(year=2020, month=2, day=1, hour=0)
+end_date   = datetime(year=2020, month=2, day=2, hour=0)
 
 # Switch between domain settings in `grid_definition.py`.
 domain_name = 'develop'

@@ -31,8 +31,11 @@ from global_settings import dtype, work_path
 # Import correct grid settings.
 import grid_definition as gd
 
+from global_settings import start_date, end_date
+
 # Calculate base state density from time averaged vertical profiles.
 ds_bg = xr.open_dataset('eurec4a_mean_profiles.nc')
+ds_bg = ds_bg.sel(time=slice(start_date, end_date))
 ds_bg = ds_bg.mean(dim='time')
 
 # Re-produce exact vertical grid that MicroHH used internally.

@@ -152,19 +152,6 @@ for t,date in enumerate(dates):
 
     ds_2d, ds_3d = hlp.read_cosmo(date, cosmo_path, lon_slice, lat_slice)
 
-
-    #"""
-    #Process surface boundary conditions.
-    #"""
-    #thl_s = np.empty(dim_xy, dtype)
-    #hlp.interpolate_cosmo(thl_s, ds_2d.thl_s.values, if_s, None, dtype)
-    #thl_s[s_inner_2d].tofile(f'{work_path}/thl_sbot_in.{time:07d}')
-
-    #qt_s = np.empty(dim_xy, dtype)
-    #hlp.interpolate_cosmo(qt_s, ds_2d.qsat_s.values, if_s, None, dtype)
-    #qt_s[s_inner_2d].tofile(f'{work_path}/qt_sbot_in.{time:07d}')
-
-
     """
     Process atmospheric fields and LBCs.
     """

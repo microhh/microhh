@@ -38,6 +38,9 @@ pl.close('all')
 cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
 dtype = np.float32
 
+# NOTE: create background for full time period!
+# This is quite an expensive operation, so don't repeat
+# this for every test, change of time period, etc.
 start = datetime(year=2020, month=2, day=1, hour=0)
 end   = datetime(year=2020, month=2, day=12, hour=0)
 ntime = int((end-start).total_seconds()/3600+1)
