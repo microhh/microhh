@@ -49,7 +49,6 @@ swls=0
 swwls=0
 
 [boundary]
-# TODO: Port Charnock from boundary_surface_lsm to boundary_surface.
 swboundary=surface
 mbcbot=noslip
 mbctop=freeslip
@@ -57,10 +56,19 @@ sbcbot=dirichlet
 sbctop=neumann
 sbot=0
 stop=0
+# Set as 2D fields:
 sbot[thl]=-1
 sbot[qt]=-1
-z0m=0.0002
-z0h=0.0002
+
+# Charnock roughness lengths.
+swcharnock=1
+swconstantz0=0
+alpha_m=0.11
+alpha_ch=0.018
+# IFS: ah=0.4, aq=0.62
+alpha_h=0.5
+z0m=-1
+z0h=-1
 
 # Prescribed, 2D, time varying surface BCs
 sbot_2d_list=thl,qt
@@ -137,7 +145,7 @@ sampletime=60
 [cross]
 swcross=1
 sampletime=60
-crosslist=ql_path,qr_path,thl,qt,u,v
+crosslist=ql_path,qr_path,qt_path,thl,qt,u,v,z0m,z0h
 xy=10
 
 [dump]
