@@ -132,7 +132,8 @@ endtime=None
 dt=6.
 dtmax=30
 savetime=3600
-outputiter=0
+#outputiter=0
+outputiter=10
 adaptivestep=true
 starttime=0
 rkorder=4
@@ -145,8 +146,8 @@ sampletime=60
 [cross]
 swcross=1
 sampletime=60
-crosslist=ql_path,qr_path,qt_path,thl,qt,u,v,z0m,z0h
-xy=10
+crosslist=ql_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot
+xy=10,100,500
 
 [dump]
 swdump=0

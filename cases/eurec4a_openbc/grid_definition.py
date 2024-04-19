@@ -59,12 +59,12 @@ if domain_name == 'develop':
 
     npx_inner = 2
     npy_inner = 4
-    
+
     xsize_inner = 64*100
-    ysize_inner = 64*100
-    
+    ysize_inner = 32*100
+
     itot_inner = 64
-    jtot_inner = 64
+    jtot_inner = 32
 
     dx_inner = xsize_inner / itot_inner
     dy_inner = ysize_inner / jtot_inner
@@ -74,13 +74,48 @@ if domain_name == 'develop':
 
     npx_outer = 2
     npy_outer = 4
-    
+
     itot_outer = 64
-    jtot_outer = 64
-    
+    jtot_outer = 32
+
+    dx_outer = 4*dx_inner
+    dy_outer = 4*dy_inner
+
+    xsize_outer = itot_outer * dx_outer
+    ysize_outer = jtot_outer * dy_outer
+
+
+elif domain_name == 'test':
+    """
+    Test on 115/38 km domains.
+    """
+
+    central_lon = -57.7
+    central_lat = 13.3
+
+    npx_inner = 24
+    npy_inner = 32
+
+    xsize_inner = 57600
+    ysize_inner = 57600
+
+    itot_inner = 576
+    jtot_inner = 576
+
+    dx_inner = xsize_inner/itot_inner
+    dy_inner = xsize_inner/itot_inner
+
+    istart_in_parent = 50
+    jstart_in_parent = 50
+
+    npx_outer = 24
+    npy_outer = 32
+
+    itot_outer = 576
+    jtot_outer = 576
+
     dx_outer = 3*dx_inner
     dy_outer = 3*dy_inner
-
 
     xsize_outer = itot_outer * dx_outer
     ysize_outer = jtot_outer * dy_outer
@@ -96,45 +131,37 @@ elif domain_name == 'mip':
 
     npx_inner = 48  # = 144/3
     npy_inner = 64  # = 16*192/48
-    
+
     xsize_inner = 500_000
     ysize_inner = 300_000
-    
+
     itot_inner = 4800
     jtot_inner = 2880
-    
+
     dx_inner = xsize_inner / itot_inner
     dy_inner = ysize_inner / jtot_inner
 
-    istart_in_parent = 150
+    istart_in_parent = 75
     jstart_in_parent = 150
-    
+
     # Outer domain:
     npx_outer = 48  # = 144/3
     npy_outer = 32  # = 8*192/48
-    
+
     itot_outer = int(itot_inner/2)
     jtot_outer = int(jtot_inner/2)
-    
+
     dx_outer = 4*dx_inner
     dy_outer = 4*dy_inner
-    
+
     xsize_outer = itot_outer * dx_outer
     ysize_outer = jtot_outer * dy_outer
-    
+
 
 else:
     raise Exception('Invalid domain.')
 
 
-#"""
-#Checks!
-#"""
-#print('Inner, gridpoints/core=', int(itot_inner*jtot_inner*ktot/npx_inner/npy_inner))
-#hlp.check_grid_decomposition(itot_inner, jtot_inner, ktot, npx_inner, npy_inner)
-#
-#print('Out, gridpoints/core=', int(itot_outer*jtot_outer*ktot/npx_outer/npy_outer))
-#hlp.check_grid_decomposition(itot_outer, jtot_outer, ktot, npx_outer, npy_outer)
 
 
 """
@@ -184,19 +211,32 @@ hgrid_inner_pad = add_ghost_cells(hgrid_inner, n_ghost)
 hgrid_outer_pad = add_ghost_cells(hgrid_outer, n_ghost)
 
 
-#"""
-#Plot!
-#"""
-#pl.close('all')
-#
-#pl.figure()
-#pl.plot(vgrid.dz, vgrid.z, '-x')
-#pl.xlabel(r'$\Delta z$ (m)')
-#pl.ylabel(r'$z$ (m)')
-#
-#pl.figure()
-#pl.plot(hgrid_inner.bbox_lon, hgrid_inner.bbox_lat, color='tab:red', label=f'$\Delta={hgrid_inner.dx:.1f} m$')
-#pl.plot(hgrid_outer.bbox_lon, hgrid_outer.bbox_lat, color='tab:blue', label=f'$\Delta={hgrid_outer.dx:.1f} m$')
-#pl.plot(hgrid_inner_pad.bbox_lon, hgrid_inner_pad.bbox_lat, '--', color='tab:red')
-#pl.plot(hgrid_outer_pad.bbox_lon, hgrid_outer_pad.bbox_lat, '--', color='tab:blue')
-#pl.legend()
+if __name__ == '__main__':
+
+    """
+    Checks!
+    """
+    print('Inner, gridpoints/core=', int(itot_inner*jtot_inner*ktot/npx_inner/npy_inner))
+    hlp.check_grid_decomposition(itot_inner, jtot_inner, ktot, npx_inner, npy_inner)
+
+    print('Out, gridpoints/core=', int(itot_outer*jtot_outer*ktot/npx_outer/npy_outer))
+    hlp.check_grid_decomposition(itot_outer, jtot_outer, ktot, npx_outer, npy_outer)
+
+
+    """
+    Plot!
+    """
+    pl.close('all')
+
+    pl.figure()
+    pl.plot(vgrid.dz, vgrid.z, '-x')
+    pl.xlabel(r'$\Delta z$ (m)')
+    pl.ylabel(r'$z$ (m)')
+
+    pl.figure()
+    pl.plot(hgrid_inner.bbox_lon, hgrid_inner.bbox_lat, color='tab:red', label=f'{hgrid_inner.xsize/1e3}x{hgrid_inner.ysize/1e3} km @ $\Delta={hgrid_inner.dx:.1f}$ m')
+    pl.plot(hgrid_outer.bbox_lon, hgrid_outer.bbox_lat, color='tab:blue', label=f'{hgrid_outer.xsize/1e3}x{hgrid_outer.ysize/1e3} km @ $\Delta={hgrid_outer.dx:.1f}$ m')
+    #pl.plot(hgrid_inner_pad.bbox_lon, hgrid_inner_pad.bbox_lat, '--', color='tab:red')
+    #pl.plot(hgrid_outer_pad.bbox_lon, hgrid_outer_pad.bbox_lat, '--', color='tab:blue')
+    pl.scatter(central_lon, central_lat, label='Center')
+    pl.legend()

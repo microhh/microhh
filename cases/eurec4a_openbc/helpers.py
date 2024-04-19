@@ -3,19 +3,19 @@
 # Copyright (c) 2011-2023 Chiel van Heerwaarden
 # Copyright (c) 2011-2023 Thijs Heus
 # Copyright (c) 2014-2023 Bart van Stratum
-# 
+#
 # This file is part of MicroHH
-# 
+#
 # MicroHH is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # MicroHH is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -334,7 +334,7 @@ class Grid_stretched_manual:
 
         self.zsize = self.z[ktot-1] + 0.5*self.dz[ktot-1]
 
-        self.zh[1:-1] = self.z[1:] - self.z[:-1]
+        self.zh[1:-1] = 0.5*(self.z[1:] + self.z[:-1])
         self.zh[-1] = self.zsize
 
 
@@ -400,3 +400,34 @@ def read_cosmo(date, cosmo_path, lon_slice, lat_slice, read_3d=True):
         return ds_2d, ds_3d
     else:
         return ds_2d, None
+
+
+@jit(nopython=True, nogil=True, fastmath=True)
+def block_perturb_fld(fld, block_size, amplitude):
+    """
+    Add random perturbations to field, in block sizes
+    in all spatial directions of size `block_size`.
+    """
+    ktot, jtot, itot = fld.shape
+
+    nblock_k = int(np.ceil(ktot / block_size))
+    nblock_j = int(np.ceil(jtot / block_size))
+    nblock_i = int(np.ceil(itot / block_size))
+
+    for bk in range(nblock_k):
+        for bj in range(nblock_j):
+            for bi in prange(nblock_i):
+
+                random_val = 2 * amplitude * (np.random.random()-0.5)
+
+                for dk in range(block_size):
+                    for dj in range(block_size):
+                        for di in range(block_size):
+                            k = bk*block_size + dk
+                            j = bj*block_size + dj
+                            i = bi*block_size + di
+
+                            # Bounds check in case `dim % blocksize != 0`.
+                            if k < ktot and j<jtot and i<itot:
+                                fld[k,j,i] += random_val
+

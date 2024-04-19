@@ -43,6 +43,14 @@ from microhh_grid import Vertical_grid_2nd
 from microhh_thermo import Basestate_moist
 
 """
+Settings.
+"""
+perturb_size = 3    # Perturb in nxnxn blocks
+perturb_ampl = {
+        'thl': 0.1,
+        'qt': 0.1e-3}
+
+"""
 Short-cuts.
 """
 hgrid = gd.hgrid_outer_pad
@@ -66,6 +74,7 @@ uhh_gd = Vertical_grid_2nd(vgrid.z, vgrid.zsize)
 dates = pd.date_range(start_date, end_date, freq='h')
 time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 
+
 """
 Read base state density created by `create_basestate.py`.
 """
@@ -75,7 +84,7 @@ rhoh = bs[ktot:]
 
 
 """
-#Read grid info, and calculate spatial interpolation factors.
+Read grid info, and calculate spatial interpolation factors.
 """
 ds_2d, ds_3d = hlp.read_cosmo(start_date, cosmo_path, lon_slice, lat_slice)
 
@@ -127,7 +136,7 @@ sv_north = np.s_[:, -nlbc:, :]
 
 """
 Create Xarray dataset with correct dimensions/coordinates/.. for LBCs
-#"""
+"""
 lbc_ds = mlt.get_lbc_xr_dataset(
         ('u', 'v', 'w', 'thl', 'qt', 'qr', 'nr'),
         gd.hgrid_outer.xsize,
@@ -158,6 +167,11 @@ for t, date in enumerate(dates):
 
     for fld in ['thl', 'qt', 'qr']:
         hlp.interpolate_cosmo(tmp, ds_3d[fld].values, if_s, if_z, dtype)
+
+        # Add random perturbations to entire 3D field, and make sure that fld >= 0.
+        if fld in perturb_ampl.keys():
+            hlp.block_perturb_fld(tmp, perturb_size, perturb_ampl[fld])
+            tmp[tmp<0] = 0.
 
         if date == start_date:
             tmp[s_inner].tofile(f'{work_path}/{fld}_0.0000000')
@@ -257,3 +271,6 @@ Save LBCs in binary format.
 """
 mlt.write_lbcs_as_binaries(
         lbc_ds, dtype, work_path)
+
+# Bonus (aka debug): save in NetCDF.
+lbc_ds.to_netcdf(f'{work_path}/lbc_input.nc')

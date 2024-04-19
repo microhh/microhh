@@ -32,5 +32,6 @@ start_date = datetime(year=2020, month=2, day=1, hour=0)
 end_date   = datetime(year=2020, month=2, day=2, hour=0)
 
 # Switch between domain settings in `grid_definition.py`.
-domain_name = 'develop'
+#domain_name = 'develop'
+domain_name = 'test'
 #domain_name = 'mip'
