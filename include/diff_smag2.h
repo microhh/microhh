@@ -77,6 +77,9 @@ class Diff_smag2 : public Diff<TF>
         bool sw_mason;        ///< Switch for use of Mason's wall correction.
         bool sw_anisotropic;  ///< Anisotropic eddy viscosity.
 
+        TF mlen0_h;
+        TF mlen0_v;
+
         const std::string tend_name = "diff";
         const std::string tend_longname = "Diffusion";
 };

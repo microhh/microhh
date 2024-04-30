@@ -293,7 +293,7 @@ namespace
             const TF* const restrict dz,
             const TF* const restrict dzi,
             const TF* const restrict z0m,
-            const TF dx, const TF dy,
+            const TF mlen0_h, const TF mlen0_v,
             const TF cs, const TF tPr,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -303,8 +303,6 @@ namespace
     {
         const int jj = icells;
         const int kk = ijcells;
-
-        const TF dxy = std::pow(dx*dy, TF(0.5));
 
         for (int j=jstart; j<jend; ++j)
         {
@@ -317,8 +315,8 @@ namespace
                 TF RitPrratio = bgradbot[ij] / evisc_h[ijk] / tPr;
                 RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                const TF mlen_v = calc_l_mason(cs*dxy, z[kstart], z0m[ij]); 
-                const TF mlen_h = calc_l_mason(cs*dz[kstart], z[kstart], z0m[ij]); 
+                const TF mlen_v = calc_l_mason(cs*mlen0_v, z[kstart], z0m[ij]);
+                const TF mlen_h = calc_l_mason(cs*mlen0_h, z[kstart], z0m[ij]);
 
                 const TF strain_ritpr_fac = std::sqrt(evisc_h[ijk]) * std::sqrt(TF(1.)-RitPrratio);
 
@@ -338,8 +336,8 @@ namespace
                     TF RitPrratio = N2[ijk] / evisc_h[ijk] / tPr;
                     RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
 
-                    const TF mlen_v = calc_l_mason(cs*dxy, z[k], z0m[ij]); 
-                    const TF mlen_h = calc_l_mason(cs*dz[k], z[k], z0m[ij]); 
+                    const TF mlen_v = calc_l_mason(cs*mlen0_v, z[k], z0m[ij]);
+                    const TF mlen_h = calc_l_mason(cs*mlen0_h, z[k], z0m[ij]);
 
                     const TF strain_ritpr_fac = std::sqrt(evisc_h[ijk]) * std::sqrt(TF(1.)-RitPrratio);
 
@@ -373,6 +371,9 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 
     if (sw_anisotropic)
     {
+        mlen0_h = inputin.get_item<TF>("diff", "mlen0_h", "");
+        mlen0_v = inputin.get_item<TF>("diff", "mlen0_v", "");
+
         fields.init_diagnostic_field("evisc_v", "Vertical eddy viscosity", "m2 s-1", group_name, gd.sloc);
         fields.init_diagnostic_field("evisc_h", "Horizontal eddy viscosity", "m2 s-1", group_name, gd.sloc);
     }
@@ -585,7 +586,7 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
         }
     }
     else
-    {   
+    {
         auto diff_wrapper = [&]<Surface_model surface_model>()
         {
             dk::diff_u<TF, surface_model>(
@@ -755,7 +756,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
                 gd.dz.data(),
                 gd.dzi.data(),
                 z0m.data(),
-                gd.dx, gd.dy,
+                this->mlen0_h, this->mlen0_v,
                 this->cs, this->tPr,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -930,7 +931,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-        
+
         else if (fld_in.loc[1] == 1)
             dka::calc_diff_flux_v<TF>(
                     out.fld.data(),
@@ -944,7 +945,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-        
+
         else
             dka::calc_diff_flux_c<TF>(
                     out.fld.data(),
@@ -965,7 +966,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                 gd.jstart, gd.jend,
                 gd.kstart,
                 gd.icells, gd.ijcells);
-        
+
         dk::calc_diff_flux_bc(
                 out.fld.data(),
                 fld_in.flux_top.data(),
@@ -991,7 +992,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                         gd.jstart, gd.jend,
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
-    
+
             else if (fld_in.loc[1] == 1)
                 dk::calc_diff_flux_v<TF, surface_model>(
                         out.fld.data(),
@@ -1004,7 +1005,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                         gd.jstart, gd.jend,
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
-    
+
             else
                 dk::calc_diff_flux_c<TF, surface_model>(
                         out.fld.data(),
@@ -1017,7 +1018,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
         };
-    
+
         if (boundary.get_switch() != "default")
         {
             // Calculate the boundary fluxes.
@@ -1028,7 +1029,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                     gd.jstart, gd.jend,
                     gd.kstart,
                     gd.icells, gd.ijcells);
-    
+
             dk::calc_diff_flux_bc(
                     out.fld.data(),
                     fld_in.flux_top.data(),
@@ -1036,7 +1037,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                     gd.jstart, gd.jend,
                     gd.kend,
                     gd.icells, gd.ijcells);
-    
+
             // Calculate interior:
             diff_flux_wrapper.template operator()<Surface_model::Enabled>();
         }
