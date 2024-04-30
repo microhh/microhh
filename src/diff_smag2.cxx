@@ -37,12 +37,14 @@
 
 #include "diff_smag2.h"
 #include "diff_kernels.h"
+#include "diff_kernels_anisotropic.h"
 
 namespace
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
     namespace dk = Diff_kernels;
+    namespace dka = Diff_kernels_anisotropic;
 
     template <typename TF, Surface_model surface_model, bool sw_mason>
     void calc_evisc_neutral(
@@ -267,6 +269,89 @@ namespace
 
         boundary_cyclic.exec(evisc);
     }
+
+
+    template<typename TF>
+    inline TF calc_l_mason(const TF mlen0, const TF z, const TF z0)
+    {
+        const TF n_mason = TF(2);
+        return std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
+                        (std::pow(Constants::kappa<TF>*(z+z0), n_mason))), TF(1.)/n_mason);
+    }
+
+
+    template<typename TF>
+    void calc_evisc_anisotropic(
+            TF* const restrict evisc_h,
+            TF* const restrict evisc_v,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict w,
+            const TF* const restrict N2,
+            const TF* const restrict bgradbot,
+            const TF* const restrict z,
+            const TF* const restrict dz,
+            const TF* const restrict dzi,
+            const TF* const restrict z0m,
+            const TF dx, const TF dy,
+            const TF cs, const TF tPr,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int jcells, const int ijcells,
+            Boundary_cyclic<TF>& boundary_cyclic)
+    {
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const TF dxy = std::pow(dx*dy, TF(0.5));
+
+        for (int j=jstart; j<jend; ++j)
+        {
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                TF RitPrratio = bgradbot[ij] / evisc_h[ijk] / tPr;
+                RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
+
+                const TF mlen_v = calc_l_mason(cs*dxy, z[kstart], z0m[ij]); 
+                const TF mlen_h = calc_l_mason(cs*dz[kstart], z[kstart], z0m[ij]); 
+
+                const TF strain_ritpr_fac = std::sqrt(evisc_h[ijk]) * std::sqrt(TF(1.)-RitPrratio);
+
+                evisc_v[ijk] = fm::pow2(mlen_v) * strain_ritpr_fac;
+                evisc_h[ijk] = fm::pow2(mlen_h) * strain_ritpr_fac;
+            }
+        }
+
+        for (int k=kstart+1; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+
+                    TF RitPrratio = N2[ijk] / evisc_h[ijk] / tPr;
+                    RitPrratio = std::min(RitPrratio, TF(1.-Constants::dsmall));
+
+                    const TF mlen_v = calc_l_mason(cs*dxy, z[k], z0m[ij]); 
+                    const TF mlen_h = calc_l_mason(cs*dz[k], z[k], z0m[ij]); 
+
+                    const TF strain_ritpr_fac = std::sqrt(evisc_h[ijk]) * std::sqrt(TF(1.)-RitPrratio);
+
+                    evisc_v[ijk] = fm::pow2(mlen_v) * strain_ritpr_fac;
+                    evisc_h[ijk] = fm::pow2(mlen_h) * strain_ritpr_fac;
+                }
+
+        boundary_cyclic.exec(evisc_v);
+        boundary_cyclic.exec(evisc_h);
+    }
+
+
 } // End namespace.
 
 template<typename TF>
@@ -284,8 +369,15 @@ Diff_smag2<TF>::Diff_smag2(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
 
     // Set the switch for use of Mason's wall correction
     sw_mason = inputin.get_item<bool>("diff", "swmason", "", true);
+    sw_anisotropic = inputin.get_item<bool>("diff", "swanisotropic", "", false);
 
-    fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
+    if (sw_anisotropic)
+    {
+        fields.init_diagnostic_field("evisc_v", "Vertical eddy viscosity", "m2 s-1", group_name, gd.sloc);
+        fields.init_diagnostic_field("evisc_h", "Horizontal eddy viscosity", "m2 s-1", group_name, gd.sloc);
+    }
+    else
+        fields.init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1", group_name, gd.sloc);
 
     if (grid.get_spatial_order() != Grid_order::Second)
         throw std::runtime_error("Diff_smag2 only runs with second order grids");
@@ -314,16 +406,32 @@ unsigned long Diff_smag2<TF>::get_time_limit(const unsigned long idt, const doub
 {
     auto& gd = grid.get_grid_data();
 
-    double dnmul = dk::calc_dnmul<TF>(
-        fields.sd.at("evisc")->fld.data(),
-        gd.dzi.data(),
-        1./(gd.dx*gd.dx),
-        1./(gd.dy*gd.dy),
-        tPr,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+    double dnmul;
+
+    if (sw_anisotropic)
+        dnmul = dka::calc_dnmul<TF>(
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
+                gd.dzi.data(),
+                1./(gd.dx*gd.dx),
+                1./(gd.dy*gd.dy),
+                tPr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else
+        dnmul = dk::calc_dnmul<TF>(
+                fields.sd.at("evisc")->fld.data(),
+                gd.dzi.data(),
+                1./(gd.dx*gd.dx),
+                1./(gd.dy*gd.dy),
+                tPr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
     master.max(&dnmul, 1);
 
     // Avoid zero division.
@@ -339,16 +447,32 @@ double Diff_smag2<TF>::get_dn(const double dt)
 {
     auto& gd = grid.get_grid_data();
 
-    double dnmul = dk::calc_dnmul<TF>(
-        fields.sd.at("evisc")->fld.data(),
-        gd.dzi.data(),
-        1./(gd.dx*gd.dx),
-        1./(gd.dy*gd.dy),
-        tPr,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+    double dnmul;
+
+    if (sw_anisotropic)
+        dnmul = dka::calc_dnmul<TF>(
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
+                gd.dzi.data(),
+                1./(gd.dx*gd.dx),
+                1./(gd.dy*gd.dy),
+                tPr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    else
+        dnmul = dk::calc_dnmul<TF>(
+                fields.sd.at("evisc")->fld.data(),
+                gd.dzi.data(),
+                1./(gd.dx*gd.dx),
+                1./(gd.dy*gd.dy),
+                tPr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+
     master.max(&dnmul, 1);
 
     return dnmul*dt;
@@ -382,16 +506,17 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    auto diff_wrapper = [&]<Surface_model surface_model>()
+    if (sw_anisotropic)
     {
-        dk::diff_u<TF, surface_model>(
+        dka::diff_u<TF>(
                 fields.mt.at("u")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
-                fields.sd.at("evisc")->fld.data(),
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
                 fields.mp.at("u")->flux_bot.data(),
                 fields.mp.at("u")->flux_top.data(),
                 fields.rhoref.data(),
@@ -402,14 +527,15 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        dk::diff_v<TF, surface_model>(
+        dka::diff_v<TF>(
                 fields.mt.at("v")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
-                fields.sd.at("evisc")->fld.data(),
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
                 fields.mp.at("v")->flux_bot.data(),
                 fields.mp.at("v")->flux_top.data(),
                 fields.rhoref.data(),
@@ -420,14 +546,15 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-        dk::diff_w<TF>(
+        dka::diff_w<TF>(
                 fields.mt.at("w")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
                 gd.dzi.data(), gd.dzhi.data(),
                 1./gd.dx, 1./gd.dy,
-                fields.sd.at("evisc")->fld.data(),
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
                 fields.rhoref.data(),
                 fields.rhorefh.data(),
                 fields.visc,
@@ -438,12 +565,13 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            dk::diff_c<TF, surface_model>(
+            dka::diff_c<TF>(
                     it.second->fld.data(),
                     fields.sp.at(it.first)->fld.data(),
                     gd.dzi.data(), gd.dzhi.data(),
                     1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
-                    fields.sd.at("evisc")->fld.data(),
+                    fields.sd.at("evisc_h")->fld.data(),
+                    fields.sd.at("evisc_v")->fld.data(),
                     fields.sp.at(it.first)->flux_bot.data(),
                     fields.sp.at(it.first)->flux_top.data(),
                     fields.rhoref.data(),
@@ -455,12 +583,89 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
-    };
-
-    if (boundary.get_switch() != "default")
-        diff_wrapper.template operator()<Surface_model::Enabled>();
+    }
     else
-        diff_wrapper.template operator()<Surface_model::Disabled>();
+    {   
+        auto diff_wrapper = [&]<Surface_model surface_model>()
+        {
+            dk::diff_u<TF, surface_model>(
+                    fields.mt.at("u")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(),
+                    1./gd.dx, 1./gd.dy,
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.mp.at("u")->flux_bot.data(),
+                    fields.mp.at("u")->flux_top.data(),
+                    fields.rhoref.data(),
+                    fields.rhorefh.data(),
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            dk::diff_v<TF, surface_model>(
+                    fields.mt.at("v")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(),
+                    1./gd.dx, 1./gd.dy,
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.mp.at("v")->flux_bot.data(),
+                    fields.mp.at("v")->flux_top.data(),
+                    fields.rhoref.data(),
+                    fields.rhorefh.data(),
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            dk::diff_w<TF>(
+                    fields.mt.at("w")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    gd.dzi.data(), gd.dzhi.data(),
+                    1./gd.dx, 1./gd.dy,
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.rhoref.data(),
+                    fields.rhorefh.data(),
+                    fields.visc,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            for (auto it : fields.st)
+            {
+                dk::diff_c<TF, surface_model>(
+                        it.second->fld.data(),
+                        fields.sp.at(it.first)->fld.data(),
+                        gd.dzi.data(), gd.dzhi.data(),
+                        1./(gd.dx*gd.dx), 1./(gd.dy*gd.dy),
+                        fields.sd.at("evisc")->fld.data(),
+                        fields.sp.at(it.first)->flux_bot.data(),
+                        fields.sp.at(it.first)->flux_top.data(),
+                        fields.rhoref.data(),
+                        fields.rhorefh.data(),
+                        tPr,
+                        fields.sp.at(it.first)->visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+            }
+        };
+
+        if (boundary.get_switch() != "default")
+            diff_wrapper.template operator()<Surface_model::Enabled>();
+        else
+            diff_wrapper.template operator()<Surface_model::Disabled>();
+    }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
     stats.calc_tend(*fields.mt.at("v"), tend_name);
@@ -479,21 +684,38 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             const TF* const restrict dudz,
             const TF* const restrict dvdz)
     {
-        dk::calc_strain2<TF, surface_model>(
-                fields.sd.at("evisc")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                dudz,
-                dvdz,
-                gd.z.data(),
-                gd.dzi.data(),
-                gd.dzhi.data(),
-                1./gd.dx, 1./gd.dy,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+        if (sw_anisotropic)
+            dk::calc_strain2<TF, surface_model>(
+                    fields.sd.at("evisc_h")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    dudz,
+                    dvdz,
+                    gd.z.data(),
+                    gd.dzi.data(),
+                    gd.dzhi.data(),
+                    1./gd.dx, 1./gd.dy,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+        else
+            dk::calc_strain2<TF, surface_model>(
+                    fields.sd.at("evisc")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    dudz,
+                    dvdz,
+                    gd.z.data(),
+                    gd.dzi.data(),
+                    gd.dzhi.data(),
+                    1./gd.dx, 1./gd.dy,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     };
 
     if (boundary.get_switch() != "default")
@@ -507,50 +729,9 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     else
         strain2_wrapper.template operator()<Surface_model::Disabled>(nullptr, nullptr);
 
-    // Start with retrieving the stability information
-    if (thermo.get_switch() == Thermo_type::Disabled)
-    {
-        auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
-                const TF* const restrict z0m)
-        {
-            calc_evisc_neutral<TF, surface_model, sw_mason>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    fields.mp.at("u")->flux_bot.data(),
-                    fields.mp.at("v")->flux_bot.data(),
-                    gd.z.data(), gd.dz.data(),
-                    gd.dzhi.data(), z0m,
-                    gd.dx, gd.dy, gd.zsize,
-                    this->cs,
-                    fields.visc,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    boundary_cyclic);
-        };
 
-        if (boundary.get_switch() != "default")
-        {
-            const std::vector<TF>& z0m = boundary.get_z0m();
-
-            if (sw_mason)
-                evisc_wrapper.template operator()<Surface_model::Enabled, true>(z0m.data());
-            else
-                evisc_wrapper.template operator()<Surface_model::Enabled, false>(z0m.data());
-        }
-        else
-        {
-            if (sw_mason)
-                evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr);
-            else
-                evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr);
-        }
-    }
-    // assume buoyancy calculation is needed
-    else
+    // Anisotropic diffusion currently only works with thermo enabled and non-resolved wall.
+    if (sw_anisotropic)
     {
         // Store the buoyancy flux in tmp1
         auto& gd = grid.get_grid_data();
@@ -559,50 +740,131 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
 
         thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
 
-        auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
-                const TF* const restrict dbdz,
-                const TF* const restrict z0m)
-        {
-            calc_evisc<TF, surface_model, sw_mason>(
-                    fields.sd.at("evisc")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    buoy_tmp->fld.data(),
-                    dbdz,
-                    gd.z.data(),
-                    gd.dz.data(),
-                    gd.dzi.data(),
-                    z0m,
-                    gd.dx, gd.dy,
-                    this->cs, this->tPr,
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.jcells, gd.ijcells,
-                    boundary_cyclic);
-        };
+        const std::vector<TF>& z0m = boundary.get_z0m();
+        const std::vector<TF>& dbdz = boundary.get_dbdz();
 
-        if (boundary.get_switch() != "default")
-        {
-            const std::vector<TF>& z0m = boundary.get_z0m();
-            const std::vector<TF>& dbdz = boundary.get_dbdz();
+        calc_evisc_anisotropic<TF>(
+                fields.sd.at("evisc_h")->fld.data(),
+                fields.sd.at("evisc_v")->fld.data(),
+                fields.mp.at("u")->fld.data(),
+                fields.mp.at("v")->fld.data(),
+                fields.mp.at("w")->fld.data(),
+                buoy_tmp->fld.data(),
+                dbdz.data(),
+                gd.z.data(),
+                gd.dz.data(),
+                gd.dzi.data(),
+                z0m.data(),
+                gd.dx, gd.dy,
+                this->cs, this->tPr,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.jcells, gd.ijcells,
+                boundary_cyclic);
 
-            if (sw_mason)
-                evisc_wrapper.template operator()<Surface_model::Enabled, true>(dbdz.data(), z0m.data());
+            fields.release_tmp(buoy_tmp);
+            fields.release_tmp(tmp);
+    }
+    else
+    {
+        // Start with retrieving the stability information
+        if (thermo.get_switch() == Thermo_type::Disabled)
+        {
+            auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
+                    const TF* const restrict z0m)
+            {
+                calc_evisc_neutral<TF, surface_model, sw_mason>(
+                        fields.sd.at("evisc")->fld.data(),
+                        fields.mp.at("u")->fld.data(),
+                        fields.mp.at("v")->fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        fields.mp.at("u")->flux_bot.data(),
+                        fields.mp.at("v")->flux_bot.data(),
+                        gd.z.data(), gd.dz.data(),
+                        gd.dzhi.data(), z0m,
+                        gd.dx, gd.dy, gd.zsize,
+                        this->cs,
+                        fields.visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.jcells, gd.ijcells,
+                        boundary_cyclic);
+            };
+
+            if (boundary.get_switch() != "default")
+            {
+                const std::vector<TF>& z0m = boundary.get_z0m();
+
+                if (sw_mason)
+                    evisc_wrapper.template operator()<Surface_model::Enabled, true>(z0m.data());
+                else
+                    evisc_wrapper.template operator()<Surface_model::Enabled, false>(z0m.data());
+            }
             else
-                evisc_wrapper.template operator()<Surface_model::Enabled, false>(dbdz.data(), z0m.data());
+            {
+                if (sw_mason)
+                    evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr);
+                else
+                    evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr);
+            }
         }
+        // assume buoyancy calculation is needed
         else
         {
-            if (sw_mason)
-                evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr, nullptr);
-            else
-                evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr, nullptr);
-        }
+            // Store the buoyancy flux in tmp1
+            auto& gd = grid.get_grid_data();
+            auto buoy_tmp = fields.get_tmp();
+            auto tmp = fields.get_tmp();
 
-        fields.release_tmp(buoy_tmp);
-        fields.release_tmp(tmp);
+            thermo.get_thermo_field(*buoy_tmp, "N2", false, false);
+
+            auto evisc_wrapper = [&]<Surface_model surface_model, bool sw_mason>(
+                    const TF* const restrict dbdz,
+                    const TF* const restrict z0m)
+            {
+                calc_evisc<TF, surface_model, sw_mason>(
+                        fields.sd.at("evisc")->fld.data(),
+                        fields.mp.at("u")->fld.data(),
+                        fields.mp.at("v")->fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        buoy_tmp->fld.data(),
+                        dbdz,
+                        gd.z.data(),
+                        gd.dz.data(),
+                        gd.dzi.data(),
+                        z0m,
+                        gd.dx, gd.dy,
+                        this->cs, this->tPr,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.jcells, gd.ijcells,
+                        boundary_cyclic);
+            };
+
+            if (boundary.get_switch() != "default")
+            {
+                const std::vector<TF>& z0m = boundary.get_z0m();
+                const std::vector<TF>& dbdz = boundary.get_dbdz();
+
+                if (sw_mason)
+                    evisc_wrapper.template operator()<Surface_model::Enabled, true>(dbdz.data(), z0m.data());
+                else
+                    evisc_wrapper.template operator()<Surface_model::Enabled, false>(dbdz.data(), z0m.data());
+            }
+            else
+            {
+                if (sw_mason)
+                    evisc_wrapper.template operator()<Surface_model::Disabled, true>(nullptr, nullptr);
+                else
+                    evisc_wrapper.template operator()<Surface_model::Disabled, false>(nullptr, nullptr);
+            }
+
+            fields.release_tmp(buoy_tmp);
+            fields.release_tmp(tmp);
+        }
     }
 }
 #endif
@@ -615,7 +877,14 @@ void Diff_smag2<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_profs(*fields.sd.at("evisc"), "z", {"mean", "2"}, group_name);
+        if (sw_anisotropic)
+        {
+            stats.add_profs(*fields.sd.at("evisc_h"), "z", {"mean", "2"}, group_name);
+            stats.add_profs(*fields.sd.at("evisc_v"), "z", {"mean", "2"}, group_name);
+        }
+        else
+            stats.add_profs(*fields.sd.at("evisc"), "z", {"mean", "2"}, group_name);
+
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
@@ -630,7 +899,14 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
 {
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
-    stats.calc_stats("evisc", *fields.sd.at("evisc"), no_offset, no_threshold);
+
+    if (sw_anisotropic)
+    {
+        stats.calc_stats("evisc_h", *fields.sd.at("evisc_h"), no_offset, no_threshold);
+        stats.calc_stats("evisc_v", *fields.sd.at("evisc_v"), no_offset, no_threshold);
+    }
+    else
+        stats.calc_stats("evisc", *fields.sd.at("evisc"), no_offset, no_threshold);
 }
 
 template<typename TF>
@@ -638,50 +914,49 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
 {
     auto& gd = grid.get_grid_data();
 
-    auto diff_flux_wrapper = [&]<Surface_model surface_model>()
+    if (sw_anisotropic)
     {
         // Calculate the interior.
         if (fld_in.loc[0] == 1)
-            dk::calc_diff_flux_u<TF, surface_model>(
+            dka::calc_diff_flux_u<TF>(
                     out.fld.data(),
                     fld_in.fld.data(),
                     fields.mp.at("w")->fld.data(),
-                    fields.sd.at("evisc")->fld.data(),
+                    fields.sd.at("evisc_h")->fld.data(),
+                    fields.sd.at("evisc_v")->fld.data(),
                     gd.dxi, gd.dzhi.data(),
                     fields.visc,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-
+        
         else if (fld_in.loc[1] == 1)
-            dk::calc_diff_flux_v<TF, surface_model>(
+            dka::calc_diff_flux_v<TF>(
                     out.fld.data(),
                     fld_in.fld.data(),
                     fields.mp.at("w")->fld.data(),
-                    fields.sd.at("evisc")->fld.data(),
+                    fields.sd.at("evisc_h")->fld.data(),
+                    fields.sd.at("evisc_v")->fld.data(),
                     gd.dyi, gd.dzhi.data(),
                     fields.visc,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-
+        
         else
-            dk::calc_diff_flux_c<TF, surface_model>(
+            dka::calc_diff_flux_c<TF>(
                     out.fld.data(),
                     fld_in.fld.data(),
-                    fields.sd.at("evisc")->fld.data(),
+                    fields.sd.at("evisc_v")->fld.data(),
                     gd.dzhi.data(),
                     tPr, fld_in.visc,
                     gd.istart, gd.iend,
                     gd.jstart, gd.jend,
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
-    };
 
-    if (boundary.get_switch() != "default")
-    {
         // Calculate the boundary fluxes.
         dk::calc_diff_flux_bc(
                 out.fld.data(),
@@ -690,7 +965,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                 gd.jstart, gd.jend,
                 gd.kstart,
                 gd.icells, gd.ijcells);
-
+        
         dk::calc_diff_flux_bc(
                 out.fld.data(),
                 fld_in.flux_top.data(),
@@ -698,14 +973,78 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
                 gd.jstart, gd.jend,
                 gd.kend,
                 gd.icells, gd.ijcells);
-
-        // Calculate interior:
-        diff_flux_wrapper.template operator()<Surface_model::Enabled>();
     }
     else
     {
-        // Calculate boundary and interior:
-        diff_flux_wrapper.template operator()<Surface_model::Disabled>();
+        auto diff_flux_wrapper = [&]<Surface_model surface_model>()
+        {
+            // Calculate the interior.
+            if (fld_in.loc[0] == 1)
+                dk::calc_diff_flux_u<TF, surface_model>(
+                        out.fld.data(),
+                        fld_in.fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        fields.sd.at("evisc")->fld.data(),
+                        gd.dxi, gd.dzhi.data(),
+                        fields.visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+    
+            else if (fld_in.loc[1] == 1)
+                dk::calc_diff_flux_v<TF, surface_model>(
+                        out.fld.data(),
+                        fld_in.fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        fields.sd.at("evisc")->fld.data(),
+                        gd.dyi, gd.dzhi.data(),
+                        fields.visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+    
+            else
+                dk::calc_diff_flux_c<TF, surface_model>(
+                        out.fld.data(),
+                        fld_in.fld.data(),
+                        fields.sd.at("evisc")->fld.data(),
+                        gd.dzhi.data(),
+                        tPr, fld_in.visc,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+        };
+    
+        if (boundary.get_switch() != "default")
+        {
+            // Calculate the boundary fluxes.
+            dk::calc_diff_flux_bc(
+                    out.fld.data(),
+                    fld_in.flux_bot.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart,
+                    gd.icells, gd.ijcells);
+    
+            dk::calc_diff_flux_bc(
+                    out.fld.data(),
+                    fld_in.flux_top.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kend,
+                    gd.icells, gd.ijcells);
+    
+            // Calculate interior:
+            diff_flux_wrapper.template operator()<Surface_model::Enabled>();
+        }
+        else
+        {
+            // Calculate boundary and interior:
+            diff_flux_wrapper.template operator()<Surface_model::Disabled>();
+        }
     }
 }
 
