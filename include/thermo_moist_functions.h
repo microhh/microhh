@@ -189,12 +189,26 @@ namespace Thermo_moist_functions
         using Fast_math::pow2;
 
         int niter = 0;
-        int nitermax = 10;
+        int nitermax = 1000;
         TF tnr_old = TF(1.e9);
-
         const TF tl = thl * exn;
-        TF qs = qsat_liq(p, tl);
 
+	// Upper limit Arden-Buck equation.
+	const TF tl_lim = T0<TF>+TF(50);
+	if (tl > tl_lim)
+	{
+            TF qs = qsat_liq(p, tl_lim);
+            Struct_sat_adjust<TF> ans =
+            {
+                TF(0.), // ql
+                TF(0.), // qi
+                tl, // t
+                qs, // qs
+            };
+	    return ans;
+	}
+
+        TF qs = qsat_liq(p, tl);
         Struct_sat_adjust<TF> ans =
         {
             TF(0.), // ql
