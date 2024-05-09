@@ -125,7 +125,7 @@ int Field3d_io<TF>::save_field3d(
     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL))
         return 1;
 
-    time_point tic = Time::now();
+    //time_point tic = Time::now();
 
     if (sw_transpose)
     {
@@ -138,10 +138,10 @@ int Field3d_io<TF>::save_field3d(
             return 1;
     }
 
-    time_point toc = Time::now();
-    TF elapsed = (toc - tic).count() * TF(1e-9);
-    TF throughput = (count * sizeof(TF)) / elapsed / 1024 / 1024;
-    master.print_message("(%.1f MB/s) ", throughput);
+    //time_point toc = Time::now();
+    //TF elapsed = (toc - tic).count() * TF(1e-9);
+    //TF throughput = (gd.itot*gd.jtot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
+    //master.print_message("(%.1f MB/s) ", throughput);
 
     if (MPI_File_close(&fh))
         return 1;
@@ -204,7 +204,7 @@ int Field3d_io<TF>::load_field3d(
     // extract the data from the 3d field without the ghost cells
     int count = gd.imax*gd.jmax*kmax;
 
-    time_point tic = Time::now();
+    //time_point tic = Time::now();
 
     if (sw_transpose)
     {
@@ -217,10 +217,10 @@ int Field3d_io<TF>::load_field3d(
             return 1;
     }
 
-    time_point toc = Time::now();
-    TF elapsed = (toc - tic).count() * TF(1e-9);
-    TF throughput = (count * sizeof(TF)) / elapsed / 1024 / 1024;
-    master.print_message("(%.1f MB/s) ", throughput);
+    //time_point toc = Time::now();
+    //TF elapsed = (toc - tic).count() * TF(1e-9);
+    //TF throughput = (gd.itot*gd.jtot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
+    //master.print_message("(%.1f MB/s) ", throughput);
 
     if (MPI_File_close(&fh))
         return 1;
@@ -329,14 +329,14 @@ int Field3d_io<TF>::save_xz_slice(
             if (pFile == NULL)
                 return 1;
 
-            time_point tic = Time::now();
+            //time_point tic = Time::now();
 
             fwrite(recv.data(), sizeof(TF), gd.itot*kmax, pFile);
 
-            time_point toc = Time::now();
-            TF elapsed = (toc - tic).count() * TF(1e-9);
-            TF throughput = (gd.itot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
-            master.print_message("save_xz: %.1f MB/s \n", throughput);
+            //time_point toc = Time::now();
+            //TF elapsed = (toc - tic).count() * TF(1e-9);
+            //TF throughput = (gd.itot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
+            //master.print_message("save_xz: %.1f MB/s \n", throughput);
 
             fclose(pFile);
         }
@@ -467,14 +467,14 @@ int Field3d_io<TF>::save_yz_slice(
             if (pFile == NULL)
                 return 1;
 
-            time_point tic = Time::now();
+            //time_point tic = Time::now();
 
             fwrite(recv.data(), sizeof(TF), gd.jtot*kmax, pFile);
 
-            time_point toc = Time::now();
-            TF elapsed = (toc - tic).count() * TF(1e-9);
-            TF throughput = (gd.jtot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
-            master.print_message("save_yz: %.1f MB/s \n", throughput);
+            //time_point toc = Time::now();
+            //TF elapsed = (toc - tic).count() * TF(1e-9);
+            //TF throughput = (gd.jtot*kmax * sizeof(TF)) / elapsed / 1024 / 1024;
+            //master.print_message("save_yz: %.1f MB/s \n", throughput);
 
             fclose(pFile);
         }
@@ -596,14 +596,14 @@ int Field3d_io<TF>::save_xy_slice(
         if (pFile == NULL)
             return 1;
 
-        time_point tic = Time::now();
+        //time_point tic = Time::now();
 
         fwrite(recv.data(), sizeof(TF), gd.itot*gd.jtot, pFile);
 
-        time_point toc = Time::now();
-        TF elapsed = (toc - tic).count() * TF(1e-9);
-        TF throughput = (gd.itot*gd.jtot * sizeof(TF)) / elapsed / 1024 / 1024;
-        master.print_message("save_xy: %.1f MB/s \n", throughput);
+        //time_point toc = Time::now();
+        //TF elapsed = (toc - tic).count() * TF(1e-9);
+        //TF throughput = (gd.itot*gd.jtot * sizeof(TF)) / elapsed / 1024 / 1024;
+        //master.print_message("save_xy: %.1f MB/s \n", throughput);
 
         fclose(pFile);
     }
@@ -685,9 +685,16 @@ int Field3d_io<TF>::load_xy_slice(
     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
         return 1;
 
+    //time_point tic = Time::now();
+
     // Only write at the procs that contain the slice
     if (MPI_File_read_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
+
+    //time_point toc = Time::now();
+    //TF elapsed = (toc - tic).count() * TF(1e-9);
+    //TF throughput = (gd.itot*gd.jtot * sizeof(TF)) / elapsed / 1024 / 1024;
+    //master.print_message("(%.1f MB/s) ", throughput);
 
     if (MPI_File_close(&fh))
         return 1;
