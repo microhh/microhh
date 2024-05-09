@@ -24,7 +24,7 @@
 Convert MicroHH input and output to a netCDF input file for the standalone version of the ray tracer (see /rte-rrtmgp-cpp/src_test)
 
 How to use:
-run 'python microhh_to_raytracing_input.nc --name <simulation name> --time <time step to convert> --path <path to simulation files (defaults to "./")>'
+run 'python microhh_to_raytracing_input.py --name <simulation name> --time <time step to convert> --path <path to simulation files (defaults to "./")>'
 
 Required input:
 - <name>.ini
@@ -173,7 +173,7 @@ itot = nl['grid']['itot']
 jtot = nl['grid']['jtot']
 ktot = nl['grid']['ktot']
 dims = (ktot, jtot, itot)
-grid = mht.Read_grid(itot, jtot, ktot, path+"grid.0000000")
+grid = mht.Read_grid(itot, jtot, ktot,filename=path+"grid.0000000")
 dz = np.diff(grid.dim['zh'][:])
 
 zlay = grid.dim['z']
