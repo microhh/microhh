@@ -539,8 +539,15 @@ template<typename TF>
 Stats<TF>::Stats(
         Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin, Background<TF>& backgroundin,
         Fields<TF>& fieldsin, Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
-    master(masterin), grid(gridin), soil_grid(soilgridin), background(backgroundin), fields(fieldsin), advec(advecin), diff(diffin),
-    boundary_cyclic(master, grid)
+    master(masterin),
+    grid(gridin),
+    soil_grid(soilgridin),
+    background(backgroundin),
+    fields(fieldsin),
+    advec(advecin),
+    diff(diffin),
+    boundary_cyclic(master, grid),
+    field3d_operators(master, grid, fields)
 
 {
     swstats = inputin.get_item<bool>("stats", "swstats", "", false);
@@ -1188,7 +1195,7 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& group_name,
         const std::vector<TF>& prof)
 {
-    
+
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
 
@@ -1446,7 +1453,7 @@ void Stats<TF>::calc_stats(
     calc_stats_grad(varname, fld);
     calc_stats_path(varname, fld);
     calc_stats_cover(varname, fld, offset, threshold);
-    calc_stats_frac(varname, fld, offset, threshold);        
+    calc_stats_frac(varname, fld, offset, threshold);
 }
 
 
@@ -1797,18 +1804,39 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
     unsigned int flag;
     const int* nmask;
 
+    // DEBUG: check tendencies.
+    // ---------------------------------------
+    TF max_val = -Constants::dbig;
+
+    for (int k=gd.kstart; k<gd.kend; ++k)
+        for (int j=gd.jstart; j<gd.jend; ++j)
+            #pragma ivdep
+            for (int i=gd.istart; i<gd.iend; ++i)
+            {
+                const int ijk = i + j*gd.icells + k*gd.ijcells;
+                max_val = std::max(max_val, std::abs(fld.fld[ijk]));
+            }
+
+    master.max(&max_val, 1);
+    master.print_message("%s (%s): max=%e\n", fld.name.c_str(), tend_name.c_str(), max_val);
+    // ---------------------------------------
+
     std::string name = fld.name + "_" + tend_name;
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         tendency_order.at(fld.name).push_back(tend_name);
+
         #ifdef USECUDA
         fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
         #endif
+
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
+
             calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend+fld.loc[2], gd.icells, gd.ijcells);
+
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
 
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);

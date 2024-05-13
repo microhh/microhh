@@ -25,6 +25,7 @@
 
 #include <regex>
 #include "boundary_cyclic.h"
+#include "field3d_operators.h"
 
 class Master;
 class Input;
@@ -186,6 +187,7 @@ class Stats
         Advec<TF>& advec;
         Diff<TF>& diff;
         Boundary_cyclic<TF> boundary_cyclic;
+        Field3d_operators<TF> field3d_operators;
 
         bool swstats;           ///< Statistics on/off switch
         bool swtendency;
