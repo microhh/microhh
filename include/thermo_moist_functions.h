@@ -197,15 +197,25 @@ namespace Thermo_moist_functions
 	const TF tl_lim = T0<TF>+TF(50);
 	if (tl > tl_lim)
 	{
-            TF qs = qsat_liq(p, tl_lim);
-            Struct_sat_adjust<TF> ans =
-            {
-                TF(0.), // ql
-                TF(0.), // qi
-                tl, // t
-                qs, // qs
-            };
-	    return ans;
+            std::string error = "Oiii mate, that is hot: thl, qt, p = "
+                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p);
+
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error(error);
+            #endif
+
+            //TF qs = qsat_liq(p, tl_lim);
+            //Struct_sat_adjust<TF> ans =
+            //{
+            //    TF(0.), // ql
+            //    TF(0.), // qi
+            //    tl, // t
+            //    qs, // qs
+            //};
+	    //return ans;
 	}
 
         TF qs = qsat_liq(p, tl);
