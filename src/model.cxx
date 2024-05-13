@@ -265,7 +265,7 @@ void Model<TF>::load()
     boundary->create(*input, *input_nc, *stats, *column, *cross, *timeloop);
     boundary->set_values();
 
-    lbc->create(*input, *timeloop, sim_name);
+    lbc->create(*input, *timeloop, *stats, sim_name);
 
     ib->create();
     buffer->create(*input, *input_nc, *stats);
@@ -374,7 +374,7 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells();
 
                 // Set open boundary conditions.
-                lbc->set_ghost_cells(*timeloop);
+                lbc->set_ghost_cells(*timeloop, *stats);
 
                 // Calculate the field means, in case needed.
                 fields->exec();
@@ -438,7 +438,7 @@ void Model<TF>::exec()
                 // Solve the poisson equation for pressure.
                 const bool pres_fix = true;
                 lbc->update_time_dependent(*timeloop, pres_fix);
-                lbc->set_ghost_cells(*timeloop);
+                lbc->set_ghost_cells(*timeloop, *stats);
 
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);

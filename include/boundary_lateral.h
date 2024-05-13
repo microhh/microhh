@@ -32,6 +32,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Timeloop;
+template<typename> class Stats;
 template<typename> class Field3d_io;
 
 enum class Lbc_location {West, East, South, North};
@@ -47,8 +48,8 @@ class Boundary_lateral
         ~Boundary_lateral();
 
         void init();
-        void create(Input&, Timeloop<TF>&, const std::string&);
-        void set_ghost_cells(Timeloop<TF>&);
+        void create(Input&, Timeloop<TF>&, Stats<TF>&, const std::string&);
+        void set_ghost_cells(Timeloop<TF>&, Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
 
     private:
@@ -121,5 +122,8 @@ class Boundary_lateral
         std::vector<TF> w_top_2d;
         std::vector<TF> w_top_2d_prev;
         std::vector<TF> w_top_2d_next;
+
+        const std::string tend_name = "lbc_sponge";
+        const std::string tend_longname = "Lateral sponge layer";
 };
 #endif

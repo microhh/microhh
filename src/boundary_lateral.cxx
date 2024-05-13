@@ -32,6 +32,7 @@
 #include "input.h"
 #include "master.h"
 #include "timeloop.h"
+#include "stats.h"
 
 namespace
 {
@@ -1216,6 +1217,7 @@ template <typename TF>
 void Boundary_lateral<TF>::create(
         Input& inputin,
         Timeloop<TF>& timeloop,
+        Stats<TF>& stats,
         const std::string& sim_name)
 {
     if (!sw_openbc)
@@ -1326,11 +1328,23 @@ void Boundary_lateral<TF>::create(
     //            break;
     //        }
     //}
+
+    if (sw_sponge)
+    {
+        stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("v"), "z", tend_name, tend_longname);
+        stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname);
+
+        for (auto& fld : slist)
+            stats.add_tendency(*fields.at.at(fld), "zh", tend_name, tend_longname);
+    }
 }
 
 
 template <typename TF>
-void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
+void Boundary_lateral<TF>::set_ghost_cells(
+        Timeloop<TF>& timeloop,
+        Stats<TF>& stats)
 {
     if (!sw_openbc)
         return;
@@ -1560,6 +1574,9 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, "v");
         if (md.mpicoordx == md.npx-1)
             sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, "v");
+
+        stats.calc_tend(*fields.mt.at("u"), tend_name);
+        stats.calc_tend(*fields.mt.at("v"), tend_name);
     }
 
     if (sw_openbc_w)
@@ -1572,6 +1589,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, "w");
         if (md.mpicoordy == md.npy-1)
             sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, "w");
+
+        stats.calc_tend(*fields.mt.at("w"), tend_name);
     }
 
     for (auto& fld : slist)
@@ -1606,6 +1625,8 @@ void Boundary_lateral<TF>::set_ghost_cells(Timeloop<TF>& timeloop)
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, fld);
         }
+
+        stats.calc_tend(*fields.at.at(fld), tend_name);
     }
 
     //dump_vector(fields.ap.at("u")->fld, "u");
