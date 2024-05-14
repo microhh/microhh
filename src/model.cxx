@@ -374,7 +374,7 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells();
 
                 // Set open boundary conditions.
-                lbc->set_ghost_cells(*timeloop, *stats);
+                lbc->set_ghost_cells(*timeloop);
 
                 // Calculate the field means, in case needed.
                 fields->exec();
@@ -423,6 +423,9 @@ void Model<TF>::exec()
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
 
+                // Calculate tendencies due to damping at the lateral boundaries.
+                lbc->exec_lateral_sponge(*stats);
+
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
@@ -438,7 +441,7 @@ void Model<TF>::exec()
                 // Solve the poisson equation for pressure.
                 const bool pres_fix = true;
                 lbc->update_time_dependent(*timeloop, pres_fix);
-                lbc->set_ghost_cells(*timeloop, *stats);
+                lbc->set_ghost_cells(*timeloop);
 
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);

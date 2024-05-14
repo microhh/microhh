@@ -49,7 +49,8 @@ class Boundary_lateral
 
         void init();
         void create(Input&, Timeloop<TF>&, Stats<TF>&, const std::string&);
-        void set_ghost_cells(Timeloop<TF>&, Stats<TF>&);
+        void set_ghost_cells(Timeloop<TF>&);
+        void exec_lateral_sponge(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
 
     private:
@@ -76,15 +77,6 @@ class Boundary_lateral
         int n_sponge;
         TF tau_sponge;
         TF w_diff;
-
-        // Boundary perturbations:
-        //bool sw_perturb;
-        //int perturb_width;
-        //int perturb_block;
-        //int perturb_seed;
-        //int perturb_kend;
-        //std::vector<std::string> perturb_list;
-        //std::map<std::string, TF> perturb_ampl;
 
         // Turbulence recycling.
         bool sw_recycle;
