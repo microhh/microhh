@@ -2043,7 +2043,7 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
             }
 
-            if (swtimedep_background)
+            if (do_stats && swtimedep_background)
             {
                 stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
                 stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
@@ -2082,15 +2082,19 @@ void Radiation_rrtmgp<TF>::exec_all_stats(
                 Float mean_aod = total_aod/ncol;
                 stats.set_time_series("AOD550", mean_aod);
             }
-            if (swtimedep_background || !sw_fixed_sza)
+
+            if (do_stats && (swtimedep_background || !sw_fixed_sza))
             {
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());
                 stats.set_prof_background("sw_flux_dn_dir_ref", sw_flux_dn_dir_col.v());
             }
 
-            stats.set_time_series("sza", std::acos(mu0));
-            stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+            if (do_stats)
+            {
+                stats.set_time_series("sza", std::acos(mu0));
+                stats.set_time_series("sw_flux_dn_toa", sw_flux_dn_col({1,n_lev_col}));
+            }
         }
     }
     catch (std::exception& e)

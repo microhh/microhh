@@ -746,93 +746,93 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
     // Write message in case stats is triggered.
     master.print_message("Saving statistics for time %f\n", time);
 
-//    // Finalize the total tendencies
-//    if (do_tendency())
-//    {
-//        for (auto& var: tendency_order)
-//        {
-//            //Subtract the previous tendency from the current one; skipping the last one (total tendency)
-//            for (auto tend = std::next(var.second.rbegin()); tend != std::prev(var.second.rend()); ++tend)
-//            {
-//                auto prev_tend = std::next(tend); // It is a reverse iterator....
-//                std::string name = var.first + "_" + *tend;
-//                std::string prev_name = var.first + "_" + *prev_tend;
-//                for (auto& mask : masks)
-//                {
-//                    Mask<TF>& m = mask.second;
-//
-//                    std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
-//                                    m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
-//
-//                    const int* nmask;
-//                    if (m.profs.at(name).level == Level_type::Full)
-//                        nmask = m.nmask.data();
-//                    else
-//                        nmask = m.nmaskh.data();
-//                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, agd.kstart, agd.kcells);
-//                }
-//            }
-//
-//            var.second.clear();
-//        }
-//    }
-//
-//    for (auto& mask : masks)
-//    {
-//        Mask<TF>& m = mask.second;
-//
-//        // Put the data into the NetCDF file.
-//        const std::vector<int> time_index{statistics_counter};
-//
-//        // Write the time and iteration number.
-//        m.time_var->insert(time     , time_index);
-//        m.iter_var->insert(iteration, time_index);
-//
-//        const std::vector<int> time_height_index = {statistics_counter, 0};
-//
-//        for (auto& p : m.profs)
-//        {
-//            const int ksize = p.second.ncvar.get_dim_sizes()[1];
-//            std::vector<int> time_height_size  = {1, ksize};
-//
-//            std::vector<TF> prof_nogc(
-//                    p.second.data.begin() + agd.kstart,
-//                    p.second.data.begin() + agd.kstart + ksize);
-//
-//            m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
-//        }
-//
-//        for (auto& p : m.soil_profs)
-//        {
-//            const int ksize = p.second.ncvar.get_dim_sizes()[1];
-//            std::vector<int> time_height_size  = {1, ksize};
-//
-//            std::vector<TF> prof_nogc(
-//                    p.second.data.begin() + sgd.kstart,
-//                    p.second.data.begin() + sgd.kstart + ksize);
-//
-//            m.soil_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
-//        }
-//
-//        for (auto& p : m.background_profs)
-//        {
-//            const int ksize = p.second.ncvar.get_dim_sizes()[1];
-//            std::vector<int> time_height_size  = {1, ksize};
-//
-//            m.background_profs.at(p.first).ncvar.insert(p.second.data, time_height_index, time_height_size);
-//        }
-//
-//        for (auto& ts : m.tseries)
-//            m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
-//
-//        // Synchronize the NetCDF file.
-//        m.data_file->sync();
-//    }
-//
-//    wmean_set = false;
-//
-//    // Increment the statistics index.
-//    ++statistics_counter;
+    // Finalize the total tendencies
+    if (do_tendency())
+    {
+        for (auto& var: tendency_order)
+        {
+            //Subtract the previous tendency from the current one; skipping the last one (total tendency)
+            for (auto tend = std::next(var.second.rbegin()); tend != std::prev(var.second.rend()); ++tend)
+            {
+                auto prev_tend = std::next(tend); // It is a reverse iterator....
+                std::string name = var.first + "_" + *tend;
+                std::string prev_name = var.first + "_" + *prev_tend;
+                for (auto& mask : masks)
+                {
+                    Mask<TF>& m = mask.second;
+
+                    std::transform (m.profs.at(name).data.begin(), m.profs.at(name).data.end(),
+                                    m.profs.at(prev_name).data.begin(), m.profs.at(name).data.begin(), std::minus<TF>());
+
+                    const int* nmask;
+                    if (m.profs.at(name).level == Level_type::Full)
+                        nmask = m.nmask.data();
+                    else
+                        nmask = m.nmaskh.data();
+                    set_fillvalue_prof(m.profs.at(name).data.data(), nmask, agd.kstart, agd.kcells);
+                }
+            }
+
+            var.second.clear();
+        }
+    }
+
+    for (auto& mask : masks)
+    {
+        Mask<TF>& m = mask.second;
+
+        // Put the data into the NetCDF file.
+        const std::vector<int> time_index{statistics_counter};
+
+        // Write the time and iteration number.
+        m.time_var->insert(time     , time_index);
+        m.iter_var->insert(iteration, time_index);
+
+        const std::vector<int> time_height_index = {statistics_counter, 0};
+
+        for (auto& p : m.profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + agd.kstart,
+                    p.second.data.begin() + agd.kstart + ksize);
+
+            m.profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+        }
+
+        for (auto& p : m.soil_profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            std::vector<TF> prof_nogc(
+                    p.second.data.begin() + sgd.kstart,
+                    p.second.data.begin() + sgd.kstart + ksize);
+
+            m.soil_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+        }
+
+        for (auto& p : m.background_profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            m.background_profs.at(p.first).ncvar.insert(p.second.data, time_height_index, time_height_size);
+        }
+
+        for (auto& ts : m.tseries)
+            m.tseries.at(ts.first).ncvar.insert(m.tseries.at(ts.first).data, time_index);
+
+        // Synchronize the NetCDF file.
+        m.data_file->sync();
+    }
+
+    wmean_set = false;
+
+    // Increment the statistics index.
+    ++statistics_counter;
 }
 
 // Retrieve the user input list of requested masks.
@@ -1797,8 +1797,8 @@ void Stats<TF>::calc_stats_frac(
 template<typename TF>
 void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 {
-    //if (!doing_tendency)
-    //    return;
+    if (!doing_tendency)
+        return;
 
     auto& gd = grid.get_grid_data();
     unsigned int flag;
@@ -1806,42 +1806,42 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 
     // DEBUG: check tendencies.
     // ---------------------------------------
-    TF max_val = -Constants::dbig;
+    //TF max_val = -Constants::dbig;
 
-    for (int k=gd.kstart; k<gd.kend; ++k)
-        for (int j=gd.jstart; j<gd.jend; ++j)
-            #pragma ivdep
-            for (int i=gd.istart; i<gd.iend; ++i)
-            {
-                const int ijk = i + j*gd.icells + k*gd.ijcells;
-                max_val = std::max(max_val, std::abs(fld.fld[ijk]));
-            }
+    //for (int k=gd.kstart; k<gd.kend; ++k)
+    //    for (int j=gd.jstart; j<gd.jend; ++j)
+    //        #pragma ivdep
+    //        for (int i=gd.istart; i<gd.iend; ++i)
+    //        {
+    //            const int ijk = i + j*gd.icells + k*gd.ijcells;
+    //            max_val = std::max(max_val, std::abs(fld.fld[ijk]));
+    //        }
 
-    master.max(&max_val, 1);
-    master.print_message("%s (%s): max=%e\n", fld.name.c_str(), tend_name.c_str(), max_val);
+    //master.max(&max_val, 1);
+    //master.print_message("%s (%s): max=%e\n", fld.name.c_str(), tend_name.c_str(), max_val);
     // ---------------------------------------
 
-    //std::string name = fld.name + "_" + tend_name;
-    //if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    //{
-    //    tendency_order.at(fld.name).push_back(tend_name);
+    std::string name = fld.name + "_" + tend_name;
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        tendency_order.at(fld.name).push_back(tend_name);
 
-    //    #ifdef USECUDA
-    //    fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
-    //    #endif
+        #ifdef USECUDA
+        fields.backward_field_device_3d(fld.fld.data(), fld.fld_g);
+        #endif
 
-    //    for (auto& m : masks)
-    //    {
-    //        set_flag(flag, nmask, m.second, fld.loc[2]);
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
 
-    //        calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-    //                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend+fld.loc[2], gd.icells, gd.ijcells);
+            calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend+fld.loc[2], gd.icells, gd.ijcells);
 
-    //        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
 
-    //        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-    //    }
-    //}
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
 }
 
 template<typename TF>
