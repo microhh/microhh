@@ -82,6 +82,7 @@ class Netcdf_handle
 
         std::map<std::string, int> get_variable_dimensions(const std::string&);
 
+        bool dimension_exists(const std::string&);
         bool variable_exists(const std::string&);
         bool group_exists(const std::string&);
 

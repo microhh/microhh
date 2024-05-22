@@ -31,6 +31,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "source.h"
+#include "source_kernels.h"
 #include "defines.h"
 #include "fast_math.h"
 #include "timedep.h"
@@ -40,39 +41,6 @@
 namespace
 {
     namespace fm = Fast_math;
-
-    template<typename TF>
-    std::vector<int> calc_shape(
-            const TF* restrict x, const TF x0, const TF sigma_x, const TF line_x, int istart, int iend)
-    {
-        std::vector<int> range(2);
-
-        int i = istart;
-        range[0] = iend;
-
-        for (; i<iend; ++i)
-        {
-            if ( x[i]-x0 + TF(4)*sigma_x > TF(0) )
-            {
-                range[0] = i;
-                break;
-            }
-        }
-
-        i = istart;
-        for (; i<iend; ++i)
-        {
-            range[1] = iend;
-
-            if ( x[i]-x0-line_x - TF(4)*sigma_x > TF(0) )
-            {
-                range[1] = i;
-                break;
-            }
-        }
-
-        return range;
-    }
 
     template<typename TF>
     std::vector<int> calc_shape_profile(
@@ -545,7 +513,6 @@ TF Source<TF>::calc_norm(
 
     return sum;
 }
-
 
 #ifdef FLOAT_SINGLE
 template class Source<float>;

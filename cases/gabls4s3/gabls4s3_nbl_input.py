@@ -64,7 +64,7 @@ ug = np.interp(z, s3.z, s3.ug)
 vg = np.interp(z, s3.z, s3.vg)
 
 # Save all the input data to NetCDF
-nc_file = nc4.Dataset('gabls4s3_nbl_input.nc', mode='w', datamodel='NETCDF4', clobber=False)
+nc_file = nc4.Dataset('gabls4s3_nbl_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 
 nc_file.createDimension('z', ktot)
 nc_z = nc_file.createVariable('z', float_type, ('z'))

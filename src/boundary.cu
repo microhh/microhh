@@ -116,7 +116,7 @@ namespace
 
 
     template<typename TF> __global__
-    void calc_ghost_cells_bot_2nd_g(TF* __restrict__ a, TF* __restrict__ dzh, Boundary_type sw,
+    void calc_ghost_cells_bot_2nd_g(TF* __restrict__ a, const TF* __restrict__ dzh, Boundary_type sw,
                                     TF* __restrict__ abot, TF* __restrict__ agradbot,
                                     const int icells, const int jcells, const int kstart)
     {
@@ -138,8 +138,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_top_2nd_g(TF* __restrict__ a, TF* __restrict__ dzh, const Boundary_type sw,
-                                    TF* __restrict__ atop, TF* __restrict__ agradtop,
+    void calc_ghost_cells_top_2nd_g(TF* __restrict__ a, const TF* __restrict__ dzh, const Boundary_type sw,
+                                    TF* __restrict__ atop, const TF* __restrict__ agradtop,
                                     const int icells, const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -166,8 +166,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_bot_4th_g(TF* __restrict__ a, TF* __restrict__ z, const Boundary_type sw,
-                                    TF* __restrict__ abot, TF* __restrict__ agradbot,
+    void calc_ghost_cells_bot_4th_g(TF* __restrict__ a, const TF* __restrict__ z, const Boundary_type sw,
+                                    const TF* __restrict__ abot, const TF* __restrict__ agradbot,
                                     const int icells, const int jcells, const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -196,8 +196,8 @@ namespace
     }
 
     template<typename TF> __global__
-    void calc_ghost_cells_top_4th_g(TF* __restrict__ a, TF* __restrict__ z,const Boundary_type sw,
-                                    TF* __restrict__ atop, TF* __restrict__ agradtop,
+    void calc_ghost_cells_top_4th_g(TF* __restrict__ a, const TF* __restrict__ z, const Boundary_type sw,
+                                    const TF* __restrict__ atop, const TF* __restrict__ agradtop,
                                     const int icells, const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -554,11 +554,10 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         if (itime > itime_sbot_2d_next)
         {
             // Read new surface sbot fields
-            const double ifactor = timeloop.get_ifactor();
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_sbot_2d_prev = itime_sbot_2d_next;
-            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
             const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
 
             int nerror = 0;
@@ -683,25 +682,25 @@ void Boundary<TF>::set_prognostic_outflow_bcs()
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_z0m_g()
+cuda_vector<TF>& Boundary<TF>::get_z0m_g()
 {
     throw std::runtime_error("Function get_z0m_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dudz_g()
+cuda_vector<TF>& Boundary<TF>::get_dudz_g()
 {
     throw std::runtime_error("Function get_dudz_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dvdz_g()
+cuda_vector<TF>& Boundary<TF>::get_dvdz_g()
 {
     throw std::runtime_error("Function get_dvdz_g() not implemented in base boundary.");
 }
 
 template<typename TF>
-TF* Boundary<TF>::get_dbdz_g()
+cuda_vector<TF>& Boundary<TF>::get_dbdz_g()
 {
     throw std::runtime_error("Function get_dbdz_g() not implemented in base boundary.");
 }

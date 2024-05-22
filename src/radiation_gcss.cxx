@@ -317,6 +317,11 @@ Radiation_gcss<TF>::Radiation_gcss(Master& masterin, Grid<TF>& gridin, Fields<TF
     fr0 = inputin.get_item<TF>("radiation", "fr0", "");
     fr1 = inputin.get_item<TF>("radiation", "fr1", "");
     div = inputin.get_item<TF>("radiation", "div", "");
+    
+    //Test whether lat/lon exist in the input file
+    inputin.get_item<TF>("grid", "lat", "");
+    inputin.get_item<TF>("grid", "lon", "");
+
 }
 
 template<typename TF>
@@ -383,7 +388,7 @@ void Radiation_gcss<TF>::exec(
 template<typename TF>
 bool Radiation_gcss<TF>::check_field_exists(const std::string& name)
 {
-    if (name == "rflx" || name == "sflx")
+    if (name == "lflx" || name == "sflx")
         return true;
     else
         return false;

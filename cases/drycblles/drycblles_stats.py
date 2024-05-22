@@ -38,4 +38,5 @@ for i, var in enumerate(vars):
 for i in range(2):
     axes[i,0].set_ylabel('z [m]')
 fig.tight_layout()
- 
+
+plt.show()

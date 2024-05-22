@@ -30,6 +30,7 @@ import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
+    half_level_vars = ['w', 'lflx', 'sflx']
     
     for variable in variables:
         filename = "{0}.nc".format(variable)
@@ -42,7 +43,7 @@ def convert_to_nc(variables):
             dim['xh'] = dim.pop('x')
         if variable == 'v':
             dim['yh'] = dim.pop('y')
-        if variable == 'w':
+        if variable in half_level_vars:
             dim['zh'] = dim.pop('z')
         try:
             def convert(otime, tout):
@@ -101,6 +102,12 @@ parser.add_argument(
     choices=[
         'single',
          'double'])
+parser.add_argument(
+    '-o',
+    '--order',
+    help='order',
+    choices=[
+        2, 4], type = int)
 parser.add_argument(
     '-t0',
     '--starttime',
@@ -168,6 +175,11 @@ perslice = args.perslice
 compression = not(args.nocompression)
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 
+try:
+    order = args.order if args.order is not None else nl['grid']['swspatialorder']
+except KeyError:
+    order = 2
+
 # Calculate the number of iterations
 for time in np.arange(starttime, endtime, sampletime):
     otime = int(round(time / 10**iotimeprec))
@@ -177,7 +189,8 @@ for time in np.arange(starttime, endtime, sampletime):
 
 niter = int((endtime - starttime) / sampletime + 1)
 
-grid = mht.Read_grid(itot, jtot, ktot)
+grid = mht.Read_grid(itot, jtot, ktot, order = order)
+
 if kmax < ktot:
     grid.dim['z'] = grid.dim['z'][:kmax]
     grid.dim['zh'] = grid.dim['zh'][:kmax+1]

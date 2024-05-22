@@ -99,7 +99,7 @@ class Stats
         Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Background<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
-        void init(double);
+        void init();
         void create(const Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);
@@ -156,6 +156,16 @@ class Stats
                 const Field3d<TF>&);
 
         void calc_stats(const std::string&, const Field3d<TF>&, const TF, const TF);
+        void calc_stats_mean(const std::string&, const Field3d<TF>&, const TF);
+        void calc_stats_moments(const std::string&, const Field3d<TF>&, const TF);
+        void calc_stats_w(const std::string&, const Field3d<TF>&, const TF);
+        void calc_stats_diff(const std::string&, const Field3d<TF>&, const TF);
+        void calc_stats_flux(const std::string&, const Field3d<TF>&, const TF);
+        void calc_stats_grad(const std::string&, const Field3d<TF>&);
+        void calc_stats_path(const std::string&, const Field3d<TF>&);
+        void calc_stats_cover(const std::string&, const Field3d<TF>&, const TF, const TF);
+        void calc_stats_frac(const std::string&, const Field3d<TF>&, const TF, const TF);
+
         void calc_stats_2d(const std::string&, const std::vector<TF>&, const TF);
         void calc_stats_soil(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string&, const Field3d<TF>&, const TF, const TF, const int,

@@ -180,8 +180,10 @@ class Fields
         void backward_field_device_3d(TF*, TF*);       ///< Copy of a single 3d field from device to host
         void backward_field_device_2d(TF*, TF*);       ///< Copy of a single 2d field from device to host
 
-        TF* rhoref_g;  ///< Reference density at full levels at device
-        TF* rhorefh_g; ///< Reference density at half levels at device
+        cuda_vector<TF> rhoref_g;  ///< Reference density at full levels at device
+        cuda_vector<TF> rhorefh_g; ///< Reference density at half levels at device
+        cuda_vector<TF> rhorefi_g;  ///< Reciprocal of rhoref
+        cuda_vector<TF> rhorefhi_g; ///< Reciprocal of rhorefh
 
     private:
         Master& master;
@@ -244,6 +246,7 @@ class Fields
         // statistics
         std::vector<TF> umodel;
         std::vector<TF> vmodel;
+        std::vector<TF> wmodel;
 
         // double* umodel;
         // double* vmodel;

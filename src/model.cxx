@@ -120,37 +120,37 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid      = std::make_shared<Grid<TF>>     (master, *input);
-        soil_grid = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
-        fields    = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
-        timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>      (master, *grid);
+        grid       = std::make_shared<Grid<TF>>     (master, *input);
+        soil_grid  = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
+        fields     = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
+        timeloop   = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
+        fft        = std::make_shared<FFT<TF>>      (master, *grid);
 
-        boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
+        boundary   = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
-        advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
-        diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
-        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
-        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
-        microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
-        radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
+        advec      = Advec<TF>    ::factory(master, *grid, *fields, *input);
+        diff       = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
+        pres       = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
+        thermo     = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
+        microphys  = Microphys<TF>::factory(master, *grid, *fields, *input);
+        radiation  = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
-        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
-        aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
-        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
+        force      = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer     = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay      = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter    = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
+        source     = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        aerosol    = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background = std::make_shared<Background<TF>>(master, *grid, *fields, *input);
 
-        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+        ib         = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
-        stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
-        column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross     = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
+        stats      = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
+        column     = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump       = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross      = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
 
-        budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+        budget     = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -202,12 +202,12 @@ void Model<TF>::init()
     budget->init();
     source->init();
     aerosol->init();
-    background->init(*input_nc, *timeloop);
+    background->init(*input_nc);
 
-    stats->init(timeloop->get_ifactor());
-    column->init(timeloop->get_ifactor());
-    cross->init(timeloop->get_ifactor());
-    dump->init(timeloop->get_ifactor());
+    stats->init();
+    column->init();
+    cross->init();
+    dump->init();
 }
 
 template<typename TF>

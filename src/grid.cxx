@@ -61,8 +61,8 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
     gd.utrans = input.get_item<TF>("grid", "utrans", "", 0.);
     gd.vtrans = input.get_item<TF>("grid", "vtrans", "", 0.);
 
-    gd.lat = input.get_item<TF>("grid", "lat", "",  0.); 
-    gd.lon = input.get_item<TF>("grid", "lon", "",  0.); 
+    gd.lat = input.get_item<TF>("grid", "lat", "",  -9999.);
+    gd.lon = input.get_item<TF>("grid", "lon", "",  -9999.);
 
     std::string swspatialorder = input.get_item<std::string>("grid", "swspatialorder", "");
 
@@ -165,6 +165,10 @@ void Grid<TF>::init()
     gd.jend = gd.jmax + gd.jgc;
     gd.kend = gd.kmax + gd.kgc;
 
+    gd.istride = 1;
+    gd.jstride = gd.icells;
+    gd.kstride = gd.ijcells;
+
     check_ghost_cells();
 
     // allocate all arrays
@@ -217,8 +221,10 @@ void Grid<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        stats.add_time_series("lat", "Latitude", "degrees", group_name);
-        stats.add_time_series("lon", "Longitude", "degrees", group_name);
+        if (gd.lat>-1000.)
+            stats.add_time_series("lat", "Latitude", "degrees", group_name);
+        if (gd.lon>-1000.)
+            stats.add_time_series("lon", "Longitude", "degrees", group_name);
     }
 }
 
@@ -226,8 +232,10 @@ void Grid<TF>::create_stats(Stats<TF>& stats)
 template<typename TF>
 void Grid<TF>::exec_stats(Stats<TF>& stats)
 {
-    stats.set_time_series("lat", gd.lat);
-    stats.set_time_series("lon", gd.lon);
+    if (gd.lat>-1000.)
+        stats.set_time_series("lat", gd.lat);
+    if (gd.lon>-1000.)
+        stats.set_time_series("lon", gd.lon);
 }
 /**
  * This function calculates the scalars and arrays that contain the information
@@ -368,7 +376,7 @@ void Grid<TF>::calculate()
 }
 
 template<typename TF>
-const Grid_data<TF>& Grid<TF>::get_grid_data()
+const Grid_data<TF>& Grid<TF>::get_grid_data() const
 {
     return gd;
 }
