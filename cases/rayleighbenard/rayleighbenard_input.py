@@ -21,7 +21,7 @@ for k in range(kmax):
     z[k] = zsize / (2.*alpha) * np.tanh(eta*0.5*(np.log(1.+alpha) - np.log(1.-alpha))) + 0.5*zsize
 
 # Write input NetCDF file
-nc_file = nc4.Dataset('rayleighbenard_input.nc', mode='w', datamodel='NETCDF4', clobber=False)
+nc_file = nc4.Dataset('rayleighbenard_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 nc_file.createDimension('z', kmax)
 nc_group_init = nc_file.createGroup('init');
 

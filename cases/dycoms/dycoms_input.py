@@ -59,7 +59,7 @@ for k in range(kmax):
 #     proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E} {7:1.14E}\n'.format(z[k], thl[k], qt[k], u[k], ug[k], v[k], vg[k], wls[k]))
 # proffile.close()
 
-nc_file = nc.Dataset("dycoms_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("dycoms_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z", float_type, ("z"))

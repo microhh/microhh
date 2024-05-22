@@ -87,6 +87,12 @@ def convert_to_nc(variables):
                     dim['zh'] = dim.pop('z')
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
+                
+                for key, val in dim.items():
+                    if key == 'time':
+                        continue
+                    elif val == []:
+                        ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
                 for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
@@ -169,6 +175,13 @@ parser.add_argument(
     help='do not compress the netcdf file',
     action='store_true')
 
+parser.add_argument(
+    '-o',
+    '--order',
+    help='order',
+    choices=[
+        2, 4], type = int)
+
 args = parser.parse_args()
 
 if args.directory is not None:
@@ -214,9 +227,13 @@ variables = [ variables ] if not isinstance(variables, list) else variables
 precision = args.precision
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
-# End option parsing
+try:
+    order = args.order if args.order is not None else nl['grid']['swspatialorder']
+except KeyError:
+    order = 2
 
-grid = mht.Read_grid(itot, jtot, ktot)
+# End option parsing
+grid = mht.Read_grid(itot, jtot, ktot, order = order)
 
 chunks = [variables[i::nprocs] for i in range(nprocs)]
 

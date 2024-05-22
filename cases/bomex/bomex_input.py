@@ -80,7 +80,7 @@ wls  /= 100.   # from cm/s to m/s
 thlls  /= 86400. # from K/d to K/s
 qtls *= 1.e-8
 
-nc_file = nc.Dataset("bomex_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("bomex_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 nc_file.createDimension("z", kmax)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
 

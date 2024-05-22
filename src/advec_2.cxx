@@ -236,6 +236,21 @@ namespace
     }
 
     template<typename TF>
+    void advec_flux_w(
+            TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    st[ijk] = w[ijk] * s[ijk];
+                }
+    }
+    template<typename TF>
     void advec_flux_s(
             TF* const restrict st, const TF* const restrict s, const TF* const restrict w,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
@@ -337,28 +352,35 @@ void Advec_2<TF>::exec(Stats<TF>& stats)
 
 template<typename TF>
 void Advec_2<TF>::get_advec_flux(
-        Field3d<TF>& advec_flux, const Field3d<TF>& fld, const Field3d<TF>& w)
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
     auto& gd = grid.get_grid_data();
 
     if (fld.loc == gd.uloc)
     {
         advec_flux_u(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.vloc)
     {
         advec_flux_v(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
+                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+    else if (fld.loc == gd.wloc)
+    {
+        advec_flux_w(
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }
     else if (fld.loc == gd.sloc)
     {
         advec_flux_s(
-                advec_flux.fld.data(), fld.fld.data(), w.fld.data(),
+                advec_flux.fld.data(), fld.fld.data(), fields.mp.at("w")->fld.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
     }

@@ -15,7 +15,7 @@ b = np.zeros(np.size(z))
 b[0:int(kmax/2)] = 1.
 
 # Write input NetCDF file
-nc_file = nc4.Dataset('rayleightaylor_input.nc', mode='w', datamodel='NETCDF4', clobber=False)
+nc_file = nc4.Dataset('rayleightaylor_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 nc_file.createDimension('z', kmax)
 
 nc_z = nc_file.createVariable('z' , float_type, ('z'))

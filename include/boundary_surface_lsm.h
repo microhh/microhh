@@ -112,10 +112,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         void backward_device(Thermo<TF>&);
         void clear_device(Thermo<TF>&);
 
-        TF* get_z0m_g()  { return z0m_g; };
-        TF* get_dudz_g() { return dudz_mo_g; };
-        TF* get_dvdz_g() { return dvdz_mo_g; };
-        TF* get_dbdz_g() { return dbdz_mo_g; };
+        cuda_vector<TF>& get_z0m_g()  { return z0m_g; };
+        cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
+        cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
+        cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -237,15 +237,15 @@ class Boundary_surface_lsm : public Boundary<TF>
         float* f_sl_g;
         int* nobuk_g;
 
-        TF* z0m_g;
-        TF* z0h_g;
+        cuda_vector<TF> z0m_g;
+        cuda_vector<TF> z0h_g;
 
         TF* ustar_g;
         TF* obuk_g;
 
-        TF* dudz_mo_g;
-        TF* dvdz_mo_g;
-        TF* dbdz_mo_g;
+        cuda_vector<TF> dudz_mo_g;
+        cuda_vector<TF> dvdz_mo_g;
+        cuda_vector<TF> dbdz_mo_g;
 
         // Land-surface:
         TF* gD_coeff_g;        // Coefficient in response surface to VPD (Pa)

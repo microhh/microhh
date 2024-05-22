@@ -38,7 +38,7 @@ class Cross
         Cross(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Cross();
 
-        void init(double);
+        void init();
         void create();
         bool get_switch() { return swcross; }
 
