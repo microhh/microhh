@@ -151,7 +151,7 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF dqsatdT_liq(const TF p, const TF T)
     {
         const TF den = p - esat_liq(T)*(TF(1.) - ep<TF>);
-        return (ep<TF>/den - (TF(1.) + ep<TF>)*ep<TF>*esat_liq(T)/pow2(den)) * Lv<TF>*esat_liq(T) / (Rv<TF>*pow2(T));
+        return (ep<TF>/den + (TF(1.) - ep<TF>)*ep<TF>*esat_liq(T)/pow2(den)) * Lv<TF>*esat_liq(T) / (Rv<TF>*pow2(T));
     }
 
     template<typename TF>
