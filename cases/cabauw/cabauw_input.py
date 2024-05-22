@@ -1,3 +1,4 @@
+from datetime import datetime
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
@@ -5,16 +6,6 @@ import os, shutil
 
 # Available in `microhh_root/python`:
 import microhh_tools as mht
-
-def add_nc_var(name, dims, nc, data):
-    """
-    Create NetCDF variables and set values.
-    """
-    if dims is None:
-        var = nc.createVariable(name, np.float64)
-    else:
-        var = nc.createVariable(name, np.float64, dims)
-    var[:] = data
 
 
 def link(f1, f2):
@@ -40,19 +31,36 @@ def copy(f1, f2):
     else:
         raise Exception('Source file {} does not exist!'.format(f1))
 
+
+def check_time_bounds(ds, start_date, end_date):
+    """
+    Check if start and end dates are withing Dataset bounds.
+    """
+    if start_date.minute != 0:
+        raise Exception('Simulation has to start/end at a full hour!')
+
+    if np.datetime64(start_date) < ds.time[0] or np.datetime64(end_date) > ds.time[-1]:
+        raise Exception(f'Start or end date is out-of-bounds. Limits are {ds.time[0].values} to {ds.time[-1].values}')
+
+
 copy_or_link = copy
 
 def create_case_input(
+        start_date,
+        end_date,
         use_htessel,
         use_rrtmgp,
         use_rt,
         use_aerosols,
+        use_tdep_aerosols,
+        use_tdep_gasses,
+        use_tdep_background,
         use_homogeneous_z0,
         use_homogeneous_ls,
         gpt_set,
         itot, jtot, ktot,
         xsize, ysize, zsize,
-        endtime, TF,
+        TF,
         npx=1, npy=1):
 
     # Link required files (if not present)
@@ -84,13 +92,26 @@ def create_case_input(
     Read / interpolate (LS)2D initial conditions and forcings
     """
     ls2d = xr.open_dataset('ls2d_20160815.nc')
-    ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136))
+    check_time_bounds(ls2d, start_date, end_date)
+
+    # Remove top level ERA5 to stay within RRTMGP radiation bounds,
+    # select requested time period, and interpolate to LES levels.
+    ls2d = ls2d.sel(lay=slice(0,135), lev=slice(0,136), time=slice(start_date, end_date))
     ls2d_z = ls2d.interp(z=z)
 
-    if use_aerosols:
-        cams = xr.open_dataset('cams_20160815.nc')
-        cams = cams.sel(lay=slice(0, 135))
-        cams_z = cams.interp(z=z)
+    # Subtract start time.
+    ls2d_z['time_sec'] = ls2d_z['time_sec'] - ls2d_z['time_sec'][0]
+
+    # Read CAMS for aerosols and gasses other than ozone.
+    cams = xr.open_dataset('cams_20160815.nc')
+    check_time_bounds(cams, start_date, end_date)
+
+    # Remove top level CAMS to stay within RRTMGP pressure bounds.
+    cams = cams.sel(lay=slice(0, 135))
+
+    # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
+    cams = cams.interp(time=ls2d.time)
+    cams_z = cams.interp(z=z)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
@@ -153,20 +174,42 @@ def create_case_input(
         ini['radiation']['swradiation'] = 'prescribed'
         ini['radiation']['swtimedep_prescribed'] = True
 
-    if use_aerosols:
-        ini['aerosol']['swaerosol'] = 1
-    else:
-        ini['aerosol']['swaerosol'] = 0
+    ini['radiation']['swtimedep_background'] = use_tdep_background
+    if use_tdep_gasses:
+        ini['radiation']['timedeplist_gas'] = ['o3', 'co2', 'ch4']
 
-    ini['time']['endtime'] = endtime
+    ini['aerosol']['swaerosol'] = use_aerosols
+    ini['aerosol']['swtimedep'] = use_tdep_aerosols
+
+    ini['time']['endtime'] = (end_date - start_date).total_seconds()
+    d = start_date
+    ini['time']['datetime_utc'] = f'{d.year}-{d.month:02d}-{d.day:02d} {d.hour:02d}:{d.minute:02d}:{d.second:02d}'
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
     """
     Create MicroHH input NetCDF file.
     """
+    def add_nc_var(name, dims, nc, data):
+        """
+        Add NetCDF variable to `nc` file or group.
+        """
+        if name not in nc.variables:
+            if dims is None:
+                var = nc.createVariable(name, np.float64)
+            else:
+                var = nc.createVariable(name, np.float64, dims)
+            var[:] = data
+
+    def add_nc_dim(name, size, nc):
+        """
+        Add NetCDF dimension, if it does not already exist.
+        """
+        if name not in nc.dimensions:
+            nc.createDimension(name, size)
+
     nc = nc4.Dataset('cabauw_input.nc', mode='w', datamodel='NETCDF4')
-    nc.createDimension('z', ktot)
+    add_nc_dim('z', ktot, nc)
     add_nc_var('z', ('z'), nc, z)
 
     """
@@ -183,8 +226,8 @@ def create_case_input(
     Time varying forcings
     """
     nc_tdep = nc.createGroup('timedep')
-    nc_tdep.createDimension('time_surface', ls2d_z.dims['time'])
-    nc_tdep.createDimension('time_ls', ls2d_z.dims['time'])
+    add_nc_dim('time_surface', ls2d_z.dims['time'], nc_tdep)
+    add_nc_dim('time_ls', ls2d_z.dims['time'], nc_tdep)
 
     add_nc_var('time_surface', ('time_surface'), nc_tdep, ls2d_z.time_sec)
     add_nc_var('time_ls', ('time_surface'), nc_tdep, ls2d_z.time_sec)
@@ -219,8 +262,8 @@ def create_case_input(
     """
     if use_rrtmgp:
         nc_rad = nc.createGroup('radiation')
-        nc_rad.createDimension('lay', ls2d_z.dims['lay'])
-        nc_rad.createDimension('lev', ls2d_z.dims['lev'])
+        add_nc_dim('lay', ls2d_z.dims['lay'], nc_rad)
+        add_nc_dim('lev', ls2d_z.dims['lev'], nc_rad)
 
         # Radiation variables on LES grid.
         xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
@@ -228,11 +271,11 @@ def create_case_input(
         h2o = qt_mean / (eps - eps * qt_mean)
         add_nc_var('h2o', ('z'), nc_init, h2o)
         add_nc_var('o3',  ('z'), nc_init, ls2d_z.o3[0,:]*1e-6)
+        add_nc_var('co2', ('z'), nc_init, cams_z.co2[0,:]*1e-6)
+        add_nc_var('ch4', ('z'), nc_init, cams_z.ch4[0,:]*1e-6)
 
         # Constant concentrations:
         for group in (nc_init, nc_rad):
-            add_nc_var('co2', None, group, 397e-6)
-            add_nc_var('ch4', None, group, 1.8315e-6)
             add_nc_var('n2o', None, group, 3.2699e-7)
             add_nc_var('n2',  None, group, 0.781)
             add_nc_var('o2',  None, group, 0.209)
@@ -244,11 +287,51 @@ def create_case_input(
         add_nc_var('p_lev', ('lev'), nc_rad, ls2d_z.p_lev.mean(axis=0))
         add_nc_var('t_lay', ('lay'), nc_rad, ls2d_z.t_lay.mean(axis=0))
         add_nc_var('t_lev', ('lev'), nc_rad, ls2d_z.t_lev.mean(axis=0))
-        add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
         add_nc_var('h2o',   ('lay'), nc_rad, ls2d_z.h2o_lay.mean(axis=0))
+        add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
+        add_nc_var('co2',   ('lay'), nc_rad, cams_z.co2_lay.mean(axis=0))
+        add_nc_var('ch4',   ('lay'), nc_rad, cams_z.ch4_lay.mean(axis=0))
 
-        #aerosols for background column
+        if use_tdep_background or use_tdep_aerosols or use_tdep_gasses:
+            # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
+            add_nc_dim('time_rad', ls2d_z.dims['time'], nc_tdep)
+            add_nc_var('time_rad', ('time_rad'), nc_tdep, ls2d_z.time_sec)
+
+            add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
+            add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
+
+        if use_tdep_gasses:
+            add_nc_var('o3',  ('time_rad', 'z'), nc_tdep, ls2d_z.o3*1e-6)
+            add_nc_var('co2', ('time_rad', 'z'), nc_tdep, cams_z.co2)
+            add_nc_var('ch4', ('time_rad', 'z'), nc_tdep, cams_z.ch4)
+
+        # Time dependent background profiles T, h2o, o3, ...
+        if use_tdep_background:
+            add_nc_var('z_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.z_lay)
+            add_nc_var('z_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.z_lev)
+            add_nc_var('p_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.p_lay)
+            add_nc_var('p_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.p_lev)
+            add_nc_var('t_lay',  ('time_rad', 'lay'), nc_tdep, ls2d_z.t_lay)
+            add_nc_var('t_lev',  ('time_rad', 'lev'), nc_tdep, ls2d_z.t_lev)
+            add_nc_var('h2o_bg', ('time_rad', 'lay'), nc_tdep, ls2d_z.h2o_lay)
+            add_nc_var('o3_bg',  ('time_rad', 'lay'), nc_tdep, ls2d_z.o3_lay*1e-6)
+            add_nc_var('co2_bg', ('time_rad', 'lay'), nc_tdep, cams_z.co2_lay)
+            add_nc_var('ch4_bg', ('time_rad', 'lay'), nc_tdep, cams_z.ch4_lay)
+
+        # Aerosols for domain and background column
         if use_aerosols:
+            add_nc_var('aermr01', ('z'), nc_init, cams_z.aermr01.mean(axis=0))
+            add_nc_var('aermr02', ('z'), nc_init, cams_z.aermr02.mean(axis=0))
+            add_nc_var('aermr03', ('z'), nc_init, cams_z.aermr03.mean(axis=0))
+            add_nc_var('aermr04', ('z'), nc_init, cams_z.aermr04.mean(axis=0))
+            add_nc_var('aermr05', ('z'), nc_init, cams_z.aermr05.mean(axis=0))
+            add_nc_var('aermr06', ('z'), nc_init, cams_z.aermr06.mean(axis=0))
+            add_nc_var('aermr07', ('z'), nc_init, cams_z.aermr07.mean(axis=0))
+            add_nc_var('aermr08', ('z'), nc_init, cams_z.aermr08.mean(axis=0))
+            add_nc_var('aermr09', ('z'), nc_init, cams_z.aermr09.mean(axis=0))
+            add_nc_var('aermr10', ('z'), nc_init, cams_z.aermr10.mean(axis=0))
+            add_nc_var('aermr11', ('z'), nc_init, cams_z.aermr11.mean(axis=0))
+
             add_nc_var('aermr01', ('lay'), nc_rad, cams_z.aermr01_lay.mean(axis=0))
             add_nc_var('aermr02', ('lay'), nc_rad, cams_z.aermr02_lay.mean(axis=0))
             add_nc_var('aermr03', ('lay'), nc_rad, cams_z.aermr03_lay.mean(axis=0))
@@ -261,6 +344,30 @@ def create_case_input(
             add_nc_var('aermr10', ('lay'), nc_rad, cams_z.aermr10_lay.mean(axis=0))
             add_nc_var('aermr11', ('lay'), nc_rad, cams_z.aermr11_lay.mean(axis=0))
 
+            if use_tdep_aerosols:
+                add_nc_var('aermr01_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr01_lay)
+                add_nc_var('aermr02_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr02_lay)
+                add_nc_var('aermr03_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr03_lay)
+                add_nc_var('aermr04_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr04_lay)
+                add_nc_var('aermr05_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr05_lay)
+                add_nc_var('aermr06_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr06_lay)
+                add_nc_var('aermr07_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr07_lay)
+                add_nc_var('aermr08_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr08_lay)
+                add_nc_var('aermr09_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr09_lay)
+                add_nc_var('aermr10_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr10_lay)
+                add_nc_var('aermr11_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr11_lay)
+
+                add_nc_var('aermr01', ('time_rad', 'z'), nc_tdep, cams_z.aermr01)
+                add_nc_var('aermr02', ('time_rad', 'z'), nc_tdep, cams_z.aermr02)
+                add_nc_var('aermr03', ('time_rad', 'z'), nc_tdep, cams_z.aermr03)
+                add_nc_var('aermr04', ('time_rad', 'z'), nc_tdep, cams_z.aermr04)
+                add_nc_var('aermr05', ('time_rad', 'z'), nc_tdep, cams_z.aermr05)
+                add_nc_var('aermr06', ('time_rad', 'z'), nc_tdep, cams_z.aermr06)
+                add_nc_var('aermr07', ('time_rad', 'z'), nc_tdep, cams_z.aermr07)
+                add_nc_var('aermr08', ('time_rad', 'z'), nc_tdep, cams_z.aermr08)
+                add_nc_var('aermr09', ('time_rad', 'z'), nc_tdep, cams_z.aermr09)
+                add_nc_var('aermr10', ('time_rad', 'z'), nc_tdep, cams_z.aermr10)
+                add_nc_var('aermr11', ('time_rad', 'z'), nc_tdep, cams_z.aermr11)
 
     """
     Land-surface and soil
@@ -274,23 +381,6 @@ def create_case_input(
         add_nc_var('t_soil', ('z'), nc_soil, t_soil)
         add_nc_var('index_soil', ('z'), nc_soil, index_soil)
         add_nc_var('root_frac', ('z'), nc_soil, root_frac)
-
-    """
-    Aerosols
-    """
-    if use_aerosols:
-        nc_tdep.createDimension('time_aerosols', cams_z.dims['time'])
-        add_nc_var('aermr01', ('z'), nc_init, cams_z.aermr01.mean(axis=0))
-        add_nc_var('aermr02', ('z'), nc_init, cams_z.aermr02.mean(axis=0))
-        add_nc_var('aermr03', ('z'), nc_init, cams_z.aermr03.mean(axis=0))
-        add_nc_var('aermr04', ('z'), nc_init, cams_z.aermr04.mean(axis=0))
-        add_nc_var('aermr05', ('z'), nc_init, cams_z.aermr05.mean(axis=0))
-        add_nc_var('aermr06', ('z'), nc_init, cams_z.aermr06.mean(axis=0))
-        add_nc_var('aermr07', ('z'), nc_init, cams_z.aermr07.mean(axis=0))
-        add_nc_var('aermr08', ('z'), nc_init, cams_z.aermr08.mean(axis=0))
-        add_nc_var('aermr09', ('z'), nc_init, cams_z.aermr09.mean(axis=0))
-        add_nc_var('aermr10', ('z'), nc_init, cams_z.aermr10.mean(axis=0))
-        add_nc_var('aermr11', ('z'), nc_init, cams_z.aermr11.mean(axis=0))
 
     nc.close()
 
@@ -385,14 +475,28 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_rrtmgp = True            # False = prescribed radiation from ERA5.
+    use_rrtmgp = True            # False = prescribed surface radiation from ERA5.
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
     use_homogeneous_ls = True    # False = checkerboard pattern (some...) land-surface fields.
-    use_aerosols = False         # False = no aerosols
+    use_aerosols = False         # False = no aerosols in RRTMGP.
+    use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol in domain and background.
+    use_tdep_gasses = False      # False = time fixed ERA5 (o3) and CAMS (co2, ch4) gasses.
+    use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
+
+    """
+    NOTE: `use_tdep_aerosols` and `use_tdep_gasses` specify whether the aerosols and gasses
+          used by RRTMGP are updated inside the LES domain. If `use_tdep_background` is true, the
+          aerosols, gasses, and the temperature & humidity are also updated on the RRTMGP background levels.
+    """
 
     # Switch between the two default RRTMGP g-point sets.
     gpt_set = '128_112' # or '256_224'
+
+    # Time period.
+    # NOTE: Included ERA5/CAMS data is limited to 2016-08-15 06:00 - 18:00 UTC.
+    start_date = datetime(year=2016, month=8, day=15, hour=6)
+    end_date   = datetime(year=2016, month=8, day=15, hour=18)
 
     # Simple equidistant grid.
     zsize = 4000
@@ -404,18 +508,22 @@ if __name__ == '__main__':
     xsize = 25600
     ysize = 25600
 
-    endtime = 43200
-
     # Create input files.
     create_case_input(
+            start_date,
+            end_date,
             use_htessel,
             use_rrtmgp,
             use_rt,
             use_aerosols,
+            use_tdep_aerosols,
+            use_tdep_gasses,
+            use_tdep_background,
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,
             itot, jtot, ktot,
             xsize, ysize, zsize,
-            endtime,
-            TF)
+            TF,
+            npx=2,
+            npy=2)

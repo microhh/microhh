@@ -71,9 +71,11 @@ private:
     Fields<TF>& fields;
 
     // Case switches
-    bool sw_update_background;
     bool sw_aerosol;
-    bool sw_aerosol_timedep;
+
+    bool swtimedep_background;
+    bool swtimedep_aerosol;
+
     double dt_rad;
     unsigned long idt_rad;
 
