@@ -1145,6 +1145,8 @@ void Microphys_sb06<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
             // Sum over all MPI tasks, and set in budget class.
             master.sum(&sum, 1);
+            sum /= (gd.itot*gd.jtot);
+
             micro_budget.set(name, specie, sum, k);
         }
     };
