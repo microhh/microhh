@@ -327,7 +327,7 @@ class Create_ncfile():
         elif precision == 'single':
             precision = 'f4'
         else:
-            precision = 'f8'sss
+            precision = 'f8'
 
         # create dimensions in netCDF file
         self.dim = {}
