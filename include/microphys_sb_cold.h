@@ -3257,7 +3257,7 @@ namespace Sb_cold
                             mi_hom  = std::max(mi_hom, ice.x_min);
 
                             TF nuc_n = std::max(std::min(ni_hom, ni_hom_max<TF>), TF(0));
-                            //const TF nuc_q = std::min(nuc_n * mi_hom, atmo.qv[ij]);
+                            nuc_n = std::min(nuc_n * mi_hom, qv[ij]);
                             TF nuc_q = nuc_n * mi_hom;
 
                             // From absolute change -> tendency.
