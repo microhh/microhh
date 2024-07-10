@@ -293,6 +293,9 @@ void Model<TF>::load()
     diff->create(*stats, false);
 
     budget->create(*stats);
+
+    for (auto& it : fields->at)
+        prev_tend.insert({it.first, 0});
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -351,6 +354,29 @@ void Model<TF>::exec()
         #endif
     #endif
 
+    auto check = [&](const std::string& name)
+    {
+        auto& gd = grid->get_grid_data();
+
+        for (auto& it : fields->at)
+        {
+            TF max_val = -1e9;
+            for (int k=gd.kstart; k<gd.kend; ++k)
+                for (int j=gd.jstart; j<gd.jend; ++j)
+                    for (int i=gd.istart; i<gd.iend; ++i)
+                    {
+                        const int ijk = i + j*gd.icells + k*gd.ijcells;
+                        max_val = std::max(max_val, std::abs(it.second->fld[ijk]));
+                    }
+
+            master.max(&max_val, 1);
+
+            const TF tend = max_val - prev_tend.at(it.first);
+            prev_tend.at(it.first) = max_val;
+            master.print_message("%s: %f\n", name.c_str(), tend);
+        }
+    };
+
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -393,12 +419,15 @@ void Model<TF>::exec()
 
                 // Calculate the thermodynamics and the buoyancy tendency.
                 thermo->exec(timeloop->get_sub_time_step(), *stats);
+                check("thermo");
 
                 // Calculate the microphysics.
                 microphys->exec(*thermo, timeloop->get_dt(), *stats);
+                check("micro");
 
                 // Calculate the radiation fluxes and the related heating rate.
                 radiation->exec(*thermo, timeloop->get_time(), *timeloop, *stats, *aerosol, *background, *microphys);
+                check("radiation");
 
                 // Calculate Monin-Obukhov parameters (L, u*), and calculate
                 // surface fluxes, gradients, ...
@@ -415,16 +444,20 @@ void Model<TF>::exec()
                 // Calculate the advection tendency.
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 advec->exec(*stats);
+                check("advec");
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Calculate the diffusion tendency.
                 diff->exec(*stats);
+                check("diff");
 
                 // Calculate the tendency due to damping in the buffer layer.
                 buffer->exec(*stats);
+                check("buffer");
 
                 // Calculate tendencies due to damping at the lateral boundaries.
                 lbc->exec_lateral_sponge(*stats);
+                check("lateral sponge");
 
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
@@ -434,6 +467,7 @@ void Model<TF>::exec()
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
+                check("force");
 
                 // Set the immersed boundary conditions
                 ib->exec_momentum();
@@ -445,10 +479,12 @@ void Model<TF>::exec()
 
                 boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
                 pres->exec(timeloop->get_sub_time_step(), *stats);
+                check("press");
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Apply the limiter as the last tendency.
                 limiter->exec(timeloop->get_sub_time_step(), *stats);
+                check("limiter");
 
                 // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)

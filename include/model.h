@@ -133,5 +133,8 @@ class Model
         void clear_gpu();
 
         void add_statistics_masks();
+
+        // DEBUG
+        std::map<std::string, TF> prev_tend;
 };
 #endif
