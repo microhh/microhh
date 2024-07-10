@@ -384,6 +384,8 @@ void Model<TF>::exec()
             // start the time loop
             while (true)
             {
+                check("start");
+
                 // Update the time dependent parameters.
                 grid      ->update_time_dependent(*timeloop);
                 boundary  ->update_time_dependent(*timeloop);
