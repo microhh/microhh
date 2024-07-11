@@ -358,23 +358,32 @@ void Model<TF>::exec()
     {
         auto& gd = grid->get_grid_data();
 
-        for (auto& it : fields->at)
-        {
-            TF max_val = -1e9;
-            for (int k=gd.kstart; k<gd.kend; ++k)
-                for (int j=gd.jstart; j<gd.jend; ++j)
-                    for (int i=gd.istart; i<gd.iend; ++i)
-                    {
-                        const int ijk = i + j*gd.icells + k*gd.ijcells;
-                        max_val = std::max(max_val, std::abs(it.second->fld[ijk]));
-                    }
+        //for (auto& it : fields->at)
+        //{
+        //    TF max_val_tend = -1e9;
+        //    TF max_val_fld = -1e9;
+        //    TF min_val_fld = 1e9;
 
-            master.max(&max_val, 1);
+        //    for (int k=gd.kstart; k<gd.kend; ++k)
+        //        for (int j=gd.jstart; j<gd.jend; ++j)
+        //            for (int i=gd.istart; i<gd.iend; ++i)
+        //            {
+        //                const int ijk = i + j*gd.icells + k*gd.ijcells;
+        //                max_val_tend = std::max(max_val_tend, std::abs(it.second->fld[ijk]));
 
-            const TF tend = max_val - prev_tend.at(it.first);
-            prev_tend.at(it.first) = max_val;
-            master.print_message("%s: %f\n", name.c_str(), tend);
-        }
+	//		max_val_fld = std::max(max_val_fld, fields->ap.at(it.first)->fld[ijk]);
+	//		min_val_fld = std::min(min_val_fld, fields->ap.at(it.first)->fld[ijk]);
+        //            }
+
+        //    master.max(&max_val_tend, 1);
+        //    master.max(&max_val_fld, 1);
+        //    master.min(&min_val_fld, 1);
+
+        //    const TF last_tend = max_val_tend - prev_tend.at(it.first);
+        //    prev_tend.at(it.first) = max_val_tend;
+
+        //    master.print_message("%s %s: %f (%f-%f)\n", name.c_str(), it.first.c_str(), last_tend, min_val_fld, max_val_fld);
+        //}
     };
 
     #pragma omp parallel num_threads(nthreads_out)
