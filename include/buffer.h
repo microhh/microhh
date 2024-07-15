@@ -30,6 +30,7 @@ template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
 template<typename> class Field3d_io;
+template<typename> class Timeloop;
 
 /**
  * Class for the buffer layer in the top of the domain.
@@ -44,8 +45,9 @@ class Buffer
         ~Buffer(); ///< Destructor of the buffer class.
 
         void init(); ///< Initialize the arrays that contain the profiles.
-        void create(Input&, Netcdf_handle&, Stats<TF>&); ///< Read the profiles of the forces from the input.
+        void create(Input&, Netcdf_handle&, Stats<TF>&, Timeloop<TF>&); ///< Read the profiles of the forces from the input.
         void exec(Stats<TF>&); ///< Add the tendencies created by the damping.
+        void update_time_dependent(Timeloop<TF>&);
 
         // GPU functions and variables
         void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU
@@ -70,8 +72,15 @@ class Buffer
         bool swupdate; ///< Switch for enabling runtime updating of buffer profile.
         bool swupdate_local; ///< Switch for enabling local means for swupdate
 
-        bool swbuffer_3d; ///< 3D buffer.
+        // 3D buffer.
+        bool swbuffer_3d;
+        bool swtimedep_buffer_3d;
         std::vector<std::string> buffer3d_list;
+        int loadfreq;
+        unsigned long prev_itime;
+        unsigned long next_itime;
+        std::map<std::string, std::vector<TF>> buffer_data_prev;
+        std::map<std::string, std::vector<TF>> buffer_data_next;
 
         // GPU functions and variables
         std::map<std::string, cuda_vector<TF>> bufferprofs_g; ///< Map containing the buffer profiles at GPU.

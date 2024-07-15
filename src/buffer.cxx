@@ -22,6 +22,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 #include "master.h"
 #include "input.h"
@@ -145,6 +146,19 @@ namespace
                 }
         }
     }
+
+
+    template<typename TF>
+    void interpolate_buffer(
+            TF* const restrict buf_out,
+            const TF* const restrict buf_prev,
+            const TF* const restrict buf_next,
+            const TF f0, const TF f1,
+            const int ncells)
+    {
+        for (int n=0; n<ncells; ++n)
+            buf_out[n] = f0 * buf_prev[n] + f1 * buf_next[n];
+    }
 }
 
 
@@ -165,7 +179,13 @@ Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
         beta   = inputin.get_item<TF>("buffer", "beta", "", 2.);
 
         if (swbuffer_3d)
+        {
             buffer3d_list = inputin.get_list<std::string>("buffer", "buffer3d_list", "", std::vector<std::string>());
+            swtimedep_buffer_3d = inputin.get_item<bool>("buffer", "swtimedep_buffer_3d", "", false);
+
+            if (swtimedep_buffer_3d)
+                loadfreq = inputin.get_item<int>("buffer", "loadfreq", "");
+        }
     }
 
     if (swbuffer && swupdate)
@@ -194,7 +214,11 @@ void Buffer<TF>::init()
 }
 
 template<typename TF>
-void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats)
+void Buffer<TF>::create(
+        Input& inputin,
+        Netcdf_handle& input_nc,
+        Stats<TF>& stats,
+        Timeloop<TF>& timeloop)
 {
     if (swbuffer)
     {
@@ -223,18 +247,10 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
 
         if (swbuffer_3d)
         {
-            // Read 3D buffers from binary files.
-            for (auto& fld : buffer3d_list)
-            {
-                const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
-                bufferprofs.emplace(fld, std::vector<TF>(gd.ijcells*ksize));
-            }
-
             auto tmp1 = fields.get_tmp();
             auto tmp2 = fields.get_tmp();
 
             const TF no_offset = TF(0);
-            const int itime = 0;
             int nerror = 0;
 
             // Read 3D buffers from binary files.
@@ -262,14 +278,47 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
                     master.print_message("OK\n");
             };
 
-            for (auto& fld : buffer3d_list)
+            if (swtimedep_buffer_3d)
             {
-                const int kstart = 0;
-                const int kend = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+                std::pair<unsigned long, unsigned long> iotimes = timeloop.get_prev_and_next_iotime(loadfreq);
 
-                load_3d_field(
-                        bufferprofs.at(fld).data(),
-                        fld, itime, kstart, kend);
+                for (auto& fld : buffer3d_list)
+                {
+                    const int kstart = 0;
+                    const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+
+                    // Allocate arrays in buffer map.
+                    bufferprofs.emplace(fld, std::vector<TF>(gd.ijcells*ksize));
+                    buffer_data_prev.emplace(fld, std::vector<TF>(gd.ijcells * ksize));
+                    buffer_data_next.emplace(fld, std::vector<TF>(gd.ijcells * ksize));
+
+                    // Read data from binary.
+                    load_3d_field(
+                            buffer_data_prev.at(fld).data(),
+                            fld, iotimes.first, kstart, ksize);
+
+                    load_3d_field(
+                            buffer_data_next.at(fld).data(),
+                            fld, iotimes.second, kstart, ksize);
+                }
+            }
+            else
+            {
+                // Read fixed 3D buffers from binary files.
+                for (auto& fld : buffer3d_list)
+                {
+                    const int kstart = 0;
+                    const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+                    const int itime = 0;
+
+                    // Allocate array in std::map.
+                    bufferprofs.emplace(fld, std::vector<TF>(gd.ijcells*ksize));
+
+                    // Read data from binary.
+                    load_3d_field(
+                            bufferprofs.at(fld).data(),
+                            fld, itime, kstart, ksize);
+                }
             }
 
             if (nerror > 0)
@@ -488,6 +537,92 @@ void Buffer<TF>::exec(Stats<TF>& stats)
         stats.calc_tend(*it.second, tend_name);
 
     fields.release_tmp(tmp);
+}
+
+
+template <typename TF>
+void Buffer<TF>::update_time_dependent(
+        Timeloop<TF>& timeloop)
+{
+    if (!swtimedep_buffer_3d)
+        return;
+
+    const Grid_data<TF>& gd = grid.get_grid_data();
+
+    double time = timeloop.get_time();
+    unsigned long itime = timeloop.get_itime();
+    unsigned long iloadtime = convert_to_itime(loadfreq);
+    unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+    if (itime > next_itime)
+    {
+        // Advance time and read new files.
+        prev_itime = next_itime;
+        next_itime = prev_itime + iloadtime;
+
+        unsigned long next_iotime = next_itime / iiotimeprec;
+
+        auto tmp1 = fields.get_tmp();
+        auto tmp2 = fields.get_tmp();
+
+        const TF no_offset = TF(0);
+        int nerror = 0;
+
+        // Read 3D buffers from binary files.
+        auto load_3d_field = [&](
+                TF* const restrict field,
+                const std::string& name,
+                const int itime,
+                const int kstart,
+                const int kend)
+        {
+            char filename[256];
+            std::sprintf(filename, "%s_buffer.%07d", name.c_str(), itime);
+            master.print_message("Loading \"%s\" ... ", filename);
+
+            if (field3d_io.load_field3d(
+                    field,
+                    tmp1->fld.data(), tmp2->fld.data(),
+                    filename, no_offset,
+                    kstart, kend))
+            {
+                master.print_message("FAILED\n");
+                nerror += 1;
+            }
+            else
+                master.print_message("OK\n");
+        };
+
+        for (auto& fld : buffer3d_list)
+        {
+            // Copy old next to new prev buffer.
+            buffer_data_prev.at(fld) = buffer_data_next.at(fld);
+
+            // Read new 3D data.
+            const int kstart = 0;
+            const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+
+            load_3d_field(
+                    buffer_data_next.at(fld).data(),
+                    fld, next_iotime, kstart, ksize);
+        }
+    }
+
+    // Interpolate in time.
+    const TF f0 = TF(1) - ((itime - prev_itime) / TF(iloadtime));
+    const TF f1 = TF(1) - f0;
+
+    for (auto& fld : buffer3d_list)
+    {
+        const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+        const int ncells = ksize * gd.ijcells;
+
+        interpolate_buffer(
+            bufferprofs.at(fld).data(),
+            buffer_data_prev.at(fld).data(),
+            buffer_data_next.at(fld).data(),
+            f0, f1, ncells);
+    }
 }
 #endif
 

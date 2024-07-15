@@ -268,7 +268,7 @@ void Model<TF>::load()
     lbc->create(*input, *timeloop, *stats, sim_name);
 
     ib->create();
-    buffer->create(*input, *input_nc, *stats);
+    buffer->create(*input, *input_nc, *stats, *timeloop);
     force->create(*input, *input_nc, *stats, *timeloop);
     source->create(*input, *input_nc);
     aerosol->create(*input, *input_nc, *stats);
@@ -404,6 +404,7 @@ void Model<TF>::exec()
                 radiation ->update_time_dependent(*timeloop);
                 aerosol   ->update_time_dependent(*timeloop);
                 background->update_time_dependent(*timeloop);
+                buffer    ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();

@@ -60,6 +60,7 @@ class Timeloop
         double get_sub_time_step() const;
 
         Interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
+        std::pair<unsigned long, unsigned long> get_prev_and_next_iotime(const int);
 
         void exec();
 

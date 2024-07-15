@@ -645,6 +645,23 @@ Interpolation_factors<TF> Timeloop<TF>::get_interpolation_factors(const std::vec
     return ifac;
 }
 
+template<typename TF>
+std::pair<unsigned long, unsigned long> Timeloop<TF>::get_prev_and_next_iotime(const int loadfreq)
+{
+    // Given the load frequency, calculate the previous and next iotime's.
+    const double time = get_time();
+    const unsigned long itime = get_itime();
+    unsigned long iiotimeprec = get_iiotimeprec();
+    unsigned long iloadtime = convert_to_itime(loadfreq);
+
+    const int prev_index = itime / iloadtime;
+    const int next_index = prev_index + 1;
+
+    unsigned long prev_iotime = prev_index * iloadtime / iiotimeprec;
+    unsigned long next_iotime = next_index * iloadtime / iiotimeprec;
+
+    return std::pair<unsigned long, unsigned long>(prev_iotime, next_iotime);
+}
 
 #ifdef FLOAT_SINGLE
 template class Timeloop<float>;
