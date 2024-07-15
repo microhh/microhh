@@ -77,8 +77,10 @@ class Buffer
         bool swtimedep_buffer_3d;
         std::vector<std::string> buffer3d_list;
         int loadfreq;
+
         unsigned long prev_itime;
         unsigned long next_itime;
+
         std::map<std::string, std::vector<TF>> buffer_data_prev;
         std::map<std::string, std::vector<TF>> buffer_data_next;
 

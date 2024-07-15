@@ -65,7 +65,7 @@ nc_th[:] = th[:]
 
 nc_file.close()
 
-## 3D buffer.
+# 3D buffer.
 #zstart = 2400
 #kstart  = int(np.where(z  >= zstart)[0][0])
 #kstarth = int(np.where(zh >= zstart)[0][0])
@@ -94,10 +94,14 @@ nc_file.close()
 #w_buf.tofile('w_buffer.0003600')
 #th_buf.tofile('th_buffer.0003600')
 #
+#th_buf[:] -= 1.
+#
 #u_buf.tofile('u_buffer.0007200')
 #v_buf.tofile('v_buffer.0007200')
 #w_buf.tofile('w_buffer.0007200')
 #th_buf.tofile('th_buffer.0007200')
+#
+#th_buf[:] += 1.
 #
 #u_buf.tofile('u_buffer.0010800')
 #v_buf.tofile('v_buffer.0010800')

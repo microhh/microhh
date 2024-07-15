@@ -280,7 +280,11 @@ void Buffer<TF>::create(
 
             if (swtimedep_buffer_3d)
             {
+                std::pair<unsigned long, unsigned long> itimes = timeloop.get_prev_and_next_itime(loadfreq);
                 std::pair<unsigned long, unsigned long> iotimes = timeloop.get_prev_and_next_iotime(loadfreq);
+
+                prev_itime = itimes.first;
+                next_itime = itimes.second;
 
                 for (auto& fld : buffer3d_list)
                 {
@@ -625,7 +629,6 @@ void Buffer<TF>::update_time_dependent(
     }
 }
 #endif
-
 
 #ifdef FLOAT_SINGLE
 template class Buffer<float>;
