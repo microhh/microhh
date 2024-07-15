@@ -29,6 +29,7 @@ class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+template<typename> class Field3d_io;
 
 /**
  * Class for the buffer layer in the top of the domain.
@@ -54,6 +55,7 @@ class Buffer
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_io<TF> field3d_io;
 
         TF zstart; ///< Height above which the buffer layer is starting.
         TF sigma;  ///< Damping frequency.
@@ -67,6 +69,9 @@ class Buffer
         bool swbuffer; ///< Switch for buffer.
         bool swupdate; ///< Switch for enabling runtime updating of buffer profile.
         bool swupdate_local; ///< Switch for enabling local means for swupdate
+
+        bool swbuffer_3d; ///< 3D buffer.
+        std::vector<std::string> buffer3d_list;
 
         // GPU functions and variables
         std::map<std::string, cuda_vector<TF>> bufferprofs_g; ///< Map containing the buffer profiles at GPU.

@@ -65,6 +65,41 @@ namespace
 
 
     template<typename TF>
+    void calc_buffer_3d(
+            TF* const restrict at,
+            const TF* const restrict a,
+            const TF* const restrict abuf,
+            const TF* const restrict z,
+            const TF zstart, const TF zsize,
+            const TF beta, const TF sigma,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart_buffer, const int kend,
+            const int jstride, const int kstride)
+    {
+        const TF zsizebuf = zsize - zstart;
+
+        for (int k=kstart_buffer; k<kend; ++k)
+        {
+            const TF sigmaz = sigma*std::pow((z[k]-zstart)/zsizebuf, beta);
+
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j * jstride + k * kstride;
+                    const int ijk2 = i + j * jstride + (k-kstart_buffer) * kstride;
+
+                    const TF aa = a[ijk];
+                    const TF bb = abuf[ijk2];
+
+                    at[ijk] -= sigmaz * (a[ijk]-abuf[ijk2]);
+                }
+        }
+    }
+
+
+    template<typename TF>
     void calc_buffer_local(
             TF* const restrict at,
             const TF* const restrict a,
@@ -115,7 +150,7 @@ namespace
 
 template<typename TF>
 Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+    master(masterin), grid(gridin), fields(fieldsin), field3d_io(masterin, gridin)
 {
     swbuffer = inputin.get_item<bool>("buffer", "swbuffer", "", false);
 
@@ -123,10 +158,14 @@ Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
     {
         swupdate = inputin.get_item<bool>("buffer", "swupdate", "", false);
         swupdate_local = inputin.get_item<bool>("buffer", "swupdate_local", "", false);
+        swbuffer_3d = inputin.get_item<bool>("buffer", "swbuffer_3d", "", false);
 
         zstart = inputin.get_item<TF>("buffer", "zstart", "");
         sigma  = inputin.get_item<TF>("buffer", "sigma", "", 2.);
         beta   = inputin.get_item<TF>("buffer", "beta", "", 2.);
+
+        if (swbuffer_3d)
+            buffer3d_list = inputin.get_list<std::string>("buffer", "buffer3d_list", "", std::vector<std::string>());
     }
 
     if (swbuffer && swupdate)
@@ -144,10 +183,10 @@ Buffer<TF>::~Buffer()
 template<typename TF>
 void Buffer<TF>::init()
 {
-    const Grid_data<TF>& gd = grid.get_grid_data();
-
-    if (swbuffer)
+    if (swbuffer && !swbuffer_3d)
     {
+        const Grid_data<TF>& gd = grid.get_grid_data();
+
         // Create vectors of zero for buffer.
         for (auto& it : fields.ap)
             bufferprofs.emplace(it.first, std::vector<TF>(gd.kcells));
@@ -182,7 +221,65 @@ void Buffer<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stat
             throw std::runtime_error(msg);
         }
 
-        if (!swupdate)
+        if (swbuffer_3d)
+        {
+            // Read 3D buffers from binary files.
+            for (auto& fld : buffer3d_list)
+            {
+                const int ksize = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+                bufferprofs.emplace(fld, std::vector<TF>(gd.ijcells*ksize));
+            }
+
+            auto tmp1 = fields.get_tmp();
+            auto tmp2 = fields.get_tmp();
+
+            const TF no_offset = TF(0);
+            const int itime = 0;
+            int nerror = 0;
+
+            // Read 3D buffers from binary files.
+            auto load_3d_field = [&](
+                    TF* const restrict field,
+                    const std::string& name,
+                    const int itime,
+                    const int kstart,
+                    const int kend)
+            {
+                char filename[256];
+                std::sprintf(filename, "%s_buffer.%07d", name.c_str(), itime);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                if (field3d_io.load_field3d(
+                        field,
+                        tmp1->fld.data(), tmp2->fld.data(),
+                        filename, no_offset,
+                        kstart, kend))
+                {
+                    master.print_message("FAILED\n");
+                    nerror += 1;
+                }
+                else
+                    master.print_message("OK\n");
+            };
+
+            for (auto& fld : buffer3d_list)
+            {
+                const int kstart = 0;
+                const int kend = fld == "w" ? gd.kend-bufferkstarth : gd.kend-bufferkstart;
+
+                load_3d_field(
+                        bufferprofs.at(fld).data(),
+                        fld, itime, kstart, kend);
+            }
+
+            if (nerror > 0)
+                throw std::runtime_error("Error loading buffer fields.");
+
+            fields.release_tmp(tmp1);
+            fields.release_tmp(tmp2);
+        }
+
+        if (!swupdate && !swbuffer_3d)
         {
             // Set the buffers according to the initial profiles of the variables.
             const std::vector<int> start = {0};
@@ -227,24 +324,6 @@ void Buffer<TF>::exec(Stats<TF>& stats)
     const Grid_data<TF>& gd = grid.get_grid_data();
     auto tmp = fields.get_tmp();
 
-    auto buffer_local_wrapper = [&](
-            TF* const restrict tend,
-            const TF* const restrict field,
-            const int kstart)
-    {
-        calc_buffer_local(
-                tend,
-                field,
-                tmp->fld.data(),
-                gd.z.data(),
-                zstart, gd.zsize,
-                beta, sigma,
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                kstart, gd.kend,
-                gd.icells, gd.ijcells);
-    };
-
     auto buffer_wrapper = [&](
             TF* const restrict tend,
             const TF* const restrict field,
@@ -263,88 +342,142 @@ void Buffer<TF>::exec(Stats<TF>& stats)
                 gd.icells, gd.ijcells);
     };
 
-    if (swupdate)
+
+    auto buffer_3d_wrapper = [&](
+            TF* const restrict tend,
+            const TF* const restrict field,
+            const TF* const restrict buffer_data,
+            const int kstart)
     {
-        if (swupdate_local)
+        calc_buffer_3d(
+                tend,
+                field,
+                buffer_data,
+                gd.z.data(), zstart, gd.zsize,
+                beta, sigma,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+
+    auto buffer_local_wrapper = [&](
+            TF* const restrict tend,
+            const TF* const restrict field,
+            const int kstart)
+    {
+        calc_buffer_local(
+                tend,
+                field,
+                tmp->fld.data(),
+                gd.z.data(),
+                zstart, gd.zsize,
+                beta, sigma,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+    if (swbuffer_3d)
+    {
+        for (auto& fld: buffer3d_list)
         {
-            // Buffer local to a 49 grid point mean.
-            buffer_local_wrapper(
-                    fields.mt.at("u")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    bufferkstart);
+            const int kstart = fld == "w" ? bufferkstarth : bufferkstart;
 
-            buffer_local_wrapper(
-                    fields.mt.at("v")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    bufferkstart);
-
-            buffer_local_wrapper(
-                    fields.mt.at("w")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    bufferkstarth);
-
-            for (auto& it : fields.sp)
-                buffer_local_wrapper(
-                        fields.st.at(it.first)->fld.data(),
-                        fields.sp.at(it.first)->fld.data(),
-                        bufferkstart);
-        }
-        else
-        {
-            // Buffer to domain mean time updated profiles.
-            buffer_wrapper(
-                    fields.mt.at("u")->fld.data(),
-                    fields.mp.at("u")->fld.data(),
-                    fields.mp.at("u")->fld_mean.data(),
-                    bufferkstart);
-
-            buffer_wrapper(
-                    fields.mt.at("v")->fld.data(),
-                    fields.mp.at("v")->fld.data(),
-                    fields.mp.at("v")->fld_mean.data(),
-                    bufferkstart);
-
-            buffer_wrapper(
-                    fields.mt.at("w")->fld.data(),
-                    fields.mp.at("w")->fld.data(),
-                    fields.mp.at("w")->fld_mean.data(),
-                    bufferkstarth);
-
-            for (auto& it : fields.sp)
-                buffer_wrapper(
-                        fields.st.at(it.first)->fld.data(),
-                        fields.sp.at(it.first)->fld.data(),
-                        fields.sp.at(it.first)->fld_mean.data(),
-                        bufferkstart);
+            buffer_3d_wrapper(
+                    fields.at.at(fld)->fld.data(),
+                    fields.ap.at(fld)->fld.data(),
+                    bufferprofs.at(fld).data(),
+                    kstart);
         }
     }
     else
     {
-        // Buffer to initial profiles.
-        buffer_wrapper(
-                fields.mt.at("u")->fld.data(),
-                fields.mp.at("u")->fld.data(),
-                bufferprofs.at("u").data(),
-                bufferkstart);
+        if (swupdate)
+        {
+            if (swupdate_local)
+            {
+                // Buffer local to a 49 grid point mean.
+                buffer_local_wrapper(
+                        fields.mt.at("u")->fld.data(),
+                        fields.mp.at("u")->fld.data(),
+                        bufferkstart);
 
-        buffer_wrapper(
-                fields.mt.at("v")->fld.data(),
-                fields.mp.at("v")->fld.data(),
-                bufferprofs.at("v").data(),
-                bufferkstart);
+                buffer_local_wrapper(
+                        fields.mt.at("v")->fld.data(),
+                        fields.mp.at("v")->fld.data(),
+                        bufferkstart);
 
-        buffer_wrapper(
-                fields.mt.at("w")->fld.data(),
-                fields.mp.at("w")->fld.data(),
-                bufferprofs.at("w").data(),
-                bufferkstarth);
+                buffer_local_wrapper(
+                        fields.mt.at("w")->fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        bufferkstarth);
 
-        for (auto& it : fields.sp)
+                for (auto& it: fields.sp)
+                    buffer_local_wrapper(
+                            fields.st.at(it.first)->fld.data(),
+                            fields.sp.at(it.first)->fld.data(),
+                            bufferkstart);
+            }
+            else
+            {
+                // Buffer to domain mean time updated profiles.
+                buffer_wrapper(
+                        fields.mt.at("u")->fld.data(),
+                        fields.mp.at("u")->fld.data(),
+                        fields.mp.at("u")->fld_mean.data(),
+                        bufferkstart);
+
+                buffer_wrapper(
+                        fields.mt.at("v")->fld.data(),
+                        fields.mp.at("v")->fld.data(),
+                        fields.mp.at("v")->fld_mean.data(),
+                        bufferkstart);
+
+                buffer_wrapper(
+                        fields.mt.at("w")->fld.data(),
+                        fields.mp.at("w")->fld.data(),
+                        fields.mp.at("w")->fld_mean.data(),
+                        bufferkstarth);
+
+                for (auto& it: fields.sp)
+                    buffer_wrapper(
+                            fields.st.at(it.first)->fld.data(),
+                            fields.sp.at(it.first)->fld.data(),
+                            fields.sp.at(it.first)->fld_mean.data(),
+                            bufferkstart);
+            }
+        }
+        else
+        {
+            // Buffer to initial profiles.
             buffer_wrapper(
-                    fields.st.at(it.first)->fld.data(),
-                    fields.sp.at(it.first)->fld.data(),
-                    bufferprofs.at(it.first).data(),
+                    fields.mt.at("u")->fld.data(),
+                    fields.mp.at("u")->fld.data(),
+                    bufferprofs.at("u").data(),
                     bufferkstart);
+
+            buffer_wrapper(
+                    fields.mt.at("v")->fld.data(),
+                    fields.mp.at("v")->fld.data(),
+                    bufferprofs.at("v").data(),
+                    bufferkstart);
+
+            buffer_wrapper(
+                    fields.mt.at("w")->fld.data(),
+                    fields.mp.at("w")->fld.data(),
+                    bufferprofs.at("w").data(),
+                    bufferkstarth);
+
+            for (auto& it: fields.sp)
+                buffer_wrapper(
+                        fields.st.at(it.first)->fld.data(),
+                        fields.sp.at(it.first)->fld.data(),
+                        bufferprofs.at(it.first).data(),
+                        bufferkstart);
+        }
     }
 
     stats.calc_tend(*fields.mt.at("u"), tend_name);
