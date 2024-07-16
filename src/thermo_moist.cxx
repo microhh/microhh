@@ -1041,8 +1041,8 @@ namespace
                 phydroh[ijk] = phydro_tod[ij];
 
                 // Calculate virtual temperature at half level.
-                const TF thlh = TF(0.5) * (thl[ijk] + thl[ijk+kk]);
-                const TF qth  = TF(0.5) * (qt [ijk] + qt [ijk+kk]);
+                const TF thlh = TF(0.5) * (thl[ijk-kk] + thl[ijk]);
+                const TF qth  = TF(0.5) * (qt [ijk-kk] + qt [ijk]);
 
                 const TF exh = exner(phydroh[ijk]);
                 Struct_sat_adjust<TF> ssa = sat_adjust(thlh, qth, phydroh[ijk], exh);
@@ -1934,7 +1934,7 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         }
         else
         {
-            stats.add_fixed_prof("pydroh",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
+            stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
         }
 

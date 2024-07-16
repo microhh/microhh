@@ -114,5 +114,5 @@ nc_file.close()
 
 # 2D hydrostatic pressure @ TOD.
 phydro_tod = np.zeros((jtot, itot), dtype=float_type)
-phydro_tod[:,:] = 71476.1319414016
+phydro_tod[:,:] = 71476.13194140165
 phydro_tod.tofile('phydro_tod.0000000')
