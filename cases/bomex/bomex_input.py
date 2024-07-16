@@ -6,15 +6,19 @@ float_type = "f8"
 # Get number of vertical levels and size from .ini file
 with open('bomex.ini') as f:
     for line in f:
+        if(line.split('=')[0]=='itot'):
+            itot = int(line.split('=')[1])
+        if(line.split('=')[0]=='jtot'):
+            jtot = int(line.split('=')[1])
         if(line.split('=')[0]=='ktot'):
-            kmax = int(line.split('=')[1])
+            ktot = int(line.split('=')[1])
         if(line.split('=')[0]=='zsize'):
             zsize = float(line.split('=')[1])
 
-dz = zsize / kmax
+dz = zsize / ktot
 
 # set the height
-z     = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+z     = np.linspace(0.5*dz, zsize-0.5*dz, ktot)
 thl   = np.zeros(np.size(z))
 qt    = np.zeros(np.size(z))
 u     = np.zeros(np.size(z))
@@ -25,7 +29,7 @@ wls   = np.zeros(np.size(z))
 thlls = np.zeros(np.size(z))
 qtls  = np.zeros(np.size(z))
 
-for k in range(kmax):
+for k in range(ktot):
     # temperature
     if(z[k] <= 520.):
         thl[k] = 298.7
@@ -81,7 +85,7 @@ thlls  /= 86400. # from K/d to K/s
 qtls *= 1.e-8
 
 nc_file = nc.Dataset("bomex_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
-nc_file.createDimension("z", kmax)
+nc_file.createDimension("z", ktot)
 nc_z = nc_file.createVariable("z", float_type, ("z"))
 
 nc_group_init = nc_file.createGroup("init");
@@ -107,3 +111,8 @@ nc_thlls[:] = thlls[:]
 nc_qtls [:] = qtls [:]
 
 nc_file.close()
+
+# 2D hydrostatic pressure @ TOD.
+phydro_tod = np.zeros((jtot, itot), dtype=float_type)
+phydro_tod[:,:] = 71476.1319414016
+phydro_tod.tofile('phydro_tod.0000000')

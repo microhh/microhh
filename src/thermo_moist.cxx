@@ -717,62 +717,6 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_tend_4th(TF* restrict wt, TF* restrict thl,  TF* restrict qt,
-                                TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                                TF* restrict ql, TF* restrict thvrefh,
-                                const int istart, const int iend,
-                                const int jstart, const int jend,
-                                const int kstart, const int kend,
-                                const int icells, const int ijcells)
-    {
-        const int jj  = icells;
-        const int kk1 = 1*ijcells;
-        const int kk2 = 2*ijcells;
-
-        for (int k=kstart+1; k<kend; k++)
-        {
-            const TF exnh = exner(ph[k]);
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
-
-                    thlh[ij]    = interp4c(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                    qth[ij]     = interp4c(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
-                    const TF tl = thlh[ij] * exnh;
-
-                    // Calculate first estimate of ql using Tl
-                    // if ql(Tl)>0, saturation adjustment routine needed
-                    ql[ij]  = qth[ij]-qsat(ph[k], tl);
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ij = i + j*jj;
-
-                    if (ql[ij] > 0)   // already doesn't vectorize because of iteration in sat_adjust()
-                        ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).ql;
-                    else
-                        ql[ij] = 0.;
-                }
-
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk1;
-                    const int ij  = i + j*jj;
-
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-                }
-        }
-    }
-
-    template<typename TF>
     int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
     {
         TF maxgrad = 0.;
@@ -1066,11 +1010,88 @@ namespace
             }
     }
 
+
+    template<typename TF>
+    void calc_phydro_3d(
+        TF* const restrict phydro,
+        TF* const restrict phydroh,
+        const TF* const restrict phydro_tod,
+        const TF* const restrict thl,
+        const TF* const restrict qt,
+        const TF* const restrict dz,
+        const TF* const restrict dzh,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jstride, const int kstride)
+    {
+        const int kk = kstride;
+
+        // First model level (TOD) deviates from others, as we only advance from
+        // zh[kend] to z[kend-1], instead of advancing a full half or full model level
+        // in the main loop below.
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j * jstride;
+                const int ijk = ij + kend * kstride;
+
+                // Boundary condition: hydrostatic pressure at TOD.
+                phydroh[ijk] = phydro_tod[ij];
+
+                // Calculate virtual temperature at half level.
+                const TF thlh = TF(0.5) * (thl[ijk] + thl[ijk+kk]);
+                const TF qth  = TF(0.5) * (qt [ijk] + qt [ijk+kk]);
+
+                const TF exh = exner(phydroh[ijk]);
+                Struct_sat_adjust<TF> ssa = sat_adjust(thlh, qth, phydroh[ijk], exh);
+                const TF thvh = virtual_temperature(exh, thlh, qth, ssa.ql, ssa.qi);
+
+                // Advance pressure from half (TOD) to full level.
+                phydro[ijk-kk] = phydroh[ijk] * std::exp(grav<TF> * TF(0.5) * dzh[kend] / (Rd<TF> * exh * thvh));
+            }
+
+        for (int k=kend-1; k>=kstart; --k)
+        {
+            for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j * jstride+ k * kstride;
+
+                    // Calculate full level virtual potential temperature.
+                    const TF ex = exner(phydro[ijk]);
+                    Struct_sat_adjust<TF> ssaf = sat_adjust(thl[ijk], qt[ijk], phydro[ijk], ex);
+                    const TF thv = virtual_temperature(ex, thl[ijk], qt[ijk], ssaf.ql, ssaf.qi);
+
+                    // Advance half level pressure.
+                    phydroh[ijk] = phydroh[ijk+kk] * std::exp(grav<TF> * dz[k] / (Rd<TF> * ex * thv));
+
+                    // Calculate half level virtual potential temperature.
+                    const TF exh = exner(phydroh[ijk]);
+
+                    const TF thlh = TF(0.5) * (thl[ijk-kk] + thl[ijk]);
+                    const TF qth  = TF(0.5) * (qt [ijk-kk] + qt [ijk]);
+
+                    Struct_sat_adjust<TF> ssah = sat_adjust(thlh, qth, phydroh[ijk], exh);
+                    const TF thvh = virtual_temperature(exh, thlh, qth, ssah.ql, ssah.qi);
+
+                    // Advance full level pressure.
+                    phydro[ijk-kk] = phydro[ijk] * std::exp(grav<TF> * dzh[k] / (Rd<TF> * exh * thvh));
+                }
+        }
+    }
 }
 
 
 template<typename TF>
-Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, const Sim_mode sim_mode) :
+Thermo_moist<TF>::Thermo_moist(
+        Master& masterin,
+        Grid<TF>& gridin,
+        Fields<TF>& fieldsin,
+        Input& inputin,
+        const Sim_mode sim_mode) :
     Thermo<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(masterin, gridin),
     field3d_operators(master, grid, fieldsin),
@@ -1090,7 +1111,16 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     fields.init_prognostic_field("thl", "Liquid water potential temperature", "K", group_name, gd.sloc);
     fields.init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1", group_name, gd.sloc);
 
-    // Get the diffusivities of temperature and moisture
+    // Option for 3D hydrostatic pressure, calculated from 2D pressure @ TOD.
+    swphydro_3d = inputin.get_item<bool>("thermo", "swphydro_3d", "", false);
+
+    if (swphydro_3d)
+    {
+        fields.init_diagnostic_field("phydro_3d", "3D hydrostatic pressure at full levels", "Pa", group_name, gd.sloc);
+        fields.init_diagnostic_field("phydroh_3d", "3D hydrostatic pressure at half levels", "Pa", group_name, gd.wloc);
+    }
+
+    // Get the diffusivities of temperature and moistures.
     fields.sp.at("thl")->visc = inputin.get_item<TF>("fields", "svisc", "thl");
     fields.sp.at("qt")->visc = inputin.get_item<TF>("fields", "svisc", "qt");
 
@@ -1109,7 +1139,6 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
@@ -1123,9 +1152,6 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     // Flag the options that are not read in init mode.
     if (sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "pbot", "");
-    // if (sim_mode == Sim_mode::Run)
-    
-
 }
 
 template<typename TF>
@@ -1148,6 +1174,9 @@ void Thermo_moist<TF>::init()
     bs.prefh.resize(gd.kcells);
     bs.rhoref.resize(gd.kcells);
     bs.rhorefh.resize(gd.kcells);
+
+    if (swphydro_3d)
+        phydro_tod.resize(gd.ijcells);
 }
 
 template<typename TF>
@@ -1248,7 +1277,7 @@ void Thermo_moist<TF>::load(const int iotime)
 
     // Lambda function to load 2D fields.
     auto load_2d_field = [&](
-            TF* const restrict field, const std::string& name)
+            TF* const restrict field, const std::string& name, const int iotime)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
@@ -1267,8 +1296,11 @@ void Thermo_moist<TF>::load(const int iotime)
         boundary_cyclic.exec_2d(field);
     };
 
-    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot");
-    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot");
+    load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
+    load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
+
+    if (swphydro_3d)
+        load_2d_field(phydro_tod.data(), "phydro_tod", 0);
 
     fields.release_tmp(tmp1);
 
@@ -1339,6 +1371,20 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc,
         bs.rhoref = fields.rhoref;
         bs.rhorefh = fields.rhorefh;
     }
+
+    if (swphydro_3d)
+        calc_phydro_3d(
+                fields.sd.at("phydro_3d")->fld.data(),
+                fields.sd.at("phydroh_3d")->fld.data(),
+                phydro_tod.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                gd.dz.data(),
+                gd.dzh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 }
 
 template<typename TF>
@@ -1410,7 +1456,6 @@ unsigned long Thermo_moist<TF>::get_time_limit(unsigned long idt, const double d
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
-
     if (mask_name == "ql")
     {
         auto ql = fields.get_tmp();
@@ -1940,6 +1985,12 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
 
         stats.add_time_series("zi", "Boundary Layer Depth", "m", group_name);
         stats.add_tendency(*fields.mt.at("w"), "zh", tend_name, tend_longname, group_name);
+
+        if (swphydro_3d)
+        {
+            stats.add_profs(*fields.sd.at("phydro_3d"), "z", {"mean", "2"}, group_name);
+            stats.add_profs(*fields.sd.at("phydroh_3d"), "zh", {"mean"}, group_name);
+        }
     }
 }
 
@@ -2163,6 +2214,12 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     }
 
     stats.set_time_series("zi", gd.z[get_bl_depth()]);
+
+    if (swphydro_3d)
+    {
+        stats.calc_stats("phydro_3d", *fields.sd.at("phydro_3d"), no_offset, no_threshold);
+        stats.calc_stats("phydroh_3d", *fields.sd.at("phydroh_3d"), no_offset, no_threshold);
+    }
 }
 
 #ifndef USECUDA

@@ -141,6 +141,10 @@ class Thermo_moist : public Thermo<TF>
         bool swcross_qsat;
         bool swcross_qlqithv;
 
+        // 3D hydrostatic pressure, calculated from 2D pressure @ TOD.
+        bool swphydro_3d;
+        std::vector<TF> phydro_tod;
+
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
         void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
