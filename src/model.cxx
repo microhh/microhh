@@ -258,6 +258,7 @@ void Model<TF>::load()
 
     grid->create_stats(*stats);
 
+    // NOTE TO SELF: why was (no, is) `load()` after `create()`? Does not make sense to me...
     thermo->create(*input, *input_nc, *stats, *column, *cross, *dump, *timeloop);
     thermo->load(timeloop->get_iotime());
 

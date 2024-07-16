@@ -1144,6 +1144,9 @@ Thermo_moist<TF>::Thermo_moist(
     // swupdate..=1 -> base state pressure updated before saturation calculation
     bs.swupdatebasestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", true);
 
+    if (swphydro_3d && !bs.swupdatebasestate)
+        throw std::runtime_error("3D phydro currently only works with swupdatebasestate=true!");
+
     // Time variable surface pressure
     tdep_pbot = std::make_unique<Timedep<TF>>(master, grid, "p_sbot", inputin.get_item<bool>("thermo", "swtimedep_pbot", "", false));
 
@@ -1248,7 +1251,7 @@ void Thermo_moist<TF>::load(const int iotime)
 
     int nerror = 0;
 
-    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    if ((master.get_mpiid() == 0) && bs.swupdatebasestate)
     {
         char filename[256];
         std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
@@ -1371,20 +1374,6 @@ void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc,
         bs.rhoref = fields.rhoref;
         bs.rhorefh = fields.rhorefh;
     }
-
-    if (swphydro_3d)
-        calc_phydro_3d(
-                fields.sd.at("phydro_3d")->fld.data(),
-                fields.sd.at("phydroh_3d")->fld.data(),
-                phydro_tod.data(),
-                fields.sp.at("thl")->fld.data(),
-                fields.sp.at("qt")->fld.data(),
-                gd.dz.data(),
-                gd.dzh.data(),
-                gd.istart, gd.iend,
-                gd.jstart, gd.jend,
-                gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
 }
 
 template<typename TF>
@@ -1419,6 +1408,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 
     // Re-calculate hydrostatic pressure and exner, pass dummy as thvref to prevent overwriting base state
     auto tmp = fields.get_tmp();
+
     if (bs.swupdatebasestate)
     {
         calc_base_state(
@@ -1430,6 +1420,20 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 fields.sp.at("qt")->fld_mean.data(),
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
+
+        if (swphydro_3d)
+            calc_phydro_3d(
+                    fields.sd.at("phydro_3d")->fld.data(),
+                    fields.sd.at("phydroh_3d")->fld.data(),
+                    phydro_tod.data(),
+                    fields.sp.at("thl")->fld.data(),
+                    fields.sp.at("qt")->fld.data(),
+                    gd.dz.data(),
+                    gd.dzh.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
     }
 
     // extend later for gravity vector not normal to surface
