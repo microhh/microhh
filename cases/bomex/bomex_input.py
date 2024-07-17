@@ -116,3 +116,6 @@ nc_file.close()
 phydro_tod = np.zeros((jtot, itot), dtype=float_type)
 phydro_tod[:,:] = 71476.13194140165
 phydro_tod.tofile('phydro_tod.0000000')
+
+phydro_tod[:,:] *= 0.9
+phydro_tod.tofile('phydro_tod.0021600')

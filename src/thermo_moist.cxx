@@ -1082,6 +1082,18 @@ namespace
                 }
         }
     }
+
+    template<typename TF>
+    void interpolate_fld(
+            TF* const restrict fld_out,
+            const TF* const restrict fld_prev,
+            const TF* const restrict fld_next,
+            const TF f0, const TF f1,
+            const int ncells)
+    {
+        for (int n=0; n<ncells; ++n)
+            fld_out[n] = f0 * fld_prev[n] + f1 * fld_next[n];
+    }
 }
 
 
@@ -1424,7 +1436,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto tmp = fields.get_tmp();
 
     if (bs.swupdatebasestate)
-    {
         calc_base_state(
                 bs.pref.data(), bs.prefh.data(),
                 bs.rhoref.data(), bs.rhorefh.data(),
@@ -1435,14 +1446,33 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
-    }
+    if (swphydro_3d && swtimedep_phydro_3d)
+        calc_phydro_3d(
+                fields.sd.at("phydro_3d")->fld.data(),
+                fields.sd.at("phydroh_3d")->fld.data(),
+                phydro_tod.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                gd.dz.data(),
+                gd.dzh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
 
-    // extend later for gravity vector not normal to surface
     calc_buoyancy_tend_2nd(
-            fields.mt.at("w")->fld.data(), fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(), bs.prefh.data(),
-            &tmp->fld[0*gd.ijcells], &tmp->fld[1*gd.ijcells],
-            &tmp->fld[2*gd.ijcells], &tmp->fld[3*gd.ijcells], bs.thvrefh.data(),
-            gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+            fields.mt.at("w")->fld.data(),
+            fields.sp.at("thl")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            bs.prefh.data(),
+            &tmp->fld[0*gd.ijcells],
+            &tmp->fld[1*gd.ijcells],
+            &tmp->fld[2*gd.ijcells],
+            &tmp->fld[3*gd.ijcells],
+            bs.thvrefh.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
     fields.release_tmp(tmp);
@@ -1554,6 +1584,69 @@ template<typename TF>
 void Thermo_moist<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
+
+    if (swtimedep_phydro_3d)
+    {
+        auto& gd = grid.get_grid_data();
+
+        unsigned long itime = timeloop.get_itime();
+        unsigned long iloadtime = convert_to_itime(loadfreq);
+        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+        if (itime > next_itime)
+        {
+
+            // Advance time and read new files.
+            prev_itime = next_itime;
+            next_itime = prev_itime + iloadtime;
+
+            unsigned long next_iotime = next_itime / iiotimeprec;
+
+            // Swap data buffers.
+            phydro_tod_prev = phydro_tod_next;
+
+            // Read new slice.
+            auto tmp1 = fields.get_tmp();
+            int nerror = 0;
+
+            auto load_2d_field = [&](
+                    TF* const restrict field, const std::string& name, const int iotime)
+            {
+                char filename[256];
+                std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+                master.print_message("Loading \"%s\" ... ", filename);
+
+                if (field3d_io.load_xy_slice(
+                        field, tmp1->fld.data(),
+                        filename))
+                {
+                    master.print_message("FAILED\n");
+                    nerror += 1;
+                }
+                else
+                    master.print_message("OK\n");
+
+                boundary_cyclic.exec_2d(field);
+            };
+
+            load_2d_field(phydro_tod_next.data(), "phydro_tod", next_iotime);
+
+            if (nerror > 0)
+                throw std::runtime_error("Error in loading TOD pressure fields.");
+
+            fields.release_tmp(tmp1);
+        }
+
+        // Interpolate in time.
+        const TF f0 = TF(1) - ((itime - prev_itime) / TF(iloadtime));
+        const TF f1 = TF(1) - f0;
+
+        interpolate_fld(
+                phydro_tod.data(),
+                phydro_tod_prev.data(),
+                phydro_tod_next.data(),
+                f0, f1, gd.ijcells);
+    }
 }
 
 template<typename TF>
