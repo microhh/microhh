@@ -76,9 +76,15 @@ namespace
 
     template<typename TF>
     void calc_buoyancy_tend_2nd(
-            TF* restrict wt, TF* restrict thl, TF* restrict qt,
-            TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-            TF* restrict ql, TF* restrict qi, TF* restrict thvrefh,
+            TF* restrict wt,
+            TF* restrict thl,
+            TF* restrict qt,
+            TF* restrict ph,
+            TF* restrict thlh,
+            TF* restrict qth,
+            TF* restrict ql,
+            TF* restrict qi,
+            TF* restrict thvrefh,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -121,8 +127,13 @@ namespace
 
     template<typename TF>
     void calc_buoyancy(
-            TF* restrict b, TF* restrict thl, TF* restrict qt,
-            TF* restrict p, TF* restrict ql, TF* restrict qi, TF* restrict thvref,
+            TF* restrict b,
+            TF* restrict thl,
+            TF* restrict qt,
+            TF* restrict p,
+            TF* restrict ql,
+            TF* restrict qi,
+            TF* restrict thvref,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -167,13 +178,20 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_h(TF* restrict bh, TF* restrict thl, TF* restrict qt,
-                         TF* restrict ph, TF* restrict thvrefh, TF* restrict thlh, TF* restrict qth,
-                         TF* restrict ql, TF* restrict qi,
-                         const int istart, const int iend,
-                         const int jstart, const int jend,
-                         const int kstart, const int kend,
-                         const int jj, const int kk)
+    void calc_buoyancy_h(
+            TF* restrict bh,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict ph,
+            const TF* restrict thvrefh,
+            TF* restrict thlh,
+            TF* restrict qth,
+            TF* restrict ql,
+            TF* restrict qi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -228,11 +246,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_liquid_water(TF* restrict ql, TF* restrict thl, TF* restrict qt, TF* restrict p,
-                           const int istart, const int iend,
-                           const int jstart, const int jend,
-                           const int kstart, const int kend,
-                           const int jj, const int kk)
+    void calc_liquid_water(
+            TF* restrict ql,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict p,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         // Calculate the ql field
         #pragma omp parallel for
@@ -251,7 +273,10 @@ namespace
 
     template<typename TF>
     void calc_saturated_water_vapor(
-            TF* restrict qsat, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            TF* restrict qsat,
+            TF* restrict thl,
+            TF* restrict qt,
+            TF* restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -274,7 +299,10 @@ namespace
 
     template<typename TF>
     void calc_relative_humidity(
-            TF* restrict rh, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            TF* restrict rh,
+            TF* restrict thl,
+            TF* restrict qt,
+            TF* restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -297,7 +325,9 @@ namespace
 
     template<typename TF>
     void calc_w500hpa(
-            TF* restrict w500, const TF* restrict w, const TF* restrict ph,
+            TF* restrict w500,
+            const TF* restrict w,
+            const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -366,12 +396,17 @@ namespace
     }
 
     template<typename TF>
-    void calc_liquid_water_h(TF* restrict qlh, TF* restrict thl,  TF* restrict qt,
-                             TF* restrict ph, TF* restrict thlh, TF* restrict qth,
-                             const int istart, const int iend,
-                             const int jstart, const int jend,
-                             const int kstart, const int kend,
-                             const int jj, const int kk)
+    void calc_liquid_water_h(
+            TF* restrict qlh,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict ph,
+            TF* restrict thlh,
+            TF* restrict qth,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -412,7 +447,10 @@ namespace
 
     template<typename TF>
     void calc_ice(
-            TF* restrict qi, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            TF* restrict qi,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -435,7 +473,10 @@ namespace
 
     template<typename TF>
     void calc_condensate(
-            TF* restrict qc, TF* restrict thl, TF* restrict qt, TF* restrict p,
+            TF* restrict qc,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -457,11 +498,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_N2(TF* restrict N2, const TF* const restrict thl, const TF* const restrict dzi, TF* restrict thvref,
-                 const int istart, const int iend,
-                 const int jstart, const int jend,
-                 const int kstart, const int kend,
-                 const int jj, const int kk)
+    void calc_N2(
+            TF* restrict N2,
+            const TF* const restrict thl,
+            const TF* const restrict dzi,
+            const TF* restrict thvref,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
@@ -475,12 +520,16 @@ namespace
     }
 
     template<typename TF>
-    void calc_T(TF* const restrict T, const TF* const restrict thl, const TF* const restrict qt,
-                const TF* const restrict pref, const TF* const restrict exnref,
-                const int istart, const int iend,
-                const int jstart, const int jend,
-                const int kstart, const int kend,
-                const int jj, const int kk)
+    void calc_T(
+            TF* const restrict T,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict pref,
+            const TF* const restrict exnref,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
@@ -531,12 +580,18 @@ namespace
     }
 
     template<typename TF>
-    void calc_T_h(TF* restrict Th, TF* restrict thl,  TF* restrict qt,
-                  TF* restrict ph, TF* restrict thlh, TF* restrict qth, TF* restrict ql,
-                  const int istart, const int iend,
-                  const int jstart, const int jend,
-                  const int kstart, const int kend,
-                  const int jj, const int kk)
+    void calc_T_h(
+            TF* restrict Th,
+            TF* restrict thl,
+            TF* restrict qt,
+            TF* restrict ph,
+            TF* restrict thlh,
+            TF* restrict qth,
+            TF* restrict ql,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -568,8 +623,10 @@ namespace
 
     template<typename TF>
     void calc_thv(
-            TF* const restrict thv, const TF* const restrict thl,
-            const TF* const restrict qt, const TF* const restrict p,
+            TF* const restrict thv,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict p,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart_minus_one, const int kend_plus_one,
@@ -617,10 +674,15 @@ namespace
     }
 
     template<typename TF>
-    void calc_T_bot(TF* const restrict T_bot, const TF* const restrict th,
-                    const TF* const restrict exnrefh, const TF* const restrict threfh,
-                    const int istart, const int iend, const int jstart, const int jend, const int kstart,
-                    const int jj, const int kk)
+    void calc_T_bot(
+            TF* const restrict T_bot,
+            const TF* const restrict th,
+            const TF* const restrict exnrefh,
+            const TF* const restrict threfh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jj, const int kk)
     {
         using Finite_difference::O2::interp2;
 
@@ -635,12 +697,17 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_bot(TF* restrict b,      TF* restrict bbot,
-                           TF* restrict thl,    TF* restrict thlbot,
-                           TF* restrict qt,     TF* restrict qtbot,
-                           TF* restrict thvref, TF* restrict thvrefh,
-                           const int icells, const int jcells,
-                           const int ijcells, const int kstart)
+    void calc_buoyancy_bot(
+            TF* restrict b,
+            TF* restrict bbot,
+            const TF* restrict thl,
+            const TF* restrict thlbot,
+            const TF* restrict qt,
+            const TF* restrict qtbot,
+            const TF* restrict thvref,
+            const TF* restrict thvrefh,
+            const int icells, const int jcells,
+            const int ijcells, const int kstart)
     {
         // assume no liquid water at the lowest model level
         for (int j=0; j<jcells; j++)
@@ -673,10 +740,17 @@ namespace
     }
 
     template<typename TF>
-    void calc_buoyancy_fluxbot(TF* restrict bfluxbot, TF* restrict thl, TF* restrict thlfluxbot,
-                               TF* restrict qt, TF* restrict qtfluxbot, TF* restrict thvrefh,
-                               const int icells, const int jcells, const int kstart,
-                               const int ijcells)
+    void calc_buoyancy_fluxbot(
+            TF* restrict bfluxbot,
+            TF* restrict thl,
+            TF* restrict thlfluxbot,
+            TF* restrict qt,
+            TF* restrict qtfluxbot,
+            TF* restrict thvrefh,
+            const int icells,
+            const int jcells,
+            const int kstart,
+            const int ijcells)
     {
 
         // Assume no liquid water at the lowest model level.
@@ -695,8 +769,10 @@ namespace
     template<typename TF>
     void calc_thv_fluxbot(
             TF* const restrict thv_fluxbot,
-            const TF* const restrict thl, const TF* const restrict thl_fluxbot,
-            const TF* const restrict qt,  const TF* const restrict qt_fluxbot,
+            const TF* const restrict thl,
+            const TF* const restrict thl_fluxbot,
+            const TF* const restrict qt,
+            const TF* const restrict qt_fluxbot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
@@ -717,7 +793,10 @@ namespace
     }
 
     template<typename TF>
-    int calc_zi(const TF* const restrict fldmean, const int kstart, const int kend, const int plusminus)
+    int calc_zi(
+            const TF* const restrict fldmean,
+            const int kstart, const int kend,
+            const int plusminus)
     {
         TF maxgrad = 0.;
         TF grad = 0.;
@@ -736,11 +815,19 @@ namespace
 
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o,
-            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
-            TF* restrict thlh, TF* restrict qth,
-            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
-            const TF* restrict p, const TF* restrict ph,
+            TF* restrict T,
+            TF* restrict T_h,
+            TF* restrict vmr_h2o,
+            TF* restrict clwp,
+            TF* restrict ciwp,
+            TF* restrict T_sfc,
+            TF* restrict thlh,
+            TF* restrict qth,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict thl_bot,
+            const TF* restrict p,
+            const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -812,11 +899,20 @@ namespace
     
     template<typename TF>
     void calc_radiation_fields(
-            TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict rh,
-            TF* restrict clwp, TF* restrict ciwp, TF* restrict T_sfc,
-            TF* restrict thlh, TF* restrict qth,
-            const TF* restrict thl, const TF* restrict qt, const TF* restrict thl_bot,
-            const TF* restrict p, const TF* restrict ph,
+            TF* restrict T,
+            TF* restrict T_h,
+            TF* restrict vmr_h2o,
+            TF* restrict rh,
+            TF* restrict clwp,
+            TF* restrict ciwp,
+            TF* restrict T_sfc,
+            TF* restrict thlh,
+            TF* restrict qth,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict thl_bot,
+            const TF* restrict p,
+            const TF* restrict ph,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -888,12 +984,20 @@ namespace
 
     template<typename TF>
     void calc_radiation_columns(
-            TF* const restrict T, TF* const restrict T_h, 
-            TF* const restrict vmr_h2o, TF* const restrict rh,
-            TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
-            const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
-            const TF* const restrict p, const TF* const restrict ph,
-            const int* const col_i, const int* const col_j,
+            TF* const restrict T,
+            TF* const restrict T_h,
+            TF* const restrict vmr_h2o,
+            TF* const restrict rh,
+            TF* const restrict clwp,
+            TF* const restrict ciwp,
+            TF* const restrict T_sfc,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict thl_bot,
+            const TF* const restrict p,
+            const TF* const restrict ph,
+            const int* const col_i,
+            const int* const col_j,
             const int n_cols,
             const int kgc, const int kstart, const int kend,
             const int icells, const int ijcells)
