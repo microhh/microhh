@@ -1116,6 +1116,10 @@ Thermo_moist<TF>::Thermo_moist(
 
     if (swphydro_3d)
     {
+        swtimedep_phydro_3d = inputin.get_item<bool>("thermo", "swtimedepphydro_3d", "", false);
+        if (swtimedep_phydro_3d)
+            loadfreq = inputin.get_item<int>("thermo", "loadfreq", "");
+
         fields.init_diagnostic_field("phydro_3d", "3D hydrostatic pressure at full levels", "Pa", group_name, gd.sloc);
         fields.init_diagnostic_field("phydroh_3d", "3D hydrostatic pressure at half levels", "Pa", group_name, gd.wloc);
     }
@@ -1179,7 +1183,15 @@ void Thermo_moist<TF>::init()
     bs.rhorefh.resize(gd.kcells);
 
     if (swphydro_3d)
+    {
         phydro_tod.resize(gd.ijcells);
+
+        if (swtimedep_phydro_3d)
+        {
+            phydro_tod_prev.resize(gd.ijcells);
+            phydro_tod_next.resize(gd.ijcells);
+        }
+    }
 }
 
 template<typename TF>
@@ -1302,9 +1314,6 @@ void Thermo_moist<TF>::load(const int iotime)
     load_2d_field(fields.sp.at("thl")->fld_bot.data(), "thl_bot", iotime);
     load_2d_field(fields.sp.at("qt")->fld_bot.data(), "qt_bot", iotime);
 
-    if (swphydro_3d)
-        load_2d_field(phydro_tod.data(), "phydro_tod", 0);
-
     fields.release_tmp(tmp1);
 
     // Communicate the file read error over all procs.
@@ -1381,17 +1390,21 @@ void Thermo_moist<TF>::create(
         Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
         Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
+    // Init the toolbox classes.
+    boundary_cyclic.init();
+
     // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
+    // Setup 3D hydrostatic pressure.
+    if (swphydro_3d)
+        create_phydro_3d(timeloop);
+
     // `thermo->create` is called only for warm starts. Don't overwrite the base state density.
     const bool define_rhoref = false;
     create_basestate(inputin, input_nc, define_rhoref);
-
-    // Init the toolbox classes.
-    boundary_cyclic.init();
 
     // Set up output classes
     create_stats(stats);
@@ -1399,6 +1412,7 @@ void Thermo_moist<TF>::create(
     create_dump(dump);
     create_cross(cross);
 }
+
 
 #ifndef USECUDA
 template<typename TF>
@@ -1421,19 +1435,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
-        if (swphydro_3d)
-            calc_phydro_3d(
-                    fields.sd.at("phydro_3d")->fld.data(),
-                    fields.sd.at("phydroh_3d")->fld.data(),
-                    phydro_tod.data(),
-                    fields.sp.at("thl")->fld.data(),
-                    fields.sp.at("qt")->fld.data(),
-                    gd.dz.data(),
-                    gd.dzh.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
     }
 
     // extend later for gravity vector not normal to surface
@@ -1906,6 +1907,70 @@ int Thermo_moist<TF>::get_bl_depth()
     // Use the liquid water potential temperature gradient to find the BL depth
     auto& gd = grid.get_grid_data();
     return calc_zi(fields.sp.at("thl")->fld_mean.data(), gd.kstart, gd.kend, 1);
+}
+
+template<typename TF>
+void Thermo_moist<TF>::create_phydro_3d(Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+
+    auto tmp1 = fields.get_tmp();
+    int nerror = 0;
+
+    // Lambda function to load 2D fields.
+    auto load_2d_field = [&](
+            TF* const restrict field, const std::string& name, const int iotime)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        master.print_message("Loading \"%s\" ... ", filename);
+
+        if (field3d_io.load_xy_slice(
+                field, tmp1->fld.data(),
+                filename))
+        {
+            master.print_message("FAILED\n");
+            nerror += 1;
+        }
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(field);
+    };
+
+    if (swtimedep_phydro_3d)
+    {
+        std::pair<unsigned long, unsigned long> iotimes = timeloop.get_prev_and_next_iotime(loadfreq);
+        std::pair<unsigned long, unsigned long> itimes = timeloop.get_prev_and_next_itime(loadfreq);
+
+        prev_itime = itimes.first;
+        next_itime = itimes.second;
+
+        load_2d_field(phydro_tod_prev.data(), "phydro_tod", iotimes.first);
+        load_2d_field(phydro_tod_next.data(), "phydro_tod", iotimes.second);
+    }
+    else
+    {
+        load_2d_field(phydro_tod.data(), "phydro_tod", 0);
+
+        calc_phydro_3d(
+                fields.sd.at("phydro_3d")->fld.data(),
+                fields.sd.at("phydroh_3d")->fld.data(),
+                phydro_tod.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                gd.dz.data(),
+                gd.dzh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    }
+
+    if (nerror > 0)
+        throw std::runtime_error("Error in loading TOD pressure fields.");
+
+    fields.release_tmp(tmp1);
 }
 
 template<typename TF>

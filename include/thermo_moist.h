@@ -143,7 +143,14 @@ class Thermo_moist : public Thermo<TF>
 
         // 3D hydrostatic pressure, calculated from 2D pressure @ TOD.
         bool swphydro_3d;
+        bool swtimedep_phydro_3d;
+        int loadfreq;
+        unsigned long next_itime;
+        unsigned long prev_itime;
         std::vector<TF> phydro_tod;
+        std::vector<TF> phydro_tod_prev;
+        std::vector<TF> phydro_tod_next;
+        void create_phydro_3d(Timeloop<TF>&);
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
