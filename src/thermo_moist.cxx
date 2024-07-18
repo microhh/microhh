@@ -74,42 +74,59 @@ namespace
         qt0[kend]       = TF(2.)*qt0t  - qt0[kend-1];
     }
 
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_buoyancy_tend_2nd(
             TF* restrict wt,
-            TF* restrict thl,
-            TF* restrict qt,
-            TF* restrict ph,
+            const TF* restrict thl,
+            const TF* restrict qt,
+            const TF* restrict ph,
             TF* restrict thlh,
             TF* restrict qth,
             TF* restrict ql,
             TF* restrict qi,
-            TF* restrict thvrefh,
+            const TF* restrict thvrefh,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
             const int jj, const int kk)
     {
+        TF ph_local, exnh_local;
+
         #pragma omp parallel for
         for (int k=kstart+1; k<kend; k++)
         {
-            const TF exnh = exner(ph[k]);
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
-                    const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
+                    const int ijk = ij + k*kk;
+
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
                 }
+
+            if constexpr (!swphydro_3d)
+            {
+                ph_local = ph[k];
+                exnh_local = exner(ph[k]);
+            }
 
             for (int j=jstart; j<jend; j++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ij  = i + j*jj;
-                    Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                    const int ijk = ij + k*kk;
+
+                    if constexpr (swphydro_3d)
+                    {
+                        ph_local = ph[ijk];
+                        exnh_local = exner(ph[ijk]);
+                    }
+
+                    Struct_sat_adjust<TF> ssa = sat_adjust(thlh[ij], qth[ij], ph_local, exnh_local);
+
                     ql[ij] = ssa.ql;
                     qi[ij] = ssa.qi;
                 }
@@ -120,7 +137,11 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ij  = i + j*jj;
-                    wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
+
+                    if constexpr (swphydro_3d)
+                        exnh_local = exner(ph[ijk]);
+
+                    wt[ijk] += buoyancy(exnh_local, thlh[ij], qth[ij], ql[ij], qi[ij], thvrefh[k]);
                 }
         }
     }
@@ -1550,6 +1571,9 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
+    // DEBUG/HACK/TESTING/...
+    std::fill(phydro_tod.begin(), phydro_tod.end(), bs.prefh[gd.kend]);
+
     if (swphydro_3d && swtimedep_phydro_3d)
         calc_phydro_3d(
                 fields.sd.at("phydro_3d")->fld.data(),
@@ -1564,20 +1588,28 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
-    calc_buoyancy_tend_2nd(
-            fields.mt.at("w")->fld.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            bs.prefh.data(),
-            &tmp->fld[0*gd.ijcells],
-            &tmp->fld[1*gd.ijcells],
-            &tmp->fld[2*gd.ijcells],
-            &tmp->fld[3*gd.ijcells],
-            bs.thvrefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    auto buoyancy_tend_wrapper = [&]<bool swphydro_3d>(std::vector<TF>& ph)
+    {
+        calc_buoyancy_tend_2nd<TF, swphydro_3d>(
+                fields.mt.at("w")->fld.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                ph.data(),
+                &tmp->fld[0*gd.ijcells],
+                &tmp->fld[1*gd.ijcells],
+                &tmp->fld[2*gd.ijcells],
+                &tmp->fld[3*gd.ijcells],
+                bs.thvrefh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+    if (swphydro_3d)
+        buoyancy_tend_wrapper.template operator()<true>(fields.sd.at("phydroh_3d")->fld);
+    else
+        buoyancy_tend_wrapper.template operator()<false>(bs.prefh);
 
     fields.release_tmp(tmp);
 
