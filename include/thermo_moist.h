@@ -48,7 +48,8 @@ template<typename> class Timeloop;
  * equivalent and no complex buoyancy function is required.
  */
 
- enum class Micro_type {disabled, two_mom_warm};
+enum class Micro_type {disabled, two_mom_warm};
+enum class Satadjust_field {ql, qi, qlqi, qsat, T, RH};
 
 template<typename TF>
 class Thermo_moist : public Thermo<TF>
