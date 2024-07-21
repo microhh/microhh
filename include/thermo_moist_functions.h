@@ -193,11 +193,12 @@ namespace Thermo_moist_functions
         TF tnr_old = TF(1.e9);
         const TF tl = thl * exn;
 
-	// Upper limit Arden-Buck equation.
-	const TF tl_lim = T0<TF>+TF(50);
-	if (tl > tl_lim)
-	{
+        // Upper limit Arden-Buck equation.
+        const TF tl_lim = T0<TF>+TF(50);
+        if (tl > tl_lim)
+        {
             TF qs = qsat_liq(p, tl_lim);
+
             Struct_sat_adjust<TF> ans =
             {
                 TF(0.), // ql
@@ -205,8 +206,9 @@ namespace Thermo_moist_functions
                 tl, // t
                 qs, // qs
             };
-	    return ans;
-	}
+
+            return ans;
+        }
 
         TF qs = qsat_liq(p, tl);
         Struct_sat_adjust<TF> ans =

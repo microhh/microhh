@@ -768,7 +768,7 @@ namespace
     }
 
 
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_radiation_fields(
             TF* restrict T,
             TF* restrict T_h,
@@ -793,21 +793,37 @@ namespace
         // This routine strips off the ghost cells, because of the data handling in radiation.
         using Finite_difference::O2::interp2;
 
+        TF exn_loc, p_loc, dpg_loc;
+        TF exnh_loc, ph_loc;
+
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
-            const TF ex = exner(p[k]);
-            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            if constexpr (!swphydro_3d)
+            {
+                p_loc = p[k];
+                exn_loc = exner(p[k]);
+                dpg_loc = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            }
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
 
-                    clwp[ijk_nogc] = ssa.ql * dpg;
-                    ciwp[ijk_nogc] = ssa.qi * dpg;
+                    if constexpr (swphydro_3d)
+                    {
+                        p_loc = p[ijk];
+                        exn_loc = exner(p[ijk]);
+                        dpg_loc = (ph[ijk] - ph[ijk+kk]) / Constants::grav<TF>;
+                    }
+
+                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p_loc, exn_loc);
+
+                    clwp[ijk_nogc] = ssa.ql * dpg_loc;
+                    ciwp[ijk_nogc] = ssa.qi * dpg_loc;
 
                     const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                     vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
@@ -818,13 +834,19 @@ namespace
 
         for (int k=kstart; k<kend+1; ++k)
         {
-            const TF exnh = exner(ph[k]);
+            if constexpr (!swphydro_3d)
+            {
+                ph_loc = ph[k];
+                exnh_loc = exner(ph[k]);
+            }
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ij  = i + j*jj;
-                    const int ijk = i + j*jj + k*kk;
+                    const int ijk = ij + k*kk;
+
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
                 }
@@ -834,26 +856,40 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ij = i + j*jj;
+                    const int ijk = ij + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+
+                    if constexpr (swphydro_3d)
+                    {
+                        ph_loc = ph[ijk];
+                        exnh_loc = exner(ph[ijk]);
+                    }
+
+                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph_loc, exnh_loc).t;
                 }
         }
 
         // Calculate surface temperature (assuming no liquid water)
-        const TF exn_bot = exner(ph[kstart]);
+        TF exn_bot;
+        if constexpr (!swphydro_3d)
+            exn_bot = exner(ph[kstart]);
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*jj;
+                const int ijk = ij + kstart*kk;
                 const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+                if constexpr (swphydro_3d)
+                    exn_bot = exner(ph[ijk]);
 
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
             }
     }
 
-
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_radiation_fields(
             TF* restrict T,
             TF* restrict T_h,
@@ -879,21 +915,30 @@ namespace
         // This routine strips off the ghost cells, because of the data handling in radiation.
         using Finite_difference::O2::interp2;
 
+        TF exn_loc, p_loc, dpg_loc;
+        TF exnh_loc, ph_loc;
+
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
-            const TF ex = exner(p[k]);
-            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            if constexpr (!swphydro_3d)
+            {
+                p_loc = p[k];
+                exn_loc = exner(p[k]);
+                dpg_loc = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            }
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
 
-                    clwp[ijk_nogc] = ssa.ql * dpg;
-                    ciwp[ijk_nogc] = ssa.qi * dpg;
+                    const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p_loc, exn_loc);
+
+                    clwp[ijk_nogc] = ssa.ql * dpg_loc;
+                    ciwp[ijk_nogc] = ssa.qi * dpg_loc;
 
                     const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                     vmr_h2o[ijk_nogc] = qv / (ep<TF> - ep<TF>*qv);
@@ -904,13 +949,19 @@ namespace
 
         for (int k=kstart; k<kend+1; ++k)
         {
-            const TF exnh = exner(ph[k]);
+            if constexpr (!swphydro_3d)
+            {
+                ph_loc = ph[k];
+                exnh_loc = exner(ph[k]);
+            }
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
+
                     thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
                     qth [ij] = interp2(qt [ijk-kk], qt [ijk]);
                 }
@@ -920,19 +971,34 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ij = i + j*jj;
+                    const int ijk = ij + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
-                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh).t;
+
+                    if constexpr (swphydro_3d)
+                    {
+                        ph_loc = ph[ijk];
+                        exnh_loc = exner(ph[ijk]);
+                    }
+
+                    T_h[ijk_nogc] = sat_adjust(thlh[ij], qth[ij], ph_loc, exnh_loc).t;
                 }
         }
 
         // Calculate surface temperature (assuming no liquid water)
-        const TF exn_bot = exner(ph[kstart]);
+        TF exn_bot;
+        if constexpr (!swphydro_3d)
+            exn_bot = exner(ph[kstart]);
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*jj;
+                const int ijk = ij + kstart*kk;
                 const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+
+                if constexpr (swphydro_3d)
+                    exn_bot = exner(ph[ijk]);
 
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
             }
@@ -1740,6 +1806,7 @@ void Thermo_moist<TF>::get_thermo_field(
     if (bs.swupdatebasestate)
     {
         auto tmp = fields.get_tmp();
+
         calc_base_state(
                 base.pref.data(),
                 base.prefh.data(),
@@ -1757,6 +1824,7 @@ void Thermo_moist<TF>::get_thermo_field(
                 gd.z.data(),
                 gd.dz.data(),
                 gd.dzh.data());
+
         fields.release_tmp(tmp);
     }
 
@@ -1965,19 +2033,30 @@ void Thermo_moist<TF>::get_radiation_fields(
 {
     auto& gd = grid.get_grid_data();
 
-    calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(),
-            clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
-            T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
-            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            bs.pref.data(), bs.prefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.igc, gd.jgc, gd.kgc,
-            gd.icells, gd.ijcells,
-            gd.imax, gd.imax*gd.jmax);
+    auto calc_rad_field_wrapper = [&]<bool swphydro_3d>(
+            const std::vector<TF>& p, const std::vector<TF>& ph)
+    {
+        calc_radiation_fields<TF, swphydro_3d>(
+                T.fld.data(), T_h.fld.data(), qv.fld.data(),
+                clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
+                T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+                fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                p.data(), ph.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax * gd.jmax);
+    };
+
+    if (swphydro_3d)
+        calc_rad_field_wrapper.template operator()<true>(
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydro_3d")->fld);
+    else
+        calc_rad_field_wrapper.template operator()<false>(
+                bs.pref, bs.prefh);
 }
 
 template<typename TF>
@@ -1986,19 +2065,30 @@ void Thermo_moist<TF>::get_radiation_fields(
 {
     auto& gd = grid.get_grid_data();
 
-    calc_radiation_fields(
-            T.fld.data(), T_h.fld.data(), qv.fld.data(), rh.fld.data(),
-            clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
-            T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
-            fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            bs.pref.data(), bs.prefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kend,
-            gd.igc, gd.jgc, gd.kgc,
-            gd.icells, gd.ijcells,
-            gd.imax, gd.imax*gd.jmax);
+    auto calc_rad_field_wrapper = [&]<bool swphydro_3d>(
+            const std::vector<TF>& p, const std::vector<TF>& ph)
+    {
+        calc_radiation_fields<TF, swphydro_3d>(
+                T.fld.data(), T_h.fld.data(), qv.fld.data(), rh.fld.data(),
+                clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
+                T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+                fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                p.data(), ph.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.igc, gd.jgc, gd.kgc,
+                gd.icells, gd.ijcells,
+                gd.imax, gd.imax*gd.jmax);
+    };
+
+    if (swphydro_3d)
+        calc_rad_field_wrapper.template operator()<true>(
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydro_3d")->fld);
+    else
+        calc_rad_field_wrapper.template operator()<false>(
+                bs.pref, bs.prefh);
 }
 
 template<typename TF>
