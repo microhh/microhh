@@ -507,7 +507,7 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    N2[ijk] = grav<TF> / thvref[k] *TF(0.5) * (thl[ijk+kk] - thl[ijk-kk]) * dzi[k];
+                    N2[ijk] = grav<TF> / thvref[k] * TF(0.5) * (thl[ijk+kk] - thl[ijk-kk]) * dzi[k];
                 }
     }
 
@@ -622,11 +622,11 @@ namespace
     }
 
 
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_T_bot(
             TF* const restrict T_bot,
             const TF* const restrict th,
-            const TF* const restrict exnrefh,
+            const TF* const restrict ph,
             const TF* const restrict threfh,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -635,13 +635,21 @@ namespace
     {
         using Finite_difference::O2::interp2;
 
+        TF exnh;
+        if constexpr (!swphydro_3d)
+            exnh = exner(ph[kstart]);
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
-                T_bot[ij] = exnrefh[kstart] * threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
+
+                if constexpr (!swphydro_3d)
+                    exnh = exner(ph[ijk]);
+
+                T_bot[ij] = exnh * threfh[kstart] + (interp2(th[ijk-kk], th[ijk]) - threfh[kstart]);
             }
     }
 
@@ -1011,7 +1019,7 @@ namespace
             }
     }
 
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_radiation_columns(
             TF* const restrict T,
             TF* const restrict T_h,
@@ -1036,11 +1044,18 @@ namespace
 
         const int ktot = kend-kstart;
 
+        TF p_loc, exn_loc, dpg_loc;
+        TF ph_loc, exnh_loc;
+
         #pragma omp parallel for
         for (int k=kstart; k<kend; ++k)
         {
-            const TF ex = exner(p[k]);
-            const TF dpg = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            if constexpr (!swphydro_3d)
+            {
+                p_loc = p[k];
+                exn_loc = exner(p[k]);
+                dpg_loc = (ph[k] - ph[k+1]) / Constants::grav<TF>;
+            }
 
             #pragma ivdep
             for (int n=0; n<n_cols; ++n)
@@ -1051,10 +1066,17 @@ namespace
                 const int ijk = i + j*icells + k*ijcells;
                 const int ijk_out = n + (k-kgc)*n_cols;
 
-                const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                if constexpr (swphydro_3d)
+                {
+                    p_loc = p[ijk];
+                    exn_loc = exner(p[ijk]);
+                    dpg_loc = (ph[ijk] - ph[ijk+ijcells]) / Constants::grav<TF>;
+                }
 
-                clwp[ijk_out] = ssa.ql * dpg;
-                ciwp[ijk_out] = ssa.qi * dpg;
+                const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p_loc, exn_loc);
+
+                clwp[ijk_out] = ssa.ql * dpg_loc;
+                ciwp[ijk_out] = ssa.qi * dpg_loc;
 
                 const TF qv = qt[ijk] - ssa.ql - ssa.qi;
                 vmr_h2o[ijk_out] = qv / (ep<TF> - ep<TF>*qv);
@@ -1065,7 +1087,11 @@ namespace
 
         for (int k=kstart; k<kend+1; ++k)
         {
-            const TF exnh = exner(ph[k]);
+            if constexpr (!swphydro_3d)
+            {
+                ph_loc = ph[k];
+                exnh_loc = exner(ph[k]);
+            }
 
             #pragma ivdep
             for (int n=0; n<n_cols; ++n)
@@ -1079,12 +1105,20 @@ namespace
                 const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
                 const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
 
-                T_h[ijk_out] = sat_adjust(thlh, qth, ph[k], exnh).t;
+                if constexpr (swphydro_3d)
+                {
+                    ph_loc = ph[ijk];
+                    exnh_loc = exner(ph[ijk]);
+                }
+
+                T_h[ijk_out] = sat_adjust(thlh, qth, ph_loc, exnh_loc).t;
             }
         }
 
         // Calculate surface temperature (assuming no liquid water)
-        const TF exn_bot = exner(ph[kstart]);
+        TF exn_bot;
+        if constexpr (!swphydro_3d)
+            exn_bot = exner(ph[kstart]);
 
         #pragma ivdep
         for (int n=0; n<n_cols; ++n)
@@ -1093,13 +1127,17 @@ namespace
             const int j = col_j[n];
 
             const int ij = i + j*icells;
+            const int ijk = ij + kstart * ijcells;
             const int ij_out = n;
+
+            if constexpr (swphydro_3d)
+                exn_bot = exner(ph[ijk]);
 
             T_sfc[ij_out] = thl_bot[ij] * exn_bot;
         }
     }
 
-    template<typename TF>
+    template<typename TF, bool swphydro_3d>
     void calc_land_surface_fields(
             TF* const restrict T_bot,
             TF* const restrict T_a,
@@ -1109,8 +1147,6 @@ namespace
             const TF* const restrict thl_bot,
             const TF* const restrict thl,
             const TF* const restrict qt,
-            const TF* const restrict exner,
-            const TF* const restrict exnerh,
             const TF* const restrict p,
             const TF* const restrict ph,
             const int istart, const int iend,
@@ -1118,6 +1154,18 @@ namespace
             const int kstart,
             const int icells, const int ijcells)
     {
+        TF p_loc, exn_loc;
+        TF ph_loc, exnh_loc;
+
+        if constexpr (!swphydro_3d)
+        {
+            p_loc = p[kstart];
+            ph_loc = ph[kstart];
+
+            exn_loc = exner(p[kstart]);
+            exnh_loc = exner(ph[kstart]);
+        }
+
         for (int j=jstart; j<jend; j++)
             #pragma ivdep
             for (int i=istart; i<iend; i++)
@@ -1125,11 +1173,20 @@ namespace
                 const int ij  = i + j*icells;
                 const int ijk = i + j*icells + kstart*ijcells;
 
+                if constexpr (swphydro_3d)
+                {
+                    p_loc = p[ijk];
+                    ph_loc = ph[ijk];
+
+                    exn_loc = exner(p[ijk]);
+                    exnh_loc = exner(ph[ijk]);
+                }
+
                 // Saturation adjustment for first model level
                 Struct_sat_adjust<TF> sa = sat_adjust(
-                        thl[ijk], qt[ijk], p[kstart], exner[kstart]);
+                        thl[ijk], qt[ijk], p_loc, exn_loc);
 
-                T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
+                T_bot[ij] = exnh_loc * thl_bot[ij];   // Assuming no ql
                 T_a[ij]   = sa.t;
 
                 // Vapor pressure deficit first model level
@@ -1138,8 +1195,8 @@ namespace
                 vpd[ij] = es-e;
 
                 // qsat(T_bot) + dqsatdT(T_bot)
-                qs[ij] = qsat(ph[kstart], T_bot[ij]);
-                dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
+                qs[ij] = qsat(ph_loc, T_bot[ij]);
+                dqsdT[ij] = dqsatdT(ph_loc, T_bot[ij]);
             }
     }
 
@@ -2131,46 +2188,69 @@ void Thermo_moist<TF>::get_radiation_columns(
     TF* clwp_a  = &tmp.fld.data()[offset]; offset += n_cols * (gd.ktot);
     TF* ciwp_a  = &tmp.fld.data()[offset];
 
-    calc_radiation_columns(
-            t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a, t_sfc_a,
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            bs.pref.data(),
-            bs.prefh.data(),
-            col_i.data(),
-            col_j.data(),
-            n_cols,
-            gd.kgc, gd.kstart, gd.kend,
-            gd.icells, gd.ijcells);
+    auto calc_rad_columns_wrapper = [&]<bool swphydro_3d>(
+            const std::vector<TF>& p, const std::vector<TF>& ph)
+    {
+        calc_radiation_columns<TF, swphydro_3d>(
+                t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a, t_sfc_a,
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                p.data(),
+                ph.data(),
+                col_i.data(),
+                col_j.data(),
+                n_cols,
+                gd.kgc, gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
+    };
+
+    if (swphydro_3d)
+        calc_rad_columns_wrapper.template operator()<true>(
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydroh_3d")->fld);
+    else
+        calc_rad_columns_wrapper.template operator()<false>(
+                bs.pref, bs.prefh);
 }
 
 template<typename TF>
 void Thermo_moist<TF>::get_land_surface_fields(
-        std::vector<TF>& T_bot, std::vector<TF>& T_a, std::vector<TF>& vpd,
-        std::vector<TF>& qsat, std::vector<TF>& dqsatdT)
+        std::vector<TF>& T_bot,
+        std::vector<TF>& T_a,
+        std::vector<TF>& vpd,
+        std::vector<TF>& qsat,
+        std::vector<TF>& dqsatdT)
 {
     /* Calculate the thermo fields required by the LSM in
        2D slices in the 3D tmp field */
     auto& gd = grid.get_grid_data();
 
-    calc_land_surface_fields(
-            T_bot.data(),
-            T_a.data(),
-            vpd.data(),
-            qsat.data(),
-            dqsatdT.data(),
-            fields.sp.at("thl")->fld_bot.data(),
-            fields.sp.at("thl")->fld.data(),
-            fields.sp.at("qt")->fld.data(),
-            bs.exnref.data(),
-            bs.exnrefh.data(),
-            bs.pref.data(),
-            bs.prefh.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart,
-            gd.icells, gd.ijcells);
+    auto calc_lsm_fields_wrapper = [&]<bool swphydro_3d>(
+            const std::vector<TF>& p, const std::vector<TF>& ph)
+    {
+        calc_land_surface_fields<TF, swphydro_3d>(
+                T_bot.data(),
+                T_a.data(),
+                vpd.data(),
+                qsat.data(),
+                dqsatdT.data(),
+                fields.sp.at("thl")->fld_bot.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                p.data(),
+                ph.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
+    };
+
+    if (swphydro_3d)
+        calc_lsm_fields_wrapper.template operator()<true>(
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydroh_3d")->fld);
+    else
+        calc_lsm_fields_wrapper.template operator()<false>(
+                bs.pref, bs.prefh);
 }
 
 template<typename TF>
@@ -2240,14 +2320,31 @@ template<typename TF>
 void Thermo_moist<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 {
     auto& gd = grid.get_grid_data();
+
     Background_state base;
     if (is_stat)
         base = bs_stats;
     else
         base = bs;
 
-    calc_T_bot(T_bot.fld_bot.data(), fields.sp.at("thl")->fld.data(), base.exnrefh.data(), base.thl0.data(),
-               gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.icells, gd.ijcells);
+    auto calc_T_bot_wrapper = [&]<bool swphydro_3d>(
+            const std::vector<TF>& ph)
+    {
+        calc_T_bot<TF, swphydro_3d>(
+                T_bot.fld_bot.data(),
+                fields.sp.at("thl")->fld.data(),
+                ph.data(),
+                base.thl0.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
+    };
+
+    if (swphydro_3d)
+        calc_T_bot_wrapper.template operator()<true>(fields.sd.at("phydroh_3d")->fld);
+    else
+        calc_T_bot_wrapper.template operator()<false>(base.prefh);
 }
 
 template<typename TF>
@@ -2282,8 +2379,6 @@ TF Thermo_moist<TF>::get_db_ref() const
     auto& gd = grid.get_grid_data();
     return Constants::grav<TF>/bs.thvref[gd.kstart]*(bs.thvref[gd.kstart] - bs.thvrefh[gd.kstart]);
 }
-
-
 
 template<typename TF>
 void Thermo_moist<TF>::get_prog_vars(std::vector<std::string>& list)
