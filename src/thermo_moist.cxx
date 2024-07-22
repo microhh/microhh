@@ -1637,7 +1637,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // DEBUG/HACK/TESTING/...
-    std::fill(phydro_tod.begin(), phydro_tod.end(), bs.prefh[gd.kend]);
+    //std::fill(phydro_tod.begin(), phydro_tod.end(), bs.prefh[gd.kend]);
 
     if (swphydro_3d && swtimedep_phydro_3d)
         calc_phydro_3d(
@@ -2569,6 +2569,12 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
 
         column.add_time_series("ql_path", "Liquid water path", "kg m-2");
         column.add_time_series("qi_path", "Ice path", "kg m-2");
+
+        if (swphydro_3d)
+        {
+            column.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z");
+            column.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh");
+        }
     }
 }
 
@@ -2830,6 +2836,12 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
 
     column.calc_column("qi", output->fld.data(), no_offset);
     column.calc_time_series("qi_path", output->fld_bot.data(), no_offset);
+
+    if (swphydro_3d)
+    {
+        column.calc_column("phydro", fields.sd.at("phydro_3d")->fld.data(), no_offset);
+        column.calc_column("phydroh", fields.sd.at("phydroh_3d")->fld.data(), no_offset);
+    }
 
     fields.release_tmp(output);
 }
