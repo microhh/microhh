@@ -1,3 +1,4 @@
+from datetime import datetime
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
@@ -186,6 +187,9 @@ def create_case_input(
     ini['time']['endtime'] = (end_date - start_date).total_seconds()
     d = start_date
     ini['time']['datetime_utc'] = f'{d.year}-{d.month:02d}-{d.day:02d} {d.hour:02d}:{d.minute:02d}:{d.second:02d}'
+
+    ini['column']['coordinates[x]'] = xsize/2
+    ini['column']['coordinates[y]'] = ysize/2
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
