@@ -935,6 +935,13 @@ namespace
                     const int ijk = i + j*jj + k*kk;
                     const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (k-kgc)*kk_nogc;
 
+                    if constexpr (swphydro_3d)
+                    {
+                        p_loc = p[ijk];
+                        exn_loc = exner(p[ijk]);
+                        dpg_loc = (ph[ijk] - ph[ijk+kk]) / Constants::grav<TF>;
+                    }
+
                     const Struct_sat_adjust<TF> ssa = sat_adjust(thl[ijk], qt[ijk], p_loc, exn_loc);
 
                     clwp[ijk_nogc] = ssa.ql * dpg_loc;
@@ -2037,12 +2044,19 @@ void Thermo_moist<TF>::get_radiation_fields(
             const std::vector<TF>& p, const std::vector<TF>& ph)
     {
         calc_radiation_fields<TF, swphydro_3d>(
-                T.fld.data(), T_h.fld.data(), qv.fld.data(),
-                clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
-                T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
-                fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+                T.fld.data(),
+                T_h.fld.data(),
+                qv.fld.data(),
+                clwp.fld.data(),
+                ciwp.fld.data(),
+                T_h.fld_bot.data(),
+                T.fld_bot.data(),  // These 2d fields are used as tmp arrays.
+                T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
                 fields.sp.at("thl")->fld_bot.data(),
-                p.data(), ph.data(),
+                p.data(),
+                ph.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
@@ -2053,10 +2067,12 @@ void Thermo_moist<TF>::get_radiation_fields(
 
     if (swphydro_3d)
         calc_rad_field_wrapper.template operator()<true>(
-                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydro_3d")->fld);
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydroh_3d")->fld);
     else
         calc_rad_field_wrapper.template operator()<false>(
                 bs.pref, bs.prefh);
+
+    std::cout << "boe" << std::endl;
 }
 
 template<typename TF>
@@ -2069,10 +2085,17 @@ void Thermo_moist<TF>::get_radiation_fields(
             const std::vector<TF>& p, const std::vector<TF>& ph)
     {
         calc_radiation_fields<TF, swphydro_3d>(
-                T.fld.data(), T_h.fld.data(), qv.fld.data(), rh.fld.data(),
-                clwp.fld.data(), ciwp.fld.data(), T_h.fld_bot.data(),
-                T.fld_bot.data(), T.fld_top.data(),  // These 2d fields are used as tmp arrays.
-                fields.sp.at("thl")->fld.data(), fields.sp.at("qt")->fld.data(),
+                T.fld.data(),
+                T_h.fld.data(),
+                qv.fld.data(),
+                rh.fld.data(),
+                clwp.fld.data(),
+                ciwp.fld.data(),
+                T_h.fld_bot.data(),
+                T.fld_bot.data(),  // These 2d fields are used as tmp arrays.
+                T.fld_top.data(),  // These 2d fields are used as tmp arrays.
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
                 fields.sp.at("thl")->fld_bot.data(),
                 p.data(), ph.data(),
                 gd.istart, gd.iend,
@@ -2085,7 +2108,7 @@ void Thermo_moist<TF>::get_radiation_fields(
 
     if (swphydro_3d)
         calc_rad_field_wrapper.template operator()<true>(
-                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydro_3d")->fld);
+                fields.sd.at("phydro_3d")->fld, fields.sd.at("phydroh_3d")->fld);
     else
         calc_rad_field_wrapper.template operator()<false>(
                 bs.pref, bs.prefh);
