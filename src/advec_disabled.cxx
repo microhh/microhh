@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -60,7 +60,7 @@ void Advec_disabled<TF>::exec(Stats<TF>&) {}
 
 template<typename TF>
 void Advec_disabled<TF>::get_advec_flux(
-        Field3d<TF>& advec_flux, const Field3d<TF>& fld, const Field3d<TF>& w)
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld)
 {
     std::fill(advec_flux.fld.begin(), advec_flux.fld.end(), TF(0.));
 }

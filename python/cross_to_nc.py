@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -53,9 +53,14 @@ def convert_to_nc(variables):
                     else:
                         indexes_local = indexes
 
-                #dim = {'time' : range(niter), 'z' : range(ktot), 'y' : range(jtot), 'x' : range(itot)}
+                        files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
+                                variable, mode, indexes_local[0], starttime))
+                        if len(files) == 0:
+                            raise Exception('Cannot find any cross-section')
+                        halflevel = files[0].split('.')[-3]
+
                 dim = collections.OrderedDict()
-                dim['time'] = range(niter)
+                dim['time'] = []
                 dim['z'] = range(ktot)
                 dim['y'] = range(jtot)
                 dim['x'] = range(itot)
@@ -65,13 +70,13 @@ def convert_to_nc(variables):
                     n = itot * jtot
                     indexes_local = [-1]
                 elif mode == 'xy':
-                    dim.update({'z': indexes_local})
+                    dim.update({'z': []})
                     n = itot * jtot
                 elif mode == 'xz':
-                    dim.update({'y': indexes_local})
+                    dim.update({'y': []})
                     n = itot * ktot
                 elif mode == 'yz':
-                    dim.update({'x': indexes_local})
+                    dim.update({'x': []})
                     n = ktot * jtot
 
                 if halflevel[0] == '1':
@@ -82,13 +87,19 @@ def convert_to_nc(variables):
                     dim['zh'] = dim.pop('z')
                 ncfile = mht.Create_ncfile(
                     grid, filename, variable, dim, precision, compression)
+                
+                for key, val in dim.items():
+                    if key == 'time':
+                        continue
+                    elif val == []:
+                        ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
-                for t in range(niter):
+                for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
                     for k in range(len(indexes_local)):
                         index = indexes_local[k]
                         otime = int(
                             round(
-                                (starttime + t * sampletime) / 10**iotimeprec))
+                                (time) / 10**iotimeprec))
                         if at_surface:
                             f_in = "{0}.{1}.{2}.{3:07d}".format(
                                 variable, mode, halflevel, otime)
@@ -99,14 +110,13 @@ def convert_to_nc(variables):
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:
                             print (ex)
-                            raise Exception(
-                                'Stopping: cannot find file {}'.format(f_in))
+                            break
 
                         print(
                             "Processing %8s, time=%7i, index=%4i" %
                             (variable, otime, index))
 
-                        ncfile.dimvar['time'][t] = otime * 10**iotimeprec
+                        ncfile.dimvar['time'][t] = time
 
                         if at_surface:
                             ncfile.var[t, :, :] = fin.read(n)
@@ -165,6 +175,13 @@ parser.add_argument(
     help='do not compress the netcdf file',
     action='store_true')
 
+parser.add_argument(
+    '-o',
+    '--order',
+    help='order',
+    choices=[
+        2, 4], type = int)
+
 args = parser.parse_args()
 
 if args.directory is not None:
@@ -210,17 +227,13 @@ variables = [ variables ] if not isinstance(variables, list) else variables
 precision = args.precision
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 compression = not(args.nocompression)
+try:
+    order = args.order if args.order is not None else nl['grid']['swspatialorder']
+except KeyError:
+    order = 2
+
 # End option parsing
-
-# Calculate the number of iterations
-for time in np.arange(starttime, endtime, sampletime):
-    otime = int(round(time / 10**iotimeprec))
-    if not glob.glob('*.{0:07d}'.format(otime)):
-        endtime = time - sampletime
-        break
-niter = int((endtime - starttime) / sampletime + 1)
-
-grid = mht.Read_grid(itot, jtot, ktot)
+grid = mht.Read_grid(itot, jtot, ktot, order = order)
 
 chunks = [variables[i::nprocs] for i in range(nprocs)]
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -204,12 +204,12 @@ void Model<TF>::init()
     budget->init();
     source->init();
     aerosol->init();
-    background->init(*input_nc, *timeloop);
+    background->init(*input_nc);
 
-    stats->init(timeloop->get_ifactor());
-    column->init(timeloop->get_ifactor());
-    cross->init(timeloop->get_ifactor());
-    dump->init(timeloop->get_ifactor());
+    stats->init();
+    column->init();
+    cross->init();
+    dump->init();
 }
 
 template<typename TF>
@@ -267,7 +267,7 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
-    dust->create(timeloop->get_ifactor());
+    dust->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
 
@@ -288,6 +288,7 @@ void Model<TF>::load()
     pres->create(*stats);
     advec->create(*stats);
     diff->create(*stats, false);
+
     budget->create(*stats);
 }
 
@@ -341,7 +342,6 @@ void Model<TF>::exec()
         const int nthreads_out=1;
         #endif
     #endif
-
 
     #pragma omp parallel num_threads(nthreads_out)
     {
@@ -616,6 +616,7 @@ void Model<TF>::clear_gpu()
     radiation->clear_device();
     column   ->clear_device();
     aerosol  ->clear_device();
+
     // Clear pressure last, for memory check
     pres     ->clear_device();
 }

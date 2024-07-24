@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -46,7 +46,7 @@ class Advec_2 : public Advec<TF>
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
         double get_cfl(double); ///< Get the CFL number.
 
-        void get_advec_flux(Field3d<TF>&, const Field3d<TF>&, const Field3d<TF>&);
+        void get_advec_flux(Field3d<TF>&, const Field3d<TF>&);
         Advection_type get_switch() const { return Advection_type::Advec_2; }
 
     private:

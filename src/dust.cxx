@@ -87,7 +87,7 @@ Dust<TF>::~Dust()
 }
 
 template<typename TF>
-void Dust<TF>::create(const double ifactor)
+void Dust<TF>::create(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
@@ -103,7 +103,8 @@ void Dust<TF>::create(const double ifactor)
 
     // Calculate maximum time step.
     const double dt_max = cfl_max / w_max * dz_min;
-    idt_max = dt_max * ifactor;
+
+    idt_max = convert_to_itime(dt_max);
 }
 
 template<typename TF>

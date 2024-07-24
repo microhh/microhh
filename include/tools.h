@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,6 +21,8 @@
  */
 
 #include <stdio.h>
+#include <exception>
+#include <string>
 
 #ifndef TOOLS_H
 #define TOOLS_H
@@ -46,13 +48,25 @@ namespace Tools_g
     template<typename TF> __global__
     void mult_by_val(TF* __restrict__, int, TF);
 
+    struct cuda_exception : public std::exception
+    {
+        cuda_exception(cudaError err, const char *file, const int line);
+        cuda_exception(cudaError err, std::string msg);
+        const char *what() const throw();
+        cudaError error() const;
+
+        private:
+            const cudaError err_;
+            const std::string message_;
+    };
+
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)
     {
         if (cudaSuccess != err)
         {
             printf("cudaSafeCall() failed at %s:%i : %s\n", file, line, cudaGetErrorString(err));
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
     }
 
@@ -64,14 +78,14 @@ namespace Tools_g
         if (cudaSuccess != err)
         {
             printf("cudaCheckError() failed at %s:%i : %s\n", file, line, cudaGetErrorString( err ) );
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
 
         err = cudaDeviceSynchronize();
         if(cudaSuccess != err)
         {
             printf("cudaCheckError() with sync failed at %s:%i : %s\n", file, line, cudaGetErrorString( err ) );
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
         #endif
     }

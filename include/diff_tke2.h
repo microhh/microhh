@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -68,7 +68,7 @@ class Diff_tke2 : public Diff<TF>
         void create_stats(Stats<TF>&);
 
         #ifdef USECUDA
-        TF* mlen0_g;
+        cuda_vector<TF> mlen0_g;
         #endif
 
         double dnmax;

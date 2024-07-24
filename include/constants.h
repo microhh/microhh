@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -22,9 +22,6 @@
 
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-
-#include <climits>
-#include <cmath>
 
 namespace Constants
 {
@@ -100,6 +97,6 @@ namespace Constants
     const double        dsmall = 1.e-9;
     const double        dbig   = 1.e9;
     const double        dhuge  = 1.e30;
-    const unsigned long ulhuge = ULONG_MAX;
+    const unsigned long ulhuge = ~0UL; //== ULONG_MAX;
 }
 #endif

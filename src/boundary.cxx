@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -355,7 +355,8 @@ void Boundary<TF>::process_time_dependent(
 
     if (swtimedep_sbot_2d)
     {
-        sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+        const int sbot_2d_loadtime = input.get_item<int>("boundary", "sbot_2d_loadtime", "");
+        iloadtime_sbot_2d = convert_to_itime(sbot_2d_loadtime);
 
         for (auto& fld : sbot_2d_list)
         {
@@ -363,14 +364,13 @@ void Boundary<TF>::process_time_dependent(
             sbot_2d_next.emplace(fld, std::vector<TF>(gd.ijcells));
         }
 
-        const double time = timeloop.get_time();
-        const double ifactor = timeloop.get_ifactor();
-        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+        const unsigned long itime = timeloop.get_itime();
+        const unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
         // Read first two input times
         // IO time in integer format
-        itime_sbot_2d_prev = ifactor * int(time/sbot_2d_loadtime) * sbot_2d_loadtime;
-        itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+        itime_sbot_2d_prev = itime/iloadtime_sbot_2d * iloadtime_sbot_2d;
+        itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
 
         // IO time accounting for iotimeprec
         const unsigned long iotime0 = int(itime_sbot_2d_prev / iiotimeprec);
@@ -490,11 +490,10 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         if (itime > itime_sbot_2d_next)
         {
             // Read new surface sbot fields
-            const double ifactor = timeloop.get_ifactor();
             unsigned long iiotimeprec = timeloop.get_iiotimeprec();
 
             itime_sbot_2d_prev = itime_sbot_2d_next;
-            itime_sbot_2d_next = itime_sbot_2d_prev + sbot_2d_loadtime*ifactor;
+            itime_sbot_2d_next = itime_sbot_2d_prev + iloadtime_sbot_2d;
             const int iotime1 = int(itime_sbot_2d_next / iiotimeprec);
 
             int nerror = 0;
@@ -642,21 +641,33 @@ void Boundary<TF>::set_values()
             master.print_message("Loading \"%s\" ... ", filename.c_str());
 
             auto tmp = fields.get_tmp();
-            TF* fld_2d_ptr = nullptr;
-            if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
-                fld_2d_ptr = it.second->fld_bot.data();
-            else if (sbc.at(it.first).bcbot == Boundary_type::Neumann_type)
-                fld_2d_ptr = it.second->grad_bot.data();
-            else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
-                fld_2d_ptr = it.second->flux_bot.data();
 
-            if (field3d_io.load_xy_slice(fld_2d_ptr, tmp->fld.data(), filename.c_str()))
+            if (field3d_io.load_xy_slice(tmp->fld_bot.data(), tmp->fld.data(), filename.c_str()))
             {
                 master.print_message("FAILED\n");
                 throw std::runtime_error("Error loading 2D field of bottom boundary");
             }
             else
                 master.print_message("OK\n");
+
+            if (set_flux_grad)
+                set_bc_2d<TF, true>(
+                        it.second->fld_bot.data(),
+                        it.second->grad_bot.data(),
+                        it.second->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(it.first).bcbot,
+                        fields.sp.at(it.first)->visc,
+                        no_offset, gd.icells, gd.jcells);
+            else
+                set_bc_2d<TF, false>(
+                        it.second->fld_bot.data(),
+                        it.second->grad_bot.data(),
+                        it.second->flux_bot.data(),
+                        tmp->fld_bot.data(),
+                        sbc.at(it.first).bcbot,
+                        fields.sp.at(it.first)->visc,
+                        no_offset, gd.icells, gd.jcells);
 
             fields.release_tmp(tmp);
         }

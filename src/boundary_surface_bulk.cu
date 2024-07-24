@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -137,10 +137,10 @@ void Boundary_surface_bulk<TF>::prepare_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMalloc(&obuk_g,  dmemsize2d));
     cuda_safe_call(cudaMalloc(&ustar_g, dmemsize2d));
 
-    cuda_safe_call(cudaMalloc(&z0m_g, dmemsize2d));
+    z0m_g.allocate(gd.ijcells);
 
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, dmemsize2d));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, dmemsize2d));
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
 
     cuda_safe_call(cudaMemcpy2D(obuk_g,  dimemsize, obuk.data(),  dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy2D(ustar_g, dimemsize, ustar.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
@@ -151,7 +151,7 @@ void Boundary_surface_bulk<TF>::prepare_device(Thermo<TF>& thermo)
 
     if (thermo.get_switch() != Thermo_type::Disabled)
     {
-        cuda_safe_call(cudaMalloc(&dbdz_mo_g, dmemsize2d));
+        dbdz_mo_g.allocate(gd.ijcells);
         cuda_safe_call(cudaMemcpy2D(dbdz_mo_g, dimemsize, dbdz_mo.data(), dimemsize, dimemsize, gd.jcells, cudaMemcpyHostToDevice));
     }
 }
@@ -197,14 +197,6 @@ void Boundary_surface_bulk<TF>::clear_device(Thermo<TF>& thermo)
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
-
-    cuda_safe_call(cudaFree(z0m_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-
-    if (thermo.get_switch() != Thermo_type::Disabled)
-        cuda_safe_call(cudaFree(dbdz_mo_g));
 }
 
 #ifdef USECUDA
@@ -235,7 +227,7 @@ void Boundary_surface_bulk<TF>::exec(
     // Calculate dutot in tmp2
     auto dutot = fields.get_tmp_g();
 
-    bsk::calc_dutot_g<<<gridGPU, blockGPU>>>(
+    bsk::calc_dutot_g<TF><<<gridGPU, blockGPU>>>(
         dutot->fld_g,
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
@@ -251,7 +243,7 @@ void Boundary_surface_bulk<TF>::exec(
     boundary_cyclic.exec_2d_g(dutot->fld_g);
 
     // Calculate surface momentum fluxes, excluding ghost cells
-    momentum_fluxgrad_g<<<gridGPU, blockGPU>>>(
+    momentum_fluxgrad_g<TF><<<gridGPU, blockGPU>>>(
         fields.mp.at("u")->flux_bot_g,
         fields.mp.at("v")->flux_bot_g,
         fields.mp.at("u")->grad_bot_g,
@@ -276,7 +268,7 @@ void Boundary_surface_bulk<TF>::exec(
     // Calculate scalar fluxes, gradients and/or values, including ghost cells
     for (auto it : fields.sp)
     {
-        scalar_fluxgrad_g<<<gridGPU2, blockGPU2>>>(
+        scalar_fluxgrad_g<TF><<<gridGPU2, blockGPU2>>>(
             it.second->flux_bot_g,
             it.second->grad_bot_g,
             it.second->fld_g,
@@ -297,7 +289,7 @@ void Boundary_surface_bulk<TF>::exec(
     auto b= fields.get_tmp_g();
     thermo.get_buoyancy_fluxbot_g(*b);
 
-    surface_scaling_g<<<gridGPU2, blockGPU2>>>(
+    surface_scaling_g<TF><<<gridGPU2, blockGPU2>>>(
         ustar_g,
         obuk_g,
         dutot->fld_g,
@@ -308,7 +300,7 @@ void Boundary_surface_bulk<TF>::exec(
         gd.icells);
 
     // Calculate MO gradients for diffusion scheme
-    bsk::calc_duvdz_mo_g<<<gridGPU2, blockGPU2>>>(
+    bsk::calc_duvdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
         dudz_mo_g, dvdz_mo_g,
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
@@ -324,14 +316,17 @@ void Boundary_surface_bulk<TF>::exec(
         gd.icells, gd.ijcells);
     cuda_check_error();
 
-    bsk::calc_dbdz_mo_g<<<gridGPU2, blockGPU2>>>(
-        dbdz_mo_g, b->flux_bot_g,
-        ustar_g, obuk_g,
-        gd.z[gd.kstart],
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.icells);
-    cuda_check_error();
+    if (thermo.get_switch() != Thermo_type::Disabled)
+    {
+        bsk::calc_dbdz_mo_g<TF><<<gridGPU2, blockGPU2>>>(
+            dbdz_mo_g, b->flux_bot_g,
+            ustar_g, obuk_g,
+            gd.z[gd.kstart],
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+        cuda_check_error();
+    }
 
     fields.release_tmp_g(b);
     fields.release_tmp_g(dutot);

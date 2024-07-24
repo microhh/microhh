@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -414,7 +414,7 @@ double Advec_2i4<TF>::get_cfl(const double dt)
 
     auto tmp1 = fields.get_tmp_g();
 
-    calc_cfl_g<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
         tmp1->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         gd.dzi_g, gd.dxi, gd.dyi,

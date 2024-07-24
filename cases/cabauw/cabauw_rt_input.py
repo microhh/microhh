@@ -207,8 +207,9 @@ if __name__ == '__main__':
         nc_rad.createDimension('lev', ls2d_z.dims['lev'])
 
         # Radiation variables on LES grid.
-        xm_air = 28.97; xm_h2o = 18.01528
-        h2o = ls2d_z.qt.mean(axis=0) * xm_air / xm_h2o
+        xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
+        qt_mean = ls2d_z.qt.mean(axis=0)
+        h2o = qt_mean / (eps - eps * qt_mean)
         add_nc_var('h2o', ('z'), nc_init, h2o)
         add_nc_var('o3',  ('z'), nc_init, ls2d_z.o3[0,:]*1e-6)
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -115,10 +115,10 @@ class Boundary
         std::string get_switch();
 
         #ifdef USECUDA
-        virtual TF* get_z0m_g();
-        virtual TF* get_dudz_g();
-        virtual TF* get_dvdz_g();
-        virtual TF* get_dbdz_g();
+        virtual cuda_vector<TF>& get_z0m_g();
+        virtual cuda_vector<TF>& get_dudz_g();
+        virtual cuda_vector<TF>& get_dvdz_g();
+        virtual cuda_vector<TF>& get_dbdz_g();
 
         virtual void prepare_device(Thermo<TF>&);
         virtual void forward_device(Thermo<TF>&);
@@ -160,10 +160,11 @@ class Boundary
         std::map<std::string, Timedep<TF>*> tdep_outflow;
 
         // Time varying spatial sbot input:
+
         bool swtimedep_sbot_2d;
-        unsigned int sbot_2d_loadtime;
         std::map<std::string, std::vector<TF>> sbot_2d_prev;
         std::map<std::string, std::vector<TF>> sbot_2d_next;
+        unsigned long iloadtime_sbot_2d;
         unsigned long itime_sbot_2d_prev;
         unsigned long itime_sbot_2d_next;
 

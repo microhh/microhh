@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -129,6 +129,7 @@ void Boundary_surface_bulk<TF>::create(
     const std::string group_name = "default";
 
     Boundary<TF>::process_time_dependent(input, input_nc, timeloop);
+    Boundary<TF>::process_inflow(input, input_nc);
 
     // add variables to the statistics
     if (stats.get_switch())

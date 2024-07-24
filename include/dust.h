@@ -28,6 +28,7 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+template<typename> class Timeloop;
 
 template<typename TF>
 class Dust
@@ -37,7 +38,7 @@ class Dust
         ~Dust();
 
         void exec(Stats<TF>&);
-        void create(const double);
+        void create(Timeloop<TF>&);
         unsigned long get_time_limit();
 
     private:

@@ -93,7 +93,7 @@ p_tr = p0 * pow( T_tr/ theta_tr, cprd)
 # Calculate theta and rh arrays and velocity
 for k in range(k_tr):
     thl[k] = theta_0 + (theta_tr - theta_0) *pow( z[k] / z_tr, 5/4)
-    rh[k]  = min(1. - 0.75*(z[k]/z_tr)**1.25, .95)
+    rh[k]  = 1. - 0.75*(z[k]/z_tr)**1.25
 
 for k in range(k_tr,kmax):
     thl[k] = theta_tr * np.exp( grav/cp/T_tr * (z[k] - z_tr) )
@@ -105,8 +105,8 @@ for k in range(kmax):
 # Calculate values in above tropopause (constant temperature)
 const_trop = -grav/Rd/T_tr
 for k in range(k_tr,kmax):
-    p_loc =  p0 * pow( T_tr/ thl[k], rdcp)
-    qt[k] = rh[k] * qv_rh(p_loc,T_tr,rh[k])
+    p_loc =  p0 * pow( T_tr/ thl[k], cprd)
+    qt[k] = qv_rh(p_loc,T_tr,rh[k])
 
 
 # Calculate values below tropopause
@@ -116,12 +116,12 @@ p_up = p_tr
 for k in range(k_tr-1, -2, -1):
     # First guess no humidity
     pfg   = pow(pow(p_up, rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
-    Ttemp = thl[k] * pow(pfg/p0, rdcp)
+    Ttemp = thl[k] * pow(pfg/p0, rdcp) if k > -1 else theta_0 * pow(pfg/p0, rdcp)
     qfg   = min(qv0, qv_rh(pfg, Ttemp,rh[k]))
 
     # Second guess with humidity
     p_up  = pow(pow(p_up,rdcp) + cpres/thl[k]/(1. + ep*qfg), cprd)
-    Ttemp = thl[k] * pow(p_up/p0, rdcp)
+    Ttemp = thl[k] * pow(p_up/p0, rdcp) if k > -1 else theta_0 * pow(p_up/p0, rdcp)
     if ( k > -1):
         qt[k] = min(qv0, qv_rh(p_up, Ttemp,rh[k]))	
         #print(z[k], p_up/1.e5, Ttemp, qt[k])

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -358,9 +358,16 @@ namespace
                 // Tomita Eq. 54
                 const TF beta_2 = fmin( beta_gaut<TF>, beta_gaut<TF>*exp(gamma_gaut<TF> * (T - T0<TF>)) );
 
-                // Tomita Eq. 50. Our Nc0 is SI units, so conversion is applied.
-                TF P_raut = !(has_liq) ? TF(0.) :
-                    TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*Nc0 / (D_d*rho[k]*ql[ijk]));
+//                // Tomita Eq. 50. Our Nc0 is SI units, so conversion is applied.
+//                TF P_raut = !(has_liq) ? TF(0.) :
+//                    TF(16.7)/rho[k] * pow2(rho[k]*ql[ijk]) / (TF(5.) + TF(3.66e-2) * TF(1.e-6)*Nc0 / (D_d*rho[k]*ql[ijk]));
+
+                // Kharoutdinov and Kogan autoconversion.
+                TF P_raut = (has_liq) ?
+                            TF(1350.)
+                            * std::pow(ql[ijk], TF(2.47))
+                            * std::pow(Nc0 * TF(1.e-6), TF(-1.79))
+                                      : TF(0.);
 
                 // Tomita Eq. 52
                 TF P_saut = !(has_ice) ? TF(0.) :
@@ -742,7 +749,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
     auto temp_g = fields.get_tmp_g();
 
-    conversion_g<<<grid2dGPU, block2dGPU>>>(
+    conversion_g<TF><<<grid2dGPU, block2dGPU>>>(
            fields.st.at("qr")->fld_g, fields.st.at("qs")->fld_g, fields.st.at("qg")->fld_g,
            fields.st.at("qt")->fld_g, fields.st.at("thl")->fld_g,
            fields.sp.at("qr")->fld_g, fields.sp.at("qs")->fld_g, fields.sp.at("qg")->fld_g,
@@ -769,7 +776,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     {
         auto w_q = fields.get_tmp_g();
 
-        sedimentation_nsw6::calc_velocity_g<<<gridGPU, blockGPU>>>(
+        sedimentation_nsw6::calc_velocity_g<TF><<<gridGPU, blockGPU>>>(
                 w_q->fld_g, fld, fields.rhoref_g,
                 q_min, a, b, c, d, N_0,
                 gd.istart, gd.iend,
@@ -778,7 +785,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+        Micro_sedimentation_kernels::set_bc_g<TF><<<grid2dGPU, block2dGPU>>>(
                 w_q->fld_g,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -788,7 +795,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         auto cfl = fields.get_tmp_g();
 
-        Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
+        Micro_sedimentation_kernels::calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
                 cfl->fld_g, w_q->fld_g, gd.dzi_g, TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -800,7 +807,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         auto slope = fields.get_tmp_g();
 
-        Micro_sedimentation_kernels::calc_slope_g<<<gridGPU, blockGPU>>>(
+        Micro_sedimentation_kernels::calc_slope_g<TF><<<gridGPU, blockGPU>>>(
                 slope->fld_g, fld,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -810,7 +817,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
 
         auto flux = fields.get_tmp_g();
 
-        Micro_sedimentation_kernels::calc_flux_g<<<gridGPU, blockGPU>>>(
+        Micro_sedimentation_kernels::calc_flux_g<TF><<<gridGPU, blockGPU>>>(
                 flux->fld_g, fld,
                 slope->fld_g, cfl->fld_g,
                 gd.dz_g, gd.dzi_g, fields.rhoref_g,
@@ -820,7 +827,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        Micro_sedimentation_kernels::limit_flux_g<<<grid2dGPU, block2dGPU>>>(
+        Micro_sedimentation_kernels::limit_flux_g<TF><<<grid2dGPU, block2dGPU>>>(
                 flux->fld_g, fld,
                 gd.dz_g, fields.rhoref_g, TF(dt),
                 gd.istart, gd.iend,
@@ -829,7 +836,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        Micro_sedimentation_kernels::calc_flux_div_g<<<gridGPU, blockGPU>>>(
+        Micro_sedimentation_kernels::calc_flux_div_g<TF><<<gridGPU, blockGPU>>>(
                 tend, flux->fld_g,
                 gd.dzi_g, fields.rhoref_g,
                 gd.istart, gd.iend,
@@ -838,7 +845,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        Micro_sedimentation_kernels::copy_precip_rate_bot_g<<<grid2dGPU, block2dGPU>>>(
+        Micro_sedimentation_kernels::copy_precip_rate_bot_g<TF><<<grid2dGPU, block2dGPU>>>(
                 rr_bot, flux->fld_g,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -894,7 +901,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     {
         auto w_q = fields.get_tmp_g();
 
-        sedimentation_nsw6::calc_velocity_g<<<gridGPU, blockGPU>>>(
+        sedimentation_nsw6::calc_velocity_g<TF><<<gridGPU, blockGPU>>>(
                 w_q->fld_g, fld, fields.rhoref_g,
                 q_min, a, b, c, d, N_0,
                 gd.istart, gd.iend,
@@ -903,7 +910,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        Micro_sedimentation_kernels::set_bc_g<<<grid2dGPU, block2dGPU>>>(
+        Micro_sedimentation_kernels::set_bc_g<TF><<<grid2dGPU, block2dGPU>>>(
                 w_q->fld_g,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -913,7 +920,7 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
 
         auto cfl = fields.get_tmp_g();
 
-        Micro_sedimentation_kernels::calc_cfl_g<<<gridGPU, blockGPU>>>(
+        Micro_sedimentation_kernels::calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
                 cfl->fld_g, w_q->fld_g, gd.dzi_g, TF(dt),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,

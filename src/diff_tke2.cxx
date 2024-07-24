@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -505,7 +505,7 @@ Diff_tke2<TF>::Diff_tke2(
     const std::string group_name = "sgstke";
 
     // Set the switch between buoy/no buoy once
-    const std::string sw_thermo = inputin.get_item<std::string>("thermo", "swthermo", "");
+    const std::string sw_thermo = inputin.get_item<std::string>("thermo", "swthermo", "", "0");
     sw_buoy = (sw_thermo == "0") ? false : true;
 
     // Set the switch for use of Mason's wall correction

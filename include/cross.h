@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -38,7 +38,7 @@ class Cross
         Cross(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Cross();
 
-        void init(double);
+        void init();
         void create();
         bool get_switch() { return swcross; }
 

@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -78,7 +78,6 @@ if(USECUDA)
 else()
   project(microhhc CXX Fortran)
 endif()
-
 
 # Display status messages for MPI set precompiler flags.
 if(USEMPI)
@@ -163,5 +162,20 @@ if(USECUDA)
   add_subdirectory(rte-rrtmgp-cpp/src_cuda)
   add_subdirectory(rte-rrtmgp-cpp/src_cuda_rt)
 endif()
+
+if(USECUDA)
+  if(USEKERNELLAUNCHER)
+    # Set `clang-tidy` flag for Kernel Launcher
+    if (NOT USECLANGTIDY)
+      set(DISABLE_CLANG_TIDY TRUE)
+    else()
+      set(DISABLE_CLANG_TIDY FALSE)
+    endif()
+
+    add_compile_definitions(ENABLE_KERNEL_LAUNCHER)
+    add_subdirectory(external/kernel_launcher)
+  endif()
+endif()
+
 add_subdirectory(src)
 add_subdirectory(main)

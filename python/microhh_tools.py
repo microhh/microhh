@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -58,9 +58,9 @@ def _convert_value(value):
     """ Helper function: convert namelist value or list """
     if ',' in value:
         value = value.split(',')
-        return [_int_or_float_or_str(val) for val in value]
+        return [_int_or_float_or_str(val.strip()) for val in value]
     else:
-        return _int_or_float_or_str(value)
+        return _int_or_float_or_str(value.strip())
 
 
 def _find_namelist_file():
@@ -104,7 +104,7 @@ class Read_namelist:
                         curr_group_name = lstrip[1:-1]
                         self.groups[curr_group_name] = {}
                     elif ("=" in line):
-                        var_name = lstrip.split('=')[0]
+                        var_name = lstrip.split('=')[0].strip()
                         value    = lstrip.split('=')[1]
 
                         if ducktype:
@@ -152,6 +152,8 @@ class Read_namelist:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
                     if isinstance(value, list):
+                        if not isinstance(value[0], str):
+                            value = [str(v) for v in value]
                         value = ','.join(value)
                     elif isinstance(value, bool):
                         value = '1' if value else '0'
@@ -246,7 +248,7 @@ class Read_grid:
     """ Read the grid file from MicroHH.
         If no file name is provided, grid.0000000 from the current directory is read """
 
-    def __init__(self, itot, jtot, ktot, filename=None):
+    def __init__(self, itot, jtot, ktot, order = 2, filename=None):
         self.en = '<' if sys.byteorder == 'little' else '>'
         filename = 'grid.0000000' if filename is None else filename
         self.TF = round(os.path.getsize(filename) /
@@ -268,8 +270,12 @@ class Read_grid:
         self.dim['yh'] = self.read(jtot)
         self.dim['z'] = self.read(ktot)
         self.dim['zh'][:-1] = self.read(ktot)
-
-        self.dim['zh'][-1] = self.dim['z'][-1] + 2*(self.dim['z'][-1] - self.dim['zh'][-2])
+        if order == 2:
+            self.dim['zh'][-1] = 2 * self.dim['z'][-1]  - self.dim['zh'][-2]
+        elif order == 4:
+            self.dim['zh'][-1] = 3./8. * (self.dim['z'][-1] + 2 * self.dim['z'][-2] - 1./3. * self.dim['z'][-3])
+        else:
+            raise ValueError('Order {} is not supported'.format(order))
 
         self.fin.close()
         del self.fin
@@ -323,29 +329,6 @@ class Create_ncfile():
         else:
             precision = 'f8'
 
-        half_level_vars = [
-            'w',
-            'sw_flux_dn', 'sw_flux_dn_dir', 'sw_flux_up',
-            'sw_flux_dn_clear', 'sw_flux_dn_dir_clear', 'sw_flux_up_clear',
-            'lw_flux_dn', 'lw_flux_up'
-            'lw_flux_dn_clear', 'lw_flux_up_clear']
-
-        if(varname == 'u'):
-            try:
-                dimensions['xh'] = dimensions.pop('x')
-            except KeyError:
-                pass
-        if(varname == 'v'):
-            try:
-                dimensions['yh'] = dimensions.pop('y')
-            except KeyError:
-                pass
-        if(varname in half_level_vars):
-            try:
-                dimensions['zh'] = dimensions.pop('z')
-            except KeyError:
-                pass
-
         # create dimensions in netCDF file
         self.dim = {}
         self.dimvar = {}
@@ -353,8 +336,11 @@ class Create_ncfile():
             self.dim[key] = self.ncfile.createDimension(key, len(value))
             self.dimvar[key] = self.ncfile.createVariable(
                 key, precision, (key))
-            if key != 'time':
+            if key == 'time':
+                self.dimvar[key].units = "seconds since start"
+            else:
                 self.dimvar[key][:] = grid.dim[key][value]
+                self.dimvar[key].units = "m"
 
         self.var = self.ncfile.createVariable(
             varname, precision, tuple(
@@ -385,11 +371,12 @@ def get_cross_indices(variable, mode):
 
     # Get a list with all the cross-section files for one time
     time = files[0].split('.')[-1]
-    files = glob.glob('{}.{}.*.{}'.format(variable, mode, time))
+    halflevel = files[0].split('.')[-3]
+    files = glob.glob('{}.{}.*.*.{}'.format(variable, mode, time))
 
     # Get the indices
-    indices = sorted([int(f.split('.')[-2]) for f in files])
-    return indices
+    indices   = sorted([int(f.split('.')[-2]) for f in files])
+    return indices, halflevel
 
 
 _opts = {

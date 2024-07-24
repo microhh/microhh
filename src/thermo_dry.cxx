@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -728,10 +728,10 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
 
         // Populate list with allowed cross-section variables
         allowedcrossvars.push_back("b");
-        allowedcrossvars.push_back("bbot");
-        allowedcrossvars.push_back("bfluxbot");
-        allowedcrossvars.push_back("blngrad");
-        allowedcrossvars.push_back("thlngrad");
+        allowedcrossvars.push_back("b_bot");
+        allowedcrossvars.push_back("b_fluxbot");
+        allowedcrossvars.push_back("b_lngrad");
+        allowedcrossvars.push_back("th_lngrad");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string>& crosslist_global = cross.get_crosslist();

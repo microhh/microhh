@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -74,6 +74,14 @@ Limiter<TF>::~Limiter()
 template <typename TF>
 void Limiter<TF>::create(Stats<TF>& stats)
 {
+    // Check if all limit fields are valid.
+    for (auto& name : limit_list)
+        if (fields.at.find(name) == fields.at.end())
+        {
+            std::string error = "Non-existing prognostic field \"" + name + "\" in limiter!";
+            throw std::runtime_error(error);
+        }
+
     for (const std::string& s : limit_list)
         stats.add_tendency(*fields.at.at(s), "z", tend_name, tend_longname);
 

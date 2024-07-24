@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -82,6 +82,7 @@ class Netcdf_handle
 
         std::map<std::string, int> get_variable_dimensions(const std::string&);
 
+        bool dimension_exists(const std::string&);
         bool variable_exists(const std::string&);
         bool group_exists(const std::string&);
 
