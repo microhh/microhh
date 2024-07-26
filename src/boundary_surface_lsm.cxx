@@ -447,8 +447,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhoh");
     const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvh");
-    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnerh");
+
+    // Hydrostatic pressure can be a 1D or 3D field.
     const std::vector<TF>& prefh = thermo.get_basestate_vector("ph");
+    const bool pressure_is_3d = thermo.pressure_is_3d();
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
     auto rain_rate = fields.get_tmp_xy();
@@ -612,9 +614,10 @@ void Boundary_surface_lsm<TF>::exec(
                 buoy->fld.data(),
                 buoy->fld_bot.data(),
                 rhorefh.data(),
-                exnrefh.data(),
+                prefh.data(),
                 db_ref, emis_sfc,
                 TF(subdt),
+                pressure_is_3d,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart, sgd.kend,
@@ -653,7 +656,7 @@ void Boundary_surface_lsm<TF>::exec(
                 tiles.at("wet").ra.data(),
                 rhorefh.data(),
                 prefh.data(),
-                exnrefh.data(),
+                pressure_is_3d,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart,

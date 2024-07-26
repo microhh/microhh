@@ -316,18 +316,22 @@ namespace Land_surface_kernels
             const TF* const restrict b,
             const TF* const restrict b_bot,
             const TF* const restrict rhorefh,
-            const TF* const restrict exnerh,
+            const TF* const restrict prefh,
             const TF db_ref,
             const TF emis_sfc,
             const TF dt,
+            const bool pressure_is_3d,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend_soil,
             const int icells, const int ijcells,
             bool use_cs_veg, std::string name)
     {
-        const TF exner_bot = exnerh[kstart];
         const TF rho_bot = rhorefh[kstart];
+        TF exner_bot;
+
+        if (!pressure_is_3d)
+            exner_bot = Thermo_moist_functions::exner(prefh[kstart]);
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -336,6 +340,11 @@ namespace Land_surface_kernels
                 const int ij    = i + j*icells;
                 const int ijk   = ij + kstart*ijcells;
                 const int ijk_s = ij + (kend_soil-1)*ijcells;
+
+                // NOTE: this should ideally be a templated if, but I doubt whether this function
+                // is vectorized given the ternary if's below, and it is anyhow a 2D function.
+                if (pressure_is_3d)
+                    exner_bot = Thermo_moist_functions::exner(prefh[ijk]);
 
                 const TF T_bot = thl_bot[ij] * exner_bot;
 
@@ -488,7 +497,7 @@ namespace Land_surface_kernels
             const TF* const restrict ra,
             const TF* const restrict rhoh,
             const TF* const restrict prefh,
-            const TF* const restrict exnerh,
+            const bool pressure_is_3d,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
@@ -496,6 +505,14 @@ namespace Land_surface_kernels
     {
         const TF rhocp = rhoh[kstart] * Constants::cp<TF>;
         const TF rholv = rhoh[kstart] * Constants::Lv<TF>;
+
+        TF exn_bot, pref_bot;
+
+        if (!pressure_is_3d)
+        {
+            pref_bot = prefh[kstart];
+            exn_bot = Thermo_moist_functions::exner(pref_bot);
+        }
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -506,8 +523,14 @@ namespace Land_surface_kernels
 
                 if (water_mask[ij])
                 {
-                    thl_bot_wet[ij] = t_bot_water[ij] / exnerh[kstart];
-                    qt_bot_wet[ij]  = Thermo_moist_functions::qsat(prefh[kstart], t_bot_water[ij]);
+                    if (pressure_is_3d)
+                    {
+                        pref_bot = prefh[ijk];
+                        exn_bot = Thermo_moist_functions::exner(pref_bot);
+                    }
+
+                    thl_bot_wet[ij] = t_bot_water[ij] / exn_bot;
+                    qt_bot_wet[ij]  = Thermo_moist_functions::qsat(pref_bot, t_bot_water[ij]);
 
                     c_veg[ij]  = TF(0);
                     c_soil[ij] = TF(0);

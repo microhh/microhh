@@ -2351,13 +2351,31 @@ template<typename TF>
 const std::vector<TF>& Thermo_moist<TF>::get_basestate_vector(std::string name) const
 {
     if (name == "p")
-        return bs.pref;
+    {
+        if (swphydro_3d)
+            return fields.sd.at("phydro_3d")->fld;
+        else
+            return bs.pref;
+    }
     else if (name == "ph")
-        return bs.prefh;
+    {
+        if (swphydro_3d)
+            return fields.sd.at("phydroh_3d")->fld;
+        else
+            return bs.prefh;
+    }
     else if (name == "exner")
+    {
+        if (swphydro_3d)
+            throw std::runtime_error("Retrieving 1D exner vector while hydrostatic pressure is 3D!");
         return bs.exnref;
+    }
     else if (name == "exnerh")
+    {
+        if (swphydro_3d)
+            throw std::runtime_error("Retrieving 1D exnerh vector while hydrostatic pressure is 3D!");
         return bs.exnrefh;
+    }
     else if (name == "rho")
         return bs.rhoref;
     else if (name == "rhoh")

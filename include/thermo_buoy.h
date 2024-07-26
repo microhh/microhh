@@ -96,7 +96,7 @@ class Thermo_buoy : public Thermo<TF>
         void exec_column(Column<TF>&) {};
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
-
+        bool pressure_is_3d() {return false;};
         void update_time_dependent(Timeloop<TF>&) {};
 
         #ifdef USECUDA

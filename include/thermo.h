@@ -92,6 +92,8 @@ class Thermo
         virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
         virtual TF get_db_ref() const = 0;
 
+        virtual bool pressure_is_3d() = 0;
+
         virtual int get_bl_depth() = 0;
         virtual TF get_buoyancy_diffusivity() = 0;
 

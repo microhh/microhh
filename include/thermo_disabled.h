@@ -64,9 +64,9 @@ class Thermo_disabled : public Thermo<TF>
         void exec_cross(Cross<TF>&, unsigned long) {};
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
+        bool pressure_is_3d() {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};
-
         TF get_buoyancy_diffusivity();
 
         unsigned long get_time_limit(unsigned long, double);

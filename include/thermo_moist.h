@@ -117,9 +117,9 @@ class Thermo_moist : public Thermo<TF>
         void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*);
         #endif
 
-        // Empty functions that are allowed to pass.
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
+        bool pressure_is_3d() {return swphydro_3d;};
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
