@@ -123,14 +123,25 @@ namespace
     // Compute all microphysical tendencies.
     template<typename TF>
     void conversion(
-            TF* const restrict qrt, TF* const restrict qst, TF* const restrict qgt,
-            TF* const restrict qtt, TF* const restrict thlt,
-            const TF* const restrict qr, const TF* const restrict qs, const TF* const restrict qg,
-            const TF* const restrict qt, const TF* const restrict thl,
-            const TF* const restrict ql, const TF* const restrict qi,
-            const TF* const restrict rho, const TF* const restrict exner, const TF* const restrict p,
-            const TF* const restrict dzi, const TF* const restrict dzhi,
-            const TF Nc0, const TF dt,
+            TF* const restrict qrt,
+            TF* const restrict qst,
+            TF* const restrict qgt,
+            TF* const restrict qtt,
+            TF* const restrict thlt,
+            const TF* const restrict qr,
+            const TF* const restrict qs,
+            const TF* const restrict qg,
+            const TF* const restrict qt,
+            const TF* const restrict thl,
+            const TF* const restrict ql,
+            const TF* const restrict qi,
+            const TF* const restrict rho,
+            const TF* const restrict p,
+            const TF* const restrict dzi,
+            const TF* const restrict dzhi,
+            const TF Nc0,
+            const TF dt,
+            const bool pressure_is_3d,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
             const int jj, const int kk)
@@ -138,9 +149,17 @@ namespace
         // Tomita Eq. 51. Nc0 is converted from SI units (m-3 instead of cm-3).
         const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((Nc0*TF(1.e-6)) / TF(2.e3));
 
+        TF exn_loc, p_loc;
+
         for (int k=kstart; k<kend; ++k)
         {
             const TF rho0_rho_sqrt = std::sqrt(rho[kstart]/rho[k]);
+
+            if (!pressure_is_3d)
+            {
+                p_loc = p[k];
+                exn_loc = Thermo_moist_functions::exner(p_loc);
+            }
 
             // Part of Tomita Eq. 29
             const TF fac_iacr =
@@ -190,8 +209,15 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
+                    // We don't have to worry about vectorization here :-)
+                    if (pressure_is_3d)
+                    {
+                        p_loc = p[ijk];
+                        exn_loc = Thermo_moist_functions::exner(p_loc);
+                    }
+
                     // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
-                    const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
+                    const TF T = exn_loc*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
                     const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
 
                     // Flag the sign of the absolute temperature.
@@ -369,8 +395,8 @@ namespace
                         Ls<TF> / (K_a<TF> * T) * (Ls<TF> / (Rv<TF> * T) - TF(1.))
                         + Rv<TF>*T / (K_d<TF> * esat_ice(T)) );
 
-                    const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p[k], T);
-                    const TF S_i = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_ice(p[k], T);
+                    const TF S_w = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_liq(p_loc, T);
+                    const TF S_i = (qt[ijk] - ql[ijk] - qi[ijk]) / qsat_ice(p_loc, T);
 
                     // Tomita Eq. 63
                     const TF delta_3 = TF(S_i <= TF(1.)); // Subsaturated, then delta_3 = 1.
@@ -593,37 +619,37 @@ namespace
                     // Loss from cloud.
                     qtt[ijk] -= cloud_to_rain;
                     qrt[ijk] += cloud_to_rain;
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
+                    thlt[ijk] += Lv<TF> / (cp<TF> * exn_loc) * cloud_to_rain;
 
                     qtt[ijk] -= cloud_to_graupel;
                     qgt[ijk] += cloud_to_graupel;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exn_loc) * cloud_to_graupel;
 
                     qtt[ijk] -= cloud_to_snow;
                     qst[ijk] += cloud_to_snow;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exn_loc) * cloud_to_snow;
 
                     // Loss from rain.
                     qrt[ijk] -= rain_to_vapor;
                     qtt[ijk] += rain_to_vapor;
-                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
+                    thlt[ijk] -= Lv<TF> / (cp<TF> * exn_loc) * rain_to_vapor;
 
                     qrt[ijk] -= rain_to_graupel;
                     qgt[ijk] += rain_to_graupel;
-                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exn_loc) * rain_to_graupel;
 
                     qrt[ijk] -= rain_to_snow;
                     qst[ijk] += rain_to_snow;
-                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
+                    thlt[ijk] += Lf<TF> / (cp<TF> * exn_loc) * rain_to_snow;
 
                     // Loss from ice.
                     qtt[ijk] -= ice_to_snow;
                     qst[ijk] += ice_to_snow;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exn_loc) * ice_to_snow;
 
                     qtt[ijk] -= ice_to_graupel;
                     qgt[ijk] += ice_to_graupel;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exn_loc) * ice_to_graupel;
 
                     // Loss from snow.
                     qst[ijk] -= snow_to_graupel;
@@ -631,20 +657,20 @@ namespace
 
                     qst[ijk] -= snow_to_vapor;
                     qtt[ijk] += snow_to_vapor;
-                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exn_loc) * snow_to_vapor;
 
                     qst[ijk] -= snow_to_rain;
                     qrt[ijk] += snow_to_rain;
-                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exn_loc) * snow_to_rain;
 
                     // Loss from graupel.
                     qgt[ijk] -= graupel_to_rain;
                     qrt[ijk] += graupel_to_rain;
-                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
+                    thlt[ijk] -= Lf<TF> / (cp<TF> * exn_loc) * graupel_to_rain;
 
                     qgt[ijk] -= graupel_to_vapor;
                     qtt[ijk] += graupel_to_vapor;
-                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
+                    thlt[ijk] -= Ls<TF> / (cp<TF> * exn_loc) * graupel_to_vapor;
                 }
         }
     }
@@ -992,17 +1018,28 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*qi, "qi", false, false);
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
-    const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
+    const bool pressure_is_3d = thermo.pressure_is_3d();
 
     conversion(
-            fields.st.at("qr")->fld.data(), fields.st.at("qs")->fld.data(), fields.st.at("qg")->fld.data(),
-            fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-            fields.sp.at("qr")->fld.data(), fields.sp.at("qs")->fld.data(), fields.sp.at("qg")->fld.data(),
-            fields.sp.at("qt")->fld.data(), fields.sp.at("thl")->fld.data(),
-            ql->fld.data(), qi->fld.data(),
-            fields.rhoref.data(), exner.data(), p.data(),
-            gd.dzi.data(), gd.dzhi.data(),
-            this->Nc0, TF(dt),
+            fields.st.at("qr")->fld.data(),
+            fields.st.at("qs")->fld.data(),
+            fields.st.at("qg")->fld.data(),
+            fields.st.at("qt")->fld.data(),
+            fields.st.at("thl")->fld.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.sp.at("qs")->fld.data(),
+            fields.sp.at("qg")->fld.data(),
+            fields.sp.at("qt")->fld.data(),
+            fields.sp.at("thl")->fld.data(),
+            ql->fld.data(),
+            qi->fld.data(),
+            fields.rhoref.data(),
+            p.data(),
+            gd.dzi.data(),
+            gd.dzhi.data(),
+            this->Nc0,
+            TF(dt),
+            pressure_is_3d,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
             gd.icells, gd.ijcells);
