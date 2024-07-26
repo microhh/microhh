@@ -1017,8 +1017,8 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF>& st
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
 
-    const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const bool pressure_is_3d = thermo.pressure_is_3d();
+    const std::vector<TF>& p = thermo.get_basestate_vector("p", pressure_is_3d);
 
     conversion(
             fields.st.at("qr")->fld.data(),

@@ -1640,6 +1640,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     //std::fill(phydro_tod.begin(), phydro_tod.end(), bs.prefh[gd.kend]);
 
     if (swphydro_3d && swtimedep_phydro_3d)
+    {
         calc_phydro_3d(
                 fields.sd.at("phydro_3d")->fld.data(),
                 fields.sd.at("phydroh_3d")->fld.data(),
@@ -1652,6 +1653,12 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 gd.jstart, gd.jend,
                 gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
+
+        // Overwrite mean profiles p and ph in basestate.
+        field3d_operators.calc_mean_profile(bs.pref.data(), fields.sd.at("phydro_3d")->fld.data());
+        field3d_operators.calc_mean_profile(bs.prefh.data(), fields.sd.at("phydroh_3d")->fld.data());
+        bs.pbot = bs.prefh[gd.kstart];
+    }
 
     auto buoyancy_tend_wrapper = [&]<bool swphydro_3d>(std::vector<TF>& ph)
     {
@@ -2348,31 +2355,31 @@ void Thermo_moist<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_moist<TF>::get_basestate_vector(std::string name) const
+const std::vector<TF>& Thermo_moist<TF>::get_basestate_vector(std::string name, const bool get_3d) const
 {
     if (name == "p")
     {
-        if (swphydro_3d)
+        if (get_3d)
             return fields.sd.at("phydro_3d")->fld;
         else
             return bs.pref;
     }
     else if (name == "ph")
     {
-        if (swphydro_3d)
+        if (get_3d)
             return fields.sd.at("phydroh_3d")->fld;
         else
             return bs.prefh;
     }
     else if (name == "exner")
     {
-        if (swphydro_3d)
+        if (get_3d)
             throw std::runtime_error("Retrieving 1D exner vector while hydrostatic pressure is 3D!");
         return bs.exnref;
     }
     else if (name == "exnerh")
     {
-        if (swphydro_3d)
+        if (get_3d)
             throw std::runtime_error("Retrieving 1D exnerh vector while hydrostatic pressure is 3D!");
         return bs.exnrefh;
     }

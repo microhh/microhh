@@ -86,7 +86,7 @@ class Thermo_moist : public Thermo<TF>
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
         void get_buoyancy_fluxbot(std::vector<TF>&, bool);
         void get_temperature_bot(Field3d<TF>&, bool);
-        const std::vector<TF>& get_basestate_vector(std::string) const;
+        const std::vector<TF>& get_basestate_vector(std::string, const bool get_3d=false) const;
         TF get_db_ref() const;
 
         int get_bl_depth();

@@ -89,7 +89,7 @@ class Thermo
         virtual void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
 
-        virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
+        virtual const std::vector<TF>& get_basestate_vector(std::string, const bool get_3d=false) const = 0;
         virtual TF get_db_ref() const = 0;
 
         virtual bool pressure_is_3d() = 0;

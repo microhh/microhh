@@ -122,7 +122,7 @@ class Thermo_disabled : public Thermo<TF>
 
         void get_temperature_bot(Field3d<TF>&, bool)
             { throw std::runtime_error("Function get_temperature_bot not implemented"); }
-        const std::vector<TF>& get_basestate_vector(std::string) const
+        const std::vector<TF>& get_basestate_vector(std::string, const bool get_3d=false) const
             { throw std::runtime_error("Function get_basestate_vector not implemented"); }
         TF get_db_ref() const
             { throw std::runtime_error("Function get_db_ref not implemented"); }

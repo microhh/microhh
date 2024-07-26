@@ -82,7 +82,7 @@ class Thermo_buoy : public Thermo<TF>
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
-        const std::vector<TF>& get_basestate_vector(std::string) const
+        const std::vector<TF>& get_basestate_vector(std::string, const bool get_3d=false) const
             { throw std::runtime_error("Function get_basestate_vector not implemented"); }
 
         // Empty functions that are allowed to pass.

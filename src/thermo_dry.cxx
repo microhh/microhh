@@ -613,7 +613,7 @@ void Thermo_dry<TF>::get_temperature_bot(Field3d<TF>& T_bot, bool is_stat)
 }
 
 template<typename TF>
-const std::vector<TF>& Thermo_dry<TF>::get_basestate_vector(std::string name) const
+const std::vector<TF>& Thermo_dry<TF>::get_basestate_vector(std::string name, const bool get_3d) const
 {
     if (name == "p")
         return bs.pref;
