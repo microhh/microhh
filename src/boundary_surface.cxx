@@ -737,7 +737,7 @@ void Boundary_surface<TF>::exec_stats(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface<TF>::exec_column(Column<TF>& column)
+void Boundary_surface<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo)
 {
     const TF no_offset = 0.;
     column.calc_time_series("obuk", obuk.data(), no_offset);

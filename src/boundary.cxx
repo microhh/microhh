@@ -33,6 +33,7 @@
 #include "defines.h"
 #include "timeloop.h"
 #include "timedep.h"
+#include "thermo.h"
 #include "finite_difference.h"
 #include "netcdf_interface.h"
 
@@ -1035,7 +1036,7 @@ void Boundary<TF>::exec_stats(Stats<TF>&)
 }
 
 template<typename TF>
-void Boundary<TF>::exec_column(Column<TF>&)
+void Boundary<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo)
 {
 }
 

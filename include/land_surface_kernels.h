@@ -598,5 +598,59 @@ namespace Land_surface_kernels
                 fld_scaled[ij] = fld[ij] * tile_frac[ij];
             }
     }
+
+    template<typename TF, bool pressure_is_3d>
+    void diagnose_2m_10m_MO(
+            TF* const restrict t2m,
+            TF* const restrict q2m,
+            TF* const restrict u10m,
+            TF* const restrict v10m,
+            TF* const restrict U10m,
+            const TF* const restrict thl_bot,
+            const TF* const restrict qt_bot,
+            const TF* const restrict thl_fluxbot,
+            const TF* const restrict qt_fluxbot,
+            const TF* const restrict u_fluxbot,
+            const TF* const restrict v_fluxbot,
+            const TF* const restrict ustar,
+            const TF* const restrict obuk,
+            const TF* const restrict z0m,
+            const TF* const restrict z0h,
+            const TF* const restrict phydroh,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jstride, const int kstride)
+    {
+
+        const TF z_2m = TF(2);
+        const TF z_10m = TF(10);
+
+        TF exn_bot;
+        if (!pressure_is_3d)
+            exn_bot = Thermo_moist_functions::exner(phydroh[kstart]);
+
+        for (int j = jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i = istart; i<iend; ++i)
+            {
+                const int ij = i + j * jstride;
+                const int ijk = ij + kstart * kstride;
+
+                if (pressure_is_3d)
+                    exn_bot = Thermo_moist_functions::exner(phydroh[ijk]);
+
+                const TF fac1 = TF(1) / (ustar[ij] * most::fh(z_2m,  z0h[ij], obuk[ij]));
+                const TF fac2 = TF(1) / (ustar[ij] * most::fm(z_10m, z0m[ij], obuk[ij]));
+
+                t2m[ij] = (thl_bot[ij] * exn_bot) - thl_fluxbot[ij] * fac1;
+                q2m[ij] = qt_bot[ij] - qt_fluxbot[ij] * fac1;
+
+                u10m[ij] = -u_fluxbot[ij] * fac2;
+                v10m[ij] = -v_fluxbot[ij] * fac2;
+
+                U10m[ij] = pow(fm::pow2(u10m[ij]) + fm::pow2(v10m[ij]), TF(0.5));
+            }
+    }
 }
 #endif

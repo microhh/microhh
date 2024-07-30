@@ -307,7 +307,7 @@ void Boundary_surface_bulk<TF>::exec_stats(Stats<TF>& stats)
 }
 
 template<typename TF>
-void Boundary_surface_bulk<TF>::exec_column(Column<TF>& column)
+void Boundary_surface_bulk<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo)
 {
 }
 

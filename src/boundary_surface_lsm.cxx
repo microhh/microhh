@@ -1386,6 +1386,12 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
+        column.add_time_series("T_2m", "Diagnosed (MO) 2 meter temperature", "K");
+        column.add_time_series("q_2m", "Diagnosed (MO) 2 meter specific humidity", "kg kg-1");
+        column.add_time_series("u_10m", "Diagnosed (MO) 10 meter zonal wind speed", "m s-1");
+        column.add_time_series("v_10m", "Diagnosed (MO) 10 meter meridional wind speed", "m s-1");
+        column.add_time_series("U_10m", "Diagnosed (MO) 10 meter wind speed", "m s-1");
+
         if (sw_tile_stats_col)
             for (auto& tile : tiles)
             {
@@ -1705,8 +1711,9 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 
 #ifndef USECUDA
 template<typename TF>
-void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
+void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column, Thermo<TF>& thermo)
 {
+    auto& gd = grid.get_grid_data();
     const TF no_offset = 0.;
 
     auto fld_mean = fields.get_tmp_xy();
@@ -1733,6 +1740,58 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "S", TF(1));
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
+
+    // Diagnosed 2m and 10m quantities.
+    auto t2m = fields.get_tmp_xy();
+    auto q2m = fields.get_tmp_xy();
+    auto u10m = fields.get_tmp_xy();
+    auto v10m = fields.get_tmp_xy();
+    auto U10m = fields.get_tmp_xy();
+
+    bool pressure_is_3d = thermo.pressure_is_3d();
+    const std::vector<TF>& prefh = thermo.get_basestate_vector("ph", pressure_is_3d);
+
+    auto wrapper = [&]<bool pressure_is_3d>()
+    {
+        lsmk::diagnose_2m_10m_MO<TF, pressure_is_3d>(
+                (*t2m).data(),
+                (*q2m).data(),
+                (*u10m).data(),
+                (*v10m).data(),
+                (*U10m).data(),
+                fields.ap.at("thl")->fld_bot.data(),
+                fields.ap.at("qt")->fld_bot.data(),
+                fields.ap.at("thl")->flux_bot.data(),
+                fields.ap.at("qt")->flux_bot.data(),
+                fields.ap.at("u")->flux_bot.data(),
+                fields.ap.at("v")->flux_bot.data(),
+                ustar.data(),
+                obuk.data(),
+                z0m.data(),
+                z0h.data(),
+                prefh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.ijcells);
+    };
+
+    if (pressure_is_3d)
+        wrapper.template operator()<true>();
+    else
+        wrapper.template operator()<false>();
+
+    column.calc_time_series("T_2m", (*t2m).data(), no_offset);
+    column.calc_time_series("q_2m", (*q2m).data(), no_offset);
+    column.calc_time_series("u_10m", (*u10m).data(), no_offset);
+    column.calc_time_series("v_10m", (*v10m).data(), no_offset);
+    column.calc_time_series("U_10m", (*U10m).data(), no_offset);
+
+    fields.release_tmp_xy(t2m);
+    fields.release_tmp_xy(q2m);
+    fields.release_tmp_xy(u10m);
+    fields.release_tmp_xy(v10m);
+    fields.release_tmp_xy(U10m);
 
     if (sw_tile_stats_col)
         for (auto& tile : tiles)

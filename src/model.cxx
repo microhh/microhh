@@ -550,7 +550,7 @@ void Model<TF>::exec()
                         fields   ->exec_column(*column);
                         thermo   ->exec_column(*column);
                         radiation->exec_column(*column, *thermo, *timeloop);
-                        boundary ->exec_column(*column);
+                        boundary ->exec_column(*column, *thermo);
                         microphys->exec_column(*column);
 
                         #pragma omp critical
