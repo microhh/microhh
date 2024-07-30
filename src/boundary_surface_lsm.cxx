@@ -1373,6 +1373,12 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("ustar", "Surface friction velocity", "m s-1");
         column.add_time_series("obuk", "Obukhov length", "m");
 
+        if (sw_charnock)
+        {
+            stats.add_time_series("z0m", "Roughness length for momentum", "m", group_name);
+            stats.add_time_series("z0h", "Roughness length for scalars", "m", group_name);
+        }
+
         column.add_time_series("wl", "Liquid water reservoir", "m");
 
         column.add_time_series("H", "Surface sensible heat flux", "W m-2");
@@ -1707,6 +1713,13 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     column.calc_time_series("obuk", obuk.data(), no_offset);
     column.calc_time_series("ustar", ustar.data(), no_offset);
+
+    if (sw_charnock)
+    {
+        column.calc_time_series("z0m", z0m.data(), no_offset);
+        column.calc_time_series("z0h", z0h.data(), no_offset);
+    }
+
     column.calc_time_series("wl", fields.ap2d.at("wl")->fld.data(), no_offset);
 
     get_tiled_mean(*fld_mean, "H", TF(1));
