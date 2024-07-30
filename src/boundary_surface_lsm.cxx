@@ -1375,8 +1375,8 @@ void Boundary_surface_lsm<TF>::create_stats(
 
         if (sw_charnock)
         {
-            stats.add_time_series("z0m", "Roughness length for momentum", "m", group_name);
-            stats.add_time_series("z0h", "Roughness length for scalars", "m", group_name);
+            column.add_time_series("z0m", "Roughness length for momentum", "m");
+            column.add_time_series("z0h", "Roughness length for scalars", "m");
         }
 
         column.add_time_series("wl", "Liquid water reservoir", "m");
