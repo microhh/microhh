@@ -928,7 +928,7 @@ namespace
 
 
     template<typename TF>
-    void sum_precip_rates(
+    void sum_xy_slices(
             TF* const restrict qrsg_rate,
             const TF* const restrict qr_rate,
             const TF* const restrict qs_rate,
@@ -947,39 +947,44 @@ namespace
     }
 
 
+
     template<typename TF>
-    void calc_precip_path(
-            TF* const restrict path,
-            const TF* const restrict qr,
-            const TF* const restrict qs,
-            const TF* const restrict qg,
-            const TF* const restrict dz,
-            const TF* const restrict rhoref,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jstride, const int kstride)
+    void calc_path(
+        TF* const restrict path,
+        const TF* const restrict fld,
+        const TF* const restrict rhoref,
+        const TF* const restrict dz,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jstride, const int kstride)
     {
-        for (int j=jstart; j<jend; j++)
+        #pragma omp parallel for
+        for (int j=jstart; j<jend; ++j)
             #pragma ivdep
-            for (int i=istart; i<iend; i++)
+            for (int i=istart; i<iend; ++i)
             {
                 const int ij = i + j*jstride;
                 path[ij] = TF(0);
             }
 
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+        {
+            for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
-                for (int i=istart; i<iend; i++)
+                for (int i=istart; i<iend; ++i)
                 {
                     const int ij = i + j*jstride;
                     const int ijk = ij + k*kstride;
 
-                    path[ij] += rhoref[k] * (qr[ijk] + qs[ijk] + qg[ijk]) * dz[k];
+                    path[ij] += rhoref[k] * fld[ijk] * dz[k];
                 }
+        }
     }
+
 }
+
 
 template<typename TF>
 Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
@@ -1048,6 +1053,10 @@ void Microphys_nsw6<TF>::create(
         column.add_time_series("rr", "Surface rain rate", "kg m-2 s-1");
         column.add_time_series("rs", "Surface snow rate", "kg m-2 s-1");
         column.add_time_series("rg", "Surface graupel rate", "kg m-2 s-1");
+
+        column.add_time_series("qr_path", "Rain water path", "kg m-2");
+        column.add_time_series("qs_path", "Snow path", "kg m-2");
+        column.add_time_series("qg_path", "Graupel path", "kg m-2");
     }
 
     // Create cross sections
@@ -1178,10 +1187,53 @@ void Microphys_nsw6<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, const 
 template<typename TF>
 void Microphys_nsw6<TF>::exec_column(Column<TF>& column)
 {
+    auto& gd = grid.get_grid_data();
+
     const TF no_offset = 0.;
+
     column.calc_time_series("rr", rr_bot.data(), no_offset);
     column.calc_time_series("rs", rs_bot.data(), no_offset);
     column.calc_time_series("rg", rg_bot.data(), no_offset);
+
+    auto tmp = fields.get_tmp();
+
+    calc_path(
+            tmp->fld_bot.data(),
+            fields.sp.at("qr")->fld.data(),
+            fields.rhoref.data(),
+            gd.dz.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    column.calc_time_series("qr_path", tmp->fld_bot.data(), no_offset);
+
+    calc_path(
+            tmp->fld_bot.data(),
+            fields.sp.at("qs")->fld.data(),
+            fields.rhoref.data(),
+            gd.dz.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    column.calc_time_series("qs_path", tmp->fld_bot.data(), no_offset);
+
+    calc_path(
+            tmp->fld_bot.data(),
+            fields.sp.at("qg")->fld.data(),
+            fields.rhoref.data(),
+            gd.dz.data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+
+    column.calc_time_series("qg_path", tmp->fld_bot.data(), no_offset);
+
+    fields.release_tmp(tmp);
 }
 #endif
 
@@ -1209,7 +1261,7 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             {
                 auto tmp = fields.get_tmp();
 
-                sum_precip_rates(
+                sum_xy_slices(
                         tmp->fld_bot.data(),
                         rr_bot.data(),
                         rs_bot.data(),
@@ -1226,17 +1278,44 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             {
                 auto tmp = fields.get_tmp();
 
-                calc_precip_path(
-                        tmp->fld_bot.data(),
+                calc_path(
+                        &tmp->fld.data()[0*gd.ijcells],
                         fields.sp.at("qr")->fld.data(),
-                        fields.sp.at("qs")->fld.data(),
-                        fields.sp.at("qg")->fld.data(),
-                        gd.dz.data(),
                         fields.rhoref.data(),
+                        gd.dz.data(),
                         gd.istart, gd.iend,
                         gd.jstart, gd.jend,
                         gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
+
+                calc_path(
+                        &tmp->fld.data()[1*gd.ijcells],
+                        fields.sp.at("qs")->fld.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                calc_path(
+                        &tmp->fld.data()[2*gd.ijcells],
+                        fields.sp.at("qg")->fld.data(),
+                        fields.rhoref.data(),
+                        gd.dz.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                sum_xy_slices(
+                        tmp->fld_bot.data(),
+                        &tmp->fld.data()[0*gd.ijcells],
+                        &tmp->fld.data()[1*gd.ijcells],
+                        &tmp->fld.data()[2*gd.ijcells],
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells);
 
                 cross.cross_plane(tmp->fld_bot.data(), no_offset, "qrqsqg_path", iotime);
                 fields.release_tmp(tmp);
