@@ -925,6 +925,60 @@ namespace
 
         return cfl_max;
     }
+
+
+    template<typename TF>
+    void sum_precip_rates(
+            TF* const restrict qrsg_rate,
+            const TF* const restrict qr_rate,
+            const TF* const restrict qs_rate,
+            const TF* const restrict qg_rate,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+                qrsg_rate[ij] = qr_rate[ij] + qs_rate[ij] + qg_rate[ij];
+            }
+    }
+
+
+    template<typename TF>
+    void calc_precip_path(
+            TF* const restrict path,
+            const TF* const restrict qr,
+            const TF* const restrict qs,
+            const TF* const restrict qg,
+            const TF* const restrict dz,
+            const TF* const restrict rhoref,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+                path[ij] = TF(0);
+            }
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ij = i + j*jstride;
+                    const int ijk = ij + k*kstride;
+
+                    path[ij] += rhoref[k] * (qr[ijk] + qs[ijk] + qg[ijk]) * dz[k];
+                }
+    }
 }
 
 template<typename TF>
@@ -998,7 +1052,7 @@ void Microphys_nsw6<TF>::create(
 
     // Create cross sections
     // 1. Variables that this class can calculate/provide:
-    const std::vector<std::string> allowed_crossvars = {"rr_bot", "rs_bot", "rg_bot"};
+    const std::vector<std::string> allowed_crossvars = {"rr_bot", "rs_bot", "rg_bot", "rsgr_bot", "qrqsqg_path"};
 
     // 2. Cross-reference with the variables requested in the .ini file:
     crosslist = cross.get_enabled_variables(allowed_crossvars);
@@ -1135,6 +1189,9 @@ template<typename TF>
 void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     TF no_offset = 0.;
+
+    auto& gd = grid.get_grid_data();
+
     if (cross.get_switch())
     {
         for (auto& it : crosslist)
@@ -1142,11 +1199,48 @@ void Microphys_nsw6<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             if (it == "rr_bot")
                 cross.cross_plane(rr_bot.data(), no_offset, "rr_bot", iotime);
 
-            if (it == "rs_bot")
+            else if (it == "rs_bot")
                 cross.cross_plane(rs_bot.data(), no_offset, "rs_bot", iotime);
 
-            if (it == "rg_bot")
+            else if (it == "rg_bot")
                 cross.cross_plane(rg_bot.data(), no_offset, "rg_bot", iotime);
+
+            else if (it == "rsgr_bot")
+            {
+                auto tmp = fields.get_tmp();
+
+                sum_precip_rates(
+                        tmp->fld_bot.data(),
+                        rr_bot.data(),
+                        rs_bot.data(),
+                        rg_bot.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells);
+
+                cross.cross_plane(tmp->fld_bot.data(), no_offset, "rsgr_bot", iotime);
+                fields.release_tmp(tmp);
+            }
+
+            else if (it == "qrqsqg_path")
+            {
+                auto tmp = fields.get_tmp();
+
+                calc_precip_path(
+                        tmp->fld_bot.data(),
+                        fields.sp.at("qr")->fld.data(),
+                        fields.sp.at("qs")->fld.data(),
+                        fields.sp.at("qg")->fld.data(),
+                        gd.dz.data(),
+                        fields.rhoref.data(),
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
+                        gd.icells, gd.ijcells);
+
+                cross.cross_plane(tmp->fld_bot.data(), no_offset, "qrqsqg_path", iotime);
+                fields.release_tmp(tmp);
+            }
         }
     }
 }
