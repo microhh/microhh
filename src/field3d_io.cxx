@@ -699,9 +699,13 @@ int Field3d_io<TF>::load_xy_slice(
             offset[ii] = i*gd.imax + (j*gd.jmax)*gd.itot;
         }
 
+    std::vector<TF> send;
+
     // Read file from disk
     if (md.mpiid == 0)
     {
+        send.resize(gd.itot*gd.jtot);
+
         FILE *pFile;
         pFile = fopen(filename, "rb");
         if (pFile == NULL)
@@ -709,13 +713,13 @@ int Field3d_io<TF>::load_xy_slice(
 
         // Read at `itot*jtot` offset; that way we can scatter it to the start of `tmp`,
         // and the routine below to add ghost cells remains identical.
-        if( fread(&tmp[gd.itot*gd.jtot], sizeof(TF), gd.itot*gd.jtot, pFile) != (unsigned)(gd.itot*gd.jtot) )
+        if( fread(send.data(), sizeof(TF), gd.itot*gd.jtot, pFile) != (unsigned)(gd.itot*gd.jtot) )
             return 1;
 
         fclose(pFile);
     }
 
-    MPI_Scatterv(&tmp[gd.itot*gd.jtot], counts.data(), offset.data(), recv_type_r, tmp, 1, send_type, 0, md.commxy);
+    MPI_Scatterv(send.data(), counts.data(), offset.data(), recv_type_r, tmp, 1, send_type, 0, md.commxy);
 
     MPI_Barrier(md.commxy);
 
