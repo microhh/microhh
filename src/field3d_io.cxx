@@ -527,8 +527,11 @@ int Field3d_io<TF>::save_yz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(
-        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
-        const char* filename, const int kslice)
+        TF* const restrict data,
+        TF const restrict data0,
+        TF* const restrict tmp,
+        const char* filename,
+        const int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -649,15 +652,17 @@ int Field3d_io<TF>::save_xy_slice(
 
 template<typename TF>
 int Field3d_io<TF>::load_xy_slice(
-        TF* const restrict data, TF* const restrict tmp,
-        const char* filename, int kslice)
+        TF* const restrict data,
+        TF* const restrict tmp,
+        const char* filename,
+        int kslice)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     // Extract the data from the 3d field without the ghost cells
     const int jj = gd.icells;
-    const int kk = gd.icells*gd.jcells;
+    const int kk = gd.ijcells;
     const int jjb = gd.imax;
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
@@ -666,6 +671,59 @@ int Field3d_io<TF>::load_xy_slice(
 
     int count = gd.imax*gd.jmax;
 
+#ifdef DISABLE_2D_MPIIO
+    // Define MPI types
+    MPI_Datatype send_type;
+    MPI_Type_vector(gd.jmax, gd.imax, gd.imax, mpi_fp_type<TF>(), &send_type);
+    MPI_Type_commit(&send_type);
+
+    MPI_Datatype recv_type;
+    int totxysize_recv [2] = {gd.jtot, gd.itot};
+    int subxysize_recv [2] = {gd.jmax, gd.imax};
+    int subxystart_recv[2] = {md.mpicoordy*gd.jmax, md.mpicoordx*gd.imax};
+    MPI_Type_create_subarray(2, totxysize_recv, subxysize_recv, subxystart_recv, MPI_ORDER_C, mpi_fp_type<TF>(), &recv_type);
+    MPI_Type_commit(&recv_type);
+
+    MPI_Datatype recv_type_r;
+    MPI_Type_create_resized(recv_type, 0, sizeof(TF), &recv_type_r);
+    MPI_Type_commit(&recv_type_r);
+
+    std::vector<int> counts(md.nprocs);
+    std::fill(counts.begin(), counts.end(), 1);
+
+    std::vector<int> offset(md.nprocs);
+    for (int i=0; i<md.npx; ++i)
+        for (int j=0; j<md.npy; ++j)
+        {
+            const int ii = i+j*md.npx;
+            offset[ii] = i*gd.imax + (j*gd.jmax)*gd.itot;
+        }
+
+    // Read file from disk
+    if (md.mpiid == 0)
+    {
+        FILE *pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+            return 1;
+
+        // Read at `itot*jtot` offset; that way we can scatter it to the start of `tmp`,
+        // and the routine below to add ghost cells remains identical.
+        if( fread(&tmp[gd.itot*gd.jtot], sizeof(TF), gd.itot*gd.jtot, pFile) != (unsigned)(gd.itot*gd.jtot) )
+            return 1;
+
+        fclose(pFile);
+    }
+
+    MPI_Scatterv(&tmp[gd.itot*gd.jtot], counts.data(), offset.data(), recv_type_r, tmp, 1, send_type, 0, md.commxy);
+
+    MPI_Barrier(md.commxy);
+
+    MPI_Type_free(&send_type);
+    MPI_Type_free(&recv_type);
+    MPI_Type_free(&recv_type_r);
+
+#else
     // Create MPI datatype for XY-slice read
     MPI_Datatype subxyslice;
     int totxysize [2] = {gd.jtot, gd.itot};
@@ -702,12 +760,14 @@ int Field3d_io<TF>::load_xy_slice(
     MPI_Type_free(&subxyslice);
 
     MPI_Barrier(md.commxy);
+#endif
 
+    // Add ghost cells.
     for (int j=0; j<gd.jmax; j++)
         #pragma ivdep
         for (int i=0; i<gd.imax; i++)
         {
-            // take the modulus of jslice and jmax to have the right offset within proc
+            // Take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (kslice+gd.kgc)*kk;
             const int ijkb = i + j*jjb;
             data[ijk] = tmp[ijkb];

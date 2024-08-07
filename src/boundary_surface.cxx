@@ -594,7 +594,8 @@ void Boundary_surface<TF>::load(const int iotime, Thermo<TF>& thermo)
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
-                field, tmp1->fld.data(),
+                field,
+                tmp1->fld.data(),
                 filename))
         {
             master.print_message("FAILED\n");
@@ -610,6 +611,7 @@ void Boundary_surface<TF>::load(const int iotime, Thermo<TF>& thermo)
     // eddy viscosity use the gradients from the previous time step.
     load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
+
     if (thermo.get_switch() != Thermo_type::Disabled)
         load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
