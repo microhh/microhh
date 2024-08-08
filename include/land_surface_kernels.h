@@ -600,7 +600,7 @@ namespace Land_surface_kernels
     }
 
     template<typename TF, bool pressure_is_3d>
-    void diagnose_2m_10m_MO(
+    void diagnose_1_5m_10m_MO(
             TF* const restrict t2m,
             TF* const restrict q2m,
             TF* const restrict u10m,
@@ -623,7 +623,7 @@ namespace Land_surface_kernels
             const int jstride, const int kstride)
     {
 
-        const TF z_2m = TF(2);
+        const TF z_1_5m = TF(1.5);
         const TF z_10m = TF(10);
 
         TF exn_bot;
@@ -640,11 +640,11 @@ namespace Land_surface_kernels
                 if (pressure_is_3d)
                     exn_bot = Thermo_moist_functions::exner(phydroh[ijk]);
 
-                const TF fac1 = TF(1) / (ustar[ij] * most::fh(z_2m,  z0h[ij], obuk[ij]));
-                const TF fac2 = TF(1) / (ustar[ij] * most::fm(z_10m, z0m[ij], obuk[ij]));
+                const TF fac1 = TF(1) / (ustar[ij] * most::fh(z_1_5m, z0h[ij], obuk[ij]));
+                const TF fac2 = TF(1) / (ustar[ij] * most::fm(z_10m,  z0m[ij], obuk[ij]));
 
                 t2m[ij] = (thl_bot[ij] * exn_bot) - thl_fluxbot[ij] * fac1;
-                q2m[ij] = qt_bot[ij] - qt_fluxbot[ij] * fac1;
+                q2m[ij] =  qt_bot[ij]             - qt_fluxbot[ij]  * fac1;
 
                 u10m[ij] = -u_fluxbot[ij] * fac2;
                 v10m[ij] = -v_fluxbot[ij] * fac2;

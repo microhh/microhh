@@ -1386,8 +1386,8 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
-        column.add_time_series("T_2m", "Diagnosed (MO) 2 meter temperature", "K");
-        column.add_time_series("q_2m", "Diagnosed (MO) 2 meter specific humidity", "kg kg-1");
+        column.add_time_series("T_1_5m", "Diagnosed (MO) 1.5 meter temperature", "K");
+        column.add_time_series("q_1_5m", "Diagnosed (MO) 1.5 meter specific humidity", "kg kg-1");
         column.add_time_series("u_10m", "Diagnosed (MO) 10 meter zonal wind speed", "m s-1");
         column.add_time_series("v_10m", "Diagnosed (MO) 10 meter meridional wind speed", "m s-1");
         column.add_time_series("U_10m", "Diagnosed (MO) 10 meter wind speed", "m s-1");
@@ -1742,8 +1742,8 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column, Thermo<TF>& therm
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
 
     // Diagnosed 2m and 10m quantities.
-    auto t2m = fields.get_tmp_xy();
-    auto q2m = fields.get_tmp_xy();
+    auto t1_5m = fields.get_tmp_xy();
+    auto q1_5m = fields.get_tmp_xy();
     auto u10m = fields.get_tmp_xy();
     auto v10m = fields.get_tmp_xy();
     auto U10m = fields.get_tmp_xy();
@@ -1753,9 +1753,9 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column, Thermo<TF>& therm
 
     auto wrapper = [&]<bool pressure_is_3d>()
     {
-        lsmk::diagnose_2m_10m_MO<TF, pressure_is_3d>(
-                (*t2m).data(),
-                (*q2m).data(),
+        lsmk::diagnose_1_5m_10m_MO<TF, pressure_is_3d>(
+                (*t1_5m).data(),
+                (*q1_5m).data(),
                 (*u10m).data(),
                 (*v10m).data(),
                 (*U10m).data(),
@@ -1781,14 +1781,14 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column, Thermo<TF>& therm
     else
         wrapper.template operator()<false>();
 
-    column.calc_time_series("T_2m", (*t2m).data(), no_offset);
-    column.calc_time_series("q_2m", (*q2m).data(), no_offset);
+    column.calc_time_series("T_1_5m", (*t1_5m).data(), no_offset);
+    column.calc_time_series("q_1_5m", (*q1_5m).data(), no_offset);
     column.calc_time_series("u_10m", (*u10m).data(), no_offset);
     column.calc_time_series("v_10m", (*v10m).data(), no_offset);
     column.calc_time_series("U_10m", (*U10m).data(), no_offset);
 
-    fields.release_tmp_xy(t2m);
-    fields.release_tmp_xy(q2m);
+    fields.release_tmp_xy(t1_5m);
+    fields.release_tmp_xy(q1_5m);
     fields.release_tmp_xy(u10m);
     fields.release_tmp_xy(v10m);
     fields.release_tmp_xy(U10m);
