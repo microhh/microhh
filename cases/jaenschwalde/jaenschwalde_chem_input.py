@@ -114,6 +114,9 @@ time = np.linspace(t0, t1, 32)
 wthl = 0.17   * np.sin(np.pi * (time-t0-1800) / td1)
 wqt  = 8.3e-5 * np.sin(np.pi * (time-t0) / td2)
 
+#wthl[:] = 0.1
+#wqt[:] = 0.1e-3
+
 # Write input NetCDF file
 def add_nc_var(name, dims, nc, data):
     if dims is None:
@@ -255,9 +258,6 @@ else:
 
     sw_vmr = constant_list('true', 4*9)
     repeat = 1
-
-
-
 
 print('sourcelist={}'.format(source_list))
 
