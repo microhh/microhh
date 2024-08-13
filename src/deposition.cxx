@@ -383,9 +383,12 @@ void Deposition<TF>::create(Stats<TF>& stats, Cross<TF>& cross)
     if (cross.get_switch())
     {
         std::vector<std::string> allowed_crossvars = {
-                "vdo3_soil", "vdno_soil", "vdno2_soil", "vdhno3_soil", "vdh2o2_soil", "vdrooh_soil", "vdhcho_soil",
-                "vdo3_wet", "vdno_wet", "vdno2_wet", "vdhno3_wet", "vdh2o2_wet", "vdrooh_wet", "vdhcho_wet",
-                "vdo3_veg", "vdno_veg", "vdno2_veg", "vdhno3_veg", "vdh2o2_veg", "vdrooh_veg", "vdhcho_veg"};
+                "vdo3_soil", "vdno_soil", "vdno2_soil", "vdhno3_soil",
+                "vdh2o2_soil", "vdrooh_soil", "vdhcho_soil",
+                "vdo3_wet", "vdno_wet", "vdno2_wet", "vdhno3_wet",
+                "vdh2o2_wet", "vdrooh_wet", "vdhcho_wet",
+                "vdo3_veg", "vdno_veg", "vdno2_veg", "vdhno3_veg",
+                "vdh2o2_veg", "vdrooh_veg", "vdhcho_veg"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -478,50 +481,52 @@ void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     auto& gd = grid.get_grid_data();
 
+    const TF no_offset = TF(0);
+
     for (auto& name : cross_list)
     {
         if (name == "vdo3_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdo3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdo3.data(), no_offset, name, iotime);
         else if (name == "vdno_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdno.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdno.data(), no_offset, name, iotime);
         else if (name == "vdno2_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdno2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdno2.data(), no_offset, name, iotime);
         else if (name == "vdhno3_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdhno3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdhno3.data(), no_offset, name, iotime);
         else if (name == "vdh2o2_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdh2o2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdh2o2.data(), no_offset, name, iotime);
         else if (name == "vdrooh_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdrooh.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdrooh.data(), no_offset, name, iotime);
         else if (name == "vdhcho_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdhcho.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vdhcho.data(), no_offset, name, iotime);
         else if (name == "vdo3_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdo3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdo3.data(), no_offset, name, iotime);
         else if (name == "vdno_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdno.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdno.data(), no_offset, name, iotime);
         else if (name == "vdno2_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdno2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdno2.data(), no_offset, name, iotime);
         else if (name == "vdhno3_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdhno3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdhno3.data(), no_offset, name, iotime);
         else if (name == "vdh2o2_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdh2o2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdh2o2.data(), no_offset, name, iotime);
         else if (name == "vdrooh_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdrooh.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdrooh.data(), no_offset, name, iotime);
         else if (name == "vdhcho_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdhcho.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vdhcho.data(), no_offset, name, iotime);
         else if (name == "vdo3_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdo3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdo3.data(), no_offset, name, iotime);
         else if (name == "vdno_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdno.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdno.data(), no_offset, name, iotime);
         else if (name == "vdno2_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdno2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdno2.data(), no_offset, name, iotime);
         else if (name == "vdhno3_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdhno3.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdhno3.data(), no_offset, name, iotime);
         else if (name == "vdh2o2_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdh2o2.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdh2o2.data(), no_offset, name, iotime);
         else if (name == "vdrooh_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdrooh.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdrooh.data(), no_offset, name, iotime);
         else if (name == "vdhcho_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdhcho.data(), name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vdhcho.data(), no_offset, name, iotime);
     }
 }
 

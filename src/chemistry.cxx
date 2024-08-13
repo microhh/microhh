@@ -615,22 +615,24 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     auto& gd = grid.get_grid_data();
 
-    for (auto& it : cross_list)
+    const TF no_offset = TF(0);
+
+    for (auto& name : cross_list)
     {
-        if (it == "vdo3")
-            cross.cross_plane(vdo3.data(), "vdo3", iotime);
-        else if (it == "vdno")
-            cross.cross_plane(vdno.data(), "vdno", iotime);
-        else if (it == "vdno2")
-            cross.cross_plane(vdno2.data(), "vdno2", iotime);
-        else if (it == "vdhno3")
-            cross.cross_plane(vdhno3.data(), "vdhno3", iotime);
-        else if (it == "vdh2o2")
-            cross.cross_plane(vdh2o2.data(), "vdh2o2", iotime);
-        else if (it == "vdrooh")
-            cross.cross_plane(vdrooh.data(), "vdrooh", iotime);
-        else if (it == "vdhcho")
-            cross.cross_plane(vdhcho.data(), "vdhcho", iotime);
+        if (name == "vdo3")
+            cross.cross_plane(vdo3.data(), no_offset, name, iotime);
+        else if (name == "vdno")
+            cross.cross_plane(vdno.data(), no_offset, name, iotime);
+        else if (name == "vdno2")
+            cross.cross_plane(vdno2.data(), no_offset, name, iotime);
+        else if (name == "vdhno3")
+            cross.cross_plane(vdhno3.data(), no_offset, name, iotime);
+        else if (name == "vdh2o2")
+            cross.cross_plane(vdh2o2.data(), no_offset, name, iotime);
+        else if (name == "vdrooh")
+            cross.cross_plane(vdrooh.data(), no_offset, name, iotime);
+        else if (name == "vdhcho")
+            cross.cross_plane(vdhcho.data(), no_offset, name, iotime);
     }
 
     // see if to write per tile:
