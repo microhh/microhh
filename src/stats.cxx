@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,6 +33,7 @@
 #include "master.h"
 #include "grid.h"
 #include "soil_grid.h"
+#include "background_profs.h"
 #include "fields.h"
 #include "stats.h"
 #include "defines.h"
@@ -268,7 +269,7 @@ namespace
             const int icells, const int ijcells)
     {
         #pragma omp parallel for
-        for (int k=kstart; k<kend+1; ++k)
+        for (int k=kstart; k<kend; ++k)
         {
             if (nmask[k])
             {
@@ -510,13 +511,35 @@ namespace
     {
         return s.find_first_not_of( "23456789" ) == std::string::npos;
     }
+
+    template<typename TF>
+    void subtract_mean(
+            TF* const restrict fld_prime,
+            const TF* const restrict fld,
+            const TF* const restrict fld_mean,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        #pragma omp parallel for
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    fld_prime[ijk] = fld[ijk] - fld_mean[k];
+                }
+    }
 }
+
 
 template<typename TF>
 Stats<TF>::Stats(
-        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin,
+        Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin, Background<TF>& backgroundin,
         Fields<TF>& fieldsin, Advec<TF>& advecin, Diff<TF>& diffin, Input& inputin):
-    master(masterin), grid(gridin), soil_grid(soilgridin), fields(fieldsin), advec(advecin), diff(diffin),
+    master(masterin), grid(gridin), soil_grid(soilgridin), background(backgroundin), fields(fieldsin), advec(advecin), diff(diffin),
     boundary_cyclic(master, grid)
 
 {
@@ -561,7 +584,7 @@ Stats<TF>::~Stats()
 }
 
 template<typename TF>
-void Stats<TF>::init(double ifactor)
+void Stats<TF>::init()
 {
     if (!swstats)
         return;
@@ -570,7 +593,7 @@ void Stats<TF>::init(double ifactor)
 
     boundary_cyclic.init();
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
     statistics_counter = 0;
 
     // Vectors which hold the amount of grid points sampled on each model level.
@@ -782,6 +805,14 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
                     p.second.data.begin() + sgd.kstart + ksize);
 
             m.soil_profs.at(p.first).ncvar.insert(prof_nogc, time_height_index, time_height_size);
+        }
+
+        for (auto& p : m.background_profs)
+        {
+            const int ksize = p.second.ncvar.get_dim_sizes()[1];
+            std::vector<int> time_height_size  = {1, ksize};
+
+            m.background_profs.at(p.first).ncvar.insert(p.second.data, time_height_index, time_height_size);
         }
 
         for (auto& ts : m.tseries)
@@ -1036,10 +1067,10 @@ void Stats<TF>::add_prof(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        return;
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_series()");
 
     Level_type level;
-    if ((zloc == "z") || (zloc == "zs"))
+    if ((zloc == "z") || (zloc == "zs") || (zloc == "lay"))
         level = Level_type::Full;
     else
         level = Level_type::Half;
@@ -1064,7 +1095,7 @@ void Stats<TF>::add_prof(
             m.profs.at(name).ncvar.add_attribute("units", unit);
             m.profs.at(name).ncvar.add_attribute("long_name", longname);
         }
-        else
+        else if (zloc == "zs")
         {
             Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(sgd.kcells), level};
 
@@ -1073,14 +1104,34 @@ void Stats<TF>::add_prof(
             m.soil_profs.at(name).ncvar.add_attribute("units", unit);
             m.soil_profs.at(name).ncvar.add_attribute("long_name", longname);
         }
+        else if (zloc == "lev")
+        {
+            const TF n_lev = background.get_n_lev();
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_lev), level};
+
+            m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+            m.background_profs.at(name).ncvar.add_attribute("units", unit);
+            m.background_profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
+        else if (zloc == "lay")
+        {
+            const TF n_lay = background.get_n_lay();
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_lay), level};
+
+            m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+            m.background_profs.at(name).ncvar.add_attribute("units", unit);
+            m.background_profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
 
         m.data_file->sync();
     }
 
     if ((zloc == "z") || (zloc == "zh"))
         varlist.push_back(name);
-    else
+    else if (zloc == "zs")
         varlist_soil.push_back(name);
+    else if ((zloc == "lev") || (zloc == "lay"))
+        varlist_background.push_back(name);
 }
 
 template<typename TF>
@@ -1093,6 +1144,9 @@ void Stats<TF>::add_fixed_prof(
         const std::vector<TF>& prof)
 {
     auto& gd = grid.get_grid_data();
+
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        throw std::runtime_error("Variable " + name + " is added twice in add_fixed_prof()");
 
     for (auto& mask : masks)
     {
@@ -1121,6 +1175,8 @@ void Stats<TF>::add_fixed_prof(
 
         m.data_file->sync();
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -1132,6 +1188,10 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& group_name,
         const std::vector<TF>& prof)
 {
+    
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+        throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
+
     for (auto& mask : masks)
     {
         Mask<TF>& m = mask.second;
@@ -1150,6 +1210,8 @@ void Stats<TF>::add_fixed_prof_raw(
 
         m.data_file->sync();
     }
+    varlist.push_back(name);
+
 }
 
 template<typename TF>
@@ -1162,7 +1224,7 @@ void Stats<TF>::add_time_series(
         return;
 
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        return;
+        throw std::runtime_error("Variable " + name + " is added twice in add_time_series()");
 
     // Add the series to all files.
     for (auto& mask : masks)
@@ -1292,6 +1354,19 @@ void Stats<TF>::set_prof(const std::string& varname, const std::vector<TF>& prof
 }
 
 template<typename TF>
+void Stats<TF>::set_prof_background(const std::string& varname, const std::vector<TF>& prof)
+{
+    auto it = std::find(varlist_background.begin(), varlist_background.end(), varname);
+    if (it == varlist_background.end())
+        throw std::runtime_error("Set_prof: Variable " + varname + " does not exist");
+    else
+    {
+        for (auto& it : masks)
+            it.second.background_profs.at(varname).data = prof;
+    }
+}
+
+template<typename TF>
 void Stats<TF>::set_time_series(const std::string& varname, const TF val)
 {
     auto it = std::find(varlist.begin(), varlist.end(), varname);
@@ -1319,7 +1394,7 @@ void Stats<TF>::calc_mask_mean_profile(
     // kend, so I send kcells-1 as the limit. This is not elegant, yet it works.
     calc_mean(
             prof.data(), fld.fld.data(), mfield.data(), flag, nmask,
-            gd.istart, gd.iend, gd.jstart, gd.jend, 0, gd.kcells-1, gd.icells, gd.ijcells);
+            gd.istart, gd.iend, gd.jstart, gd.jend, 1, gd.kcells, gd.icells, gd.ijcells);
 
     master.sum(prof.data(), gd.kcells);
 }
@@ -1339,8 +1414,16 @@ void Stats<TF>::calc_mask_stats(
     if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
     {
         set_flag(flag, nmask, m.second, fld.loc[2]);
-        calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+        calc_mean(
+                m.second.profs.at(varname).data.data(),
+                fld.fld.data(),
+                mfield.data(), flag, nmask,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend + fld.loc[2],
+                gd.icells, gd.ijcells);
+
         master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
         // Add the offset.
@@ -1349,158 +1432,27 @@ void Stats<TF>::calc_mask_stats(
 
         set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
     }
-
-    // Calc moments
-    for (int power=2; power<=4; power++)
-    {
-        name = varname + "_" + std::to_string(power);
-        if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-        {
-            set_flag(flag, nmask, m.second, fld.loc[2]);
-            calc_moment(
-                    m.second.profs.at(name).data.data(), fld.fld.data(),
-                    m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
-                    power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-
-            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-        }
-    }
-
-    // Calc Resolved Flux
-    name = varname + "_w";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        auto advec_flux = fields.get_tmp();
-        advec.get_advec_flux(*advec_flux, fld);
-
-        set_flag(flag, nmask, m.second, !fld.loc[2]);
-        calc_mean(
-                m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-
-        fields.release_tmp(advec_flux);
-    }
-
-    // Calc Diffusive Flux
-    name = varname + "_diff";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        auto diff_flux = fields.get_tmp();
-        diff.diff_flux(*diff_flux, fld);
-
-        set_flag(flag, nmask, m.second, !fld.loc[2]);
-        calc_mean(
-                m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-
-        fields.release_tmp(diff_flux);
-    }
-
-    // Calc Total Flux
-    name = varname + "_flux";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        // No sum is required in this routine as values all.
-        set_flag(flag, nmask, m.second, !fld.loc[2]);
-        add_fluxes(
-                m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(), m.second.profs.at(varname+"_diff").data.data(),
-                gd.kstart, gd.kend);
-        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-    }
-
-    // Calc Gradient
-    name = varname + "_grad";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        set_flag(flag, nmask, m.second, !fld.loc[2]);
-
-        if (grid.get_spatial_order() == Grid_order::Second)
-        {
-            calc_grad_2nd(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        }
-        else if (grid.get_spatial_order() == Grid_order::Fourth)
-        {
-            calc_grad_4th(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells);
-        }
-
-        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-    }
-
-    // Calc Integrated Path
-    name = varname + "_path";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        set_flag(flag, nmask, m.second, fld.loc[2]);
-
-        std::pair<TF, int> path = calc_path(
-                fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
-                mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        master.sum(&path.first, 1);
-        master.sum(&path.second, 1);
-
-        m.second.tseries.at(name).data = path.first / path.second;
-    }
-
-    // Calc Cover
-    name = varname + "_cover";
-    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
-    {
-        set_flag(flag, nmask, m.second, fld.loc[2]);
-
-        // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
-        std::pair<int, int> cover = calc_cover(
-                fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        master.sum(&cover.first, 1);
-        master.sum(&cover.second, 1);
-
-        // Only assign if number of points in mask is positive.
-        m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
-    }
-
-    // Calc Fraction
-    name = varname + "_frac";
-    auto it1 = std::find(varlist.begin(), varlist.end(), name);
-    if (it1 != varlist.end())
-    {
-        set_flag(flag, nmask, m.second, fld.loc[2]);
-
-        calc_frac(
-                m.second.profs.at(name).data.data(), fld.fld.data(),
-                offset, threshold, mfield.data(), flag, nmask,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-
-        master.sum(m.second.profs.at(name).data.data(), gd.kcells);
-        set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
-    }
 }
 
 template<typename TF>
 void Stats<TF>::calc_stats(
         const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    calc_stats_mean(varname, fld, offset);
+    calc_stats_moments(varname, fld, offset);
+    calc_stats_w(varname, fld, offset);
+    calc_stats_diff(varname, fld, offset);
+    calc_stats_flux(varname, fld, offset);
+    calc_stats_grad(varname, fld);
+    calc_stats_path(varname, fld);
+    calc_stats_cover(varname, fld, offset, threshold);
+    calc_stats_frac(varname, fld, offset, threshold);        
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_mean(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1514,8 +1466,15 @@ void Stats<TF>::calc_stats(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            calc_mean(m.second.profs.at(varname).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+
+            calc_mean(
+                    m.second.profs.at(varname).data.data(),
+                    fld.fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend + fld.loc[2],
+                    gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(varname).data.data(), gd.kcells);
 
             // Add the offset.
@@ -1525,6 +1484,18 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_moments(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc moments
     for (int power=2; power<=4; power++)
@@ -1535,10 +1506,15 @@ void Stats<TF>::calc_stats(
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
+
                 calc_moment(
-                        m.second.profs.at(name).data.data(), fld.fld.data(),
-                        m.second.profs.at(varname).data.data(), offset, mfield.data(), flag, nmask,
-                        power, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(),
+                        m.second.profs.at(varname).data.data(),
+                        offset, mfield.data(), flag, nmask, power,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
 
                 master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1546,6 +1522,17 @@ void Stats<TF>::calc_stats(
             }
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_w(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Resolved Flux
     name = varname + "_w";
@@ -1556,17 +1543,35 @@ void Stats<TF>::calc_stats(
 
         for (auto& m : masks)
         {
-            set_flag(flag, nmask, m.second, !fld.loc[2]);
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
             calc_mean(
-                    m.second.profs.at(name).data.data(), advec_flux->fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    advec_flux->fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    0, gd.kcells,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
+
         fields.release_tmp(advec_flux);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_diff(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Diffusive Flux
     name = varname + "_diff";
@@ -1578,9 +1583,14 @@ void Stats<TF>::calc_stats(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, !fld.loc[2]);
+
             calc_mean(
-                    m.second.profs.at(name).data.data(), diff_flux->fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    diff_flux->fld.data(),
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend+(1-fld.loc[2]),
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1589,6 +1599,18 @@ void Stats<TF>::calc_stats(
 
         fields.release_tmp(diff_flux);
     }
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_flux(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Total Flux
     name = varname + "_flux";
@@ -1598,13 +1620,27 @@ void Stats<TF>::calc_stats(
         {
             // No sum is required in this routine as values all.
             set_flag(flag, nmask, m.second, !fld.loc[2]);
+
             add_fluxes(
-                    m.second.profs.at(name).data.data(), m.second.profs.at(varname+"_w").data.data(),
+                    m.second.profs.at(name).data.data(),
+                    m.second.profs.at(varname+"_w").data.data(),
                     m.second.profs.at(varname+"_diff").data.data(),
                     gd.kstart, gd.kend);
+
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_grad(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Gradient
     name = varname + "_grad";
@@ -1617,15 +1653,23 @@ void Stats<TF>::calc_stats(
             if (grid.get_spatial_order() == Grid_order::Second)
             {
                 calc_grad_2nd(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi.data(), mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(), gd.dzhi.data(),
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
             }
             else if (grid.get_spatial_order() == Grid_order::Fourth)
             {
                 calc_grad_4th(
-                        m.second.profs.at(name).data.data(), fld.fld.data(), gd.dzhi4.data(), mfield.data(), flag, nmask,
-                        gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                        m.second.profs.at(name).data.data(),
+                        fld.fld.data(), gd.dzhi4.data(),
+                        mfield.data(), flag, nmask,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.kstart, gd.kend,
                         gd.icells, gd.ijcells);
             }
 
@@ -1633,6 +1677,17 @@ void Stats<TF>::calc_stats(
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_path(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Integrated Path
     name = varname + "_path";
@@ -1643,9 +1698,12 @@ void Stats<TF>::calc_stats(
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
             std::pair<TF, int> path = calc_path(
-                    fld.fld.data(), gd.dz.data(), fields.rhoref.data(),
+                    fld.fld.data(), gd.dz.data(),
+                    fields.rhoref.data(),
                     mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(&path.first, 1);
@@ -1654,6 +1712,17 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = path.first / path.second;
         }
     }
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_cover(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Cover
     name = varname + "_cover";
@@ -1665,8 +1734,12 @@ void Stats<TF>::calc_stats(
 
             // Function returns number of poinst covered (cover.first) and number of points in mask (cover.second).
             std::pair<int, int> cover = calc_cover(
-                    fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    fld.fld.data(),
+                    offset, threshold,
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(&cover.first, 1);
@@ -1676,6 +1749,18 @@ void Stats<TF>::calc_stats(
             m.second.tseries.at(name).data = (cover.second > 0) ? TF(cover.first)/TF(cover.second) : 0.;
         }
     }
+
+}
+
+template<typename TF>
+void Stats<TF>::calc_stats_frac(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+{
+    auto& gd = grid.get_grid_data();
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
 
     // Calc Fraction
     name = varname + "_frac";
@@ -1687,8 +1772,13 @@ void Stats<TF>::calc_stats(
             set_flag(flag, nmask, m.second, fld.loc[2]);
 
             calc_frac(
-                    m.second.profs.at(name).data.data(), fld.fld.data(), offset, threshold, mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    m.second.profs.at(name).data.data(),
+                    fld.fld.data(),
+                    offset, threshold,
+                    mfield.data(), flag, nmask,
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
 
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
@@ -1718,7 +1808,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
             calc_mean(m.second.profs.at(name).data.data(), fld.fld.data(), mfield.data(), flag, nmask,
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend+fld.loc[2], gd.icells, gd.ijcells);
             master.sum(m.second.profs.at(name).data.data(), gd.kcells);
 
             set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
@@ -2034,5 +2124,9 @@ void Stats<TF>::calc_grad_4th(
     }
 }
 
-template class Stats<double>;
+
+#ifdef FLOAT_SINGLE
 template class Stats<float>;
+#else
+template class Stats<double>;
+#endif

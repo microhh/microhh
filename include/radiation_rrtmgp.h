@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,9 +29,10 @@
 #include "Gas_optics_rrtmgp.h"
 #include "Source_functions.h"
 #include "Cloud_optics.h"
+#include "Aerosol_optics.h"
 #include "Rte_lw.h"
 #include "Rte_sw.h"
-#include "Types.h"
+#include "types.h"
 
 
 class Master;
@@ -45,7 +46,13 @@ template<typename> class Cross;
 template<typename> class Field3d;
 template<typename> class Thermo;
 template<typename> class Timeloop;
+template<typename TF> class Aerosol;
+template<typename TF> class Background;
 
+using Aerosol_concs = Gas_concs;
+#ifdef USECUDA
+using Aerosol_concs_gpu = Gas_concs_gpu;
+#endif
 
 template<typename TF>
 class Radiation_rrtmgp : public Radiation<TF>
@@ -61,19 +68,25 @@ class Radiation_rrtmgp : public Radiation<TF>
         void create(
                 Input&, Netcdf_handle&, Thermo<TF>&,
                 Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&);
-        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&);
+        void exec(Thermo<TF>&, double, Timeloop<TF>&, Stats<TF>&, Aerosol<TF>&, Background<TF>&, Microphys<TF>&);
 
         unsigned long get_time_limit(unsigned long);
-        void update_time_dependent(Timeloop<TF>&) {};
+        void update_time_dependent(Timeloop<TF>&);
 
         void get_radiation_field(Field3d<TF>&, const std::string&, Thermo<TF>&, Timeloop<TF>&)
         { throw std::runtime_error("\"get_radiation_field()\" is not implemented in radiation_rrtmpg"); }
         std::vector<TF>& get_surface_radiation(const std::string&);
+        std::vector<TF>& get_surface_emissivity(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface emissivity field"); }
+        std::vector<TF>& get_surface_albedo(const std::string&)
+        { throw std::runtime_error("This radiation class cannot provide a surface albedo field"); }
 
         void exec_all_stats(
                 Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&,
                 Thermo<TF>&, Timeloop<TF>&, const unsigned long, const int);
-        void exec_individual_column_stats(Column<TF>&, Thermo<TF>&, Timeloop<TF>&, Stats<TF>&);
+        void exec_individual_column_stats(
+                Column<TF>&, Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Aerosol<TF>&, Background<TF>&);
         void exec_column(Column<TF>&, Thermo<TF>&, Timeloop<TF>&) {};
 
         #ifdef USECUDA
@@ -115,20 +128,24 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const Gas_concs&);
         void create_diffuse_filter();
 
-        void solve_shortwave_column(
-                std::unique_ptr<Optical_props_arry>&,
-                Array<Float,2>&, Array<Float,2>&,
-                Array<Float,2>&, Array<Float,2>&,
-                Array<Float,2>&, Array<Float,2>&, const Float,
-                const Gas_concs&,
-                const Gas_optics_rrtmgp&,
-                const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,1>&,
-                const Array<Float,2>&, const Array<Float,2>&,
-                const Float,
-                const int);
+
+    void solve_shortwave_column(
+            std::unique_ptr<Optical_props_arry>&,
+            std::unique_ptr<Optical_props_2str>&,
+            Array<Float,2>&, Array<Float,2>&,
+            Array<Float,2>&, Array<Float,2>&,
+            Array<Float,2>&, Array<Float,2>&, const Float,
+            const Gas_concs&,
+            const Gas_optics_rrtmgp&,
+            const Array<Float,2>&,
+            const Array<Float,2>&, const Array<Float,2>&,
+            const Array<Float,2>&, const Array<Float,2>&,
+            Aerosol_concs&,
+            const Array<Float,1>&,
+            const Array<Float,2>&, const Array<Float,2>&,
+            const Float,
+            const int
+            );
 
         void solve_longwave_column(
                 std::unique_ptr<Optical_props_arry>&,
@@ -144,37 +161,42 @@ class Radiation_rrtmgp : public Radiation<TF>
                 const int);
 
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
+                Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&,
-                const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         #ifdef USECUDA
         void exec_longwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
-                Thermo<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array<Float, 1>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool, const int);
         #endif
 
         bool is_day(const Float); // Switch between day/night, based on sza
         void set_sun_location(Timeloop<TF>&);
+        void set_background_column_longwave(const TF);
         void set_background_column_shortwave(const TF);
 
         const std::string tend_name = "rad";
@@ -184,6 +206,17 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_shortwave;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
+        bool sw_aerosol;
+        bool sw_delta_cloud;
+        bool sw_delta_aer;
+
+        bool swtimedep_background;
+        bool swtimedep_aerosol;
+
+        bool sw_homogenize_sfc_sw;
+        bool sw_homogenize_sfc_lw;
+        bool sw_homogenize_hr_sw;
+        bool sw_homogenize_hr_lw;
 
         // Make sure that the sw radiation is tuned at the first `exec()`. This
         // ensures that sw is tuned for the full 3D field, and not for the column stats.
@@ -197,14 +230,8 @@ class Radiation_rrtmgp : public Radiation<TF>
         // RRTMGP related variables.
         Float tsi_scaling; // Total solar irradiance scaling factor.
         Float t_sfc;       // Surface absolute temperature in K.
-        Float emis_sfc;    // Surface emissivity.
-        Float sfc_alb_dir; // Surface albedo.
-        Float sfc_alb_dif; // Surface albedo for diffuse light.
         Float mu0;         // Cosine of solar zenith angle.
         Float Nc0;         // Total droplet number concentration.
-
-        Float lat; // Latitude (degrees)
-        Float lon; // Longitude (degrees)
 
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;
@@ -230,20 +257,39 @@ class Radiation_rrtmgp : public Radiation<TF>
         Array<Float,2> sw_flux_dn_col;
         Array<Float,2> sw_flux_dn_dir_col;
         Array<Float,2> sw_flux_net_col;
+        Array<Float,1> aod550;
+        int ibnd_550;
 
         Gas_concs gas_concs_col;
+
+        Aerosol_concs aerosol_concs_col;
+        Array<Float,2> rh_col;
 
         std::unique_ptr<Source_func_lw> sources_lw;
         std::unique_ptr<Optical_props_arry> optical_props_lw;
         std::unique_ptr<Optical_props_arry> optical_props_sw;
+        std::unique_ptr<Optical_props_2str> aerosol_props_sw;
 
         // The full solver.
         Gas_concs gas_concs;
+        Aerosol_concs aerosol_concs;
+
         std::unique_ptr<Gas_optics_rrtmgp> kdist_lw;
         std::unique_ptr<Gas_optics_rrtmgp> kdist_sw;
 
         std::unique_ptr<Cloud_optics> cloud_lw;
         std::unique_ptr<Cloud_optics> cloud_sw;
+
+        std::unique_ptr<Aerosol_optics> aerosol_sw;
+
+        // Surface fields that go into solver;
+        TF emis_sfc_hom;
+        TF sfc_alb_dir_hom;
+        TF sfc_alb_dif_hom;
+
+        Array<Float,2> emis_sfc;
+        Array<Float,2> sfc_alb_dir;
+        Array<Float,2> sfc_alb_dif;
 
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
@@ -275,12 +321,26 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<Float> filter_kernel_x;
         std::vector<Float> filter_kernel_y;
 
+        // timedependent gases
+        std::map<std::string, Timedep<TF>*> tdep_gases;
+        std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.
+        std::map<std::string, std::vector<TF>> gasprofs; ///< Map of profiles with gases stored by its name.
+
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
+        std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
+        std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
+
+        std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
+        Float* aod550_g;
+
+        Array_gpu<Float,2> emis_sfc_g;
+        Array_gpu<Float,2> sfc_alb_dir_g;
+        Array_gpu<Float,2> sfc_alb_dif_g;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -445,7 +445,7 @@ void Boundary_surface<TF>::create_cold_start(Netcdf_handle& input_nc)
 }
 
 template<typename TF>
-void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // 1. Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
@@ -458,6 +458,13 @@ void Boundary_surface<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // 4. Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
+   
 }
 
 template<typename TF>
@@ -465,11 +472,6 @@ void Boundary_surface<TF>::process_input(Input& inputin, Thermo<TF>& thermo)
 {
     // Switch between heterogeneous and homogeneous z0's
     sw_constant_z0 = inputin.get_item<bool>("boundary", "swconstantz0", "", true);
-
-    #ifdef USECUDA
-    if (!sw_constant_z0)
-        throw std::runtime_error("\"boundary_surface\" with heterogeneous z0s is not (yet) supported");
-    #endif
 
     // Switch for z0 as function of u* (Charnock relation)
     sw_charnock = inputin.get_item<bool>("boundary", "swcharnock", "", false);
@@ -548,7 +550,7 @@ void Boundary_surface<TF>::init_surface(Input& input, Thermo<TF>& thermo)
 
     dudz_mo.resize(gd.ijcells);
     dvdz_mo.resize(gd.ijcells);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         dbdz_mo.resize(gd.ijcells);
 
     if (sw_constant_z0)
@@ -608,7 +610,7 @@ void Boundary_surface<TF>::load(const int iotime, Thermo<TF>& thermo)
     // eddy viscosity use the gradients from the previous time step.
     load_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     load_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         load_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
     // The `fld->gradbot`'s are only needed for flux BCs, required by
@@ -644,7 +646,8 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 {
     auto tmp1 = fields.get_tmp();
     int nerror = 0;
-
+    TF no_offset = 0;
+    
     auto save_2d_field = [&](
             TF* const restrict field, const std::string& name, const int itime)
     {
@@ -654,7 +657,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -667,7 +670,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
     // eddy viscosity use the gradients from the previous time step.
     save_2d_field(dudz_mo.data(), "dudz_mo", iotime);
     save_2d_field(dvdz_mo.data(), "dvdz_mo", iotime);
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
         save_2d_field(dbdz_mo.data(), "dbdz_mo", iotime);
 
     // The `fld->gradbot`'s are only needed for flux BCs, required by
@@ -696,21 +699,22 @@ void Boundary_surface<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     for (auto& it : cross_list)
     {
+        TF no_offset = 0;
         if (it == "ustar")
-            cross.cross_plane(ustar.data(), "ustar", iotime);
+            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
         else if (it == "obuk")
-            cross.cross_plane(obuk.data(), "obuk", iotime);
+            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
         else if (it == "z0m")
-            cross.cross_plane(z0m.data(), "z0m", iotime);
+            cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
         else if (it == "z0h")
-            cross.cross_plane(z0h.data(), "z0h", iotime);
+            cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (it == "ra")
         {
             bsk::calc_ra(
                     tmp1->flux_bot.data(), ustar.data(), obuk.data(),
                     z0h.data(), gd.z[gd.kstart], gd.istart,
                     gd.iend, gd.jstart, gd.jend, gd.icells);
-            cross.cross_plane(tmp1->flux_bot.data(), "ra", iotime);
+            cross.cross_plane(tmp1->flux_bot.data(), no_offset, "ra", iotime);
         }
     }
 
@@ -761,7 +765,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             Boundary_type::Dirichlet_type, ubot,
-            fields.visc, grid.utrans,
+            fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
@@ -769,7 +773,7 @@ void Boundary_surface<TF>::set_values()
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
             Boundary_type::Dirichlet_type, vbot,
-            fields.visc, grid.vtrans,
+            fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     // in case the momentum has a fixed ustar, set the value to that of the input
@@ -791,14 +795,14 @@ void Boundary_surface<TF>::set_ustar()
             fields.mp.at("u")->fld_bot.data(),
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
-            mbcbot, ubot, fields.visc, grid.utrans,
+            mbcbot, ubot, fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
             fields.mp.at("v")->fld_bot.data(),
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
-            mbcbot, vbot, fields.visc, grid.vtrans,
+            mbcbot, vbot, fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     for (int j=0; j<gd.jcells; ++j)
@@ -868,7 +872,7 @@ void Boundary_surface<TF>::exec(
             boundary_cyclic);
 
     // Start with retrieving the stability information.
-    if (thermo.get_switch() == "0")
+    if (thermo.get_switch() == Thermo_type::Disabled)
     {
         stability_neutral(
                 ustar.data(),
@@ -968,7 +972,7 @@ void Boundary_surface<TF>::exec(
             gd.kstart,
             gd.icells, gd.ijcells);
 
-    if (thermo.get_switch() != "0")
+    if (thermo.get_switch() != Thermo_type::Disabled)
     {
         auto buoy = fields.get_tmp();
         thermo.get_buoyancy_fluxbot(buoy->flux_bot, false);
@@ -993,5 +997,9 @@ void Boundary_surface<TF>::update_slave_bcs()
     // the fields are computed by the surface model in update_bcs.
 }
 
-template class Boundary_surface<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface<float>;
+#else
+template class Boundary_surface<double>;
+#endif

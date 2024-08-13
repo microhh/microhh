@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -21,6 +21,8 @@
  */
 
 #include <stdio.h>
+#include <exception>
+#include <string>
 
 #ifndef TOOLS_H
 #define TOOLS_H
@@ -30,6 +32,7 @@
    All CUDA api calls are always checked with cudaSafeCall() */
 #define cuda_safe_call(err) Tools_g::__cuda_safe_call(err, __FILE__, __LINE__)
 #define cuda_check_error()  Tools_g::__cuda_check_error(__FILE__, __LINE__)
+#define cuda_check_memory() Tools_g::__cuda_check_memory(__FILE__, __LINE__)
 
 namespace Tools_g
 {
@@ -45,13 +48,25 @@ namespace Tools_g
     template<typename TF> __global__
     void mult_by_val(TF* __restrict__, int, TF);
 
+    struct cuda_exception : public std::exception
+    {
+        cuda_exception(cudaError err, const char *file, const int line);
+        cuda_exception(cudaError err, std::string msg);
+        const char *what() const throw();
+        cudaError error() const;
+
+        private:
+            const cudaError err_;
+            const std::string message_;
+    };
+
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
     inline void __cuda_safe_call(cudaError err, const char *file, const int line)
     {
         if (cudaSuccess != err)
         {
             printf("cudaSafeCall() failed at %s:%i : %s\n", file, line, cudaGetErrorString(err));
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
     }
 
@@ -63,15 +78,36 @@ namespace Tools_g
         if (cudaSuccess != err)
         {
             printf("cudaCheckError() failed at %s:%i : %s\n", file, line, cudaGetErrorString( err ) );
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
 
         err = cudaDeviceSynchronize();
         if(cudaSuccess != err)
         {
             printf("cudaCheckError() with sync failed at %s:%i : %s\n", file, line, cudaGetErrorString( err ) );
-            throw 1;
+            throw cuda_exception(err, file, line);
         }
+        #endif
+    }
+
+    // Check the memory usage.
+    inline void __cuda_check_memory(const char *file, const int line)
+    {
+        #ifdef CUDACHECKS
+        size_t free_byte, total_byte ;
+
+        cudaError err = cudaMemGetInfo( &free_byte, &total_byte ) ;
+
+        if ( cudaSuccess != err ){
+
+            printf("Error: cudaMemGetInfo fails, %s \n", cudaGetErrorString(err) );
+            throw 1;
+
+        }
+
+        double used_db = (double)total_byte - (double)free_byte ;
+
+        printf("GPU memory usage at %s:%i: %f MB\n", file, line, used_db/(1024.0*1024.0));
         #endif
     }
 }

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -548,14 +548,14 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
 
     // Read microphysics switches and settings
     swmicrobudget = inputin.get_item<bool>("micro", "swmicrobudget", "", false);
-    cflmax        = inputin.get_item<TF>("micro", "cflmax", "", 2.);
-    Nc0<TF>       = inputin.get_item<TF>("micro", "Nc0", "");
+    cflmax = inputin.get_item<TF>("micro", "cflmax", "", 2.);
+    Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
 
-    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc);
-    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc);
+    fields.init_prognostic_field("qr", "Rain water specific humidity", "kg kg-1", group_name, gd.sloc, false);
+    fields.init_prognostic_field("nr", "Number density rain", "m-3", group_name, gd.sloc, false);
 
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
@@ -590,7 +590,7 @@ void Microphys_2mom_warm<TF>::create(
     {
         // Time series
         stats.add_time_series("rr", "Mean surface rain rate", "kg m-2 s-1", group_name);
-        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "path", "cover"}, group_name);
+        stats.add_profs(*fields.sp.at("qr"), "z", {"frac", "cover"}, group_name);
 
         if (swmicrobudget)
         {
@@ -648,7 +648,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     // Get cloud liquid water specific humidity from thermodynamics
     auto ql = fields.get_tmp();
-    thermo.get_thermo_field(*ql, "ql_qi", false, false);
+    thermo.get_thermo_field(*ql, "qlqi", false, false);
 
     // Get pressure and exner function from thermodynamics
     std::vector<TF> p     = thermo.get_basestate_vector("p");
@@ -693,7 +693,7 @@ void Microphys_2mom_warm<TF>::exec(Thermo<TF>& thermo, const double dt, Stats<TF
 
     // Autoconversion; formation of rain drop by coagulating cloud droplets
     mp3d::autoconversion(fields.st.at("qr")->fld.data(), fields.st.at("nr")->fld.data(), fields.st.at("qt")->fld.data(), fields.st.at("thl")->fld.data(),
-                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+                         fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0,
                          gd.istart, gd.jstart, gd.kstart,
                          gd.iend,   gd.jend,   gd.kend,
                          gd.icells, gd.ijcells);
@@ -829,7 +829,7 @@ void Microphys_2mom_warm<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo, c
         zero_field(qtt->fld.data(),  gd.ncells);
 
         mp3d::autoconversion(qrt->fld.data(), nrt->fld.data(), qtt->fld.data(), thlt->fld.data(),
-                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0<TF>,
+                             fields.sp.at("qr")->fld.data(), ql->fld.data(), fields.rhoref.data(), exner.data(), Nc0,
                              gd.istart, gd.jstart, gd.kstart,
                              gd.iend,   gd.jend,   gd.kend,
                              gd.icells, gd.ijcells);
@@ -949,12 +949,13 @@ void Microphys_2mom_warm<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 void Microphys_2mom_warm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
+    TF no_offset = 0.;
     if (cross.get_switch())
     {
         for (auto& it : crosslist)
         {
             if (it == "rr_bot")
-                cross.cross_plane(rr_bot.data(), "rr_bot", iotime);
+                cross.cross_plane(rr_bot.data(), no_offset, "rr_bot", iotime);
         }
     }
 }
@@ -1022,5 +1023,9 @@ void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
     field = rr_bot;
 }
 
-template class Microphys_2mom_warm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Microphys_2mom_warm<float>;
+#else
+template class Microphys_2mom_warm<double>;
+#endif

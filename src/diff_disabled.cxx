@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -63,5 +63,10 @@ void Diff_disabled<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& 
 {
     std::fill(out.fld.begin(), out.fld.end(), TF(0.));
 }
-template class Diff_disabled<double>;
+
+
+#ifdef FLOAT_SINGLE
 template class Diff_disabled<float>;
+#else
+template class Diff_disabled<double>;
+#endif

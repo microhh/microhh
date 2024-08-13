@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -45,5 +45,9 @@ template<typename TF>
 void Budget_disabled<TF>::exec_stats(Stats<TF>&)
 {}
 
-template class Budget_disabled<double>;
+
+#ifdef FLOAT_SINGLE
 template class Budget_disabled<float>;
+#else
+template class Budget_disabled<double>;
+#endif

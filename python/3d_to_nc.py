@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2020 Chiel van Heerwaarden
-#  Copyright (c) 2011-2020 Thijs Heus
-#  Copyright (c) 2014-2020 Bart van Stratum
+#  Copyright (c) 2011-2023 Chiel van Heerwaarden
+#  Copyright (c) 2011-2023 Thijs Heus
+#  Copyright (c) 2014-2023 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -24,15 +24,18 @@ import microhh_tools as mht     # available in microhh/python directory
 import argparse
 import os
 import glob
+import struct
 import time as tm
 import numpy as np
 from multiprocessing import Pool
 
 def convert_to_nc(variables):
+    half_level_vars = ['w', 'lflx', 'sflx']
+    
     for variable in variables:
         filename = "{0}.nc".format(variable)
         dim = {
-            'time': range(niter),
+            'time': [],
             'z': range(kmax),
             'y': range(jtot),
             'x': range(itot)}
@@ -40,32 +43,46 @@ def convert_to_nc(variables):
             dim['xh'] = dim.pop('x')
         if variable == 'v':
             dim['yh'] = dim.pop('y')
-        if variable == 'w':
+        if variable in half_level_vars:
             dim['zh'] = dim.pop('z')
         try:
-            ncfile = mht.Create_ncfile(
-                grid, filename, variable, dim, precision, compression)
-            # Loop through the files and read 3d field
-            for t in range(niter):
-                otime = round((starttime + t * sampletime) / 10**iotimeprec)
+            def convert(otime, tout):
                 f_in = "{0:}.{1:07d}".format(variable, otime)
-
                 try:
                     fin = mht.Read_binary(grid, f_in)
                 except Exception as ex:
                     print (ex)
-                    raise Exception(
-                        'Stopping: cannot find file {}'.format(f_in))
-
+                    return
+                # raise Exception(
+                #         'Stopping: cannot find file {}'.format(f_in))
                 print("Processing %8s, time=%7i" % (variable, otime))
-                ncfile.dimvar['time'][t] = otime * 10**iotimeprec
+                ncfile.dimvar['time'][tout] = otime * 10**iotimeprec
                 if (perslice):
                     for k in range(kmax):
-                        ncfile.var[t,k,:,:] = fin.read(itot * jtot)
+                        ncfile.var[tout,k,:,:] = fin.read(itot * jtot)
                 else:
-                    ncfile.var[t,:,:,:] = fin.read(itot * jtot * kmax)
+                    ncfile.var[tout,:,:,:] = fin.read(itot * jtot * kmax)
 
                 fin.close()
+
+            ncfile = mht.Create_ncfile(
+                grid, filename, variable, dim, precision, compression)
+            # Loop through the files and read 3d field
+            tout = 0
+            for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
+                otime = round(time / 10**iotimeprec)
+                if (doubledump and t>0):
+                    timedata = struct.unpack("=QQi",open('time.{0:07d}'.format(otime), 'rb').read())
+                    otime2 = round((timedata[0]-timedata[1]) *10**(-iotimeprec-9)-0.5)
+                    convert(otime2, tout)
+                    tout += 1
+
+                try:
+                    convert(otime, tout)
+                except Exception as ex:
+                    print (ex)
+                    break
+                tout += 1
             ncfile.close()
         except Exception as ex:
             print(ex)
@@ -85,6 +102,12 @@ parser.add_argument(
     choices=[
         'single',
          'double'])
+parser.add_argument(
+    '-o',
+    '--order',
+    help='order',
+    choices=[
+        2, 4], type = int)
 parser.add_argument(
     '-t0',
     '--starttime',
@@ -134,6 +157,11 @@ starttime = args.starttime if args.starttime is not None else nl['time']['startt
 endtime = args.endtime if args.endtime is not None else nl['time']['endtime']
 sampletime = args.sampletime if args.sampletime is not None else nl['dump']['sampletime']
 try:
+    doubledump = (nl['dump']['swdoubledump']==1)
+except:
+    doubledump = False
+
+try:
     iotimeprec = nl['time']['iotimeprec']
 except KeyError:
     iotimeprec = 0.
@@ -147,6 +175,11 @@ perslice = args.perslice
 compression = not(args.nocompression)
 nprocs = args.nprocs if args.nprocs is not None else len(variables)
 
+try:
+    order = args.order if args.order is not None else nl['grid']['swspatialorder']
+except KeyError:
+    order = 2
+
 # Calculate the number of iterations
 for time in np.arange(starttime, endtime, sampletime):
     otime = int(round(time / 10**iotimeprec))
@@ -156,7 +189,8 @@ for time in np.arange(starttime, endtime, sampletime):
 
 niter = int((endtime - starttime) / sampletime + 1)
 
-grid = mht.Read_grid(itot, jtot, ktot)
+grid = mht.Read_grid(itot, jtot, ktot, order = order)
+
 if kmax < ktot:
     grid.dim['z'] = grid.dim['z'][:kmax]
     grid.dim['zh'] = grid.dim['zh'][:kmax+1]

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -56,7 +56,7 @@ namespace
 #ifdef USECUDA
 template<typename TF>
 void Radiation_prescribed<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats)
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, Aerosol<TF>&, Background<TF>&, Microphys<TF>&)
 {
     if (swtimedep_prescribed)
     {
@@ -150,6 +150,7 @@ void Radiation_prescribed<TF>::backward_device()
     cuda_safe_call(cudaMemcpy(sw_flux_up.data(), sw_flux_up_g, memsize, cudaMemcpyDeviceToHost));
 }
 #endif
+
 
 #ifdef FLOAT_SINGLE
 template class Radiation_prescribed<float>;

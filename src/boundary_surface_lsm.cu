@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -93,7 +93,7 @@ void Boundary_surface_lsm<TF>::exec(
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
     TF* du_tot = tmp1->fld_bot_g;
 
-    bsk::calc_dutot_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    bsk::calc_dutot_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
         du_tot,
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
@@ -285,7 +285,7 @@ void Boundary_surface_lsm<TF>::exec(
         //throw 1;
 
         // Calculate surface fluxes
-        lsmk::calc_fluxes_g<<<grid_gpu_2d, block_gpu_2d>>>(
+        lsmk::calc_fluxes_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
                 tile.second.H_g,
                 tile.second.LE_g,
                 tile.second.G_g,
@@ -323,7 +323,7 @@ void Boundary_surface_lsm<TF>::exec(
     if (sw_water)
     {
         // Set BCs for water grid points
-        lsmk::set_water_tiles<<<grid_gpu_2d, block_gpu_2d>>>(
+        lsmk::set_water_tiles<TF><<<grid_gpu_2d, block_gpu_2d>>>(
                 tiles.at("veg").fraction_g,
                 tiles.at("soil").fraction_g,
                 tiles.at("wet").fraction_g,
@@ -379,7 +379,7 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d_g(fields.sp.at("qt")->fld_bot_g);
 
     // Calculate bulk Obukhov length.
-    lsmk::calc_bulk_obuk_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    lsmk::calc_bulk_obuk_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             obuk_g,
             buoy->flux_bot_g,
             ustar_g,
@@ -393,7 +393,7 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d_g(obuk_g);
 
     // Redistribute ustar over `uw` and `vw`.
-    lsmk::set_bcs_momentum_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    lsmk::set_bcs_momentum_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             fields.mp.at("u")->flux_bot_g,
             fields.mp.at("v")->flux_bot_g,
             fields.mp.at("u")->grad_bot_g,
@@ -415,7 +415,7 @@ void Boundary_surface_lsm<TF>::exec(
     boundary_cyclic.exec_2d_g(fields.mp.at("v")->grad_bot_g);
 
     // Set BCs (gradients) thl + qt
-    lsmk::set_bcs_thl_qt_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+    lsmk::set_bcs_thl_qt_g<TF><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             fields.sp.at("thl")->grad_bot_g,
             fields.sp.at("qt")->grad_bot_g,
             fields.sp.at("thl")->fld_g,
@@ -431,7 +431,7 @@ void Boundary_surface_lsm<TF>::exec(
         if (it.first != "thl" and it.first != "qt")
         {
             if (sbc.at(it.first).bcbot == Boundary_type::Dirichlet_type)
-                lsmk::set_bcs_scalars_dirichlet_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                lsmk::set_bcs_scalars_dirichlet_g<TF><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     it.second->fld_bot_g,
                     it.second->grad_bot_g,
                     it.second->flux_bot_g,
@@ -443,7 +443,7 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.icells, gd.jcells, gd.ijcells);
 
             else if (sbc.at(it.first).bcbot == Boundary_type::Flux_type)
-                lsmk::set_bcs_scalars_flux_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                lsmk::set_bcs_scalars_flux_g<TF><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
                     it.second->fld_bot_g,
                     it.second->grad_bot_g,
                     it.second->flux_bot_g,
@@ -457,7 +457,7 @@ void Boundary_surface_lsm<TF>::exec(
         }
 
     // Calc MO gradients, for subgrid scheme
-    bsk::calc_duvdz_mo_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+    bsk::calc_duvdz_mo_g<TF><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             dudz_mo_g, dvdz_mo_g,
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -473,7 +473,7 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    bsk::calc_dbdz_mo_g<<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+    bsk::calc_dbdz_mo_g<TF><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
             dbdz_mo_g, buoy->flux_bot_g,
             ustar_g, obuk_g,
             gd.z[gd.kstart],
@@ -576,7 +576,7 @@ void Boundary_surface_lsm<TF>::exec(
     // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
     get_tiled_mean_g(tmp1->fld_bot_g, "G", TF(1));
 
-    sk::set_bcs_temperature_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    sk::set_bcs_temperature_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             fields.sps.at("t")->flux_top_g,
             fields.sps.at("t")->flux_bot_g,
             tmp1->fld_bot_g,
@@ -687,8 +687,8 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate root water extraction
-    lsmk::scale_tile_with_fraction_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            tmp1->fld_bot_g,
+    lsmk::scale_tile_with_fraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+            tmp1->fld_bot_g.view(),
             tiles.at("veg").LE_g,
             tiles.at("veg").fraction_g,
             gd.istart, gd.iend,
@@ -696,9 +696,9 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    sk::calc_root_water_extraction_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    sk::calc_root_water_extraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             source_g,
-            tmp1->fld_top_g,
+            tmp1->fld_top_g.view(),
             fields.sps.at("theta")->fld_g,
             root_fraction_g,
             tmp1->fld_bot_g,
@@ -883,13 +883,13 @@ void Boundary_surface_lsm<TF>::print_ij(
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::prepare_device()
+void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
     // Prepare base boundary, for inflow profiles.
-    Boundary<TF>::prepare_device();
+    Boundary<TF>::prepare_device(thermo);
 
     const int tf_memsize_ij  = gd.ijcells*sizeof(TF);
     const int int_memsize_ij = gd.ijcells*sizeof(int);
@@ -899,12 +899,12 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&obuk_g,  tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&ustar_g, tf_memsize_ij));
 
-    cuda_safe_call(cudaMalloc(&z0m_g,   tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&z0h_g,   tf_memsize_ij));
+    z0m_g.allocate(gd.ijcells);
+    z0h_g.allocate(gd.ijcells);
 
-    cuda_safe_call(cudaMalloc(&dudz_mo_g, tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&dvdz_mo_g, tf_memsize_ij));
-    cuda_safe_call(cudaMalloc(&dbdz_mo_g, tf_memsize_ij));
+    dudz_mo_g.allocate(gd.ijcells);
+    dvdz_mo_g.allocate(gd.ijcells);
+    dbdz_mo_g.allocate(gd.ijcells);
 
     if (sw_constant_z0)
     {
@@ -975,11 +975,11 @@ void Boundary_surface_lsm<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&rho_C_g, memsize_vg_lut));
 
     // Copy data from host to device
-    forward_device();
+    forward_device(thermo);
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::forward_device()
+void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
@@ -1068,7 +1068,7 @@ void Boundary_surface_lsm<TF>::forward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::backward_device()
+void Boundary_surface_lsm<TF>::backward_device(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1090,7 +1090,7 @@ void Boundary_surface_lsm<TF>::backward_device()
 }
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::clear_device()
+void Boundary_surface_lsm<TF>::clear_device(Thermo<TF>& thermo)
 {
     //
     // De-llocate fields on GPU
@@ -1099,22 +1099,69 @@ void Boundary_surface_lsm<TF>::clear_device()
     cuda_safe_call(cudaFree(obuk_g));
     cuda_safe_call(cudaFree(ustar_g));
 
-    cuda_safe_call(cudaFree(z0m_g));
-    cuda_safe_call(cudaFree(z0h_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-    cuda_safe_call(cudaFree(dbdz_mo_g));
-
     if (sw_constant_z0)
     {
         cuda_safe_call(cudaFree(nobuk_g));
         cuda_safe_call(cudaFree(zL_sl_g));
         cuda_safe_call(cudaFree(f_sl_g));
     }
-    // Land-surface stuff:
+
+    // Land-surface:
+    for (auto& tile : tiles)
+        lsmk::clear_tile(tile.second);
+
+    cuda_safe_call(cudaFree(gD_coeff_g));
+    cuda_safe_call(cudaFree(c_veg_g));
+    cuda_safe_call(cudaFree(lai_g));
+    cuda_safe_call(cudaFree(rs_veg_min_g));
+    cuda_safe_call(cudaFree(rs_soil_min_g));
+    cuda_safe_call(cudaFree(lambda_stable_g));
+    cuda_safe_call(cudaFree(lambda_unstable_g));
+    cuda_safe_call(cudaFree(cs_veg_g));
+
+    if (sw_water)
+    {
+        cuda_safe_call(cudaFree(water_mask_g));
+        cuda_safe_call(cudaFree(t_bot_water_g));
+    }
+
+    cuda_safe_call(cudaFree(interception_g));
+    cuda_safe_call(cudaFree(throughfall_g));
+    cuda_safe_call(cudaFree(infiltration_g));
+    cuda_safe_call(cudaFree(runoff_g));
+
+    cuda_safe_call(cudaFree(soil_index_g));
+    cuda_safe_call(cudaFree(diffusivity_g));
+    cuda_safe_call(cudaFree(diffusivity_h_g));
+    cuda_safe_call(cudaFree(conductivity_g));
+    cuda_safe_call(cudaFree(conductivity_h_g));
+    cuda_safe_call(cudaFree(source_g));
+    cuda_safe_call(cudaFree(root_fraction_g));
+
+    cuda_safe_call(cudaFree(theta_res_g));
+    cuda_safe_call(cudaFree(theta_wp_g));
+    cuda_safe_call(cudaFree(theta_fc_g));
+    cuda_safe_call(cudaFree(theta_sat_g));
+
+    cuda_safe_call(cudaFree(gamma_theta_sat_g));
+
+    cuda_safe_call(cudaFree(vg_a_g));
+    cuda_safe_call(cudaFree(vg_l_g));
+    cuda_safe_call(cudaFree(vg_n_g));
+    cuda_safe_call(cudaFree(vg_m_g));
+
+    cuda_safe_call(cudaFree(kappa_theta_max_g));
+    cuda_safe_call(cudaFree(kappa_theta_min_g));
+    cuda_safe_call(cudaFree(gamma_theta_max_g));
+    cuda_safe_call(cudaFree(gamma_theta_min_g));
+    cuda_safe_call(cudaFree(gamma_T_dry_g));
+    cuda_safe_call(cudaFree(rho_C_g));
 }
 #endif
 
-template class Boundary_surface_lsm<double>;
+
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_lsm<float>;
+#else
+template class Boundary_surface_lsm<double>;
+#endif

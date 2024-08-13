@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -154,5 +154,9 @@ TF Field3d_operators<TF>::calc_mean(const TF* const restrict fld)
     return mean;
 }
 
-template class Field3d_operators<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_operators<float>;
+#else
+template class Field3d_operators<double>;
+#endif

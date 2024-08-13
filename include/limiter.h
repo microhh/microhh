@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,12 +32,13 @@ class Input;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Stats;
+template<typename> class Diff;
 
 template<typename TF>
 class Limiter
 {
     public:
-        Limiter(Master&, Grid<TF>&, Fields<TF>&, Input&); // Constructor of the decay class.
+        Limiter(Master&, Grid<TF>&, Fields<TF>&, Diff<TF>&, Input&); // Constructor of the decay class.
         ~Limiter();                                       // Destructor of the decay class.
 
         void create(Stats<TF>&); // Read the profiles of the forces from the input.
@@ -47,10 +48,13 @@ class Limiter
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Diff<TF>& diff;
 
         std::vector<std::string> limit_list;
 
         const std::string tend_name = "limit";
         const std::string tend_longname = "Limiter";
+
+        bool limit_sgstke;
 };
 #endif

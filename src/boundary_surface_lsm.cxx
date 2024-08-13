@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -941,7 +941,7 @@ void Boundary_surface_lsm<TF>::exec(
 #endif
 
 template<typename TF>
-void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
+void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Sim_mode sim_mode)
 {
     // Process the boundary conditions now all fields are registered.
     process_bcs(inputin);
@@ -955,6 +955,12 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo)
 
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
+
+    if (sim_mode == Sim_mode::Init)
+    {
+        inputin.flag_as_used("boundary", "swtimedep", "");
+        inputin.flag_as_used("boundary", "timedeplist", "");
+    }
 }
 
 template<typename TF>
@@ -1490,7 +1496,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
 
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
-                field, tmp1->fld.data(), filename, kslice))
+                field, no_offset, tmp1->fld.data(), filename, kslice))
         {
             master.print_message("FAILED\n");
             nerror += 1;
@@ -1558,37 +1564,38 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
 {
     auto& gd = grid.get_grid_data();
     auto tmp1 = fields.get_tmp();
-
+    TF no_offset = 0.;
+    
     for (auto& name : cross_list)
     {
         if (name == "ustar")
-            cross.cross_plane(ustar.data(), name, iotime);
+            cross.cross_plane(ustar.data(), no_offset, name, iotime);
         else if (name == "obuk")
-            cross.cross_plane(obuk.data(), name, iotime);
+            cross.cross_plane(obuk.data(), no_offset, name, iotime);
         else if (name == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), name, iotime);
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, name, iotime);
         else if (name == "fraction_wet")
-            cross.cross_plane(tiles.at("wet").fraction.data(), name , iotime);
+            cross.cross_plane(tiles.at("wet").fraction.data(), no_offset, name , iotime);
         else if (name == "fraction_soil")
-            cross.cross_plane(tiles.at("soil").fraction.data(), name , iotime);
+            cross.cross_plane(tiles.at("soil").fraction.data(), no_offset, name , iotime);
         else if (name == "fraction_veg")
-            cross.cross_plane(tiles.at("veg").fraction.data(), name, iotime);
+            cross.cross_plane(tiles.at("veg").fraction.data(), no_offset, name, iotime);
         else if (name == "rs_veg")
-            cross.cross_plane(tiles.at("veg").rs.data(), name, iotime);
+            cross.cross_plane(tiles.at("veg").rs.data(), no_offset, name, iotime);
         else if (name == "rs_soil")
-            cross.cross_plane(tiles.at("soil").rs.data(), name, iotime);
+            cross.cross_plane(tiles.at("soil").rs.data(), no_offset, name, iotime);
         else if (name == "ustar_soil")
-            cross.cross_plane(tiles.at("soil").ustar.data(), name, iotime);
+            cross.cross_plane(tiles.at("soil").ustar.data(), no_offset, name, iotime);
         else if (name == "ustar_wet")
-            cross.cross_plane(tiles.at("wet").ustar.data(), name, iotime);
+            cross.cross_plane(tiles.at("wet").ustar.data(), no_offset, name, iotime);
         else if (name == "ustar_veg")
-            cross.cross_plane(tiles.at("veg").ustar.data(), name, iotime);
+            cross.cross_plane(tiles.at("veg").ustar.data(), no_offset, name, iotime);
         else if (name == "ra_soil")
-            cross.cross_plane(tiles.at("soil").ra.data(), name, iotime);
+            cross.cross_plane(tiles.at("soil").ra.data(), no_offset, name, iotime);
         else if (name == "ra_wet")
-            cross.cross_plane(tiles.at("wet").ra.data(), name, iotime);
+            cross.cross_plane(tiles.at("wet").ra.data(), no_offset, name, iotime);
         else if (name == "ra_veg")
-            cross.cross_plane(tiles.at("veg").ra.data(), name, iotime);
+            cross.cross_plane(tiles.at("veg").ra.data(), no_offset, name, iotime);
     }
 
     fields.release_tmp(tmp1);
@@ -1709,7 +1716,7 @@ void Boundary_surface_lsm<TF>::set_values()
             fields.mp.at("u")->grad_bot.data(),
             fields.mp.at("u")->flux_bot.data(),
             Boundary_type::Dirichlet_type, ubot,
-            fields.visc, grid.utrans,
+            fields.visc, gd.utrans,
             gd.icells, gd.jcells);
 
     bsk::set_bc<TF>(
@@ -1717,7 +1724,7 @@ void Boundary_surface_lsm<TF>::set_values()
             fields.mp.at("v")->grad_bot.data(),
             fields.mp.at("v")->flux_bot.data(),
             Boundary_type::Dirichlet_type, vbot,
-            fields.visc, grid.vtrans,
+            fields.visc, gd.vtrans,
             gd.icells, gd.jcells);
 
     // Prepare the lookup table for the surface solver
@@ -1826,5 +1833,8 @@ void Boundary_surface_lsm<TF>::get_tiled_mean(
 }
 
 
-template class Boundary_surface_lsm<double>;
+#ifdef FLOAT_SINGLE
 template class Boundary_surface_lsm<float>;
+#else
+template class Boundary_surface_lsm<double>;
+#endif

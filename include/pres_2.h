@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -69,11 +69,11 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::fft_forward;
         using Pres<TF>::fft_backward;
 
-        TF* bmati_g;
-        TF* bmatj_g;
-        TF* a_g;
-        TF* c_g;
-        TF* work2d_g;
+        cuda_vector<TF> bmati_g;
+        cuda_vector<TF> bmatj_g;
+        cuda_vector<TF> a_g;
+        cuda_vector<TF> c_g;
+        cuda_vector<TF> work2d_g;
         #endif
 
         void input(TF* const restrict,

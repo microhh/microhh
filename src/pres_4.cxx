@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * The heptadiagonal matrix solver is
  * Copyright (c) 2014 Juan Pedro Mellado
@@ -766,5 +766,9 @@ TF Pres_4<TF>::calc_divergence(
     return divmax;
 }
 
-template class Pres_4<double>;
+
+#ifdef FLOAT_SINGLE
 template class Pres_4<float>;
+#else
+template class Pres_4<double>;
+#endif

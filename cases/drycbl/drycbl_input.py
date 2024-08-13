@@ -68,7 +68,7 @@ b = np.zeros(z.size)
 for k in range(kmax):
   b[k] = N2*z[k]
 
-nc_file = nc.Dataset("drycbl_input.nc", mode="w", datamodel="NETCDF4", clobber=False)
+nc_file = nc.Dataset("drycbl_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))

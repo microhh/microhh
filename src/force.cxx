@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
 // #include <math.h>
 #include <iostream>
 #include "master.h"
@@ -30,6 +31,7 @@
 #include "field3d_operators.h"
 #include "timedep.h"
 #include "force.h"
+#include "constants.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "timeloop.h"
@@ -267,28 +269,29 @@ namespace
         }
     }
 
-    // Especially, check this one thoroughly (indices, grid positions, etc.)! - SvdLinden, 28.04.21
     template<typename TF>
     void advec_wls_2nd_local_w(
-            TF* const restrict st, const TF* const restrict s,
-            const TF* const restrict wls, const TF* const dzi,
-            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            TF* const restrict st,
+            const TF* const restrict s,
+            const TF* const restrict wls,
+            const TF* const dzi,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
             const int icells, const int ijcells)
     {
         const int jj = icells;
         const int kk = ijcells;
 
-        // should not be needed to do kend-1 separately ? CHECK?
-        // use an upwind differentiation
-        for (int k=kstart+1; k<kend; ++k) // for (int k=kstart+2; k<kend-1; ++k)
+        for (int k=kstart+1; k<kend; ++k)
         {
-            if ( interp2( wls[k-1], wls[k] ) > 0.) // formeel ook in conditie interp2
+            if ( interp2( wls[k-1], wls[k] ) > 0.)
             {
                 for (int j=jstart; j<jend; ++j)
                     for (int i=istart; i<iend; ++i)
                     {
                         const int ijk = i + j*jj + k*kk;
-                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1]; // HIER DUS dz !! maar waar begint dz[kstart] +1 of niet??
+                        st[ijk] -=  interp2( wls[k-1], wls[k] ) * (s[ijk]-s[ijk-kk])*dzi[k-1];
                     }
             }
             else
@@ -320,15 +323,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
     std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
 
-    if (swwls_in == "1" || swwls_in == "mean" || swwls_in == "local")
+    if (swwls_in == "mean" || swwls_in == "local")
         swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
-
-    // Checks on input:
-    if (swwls_in == "1")
-    {
-        master.print_warning("\"swwls=1\" has been replaced by \"swwls=mean\" or \"swwls=local\". Defaulting to \"swwls=mean\"\n");
-        swwls_in = "mean";
-    }
 
     // Set the internal switches and read other required input
     // Large-scale pressure forcing.
@@ -349,9 +345,15 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     else if (swlspres_in == "geo")
     {
         swlspres = Large_scale_pressure_type::Geo_wind;
-        fc = inputin.get_item<TF>("force", "fc", "");
-        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
-        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", inputin.get_item<bool>("force", "swtimedep_geo", "", false)));
+        fc = inputin.get_item<TF>("force", "fc", "", -1.);
+        // Test whether latitude is available in the input file.
+        if (fc < 0.)
+            inputin.get_item<TF>("grid", "lat", "");
+
+        swtimedep_geo = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
+
+        tdep_geo.emplace("u_geo", new Timedep<TF>(master, grid, "u_geo", swtimedep_geo));
+        tdep_geo.emplace("v_geo", new Timedep<TF>(master, grid, "v_geo", swtimedep_geo));
     }
     else
     {
@@ -365,8 +367,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         swls = Large_scale_tendency_type::Enabled;
         lslist = inputin.get_list<std::string>("force", "lslist", "", std::vector<std::string>());
+        swtimedep_ls = inputin.get_item<bool>("force", "swtimedep_ls", "", false);
 
-        if (inputin.get_item<bool>("force", "swtimedep_ls", "", false))
+        if (swtimedep_ls)
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_ls", "", std::vector<std::string>());
             for (auto& it : tdepvars)
@@ -383,7 +386,6 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swwls = Large_scale_subsidence_type::Disabled;
     else if (swwls_in == "mean")
     {
-
         swwls = Large_scale_subsidence_type::Mean_field;
         fields.set_calc_mean_profs(true);
     }
@@ -396,7 +398,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     {
         throw std::runtime_error("Invalid option for \"swwls\"");
     }
-    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "w_ls", inputin.get_item<bool>("force", "swtimedep_wls", "", false));
+
+    swtimedep_wls = inputin.get_item<bool>("force", "swtimedep_wls", "", false);
+    tdep_wls = std::make_unique<Timedep<TF>>(master, grid, "w_ls", swtimedep_wls);
 
     // Nudging.
     if (swnudge_in == "0")
@@ -406,8 +410,9 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swnudge = Nudging_type::Enabled;
         nudgelist       = inputin.get_list<std::string>("force", "nudgelist", "", std::vector<std::string>());
         scalednudgelist = inputin.get_list<std::string>("force", "scalednudgelist", "", std::vector<std::string>());
+        swtimedep_nudge = inputin.get_item<bool>("force", "swtimedep_nudge", "", false);
 
-        if (inputin.get_item<bool>("force", "swtimedep_nudge", "", false))
+        if (swtimedep_nudge)
         {
             std::vector<std::string> tdepvars = inputin.get_list<std::string>("force", "timedeplist_nudge", "", std::vector<std::string>());
             for(auto& it : tdepvars)
@@ -468,17 +473,25 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     }
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
     {
-        group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
-        group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
-        std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
-        std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
-
         const TF offset = 0;
-        for (auto& it : tdep_geo)
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
+        if (!swtimedep_geo)
+        {
+            group_nc.get_variable(ug, "u_geo", {0}, {gd.ktot});
+            std::rotate(ug.rbegin(), ug.rbegin() + gd.kstart, ug.rend());
+        }
+        else
+            tdep_geo["u_geo"]->create_timedep_prof(input_nc, offset, timedep_dim);
+
+        if (!swtimedep_geo)
+        {
+            group_nc.get_variable(vg, "v_geo", {0}, {gd.ktot});
+            std::rotate(vg.rbegin(), vg.rbegin() + gd.kstart, vg.rend());
+        }
+        else
+            tdep_geo["v_geo"]->create_timedep_prof(input_nc, offset, timedep_dim);
+
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name_cor, tend_longname_cor);
         stats.add_tendency(*fields.mt.at("v"), "z", tend_name_cor, tend_longname_cor);
-
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -494,14 +507,17 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the large scale sources, which are the variable names with a "_ls" suffix.
         for (std::string& it : lslist)
         {
-            group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
-            std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+            if (tdep_ls.find(it) == tdep_ls.end())
+            {
+                group_nc.get_variable(lsprofs[it], it+"_ls", {0}, {gd.ktot});
+                std::rotate(lsprofs[it].rbegin(), lsprofs[it].rbegin() + gd.kstart, lsprofs[it].rend());
+            }
+            else
+            {
+                const TF offset = 0;
+                tdep_ls[it]->create_timedep_prof(input_nc, offset, timedep_dim);
+            }
         }
-
-        // Process the time dependent data
-        const TF offset = 0;
-        for (auto& it : tdep_ls)
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
 
         for (std::string& it : lslist)
             stats.add_tendency(*fields.at.at(it), "z", tend_name_ls, tend_longname_ls);
@@ -524,42 +540,49 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
         // Read the nudging profiles, which are the variable names with a "nudge" suffix
         for (auto& it : nudgelist)
         {
-            group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
-            std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
+            if (tdep_nudge.find(it) == tdep_nudge.end())
+            {
+                group_nc.get_variable(nudgeprofs[it], it+"_nudge", {0}, {gd.ktot});
+                std::rotate(nudgeprofs[it].rbegin(), nudgeprofs[it].rbegin() + gd.kstart, nudgeprofs[it].rend());
 
-            // Account for the Galilean transformation
-            if (it == "u")
-                add_offset(nudgeprofs[it].data(), -grid.utrans, gd.kstart, gd.kend);
-            else if (it == "v")
-                add_offset(nudgeprofs[it].data(), -grid.vtrans, gd.kstart, gd.kend);
-        }
-
-        // Process the time dependent data
-        for (auto& it : tdep_nudge)
-        {
-            // Account for the Galilean transformation
-            TF offset;
-            if (it.first == "u")
-                offset = -grid.utrans;
-            else if (it.first == "v")
-                offset = -grid.vtrans;
+                // Account for the Galilean transformation
+                if (it == "u")
+                    add_offset(nudgeprofs[it].data(), -gd.utrans, gd.kstart, gd.kend);
+                else if (it == "v")
+                    add_offset(nudgeprofs[it].data(), -gd.vtrans, gd.kstart, gd.kend);
+            }
             else
-                offset = 0;
+            {
+                // Account for the Galilean transformation
+                TF offset;
+                if (it == "u")
+                    offset = -gd.utrans;
+                else if (it == "v")
+                    offset = -gd.vtrans;
+                else
+                    offset = 0;
 
-            it.second->create_timedep_prof(input_nc, offset, timedep_dim);
-            stats.add_tendency(*fields.at.at(it.first), "z", tend_name_nudge, tend_longname_nudge);
+                tdep_nudge.at(it)->create_timedep_prof(input_nc, offset, timedep_dim);
+                stats.add_tendency(*fields.at.at(it), "z", tend_name_nudge, tend_longname_nudge);
+            }
         }
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field)
     {
-        group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
-        std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
-
         const TF offset = 0;
-        tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
-
+        if (!swtimedep_wls)
+        {
+            group_nc.get_variable(wls, "w_ls", {0}, {gd.ktot});
+            std::rotate(wls.rbegin(), wls.rbegin() + gd.kstart, wls.rend());
+        }
+        else
+        {
+            const TF offset = 0;
+            tdep_wls->create_timedep_prof(input_nc, offset, timedep_dim);
+        }
+        
         for (auto& it : fields.st)
             stats.add_tendency(*it.second, "z", tend_name_subs, tend_longname_subs);
 
@@ -587,7 +610,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
         const TF ut_mean = field3d_operators.calc_mean(fields.at.at("u")->fld.data());
 
         enforce_fixed_flux<TF>(
-                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, grid.utrans, dt,
+                fields.at.at("u")->fld.data(), uflux, u_mean, ut_mean, gd.utrans, dt,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 
         stats.calc_tend(*fields.mt.at("u"), tend_name_pres);
@@ -605,18 +628,22 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
 
     else if (swlspres == Large_scale_pressure_type::Geo_wind)
-    {
+    {   
+        TF fc_loc = fc;
+        if (fc_loc < 0)
+            fc_loc = 2. * Constants::e_rot<TF> * std::sin(gd.lat * TF(M_PI) / 180.);
+                    
         if (grid.get_spatial_order() == Grid_order::Second)
             calc_coriolis_2nd<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
         else if (grid.get_spatial_order() == Grid_order::Fourth)
             calc_coriolis_4th<TF>(fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
-            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc,
-            grid.utrans, grid.vtrans,
+            fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), ug.data(), vg.data(), fc_loc,
+            gd.utrans, gd.vtrans,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
 
@@ -643,7 +670,7 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     {
         if (swwls_mom)
         {
-            // Also apply to the velocity components u,v - SvdLinden, 28.04.21
+            // Also apply to the velocity components u,v.
             advec_wls_2nd_mean<TF>(
                     fields.mt.at("u")->fld.data(), fields.mp.at("u")->fld_mean.data(), wls.data(), gd.dzhi.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
@@ -668,7 +695,6 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
     }
     else if ( swwls == Large_scale_subsidence_type::Local_field )
     {
-        // New functions for the local subsidence term - SvdLinden, 28.04.21
         if (swwls_mom)
         {
             // Apply to all prognostic scalars, also velocity. Treat w-velocity separately
@@ -748,10 +774,12 @@ void Force<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (swwls == Large_scale_subsidence_type::Mean_field || swwls == Large_scale_subsidence_type::Local_field )
         tdep_wls->update_time_dependent_prof(wls, timeloop);
-
-    // Idea: could decide to update interpolated wls to full levels here ? - SvdLinden, 28.04.21
 }
 #endif
 
-template class Force<double>;
+
+#ifdef FLOAT_SINGLE
 template class Force<float>;
+#else
+template class Force<double>;
+#endif

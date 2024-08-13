@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -68,7 +68,7 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats)
         if (it.second.type == Decay_type::exponential)
         {
             const TF rate = 1./(std::max(it.second.timescale, dt));
-            enforce_exponential_decay_g<<<gridGPU, blockGPU>>>(
+            enforce_exponential_decay_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(it.first)->fld_g, fields.sp.at(it.first)->fld_g, rate,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             cuda_check_error();
@@ -81,5 +81,9 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats)
 }
 #endif
 
-template class Decay<double>;
+
+#ifdef FLOAT_SINGLE
 template class Decay<float>;
+#else
+template class Decay<double>;
+#endif

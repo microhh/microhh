@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -68,6 +68,9 @@ class Microphys
         virtual bool has_mask(std::string) = 0;
 
         virtual void get_surface_rain_rate(std::vector<TF>&) = 0;
+
+        virtual TF get_Nc0() = 0;
+        virtual TF get_Ni0() = 0;
 
         // GPU functions and variables.
         #ifdef USECUDA

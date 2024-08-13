@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -232,7 +232,7 @@ int Field3d_io<TF>::load_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int jslice,
         const int kstart, const int kend)
 {
@@ -257,7 +257,7 @@ int Field3d_io<TF>::save_xz_slice(
                 // take the modulus of jslice and gd.jmax to have the right offset within proc
                 const int ijk  = i+gd.igc + ((jslice%gd.jmax)+gd.jgc)*jj + k*kk;
                 const int ijkb = i + (k-kstart)*kkb;
-                tmp[ijkb] = data[ijk];
+                tmp[ijkb] = data[ijk] + data0;
             }
 
 #ifdef DISABLE_2D_MPIIO
@@ -362,7 +362,7 @@ int Field3d_io<TF>::save_xz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_yz_slice(
-        TF* restrict data, TF* restrict tmp,
+        TF* restrict data, TF const restrict data0, TF* restrict tmp,
         const char* filename, const int islice,
         const int kstart, const int kend)
 {
@@ -388,7 +388,7 @@ int Field3d_io<TF>::save_yz_slice(
                 // take the modulus of jslice and jmax to have the right offset within proc
                 const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
                 const int ijkb = j + (k-kstart)*kkb;
-                tmp[ijkb] = data[ijk];
+                tmp[ijkb] = data[ijk] + data0;
             }
 
 #ifdef DISABLE_2D_MPIIO
@@ -492,7 +492,7 @@ int Field3d_io<TF>::save_yz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
@@ -512,7 +512,7 @@ int Field3d_io<TF>::save_xy_slice(
             // Take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
 #ifdef DISABLE_2D_MPIIO
@@ -752,7 +752,7 @@ int Field3d_io<TF>::load_field3d(
 
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int jslice,
         const int kstart, const int kend)
 {
@@ -773,7 +773,7 @@ int Field3d_io<TF>::save_xz_slice(
             // take the modulus of jslice and gd.jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (jslice+gd.jgc)*jj + k*kk;
             const int ijkb = i + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;
@@ -789,7 +789,7 @@ int Field3d_io<TF>::save_xz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_yz_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int islice,
         const int kstart, const int kend)
 {
@@ -811,7 +811,7 @@ int Field3d_io<TF>::save_yz_slice(
             // take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = (islice%gd.imax)+gd.igc + (j+gd.jgc)*jj + k*kk;
             const int ijkb = j + (k-kstart)*kkb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;
@@ -827,7 +827,7 @@ int Field3d_io<TF>::save_yz_slice(
 
 template<typename TF>
 int Field3d_io<TF>::save_xy_slice(
-        TF* const restrict data, TF* const restrict tmp,
+        TF* const restrict data, TF const restrict data0, TF* const restrict tmp,
         const char* filename, const int kslice)
 {
     auto& gd = grid.get_grid_data();
@@ -846,7 +846,7 @@ int Field3d_io<TF>::save_xy_slice(
             // Take the modulus of jslice and jmax to have the right offset within proc
             const int ijk  = i+gd.igc + (j+gd.jgc)*jj + kslice*kk;
             const int ijkb = i + j*jjb;
-            tmp[ijkb] = data[ijk];
+            tmp[ijkb] = data[ijk] + data0;
         }
 
     FILE *pFile;
@@ -867,14 +867,14 @@ int Field3d_io<TF>::load_xy_slice(
 {
     auto& gd = grid.get_grid_data();
 
-    const int count = gd.imax*gd.jmax;
+    const unsigned int count = gd.imax*gd.jmax;
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
     if (pFile == NULL)
         return 1;
-
-    fread(tmp, sizeof(TF), count, pFile);
+    if (fread(tmp, sizeof(TF), count, pFile) != count )
+        return 1;
     fclose(pFile);
 
     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
@@ -900,5 +900,9 @@ int Field3d_io<TF>::load_xy_slice(
 }
 #endif
 
-template class Field3d_io<double>;
+
+#ifdef FLOAT_SINGLE
 template class Field3d_io<float>;
+#else
+template class Field3d_io<double>;
+#endif

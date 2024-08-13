@@ -2,8 +2,8 @@
 # `cabauw_input.py` sets all `None` values, and writes the final `cabauw.ini` input file.
 
 [master]
-npx=1
-npy=1
+npx=None
+npy=None
 wallclocklimit=1e9
 
 [grid]
@@ -15,6 +15,8 @@ ysize=None
 zsize=None
 utrans=0.0
 vtrans=0.0
+lat=51.971
+lon=4.927
 swspatialorder=2
 
 [advec]
@@ -37,6 +39,7 @@ swtimedep_pbot=1
 swmicro=2mom_warm
 cflmax=1.2
 Nc0=200000000
+Ni0=1e5
 
 [radiation]
 swradiation=None
@@ -50,8 +53,12 @@ sfc_alb_dir=0.22
 sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
-lat=51.971
-lon=4.927
+swtimedep_background=None
+#timedeplist_gas=None
+
+[aerosol]
+swaerosol=None
+swtimedep=None
 
 [boundary]
 swboundary=None
@@ -97,7 +104,7 @@ swnudge=1
 swtimedep_nudge=1
 nudgelist=thl,qt,u,v
 timedeplist_nudge=thl,qt,u,v
-swwls=mean
+swwls=local
 swtimedep_wls=1
 
 [fields]
@@ -125,7 +132,7 @@ savetime=3600
 outputiter=20
 adaptivestep=true
 rkorder=4
-datetime_utc=2016-08-15 06:00:00
+datetime_utc=None
 
 [stats]
 swstats=1
@@ -136,7 +143,7 @@ sampletime=60
 swcross=1
 sampletime=60
 xy=0
-crosslist=qlqipath,qlqibase,qlqitop,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thlfluxbot,qtfluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt
+crosslist=qlqi_path,qlqi_base,qlqi_top,qlqicore_max_thv_prime,sw_flux_dn,sw_flux_dn_dir,thl_fluxbot,qt_fluxbot,sw_flux_sfc_dir_rt,sw_flux_sfc_dif_rt,lw_flux_up,lw_flux_dn,thl,qt,ql,w,b
 
 [column]
 swcolumn=0

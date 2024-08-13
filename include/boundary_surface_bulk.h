@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,7 +35,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         Boundary_surface_bulk(Master&, Grid<TF>&, Soil_grid<TF>&, Fields<TF>&, Input&);
         ~Boundary_surface_bulk();
 
-        void init(Input&, Thermo<TF>&);
+        void init(Input&, Thermo<TF>&, const Sim_mode);
         void create_cold_start(Netcdf_handle&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
@@ -56,15 +56,15 @@ class Boundary_surface_bulk : public Boundary<TF>
 
         #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device();
-        void clear_device();
-        void forward_device();  // TMP BVS
-        void backward_device(); // TMP BVS
+        void prepare_device(Thermo<TF>&);
+        void forward_device(Thermo<TF>&);
+        void backward_device(Thermo<TF>&);
+        void clear_device(Thermo<TF>&);
 
-        TF* get_z0m_g()  { return z0m_g; };
-        TF* get_dudz_g() { return dudz_mo_g; };
-        TF* get_dvdz_g() { return dvdz_mo_g; };
-        TF* get_dbdz_g() { return dbdz_mo_g; };
+        cuda_vector<TF>& get_z0m_g()  { return z0m_g; };
+        cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
+        cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
+        cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
         #endif
 
     protected:
@@ -99,14 +99,14 @@ class Boundary_surface_bulk : public Boundary<TF>
         std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
-        TF* z0m_g;
+        cuda_vector<TF> z0m_g;
         TF* obuk_g;
 
         TF* ustar_g;
 
-        TF* dudz_mo_g;
-        TF* dvdz_mo_g;
-        TF* dbdz_mo_g;
+        cuda_vector<TF> dudz_mo_g;
+        cuda_vector<TF> dvdz_mo_g;
+        cuda_vector<TF> dbdz_mo_g;
         #endif
 
         // Transfer coefficients

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2023 Chiel van Heerwaarden
+ * Copyright (c) 2011-2023 Thijs Heus
+ * Copyright (c) 2014-2023 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -308,7 +308,7 @@ Thermo_buoy<TF>::Thermo_buoy(Master& masterin, Grid<TF>& gridin, Fields<TF>& fie
 Thermo<TF>(masterin, gridin, fieldsin, inputin)
 {
     auto& gd = grid.get_grid_data();
-    swthermo = "buoy";
+    swthermo = Thermo_type::Buoy;
 
     const std::string group_name = "thermo";
 
@@ -353,7 +353,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         {
             calc_buoyancy_tend_u_2nd(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_2nd(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            calc_buoyancy_tend_b_2nd(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            calc_buoyancy_tend_b_2nd(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(), bs.alpha, bs.n2, gd.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
         else
         {
@@ -373,7 +373,7 @@ void Thermo_buoy<TF>::exec(const double dt, Stats<TF>& stats)
         {
             calc_buoyancy_tend_u_4th(fields.mt.at("u")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
             calc_buoyancy_tend_w_4th(fields.mt.at("w")->fld.data(), fields.sp.at("b")->fld.data(), bs.alpha, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
-            calc_buoyancy_tend_b_4th(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(),  bs.alpha, bs.n2, grid.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+            calc_buoyancy_tend_b_4th(fields.st.at("b")->fld.data(), fields.mp.at("u")->fld.data(), fields.mp.at("w")->fld.data(),  bs.alpha, bs.n2, gd.utrans, gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         }
         else
         {
@@ -470,5 +470,9 @@ bool Thermo_buoy<TF>::check_field_exists(std::string name)
         return false;
 }
 
-template class Thermo_buoy<double>;
+
+#ifdef FLOAT_SINGLE
 template class Thermo_buoy<float>;
+#else
+template class Thermo_buoy<double>;
+#endif
