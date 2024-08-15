@@ -633,11 +633,18 @@ int Field3d_io<TF>::save_xy_slice(
     if (MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subxyslice, name, MPI_INFO_NULL))
         return 1;
 
+    //time_point tic = Time::now();
+
     // Only write at the procs that contain the slice
     if (MPI_File_write_all(fh, tmp, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
         return 1;
 
     MPI_File_sync(fh);
+
+    //time_point toc = Time::now();
+    //TF elapsed = (toc - tic).count() * TF(1e-9);
+    //TF throughput = (gd.itot*gd.jtot * sizeof(TF)) / elapsed / 1024 / 1024;
+    //master.print_message("save_xy: %.1f MB/s \n", throughput);
 
     if (MPI_File_close(&fh))
         return 1;
