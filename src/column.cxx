@@ -367,6 +367,23 @@ void Column<TF>::set_individual_column(
     throw std::runtime_error("Cant set individual column for i,j=" + std::to_string(i_col) + "," + std::to_string(j_col));
 }
 
+
+template<typename TF>
+void Column<TF>::set_all_columns(
+        std::string profname,
+        const TF* const restrict prof,
+        const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    for (auto& col : columns)
+    {
+        for (int k=0; k<gd.kcells; k++)
+            col.profs.at(profname).data[k] = (prof[k] + offset);
+    }
+}
+
 #ifndef USECUDA
 template<typename TF>
 void Column<TF>::calc_time_series(

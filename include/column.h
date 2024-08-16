@@ -55,6 +55,7 @@ class Column
         void calc_column(std::string, const TF* const, const TF, const bool copy_from_gpu=true);
         void calc_time_series(std::string, const TF* const, const TF);
         void set_individual_column(std::string, const TF*, const TF, const int, const int);
+        void set_all_columns(std::string, const TF*, const TF);
 
         #ifdef USECUDA
         void prepare_device();

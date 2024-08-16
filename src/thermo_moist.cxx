@@ -2595,11 +2595,8 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
         column.add_time_series("ql_path", "Liquid water path", "kg m-2");
         column.add_time_series("qi_path", "Ice path", "kg m-2");
 
-        if (swphydro_3d)
-        {
-            column.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z");
-            column.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh");
-        }
+        column.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z");
+        column.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh");
     }
 }
 
@@ -2866,6 +2863,11 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     {
         column.calc_column("phydro", fields.sd.at("phydro_3d")->fld.data(), no_offset);
         column.calc_column("phydroh", fields.sd.at("phydroh_3d")->fld.data(), no_offset);
+    }
+    else
+    {
+        column.set_all_columns("phydro", bs_stats.pref.data(), no_offset);
+        column.set_all_columns("phydroh", bs_stats.prefh.data(), no_offset);
     }
 
     fields.release_tmp(output);
