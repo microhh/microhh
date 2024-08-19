@@ -631,10 +631,14 @@ std::shared_ptr<Field3d<TF>> Fields<TF>::get_tmp()
         {
             init_tmp_field();
             tmp = atmp.back();
+            //master.print_message("<-- %d\n", atmp.size());
             tmp->init();
         }
         else
+        {
+            //master.print_message("<-- %d\n", atmp.size());
             tmp = atmp.back();
+        }
 
         atmp.pop_back();
     }
@@ -650,6 +654,7 @@ void Fields<TF>::release_tmp(std::shared_ptr<Field3d<TF>>& tmp)
             throw std::runtime_error("Cannot release a tmp field with value nullptr");
 
         atmp.push_back(std::move(tmp));
+        //master.print_message("--> %d\n", atmp.size());
     }
 }
 

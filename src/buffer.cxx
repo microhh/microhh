@@ -172,20 +172,17 @@ Buffer<TF>::Buffer(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Inp
     {
         swupdate = inputin.get_item<bool>("buffer", "swupdate", "", false);
         swupdate_local = inputin.get_item<bool>("buffer", "swupdate_local", "", false);
+
         swbuffer_3d = inputin.get_item<bool>("buffer", "swbuffer_3d", "", false);
+        buffer3d_list = inputin.get_list<std::string>("buffer", "buffer3d_list", "", std::vector<std::string>());
+        swtimedep_buffer_3d = inputin.get_item<bool>("buffer", "swtimedep_buffer_3d", "", false);
 
         zstart = inputin.get_item<TF>("buffer", "zstart", "");
         sigma  = inputin.get_item<TF>("buffer", "sigma", "", 2.);
         beta   = inputin.get_item<TF>("buffer", "beta", "", 2.);
 
-        if (swbuffer_3d)
-        {
-            buffer3d_list = inputin.get_list<std::string>("buffer", "buffer3d_list", "", std::vector<std::string>());
-            swtimedep_buffer_3d = inputin.get_item<bool>("buffer", "swtimedep_buffer_3d", "", false);
-
-            if (swtimedep_buffer_3d)
-                loadfreq = inputin.get_item<int>("buffer", "loadfreq", "");
-        }
+        if (swbuffer_3d && swtimedep_buffer_3d)
+            loadfreq = inputin.get_item<int>("buffer", "loadfreq", "");
     }
 
     if (swbuffer && swupdate)
@@ -610,6 +607,9 @@ void Buffer<TF>::update_time_dependent(
                     buffer_data_next.at(fld).data(),
                     fld, next_iotime, kstart, ksize);
         }
+
+        fields.release_tmp(tmp1);
+        fields.release_tmp(tmp2);
     }
 
     // Interpolate in time.

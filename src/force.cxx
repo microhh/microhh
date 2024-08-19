@@ -667,6 +667,9 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
             read_3d_binary("ug", ug.data(), 0);
             read_3d_binary("vg", vg.data(), 0);
         }
+
+        fields.release_tmp(tmp1);
+        fields.release_tmp(tmp2);
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
