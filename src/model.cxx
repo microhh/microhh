@@ -58,6 +58,7 @@
 #include "aerosol.h"
 #include "background_profs.h"
 #include "trajectory.h"
+#include "canopy.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -145,6 +146,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         aerosol    = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
         background = std::make_shared<Background<TF>>(master, *grid, *fields, *input);
         chemistry  = std::make_shared<Chemistry<TF>>(master, *grid, *fields, *input);
+        canopy     = std::make_shared<Canopy   <TF>>(master, *grid, *fields, *input);
 
         ib         = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -206,6 +208,7 @@ void Model<TF>::init()
     chemistry-> init(*input);
     budget->init();
     source->init();
+    canopy->init();
     aerosol->init();
     background->init(*input_nc);
 
@@ -272,6 +275,7 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
+    canopy->create(*input, *input_nc, *stats);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
 
@@ -426,6 +430,9 @@ void Model<TF>::exec()
                 
                 // KPP chemistry.
                 chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
+
+                // Canopy drag.
+                canopy->exec();
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -602,6 +609,7 @@ void Model<TF>::prepare_gpu()
     microphys->prepare_device();
     radiation->prepare_device();
     column   ->prepare_device();
+    canopy   ->prepare_device();
     aerosol  ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
@@ -622,6 +630,7 @@ void Model<TF>::clear_gpu()
     microphys->clear_device();
     radiation->clear_device();
     column   ->clear_device();
+    canopy   ->clear_device();
     aerosol  ->clear_device();
 
     // Clear pressure last, for memory check
