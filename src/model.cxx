@@ -57,6 +57,7 @@
 #include "source.h"
 #include "aerosol.h"
 #include "background_profs.h"
+#include "trajectory.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -151,6 +152,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         column     = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
         dump       = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
         cross      = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
+        trajectory = std::make_shared<Trajectory<TF>>(master, *grid, *fields, *input);
 
         budget     = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
@@ -211,6 +213,7 @@ void Model<TF>::init()
     column->init();
     cross->init();
     dump->init();
+    trajectory->init();
 }
 
 template<typename TF>
@@ -249,6 +252,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
+    trajectory->create(*input, *input_nc, *timeloop, sim_name);
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -463,7 +467,7 @@ void Model<TF>::exec()
                         radiation->exec_individual_column_stats(*column, *thermo, *microphys, *timeloop, *stats, *aerosol, *background);
                     }
 
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt))
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt) || trajectory->do_trajectory(itime))
                     {
                         #ifdef USECUDA
                         #pragma omp taskwait
@@ -665,6 +669,10 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_dump(*dump, iotime);
     }
 
+    // Save the trajectories.
+    if (trajectory->do_trajectory(itime))
+        trajectory->exec(*timeloop, time, itime);
+
     if (stats->do_statistics(itime))
     {
         #pragma omp critical
@@ -765,15 +773,16 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(radiation->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(advec     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff      ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(microphys ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(radiation ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(stats     ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross     ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump      ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(trajectory->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();

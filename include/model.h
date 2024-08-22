@@ -61,6 +61,7 @@ template<typename> class Budget;
 template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Dump;
+template<typename> class Trajectory;
 
 enum class Sim_mode;
 
@@ -114,6 +115,7 @@ class Model
         std::shared_ptr<Column<TF>> column;
         std::shared_ptr<Cross<TF>> cross;
         std::shared_ptr<Dump<TF>> dump;
+        std::shared_ptr<Trajectory<TF>> trajectory;
 
         Sim_mode sim_mode;
         std::string sim_name;
