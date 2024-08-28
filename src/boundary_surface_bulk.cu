@@ -197,14 +197,6 @@ void Boundary_surface_bulk<TF>::clear_device(Thermo<TF>& thermo)
 {
     cuda_safe_call(cudaFree(obuk_g ));
     cuda_safe_call(cudaFree(ustar_g));
-
-    cuda_safe_call(cudaFree(z0m_g));
-
-    cuda_safe_call(cudaFree(dudz_mo_g));
-    cuda_safe_call(cudaFree(dvdz_mo_g));
-
-    if (thermo.get_switch() != Thermo_type::Disabled)
-        cuda_safe_call(cudaFree(dbdz_mo_g));
 }
 
 #ifdef USECUDA
