@@ -99,7 +99,7 @@ class Stats
         Stats(Master&, Grid<TF>&, Soil_grid<TF>&, Background<TF>&, Fields<TF>&, Advec<TF>&, Diff<TF>&, Input&);
         ~Stats();
 
-        void init(double);
+        void init();
         void create(const Timeloop<TF>&, std::string);
 
         unsigned long get_time_limit(unsigned long);

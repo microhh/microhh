@@ -312,12 +312,12 @@ int Cross<TF>::check_save(int error, char* filename)
 }
 
 template<typename TF>
-void Cross<TF>::init(double ifactor)
+void Cross<TF>::init()
 {
     if (!swcross)
         return;
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
 }
 
 template<typename TF>

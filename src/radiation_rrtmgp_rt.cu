@@ -300,7 +300,7 @@ namespace
         dim3 grid_gpu(grid_col);
         dim3 block_gpu(block_col);
 
-        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd, aod);
+        sum_tau_kernel<<<grid_gpu, block_gpu>>>(ncol, nlev, col_s_in, tau, ibnd-1, aod);
     }
 
     std::vector<std::string> get_variable_string(
@@ -1457,7 +1457,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
                     dynamic_cast<Optical_props_2str_gpu&>(*aerosol_optical_props_subset_in));
 
             if (do_radiation_stats)
-                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550-1, aod550_g);
+                sum_tau(n_col_in, n_lay, col_s_in, aerosol_optical_props_subset_in->get_tau().ptr(), ibnd_550, aod550_g);
         }
 
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
@@ -1692,62 +1692,47 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         // We loop over the gas optics, due to memory constraints
         constexpr int n_col_block = 1<<14; // 2^14
 
+        Array_gpu<Float,1> toa_src_temp({n_col_block});
         auto gas_optics_subset = [&](
-                const int col_s, const int col_e, const int n_col_subset,
-                std::unique_ptr<Optical_props_arry_rt>& optical_props_subset, Array_gpu<Float,1>& toa_src_dummy)
+                const int col_s, const int n_col_subset)
         {
-            Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s, n_col_subset);
-
             // Run the gas_optics on a subset.
             kdist_sw_rt->gas_optics(
-                    igpt-1,
-                    p_lay.subset({{ {col_s, col_e}, {1, n_lay} }}),
-                    p_lev.subset({{ {col_s, col_e}, {1, n_lev} }}),
-                    t_lay.subset({{ {col_s, col_e}, {1, n_lay} }}),
-                    gas_concs_subset,
-                    optical_props_subset,
-                    toa_src_dummy,
-                    col_dry.subset({{ {col_s, col_e}, {1, n_lay} }}));
-
-            Subset_kernels_cuda::get_from_subset(
-                    n_col, n_lay, n_col_subset, col_s,
-                    optical_props->get_tau().ptr(), optical_props->get_ssa().ptr(), optical_props->get_g().ptr(),
-                    optical_props_subset->get_tau().ptr(), optical_props_subset->get_ssa().ptr(), optical_props_subset->get_g().ptr());
+                    igpt,
+                    col_s,
+                    n_col_subset,
+                    n_col,
+                    p_lay,
+                    p_lev,
+                    t_lay,
+                    gas_concs,
+                    optical_props,
+                    toa_src_temp,
+                    col_dry);
         };
 
         const int n_blocks = n_col / n_col_block;
         const int n_col_residual = n_col % n_col_block;
 
-        std::unique_ptr<Optical_props_arry_rt> optical_props_block =
-                std::make_unique<Optical_props_2str_rt>(n_col_block, n_lay, *kdist_sw_rt);
-        Array_gpu<Float,1> toa_src_block({n_col_block});
-
-        for (int n=0; n<n_blocks; ++n)
+        if (n_blocks > 0)
         {
-            const int col_s = n*n_col_block + 1;
-            const int col_e = (n+1)*n_col_block;
-
-            gas_optics_subset(col_s, col_e, n_col_block, optical_props_block, toa_src_block);
+            for (int n=0; n<n_blocks; ++n)
+            {
+                const int col_s = n*n_col_block;
+                gas_optics_subset(col_s, n_col_block);
+            }
         }
-
-        optical_props_block.reset();
 
         if (n_col_residual > 0)
         {
-            std::unique_ptr<Optical_props_arry_rt> optical_props_residual =
-                    std::make_unique<Optical_props_2str_rt>(n_col_residual, n_lay, *kdist_sw_rt);
-            Array_gpu<Float,1> toa_src_residual({n_col_residual});
-
-            const int col_s = n_blocks*n_col_block + 1;
-            const int col_e = n_col;
-
-            gas_optics_subset(col_s, col_e, n_col_residual, optical_props_residual, toa_src_residual);
+            const int col_s = n_blocks*n_col_block;
+            gas_optics_subset(col_s, n_col_residual);
         }
 
         if (compute_clouds)
         {
             cloud_sw_rt->cloud_optics(
-                    band-1,
+                    band,
                     clwp,
                     ciwp,
                     rel,
@@ -1772,7 +1757,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         if (sw_aerosol)
         {
             aerosol_sw_rt->aerosol_optics(
-                    band-1,
+                    band,
                     *aerosol_concs_gpu,
                     rh, p_lev,
                     *aerosol_optical_props);
@@ -1832,7 +1817,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
             const Int qrng_offset = Int(igpt - 1) + this->time_idx * Int(n_gpt);
             raytracer.trace_rays(
-                    qrng_offset,
+                    igpt,
                     this->rays_per_pixel,
                     grid_cells, grid_d, kn_grid,
                     mie_cdfs_sub,
@@ -1939,13 +1924,12 @@ void Radiation_rrtmgp_rt<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        if (sw_aerosol && sw_aerosol_timedep) {
+        if (sw_aerosol && swtimedep_aerosol)
             aerosol.get_radiation_fields(aerosol_concs_gpu);
-        }
 
         try
         {
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 // Temperature, pressure and moisture
                 background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
@@ -1953,10 +1937,8 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 // gasses
                 background.get_gasses(gas_concs_col);
                 // aerosols
-                if (sw_aerosol && sw_aerosol_timedep)
-                {
+                if (sw_aerosol && swtimedep_aerosol)
                     background.get_aerosols(aerosol_concs_col);
-                }
             }
 
             if (sw_longwave)
@@ -2104,7 +2086,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
                 }
 
-                if (!sw_fixed_sza || sw_update_background)
+                if (!sw_fixed_sza || swtimedep_background)
                 {
                     if (is_day(this->mu0) || !sw_is_tuned)
                     {
@@ -2512,7 +2494,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
 
-        if (sw_update_background)
+        if (swtimedep_background)
         {
             stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
             stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
@@ -2550,7 +2532,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
                 stats.set_time_series("AOD550", mean_aod);
             }
 
-            if ((sw_update_background || !sw_fixed_sza))
+            if ((swtimedep_background || !sw_fixed_sza))
             {
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());

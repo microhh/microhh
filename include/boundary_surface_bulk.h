@@ -98,11 +98,10 @@ class Boundary_surface_bulk : public Boundary<TF>
         std::vector<TF> dbdz_mo;
 
         #ifdef USECUDA
-        cuda_vector<TF> z0m_g;
         TF* obuk_g;
-
         TF* ustar_g;
 
+        cuda_vector<TF> z0m_g;
         cuda_vector<TF> dudz_mo_g;
         cuda_vector<TF> dvdz_mo_g;
         cuda_vector<TF> dbdz_mo_g;
@@ -113,10 +112,7 @@ class Boundary_surface_bulk : public Boundary<TF>
         std::map<std::string, TF> bulk_cs;
 
 
-
-
     protected:
-
         void update_slave_bcs();
 };
 #endif

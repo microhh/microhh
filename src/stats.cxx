@@ -584,7 +584,7 @@ Stats<TF>::~Stats()
 }
 
 template<typename TF>
-void Stats<TF>::init(double ifactor)
+void Stats<TF>::init()
 {
     if (!swstats)
         return;
@@ -593,7 +593,7 @@ void Stats<TF>::init(double ifactor)
 
     boundary_cyclic.init();
 
-    isampletime = static_cast<unsigned long>(ifactor * sampletime);
+    isampletime = convert_to_itime(sampletime);
     statistics_counter = 0;
 
     // Vectors which hold the amount of grid points sampled on each model level.
@@ -1070,7 +1070,7 @@ void Stats<TF>::add_prof(
         throw std::runtime_error("Variable " + name + " is added twice in add_prof_series()");
 
     Level_type level;
-    if ((zloc == "z") || (zloc == "zs") || (zloc == "era_levels"))
+    if ((zloc == "z") || (zloc == "zs") || (zloc == "lay"))
         level = Level_type::Full;
     else
         level = Level_type::Half;
@@ -1104,10 +1104,19 @@ void Stats<TF>::add_prof(
             m.soil_profs.at(name).ncvar.add_attribute("units", unit);
             m.soil_profs.at(name).ncvar.add_attribute("long_name", longname);
         }
-        else if ((zloc == "era_levels") || (zloc == "era_layers"))
+        else if (zloc == "lev")
         {
-            const TF n_era_levels = background.get_n_era_levels();
-            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_era_levels), level};
+            const TF n_lev = background.get_n_lev();
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_lev), level};
+
+            m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
+            m.background_profs.at(name).ncvar.add_attribute("units", unit);
+            m.background_profs.at(name).ncvar.add_attribute("long_name", longname);
+        }
+        else if (zloc == "lay")
+        {
+            const TF n_lay = background.get_n_lay();
+            Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", zloc}), std::vector<TF>(n_lay), level};
 
             m.background_profs.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
             m.background_profs.at(name).ncvar.add_attribute("units", unit);
@@ -1121,7 +1130,7 @@ void Stats<TF>::add_prof(
         varlist.push_back(name);
     else if (zloc == "zs")
         varlist_soil.push_back(name);
-    else if ((zloc == "era_levels") || (zloc == "era_layers"))
+    else if ((zloc == "lev") || (zloc == "lay"))
         varlist_background.push_back(name);
 }
 

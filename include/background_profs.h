@@ -53,7 +53,7 @@ public:
     Background(Master&, Grid<TF>&, Fields<TF>&, Input&);
     ~Background();
 
-    void init(Netcdf_handle&, Timeloop<TF>&);
+    void init(Netcdf_handle&);
     void create(Input&, Netcdf_handle&, Stats<TF>&);
     void exec_stats(Stats<TF>&);
     void update_time_dependent(Timeloop<TF>&);
@@ -62,7 +62,8 @@ public:
     void get_gasses(Gas_concs&);
     void get_aerosols(Aerosol_concs&);
 
-    int get_n_era_levels() const { return n_era_levels; }
+    int get_n_lay() const { return n_lay; }
+    int get_n_lev() const { return n_lev; }
 
 private:
     Master& master;
@@ -70,14 +71,16 @@ private:
     Fields<TF>& fields;
 
     // Case switches
-    bool sw_update_background;
     bool sw_aerosol;
-    bool sw_aerosol_timedep;
+
+    bool swtimedep_background;
+    bool swtimedep_aerosol;
+
     double dt_rad;
     unsigned long idt_rad;
 
-    TF n_era_layers;
-    TF n_era_levels;
+    int n_lay;   // Full levels
+    int n_lev;   // Half levels
 
     std::map<std::string, Timedep<TF>*> tdep_gases;
     std::vector<std::string> gaslist;        ///< List of gases that have timedependent background profiles.

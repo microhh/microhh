@@ -88,28 +88,29 @@ void Aerosol<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& sta
     {
         // create time dependent profiles
         const TF offset = 0;
-        std::string timedep_dim = "time_aerosols";
-        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        std::string timedep_dim = "time_rad";
+
+        tdep_aermr01 = std::make_unique<Timedep<TF>>(master, grid, "aermr01", sw_timedep);
         tdep_aermr01->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr02 = std::make_unique<Timedep<TF>>(master, grid, "aermr02", sw_timedep);
         tdep_aermr02->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr03 = std::make_unique<Timedep<TF>>(master, grid, "aermr03", sw_timedep);
         tdep_aermr03->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr04 = std::make_unique<Timedep<TF>>(master, grid, "aermr04", sw_timedep);
         tdep_aermr04->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr05 = std::make_unique<Timedep<TF>>(master, grid, "aermr05", sw_timedep);
         tdep_aermr05->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr06 = std::make_unique<Timedep<TF>>(master, grid, "aermr06", sw_timedep);
         tdep_aermr06->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr07 = std::make_unique<Timedep<TF>>(master, grid, "aermr07", sw_timedep);
         tdep_aermr07->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr08 = std::make_unique<Timedep<TF>>(master, grid, "aermr08", sw_timedep);
         tdep_aermr08->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr09 = std::make_unique<Timedep<TF>>(master, grid, "aermr09", sw_timedep);
         tdep_aermr09->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr10 = std::make_unique<Timedep<TF>>(master, grid, "aermr10", sw_timedep);
         tdep_aermr10->create_timedep_prof(input_nc, offset, timedep_dim);
-        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11", inputin.get_item<bool>("aerosol", "swtimedep", "", false));
+        tdep_aermr11 = std::make_unique<Timedep<TF>>(master, grid, "aermr11", sw_timedep);
         tdep_aermr11->create_timedep_prof(input_nc, offset, timedep_dim);
     }
     else

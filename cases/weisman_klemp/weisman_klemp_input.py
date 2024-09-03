@@ -105,8 +105,8 @@ for k in range(kmax):
 # Calculate values in above tropopause (constant temperature)
 const_trop = -grav/Rd/T_tr
 for k in range(k_tr,kmax):
-    p_loc =  p0 * pow( T_tr/ thl[k], rdcp)
-    qt[k] = rh[k] * qv_rh(p_loc,T_tr,rh[k])
+    p_loc =  p0 * pow( T_tr/ thl[k], cprd)
+    qt[k] = qv_rh(p_loc,T_tr,rh[k])
 
 
 # Calculate values below tropopause

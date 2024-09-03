@@ -152,6 +152,8 @@ class Read_namelist:
                 f.write('[{}]\n'.format(group))
                 for variable, value in self.groups[group].items():
                     if isinstance(value, list):
+                        if not isinstance(value[0], str):
+                            value = [str(v) for v in value]
                         value = ','.join(value)
                     elif isinstance(value, bool):
                         value = '1' if value else '0'
@@ -246,7 +248,7 @@ class Read_grid:
     """ Read the grid file from MicroHH.
         If no file name is provided, grid.0000000 from the current directory is read """
 
-    def __init__(self, itot, jtot, ktot, filename=None):
+    def __init__(self, itot, jtot, ktot, order = 2, filename=None):
         self.en = '<' if sys.byteorder == 'little' else '>'
         filename = 'grid.0000000' if filename is None else filename
         self.TF = round(os.path.getsize(filename) /
@@ -268,8 +270,12 @@ class Read_grid:
         self.dim['yh'] = self.read(jtot)
         self.dim['z'] = self.read(ktot)
         self.dim['zh'][:-1] = self.read(ktot)
-
-        self.dim['zh'][-1] = self.dim['z'][-1] + 2*(self.dim['z'][-1] - self.dim['zh'][-2])
+        if order == 2:
+            self.dim['zh'][-1] = 2 * self.dim['z'][-1]  - self.dim['zh'][-2]
+        elif order == 4:
+            self.dim['zh'][-1] = 3./8. * (self.dim['z'][-1] + 2 * self.dim['z'][-2] - 1./3. * self.dim['z'][-3])
+        else:
+            raise ValueError('Order {} is not supported'.format(order))
 
         self.fin.close()
         del self.fin
