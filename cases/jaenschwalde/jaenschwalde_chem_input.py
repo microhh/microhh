@@ -9,10 +9,98 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 
-pl.close('all'); pl.ion()
+import microhh_tools as mht
 
+pl.close('all')
+
+
+"""
+Help functions.
+"""
+def calc_esat(T):
+    """
+    Calculate saturation vapor pressure (Pa).
+    """
+    a_ab = 611.21; b_ab = 18.678; c_ab = 234.5; d_ab = 257.14
+    return a_ab * np.exp((b_ab - ((T-T0) / c_ab)) * ((T-T0) / (d_ab + (T-T0))))
+
+
+def calc_qsat(T, p):
+    """
+    Calculate saturation specific humidity (kg kg-1)
+    """
+    esat = calc_esat(T)
+    return ep*esat / (p-(1.-ep)*esat)
+
+
+class Emissions:
+    """
+    Help class to gather emission settings.
+    """
+    def __init__(self):
+
+        self.source_list = []
+        self.strength = []
+        self.sw_vmr = []
+
+        self.x0 = []
+        self.y0 = []
+        self.z0 = []
+
+        self.sigma_x = []
+        self.sigma_y = []
+        self.sigma_z = []
+
+        self.line_x = []
+        self.line_y = []
+        self.line_z = []
+
+    def add(
+            self, name, strength, sw_vmr,
+            x0, y0, z0,
+            sigma_x, sigma_y, sigma_z,
+            line_x=0, line_y=0, line_z=0):
+
+        self.source_list.append(name)
+        self.strength.append(strength)
+        self.sw_vmr.append(sw_vmr)
+
+        self.x0.append(x0)
+        self.y0.append(y0)
+        self.z0.append(z0)
+
+        self.sigma_x.append(sigma_x)
+        self.sigma_y.append(sigma_y)
+        self.sigma_z.append(sigma_z)
+
+        self.line_x.append(line_x)
+        self.line_y.append(line_y)
+        self.line_z.append(line_z)
+
+
+"""
+Settings.
+"""
 float_type = 'f8'
 
+xsize = 6400
+ysize = 3200
+zsize = 4000
+
+itot = 64
+jtot = 32
+ktot = 96
+
+start_hour = 4
+end_hour = 12
+
+# Enable resolved plume rise:
+sw_plume_rise = True
+
+
+"""
+Constants.
+"""
 Mair = 28.9664
 
 MCO2 = 44.01
@@ -25,24 +113,13 @@ Rd = 287.04
 Rv = 461.5
 ep = Rd/Rv
 
-def calc_esat(T):
-    a_ab = 611.21; b_ab = 18.678; c_ab = 234.5; d_ab = 257.14
-    return a_ab * np.exp((b_ab - ((T-T0) / c_ab)) * ((T-T0) / (d_ab + (T-T0))))
 
-def calc_qsat(T, p):
-    esat = calc_esat(T)
-    return ep*esat / (p-(1.-ep)*esat)
+# Read .ini file for case settings.
+ini = mht.Read_namelist('jaenschwalde_chem.ini.base')
 
-# Get number of vertical levels and size from .ini file
-with open('jaenschwalde_chem.ini') as f:
-    for line in f:
-        if(line.split('=')[0]=='ktot'):
-            kmax = int(line.split('=')[1])
-        if(line.split('=')[0]=='zsize'):
-            zsize = float(line.split('=')[1])
-        if(line.split('=')[0]=='ysize'):
-            ysize = float(line.split('=')[1])
-
+"""
+Create case input.
+"""
 # Read TUV output table.
 columns = ['time', 'sza', 'jo31d', 'jh2o2', 'jno2', 'jno3', 'jn2o5', 'jch2or', 'jch2om', 'jch3o2h']
 tuv = pd.read_table(
@@ -54,8 +131,8 @@ tuv = pd.read_table(
         names=columns,
         index_col='time')
 
-# Case runs (hardcoded!) from 04:00 to 16:00 UTC!
-tuv = tuv.loc[4:16]
+# NOTE: `.loc` is value based, not in index.
+tuv = tuv.loc[start_hour:end_hour]
 
 # Convert to seconds, and subtract starting time.
 tuv.index *= 3600
@@ -82,11 +159,8 @@ species = {
     'c3h6': 3.3e-9,
     'ro2': 7e-12}
 
-# Enable resolved plume rise:
-sw_plume_rise = False
-
 # Vertical grid LES
-dz = zsize / kmax
+dz = zsize / ktot
 z = np.arange(0.5*dz, zsize, dz)
 
 v_thl = np.array([285.7, 291.9, 293, 297.4, 307])
@@ -101,12 +175,12 @@ z_u = np.array([0, 270, 3000, 5000])
 v_u = np.array([2.3, 8.5, 0.6, 5.7])
 u = np.interp(z, z_u, v_u)
 
-v = np.zeros(kmax)
-co2 = np.zeros(kmax)
+v = np.zeros(ktot)
+co2 = np.zeros(ktot)
 
 # Surface fluxes, again idealised from ERA5.
-t0 = 4*3600
-t1 = 16*3600
+t0 = start_hour*3600
+t1 = end_hour*3600
 td1 = 11.5*3600
 td2 = 14*3600
 
@@ -114,10 +188,10 @@ time = np.linspace(t0, t1, 32)
 wthl = 0.17   * np.sin(np.pi * (time-t0-1800) / td1)
 wqt  = 8.3e-5 * np.sin(np.pi * (time-t0) / td2)
 
-#wthl[:] = 0.1
-#wqt[:] = 0.1e-3
 
-# Write input NetCDF file
+"""
+Write input NetCDF file.
+"""
 def add_nc_var(name, dims, nc, data):
     if dims is None:
         var = nc.createVariable(name, np.float64)
@@ -127,7 +201,7 @@ def add_nc_var(name, dims, nc, data):
 
 nc_file = nc.Dataset('jaenschwalde_chem_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 
-nc_file.createDimension('z', kmax)
+nc_file.createDimension('z', ktot)
 add_nc_var('z', ('z'), nc_file, z)
 
 # Atmospheric input.
@@ -164,13 +238,16 @@ add_nc_var("emi_isop", ('time_chem'), nc_chem, emi_isop)
 add_nc_var("emi_no", ('time_chem'), nc_chem, emi_no)
 
 for name, value in species.items():
-    profile = np.ones(kmax, dtype=np.float64)*value
+    profile = np.ones(ktot, dtype=np.float64)*value
     add_nc_var(name, ('z'), nc_group_init, profile)
     add_nc_var('{}_inflow'.format(name), ('z'), nc_group_init, profile)
 
 nc_file.close()
 
-# Print .ini settings emissions:
+
+"""
+Define emissions.
+"""
 # Coordinates of central cooling tower (m):
 x0 = 1000
 y0 = ysize/2.
@@ -180,6 +257,7 @@ sigma_x = 25
 sigma_y = 25
 
 if sw_plume_rise:
+    # Emissions from tower height.
     z0 = 120
     sigma_z = 25
 else:
@@ -213,65 +291,56 @@ qp = rhp * calc_qsat(Tp, pp)
 strength_q = np.round(Mp * rhop * qp, decimals=2)
 strength_T = np.round(Mp * rhop * Tp, decimals=2)
 
-# Generate lists with model input:
-source_x0 = []
-source_y0 = []
-source_z0 = []
+# Emission input model:
+emi = Emissions()
 
 for j in range(-1,2):
     for i in range(-1,2):
-        source_x0.append( x0 + i*dx + j*ddx )
-        source_y0.append( y0 + j*dy )
-        source_z0.append( z0 )
+        x = x0 + i*dx + j*ddx
+        y = y0 + j*dy
+        z = z0
+            
+        emi.add('co2', strength_co2, True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('no2', strength_no2, True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('no',  strength_no,  True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('co',  strength_co,  True, x, y, z, sigma_x, sigma_y, sigma_z)
+
+        if sw_plume_rise:
+            emi.add('thl', strength_T, False, x, y, z, sigma_x, sigma_y, sigma_z)
+            emi.add('qt',  strength_q, False, x, y, z, sigma_x, sigma_y, sigma_z)
 
 
-def to_cs_list(lst, n=1):
-    """ From Python list to comma separated string """
-    out = ''
-    for i in range(n):
-        out += ','.join([str(x) for x in lst])
-        if i < n-1:
-            out += ','
-    return out
 
+"""
+Add settings to .ini file.
+"""
+ini['grid']['itot'] = itot
+ini['grid']['jtot'] = jtot
+ini['grid']['ktot'] = ktot
 
-def constant_list(value, n):
-    """ Create comma separated list with constant values """
-    lst = n*[value]
-    return to_cs_list(lst)
+ini['grid']['xsize'] = xsize
+ini['grid']['ysize'] = ysize
+ini['grid']['zsize'] = zsize
 
+ini['time']['endtime'] = (end_hour - start_hour) * 3600
 
-if sw_plume_rise:
-    raise Exception('Plume rise not yet implemented...')
-else:
-    source_list = \
-            constant_list('co2', 9) + ',' +\
-            constant_list('no2', 9) + ',' +\
-            constant_list('no', 9) + ',' +\
-            constant_list('co', 9)
+ini['cross']['xz'] = ysize/2
 
-    strength = \
-            constant_list(strength_co2, 9) + ',' +\
-            constant_list(strength_no2, 9) + ',' +\
-            constant_list(strength_no, 9) + ',' +\
-            constant_list(strength_co, 9)
+ini['source']['sourcelist'] = emi.source_list
 
-    sw_vmr = constant_list('true', 4*9)
-    repeat = 1
+ini['source']['source_x0'] = emi.x0
+ini['source']['source_y0'] = emi.y0
+ini['source']['source_z0'] = emi.z0
 
-print('sourcelist={}'.format(source_list))
+ini['source']['sigma_x'] = emi.sigma_x
+ini['source']['sigma_y'] = emi.sigma_y
+ini['source']['sigma_z'] = emi.sigma_z
 
-print('source_x0={}'.format(to_cs_list(source_x0, repeat*4)))
-print('source_y0={}'.format(to_cs_list(source_y0, repeat*4)))
-print('source_z0={}'.format(to_cs_list(source_z0, repeat*4)))
+ini['source']['strength'] = emi.strength
+ini['source']['swvmr'] = emi.sw_vmr
 
-print('sigma_x={}'.format(constant_list(sigma_x, repeat*4*9)))
-print('sigma_y={}'.format(constant_list(sigma_y, repeat*4*9)))
-print('sigma_z={}'.format(constant_list(sigma_z, repeat*4*9)))
+ini['source']['line_x'] = emi.line_x
+ini['source']['line_y'] = emi.line_y
+ini['source']['line_z'] = emi.line_z
 
-print('strength={}'.format(strength))
-print('swvmr={}'.format(sw_vmr))
-
-print('line_x={}'.format(constant_list(0, repeat*4*9)))
-print('line_y={}'.format(constant_list(0, repeat*4*9)))
-print('line_z={}'.format(constant_list(0, repeat*4*9)))
+ini.save('jaenschwalde_chem.ini', allow_overwrite=True)
