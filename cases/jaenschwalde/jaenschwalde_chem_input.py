@@ -47,7 +47,7 @@ with open('jaenschwalde_chem.ini') as f:
 columns = ['time', 'sza', 'jo31d', 'jh2o2', 'jno2', 'jno3', 'jn2o5', 'jch2or', 'jch2om', 'jch3o2h']
 tuv = pd.read_table(
         'jaensw_tuv_output.txt',
-        delim_whitespace=True,
+        sep='\\s+',
         skiprows=12,
         skipfooter=1,
         engine='python',
