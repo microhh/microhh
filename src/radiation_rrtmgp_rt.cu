@@ -1924,13 +1924,12 @@ void Radiation_rrtmgp_rt<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        if (sw_aerosol && sw_aerosol_timedep) {
+        if (sw_aerosol && swtimedep_aerosol)
             aerosol.get_radiation_fields(aerosol_concs_gpu);
-        }
 
         try
         {
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 // Temperature, pressure and moisture
                 background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
@@ -1938,10 +1937,8 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 // gasses
                 background.get_gasses(gas_concs_col);
                 // aerosols
-                if (sw_aerosol && sw_aerosol_timedep)
-                {
+                if (sw_aerosol && swtimedep_aerosol)
                     background.get_aerosols(aerosol_concs_col);
-                }
             }
 
             if (sw_longwave)
@@ -2089,7 +2086,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     this->tsi_scaling = calc_sun_distance_factor(frac_day_of_year);
                 }
 
-                if (!sw_fixed_sza || sw_update_background)
+                if (!sw_fixed_sza || swtimedep_background)
                 {
                     if (is_day(this->mu0) || !sw_is_tuned)
                     {
@@ -2497,7 +2494,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
 
-        if (sw_update_background)
+        if (swtimedep_background)
         {
             stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
             stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
@@ -2535,7 +2532,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
                 stats.set_time_series("AOD550", mean_aod);
             }
 
-            if ((sw_update_background || !sw_fixed_sza))
+            if ((swtimedep_background || !sw_fixed_sza))
             {
                 stats.set_prof_background("sw_flux_up_ref", sw_flux_up_col.v());
                 stats.set_prof_background("sw_flux_dn_ref", sw_flux_dn_col.v());

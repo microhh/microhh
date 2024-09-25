@@ -1194,30 +1194,28 @@ void Radiation_rrtmgp<TF>::exec(
         const bool compute_clouds = true;
 
         // get aerosol mixing ratios
-        if (sw_aerosol && sw_aerosol_timedep)
-        {
+        if (sw_aerosol && swtimedep_aerosol)
             aerosol.get_radiation_fields(aerosol_concs_gpu);
-        }
 
         try
         {
-            if (sw_update_background)
+            if (swtimedep_background)
             {
                 // Temperature, pressure and moisture
                 background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col, gas_concs_col);
                 Gas_optics_rrtmgp::get_col_dry(col_dry, gas_concs_col.get_vmr("h2o"), p_lev_col);
+
                 // gasses
                 background.get_gasses(gas_concs_col);
+
                 // aerosols
-                if (sw_aerosol && sw_aerosol_timedep)
-                {
+                if (sw_aerosol && swtimedep_aerosol)
                     background.get_aerosols(aerosol_concs_col);
-                }
             }
 
             if (sw_longwave)
             {
-                if (sw_update_background)
+                if (swtimedep_background)
                 {
                     // Calculate new background column (on the CPU).
                     Float* ph_g = thermo.get_basestate_fld_g("prefh");
@@ -1343,7 +1341,7 @@ void Radiation_rrtmgp<TF>::exec(
                     set_sun_location(timeloop);
                 }
 
-                if (!sw_fixed_sza || sw_update_background)
+                if (!sw_fixed_sza || swtimedep_background)
                 {
 
                     if (is_day(this->mu0) || !sw_is_tuned)
@@ -1650,7 +1648,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         }
     };
 
-    if (sw_update_background)
+    if (swtimedep_background)
     {
         // Temperature and pressure
         background.get_tpm(t_lay_col, t_lev_col, p_lay_col, p_lev_col,  gas_concs_col);
@@ -1658,15 +1656,13 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
         // gasses
         background.get_gasses(gas_concs_col);
         // aerosols
-        if (sw_aerosol && sw_aerosol_timedep)
-        {
+        if (sw_aerosol && swtimedep_aerosol)
             background.get_aerosols(aerosol_concs_col);
-        }
     }
 
     if (sw_longwave)
     {
-        if (sw_update_background)
+        if (swtimedep_background)
         {
             // Calculate new background column (on the CPU).
             Float* ph_g = thermo.get_basestate_fld_g("prefh");
@@ -1715,7 +1711,7 @@ void Radiation_rrtmgp<TF>::exec_individual_column_stats(
             // Update the solar zenith angle and sun-earth distance.
             set_sun_location(timeloop);
         }
-        if (!sw_fixed_sza || sw_update_background)
+        if (!sw_fixed_sza || swtimedep_background)
         {
             if (is_day(this->mu0))
             {
