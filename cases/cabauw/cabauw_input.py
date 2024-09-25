@@ -1,3 +1,4 @@
+from datetime import datetime
 import netCDF4 as nc4
 import xarray as xr
 import numpy as np
@@ -5,24 +6,6 @@ import os, shutil
 
 # Available in `microhh_root/python`:
 import microhh_tools as mht
-
-def add_nc_var(name, dims, nc, data):
-    """
-    Add NetCDF variable to `nc` file or group.
-    """
-    if name not in nc.variables:
-        if dims is None:
-            var = nc.createVariable(name, np.float64)
-        else:
-            var = nc.createVariable(name, np.float64, dims)
-        var[:] = data
-
-def add_nc_dim(name, size, nc):
-    """
-    Add NetCDF dimension, if it does not already exist.
-    """
-    if name not in nc.dimensions:
-        nc.createDimension(name, size)
 
 
 def link(f1, f2):
@@ -98,9 +81,6 @@ def create_case_input(
 
     if use_aerosols:
         copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
-
-    heterogeneous_sfc = not use_homogeneous_z0 or not use_homogeneous_ls
-
 
     """
     Create vertical grid for LES
@@ -205,14 +185,29 @@ def create_case_input(
     d = start_date
     ini['time']['datetime_utc'] = f'{d.year}-{d.month:02d}-{d.day:02d} {d.hour:02d}:{d.minute:02d}:{d.second:02d}'
 
-    if heterogeneous_sfc:
-        ini['stats']['xymasklist'] = ['wet_mask', 'dry_mask']
-
     ini.save('cabauw.ini', allow_overwrite=True)
 
     """
     Create MicroHH input NetCDF file.
     """
+    def add_nc_var(name, dims, nc, data):
+        """
+        Add NetCDF variable to `nc` file or group.
+        """
+        if name not in nc.variables:
+            if dims is None:
+                var = nc.createVariable(name, np.float64)
+            else:
+                var = nc.createVariable(name, np.float64, dims)
+            var[:] = data
+
+    def add_nc_dim(name, size, nc):
+        """
+        Add NetCDF dimension, if it does not already exist.
+        """
+        if name not in nc.dimensions:
+            nc.createDimension(name, size)
+
     nc = nc4.Dataset('cabauw_input.nc', mode='w', datamodel='NETCDF4')
     add_nc_dim('z', ktot, nc)
     add_nc_var('z', ('z'), nc, z)
@@ -409,21 +404,6 @@ def create_case_input(
 
         return mask
 
-
-    if heterogeneous_sfc:
-        """
-        Create surface mask for masked statistics.
-        """
-
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
-
-        wet = mask.astype(TF)
-        dry = 1-wet
-
-        wet.tofile('wet_mask.0000000')
-        dry.tofile('dry_mask.0000000')
-
-
     if not use_homogeneous_z0:
         """
         Create checkerboard pattern for z0m and z0h
@@ -434,6 +414,8 @@ def create_case_input(
 
         z0m_2d = np.zeros((jtot, itot), dtype=TF)
         z0h_2d = np.zeros((jtot, itot), dtype=TF)
+
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
 
         z0m_2d[ mask] = z0m
         z0m_2d[~mask] = z0m/2.
@@ -456,6 +438,9 @@ def create_case_input(
         exclude = ['z0h', 'z0m', 'water_mask', 't_bot_water']
         lsm_data = LSM_input(itot, jtot, ktot=4, TF=TF, debug=True, exclude_fields=exclude)
 
+        # Set surface fields:
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
+
         # Patched fields:
         lsm_data.c_veg[ mask] = ini['land_surface']['c_veg']
         lsm_data.c_veg[~mask] = ini['land_surface']['c_veg']/3.
@@ -472,18 +457,9 @@ def create_case_input(
         lsm_data.cs_veg[:,:] = ini['land_surface']['cs_veg']
 
         lsm_data.t_soil[:,:,:] = t_soil[:, np.newaxis, np.newaxis]
+        lsm_data.theta_soil[:,:,:] = theta_soil[:, np.newaxis, np.newaxis]
         lsm_data.index_soil[:,:,:] = index_soil[:, np.newaxis, np.newaxis]
         lsm_data.root_frac[:,:,:] = root_frac[:, np.newaxis, np.newaxis]
-
-        # Create dry/wet patches.
-        vg = xr.open_dataset('van_genuchten_parameters.nc')
-
-        theta_wp = float(vg.theta_wp[int(index_soil[0])])
-        theta_fc = float(vg.theta_fc[int(index_soil[0])])
-        theta_cap = theta_fc - theta_wp
-
-        lsm_data.theta_soil[:,  mask] = theta_fc - 0.1 * theta_cap
-        lsm_data.theta_soil[:, ~mask] = theta_wp + 0.1 * theta_cap
 
         # Check if all the variables have been set:
         lsm_data.check()
@@ -534,10 +510,15 @@ if __name__ == '__main__':
 
     # Create input files.
     create_case_input(
+            start_date,
+            end_date,
             use_htessel,
             use_rrtmgp,
             use_rt,
             use_aerosols,
+            use_tdep_aerosols,
+            use_tdep_gasses,
+            use_tdep_background,
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,
