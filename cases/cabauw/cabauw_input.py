@@ -74,11 +74,15 @@ def create_case_input(
     if use_aerosols:
         copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
 
+    heterogeneous_sfc = not use_homogeneous_z0 or not use_homogeneous_ls
+
+
     """
     Create vertical grid for LES
     """
     dz = zsize/ktot
     z = np.arange(dz/2, zsize, dz)
+
 
     """
     Read / interpolate (LS)2D initial conditions and forcings
@@ -160,7 +164,11 @@ def create_case_input(
 
     ini['time']['endtime'] = endtime
 
+    if heterogeneous_sfc:
+        ini['stats']['xymasklist'] = ['wet_mask', 'dry_mask']
+
     ini.save('cabauw.ini', allow_overwrite=True)
+
 
     """
     Create MicroHH input NetCDF file.
@@ -168,6 +176,7 @@ def create_case_input(
     nc = nc4.Dataset('cabauw_input.nc', mode='w', datamodel='NETCDF4')
     nc.createDimension('z', ktot)
     add_nc_var('z', ('z'), nc, z)
+
 
     """
     Initial profiles
@@ -178,6 +187,7 @@ def create_case_input(
     add_nc_var('u', ('z'), nc_init, ls2d_z.u[0,:])
     add_nc_var('v', ('z'), nc_init, ls2d_z.v[0,:])
     add_nc_var('nudgefac', ('z'), nc_init, np.ones(ktot)/10800)
+
 
     """
     Time varying forcings
@@ -213,6 +223,7 @@ def create_case_input(
     add_nc_var('v_nudge', ('time_ls', 'z'), nc_tdep, ls2d_z.v)
     add_nc_var('thl_nudge', ('time_ls', 'z'), nc_tdep, ls2d_z.thl)
     add_nc_var('qt_nudge', ('time_ls', 'z'), nc_tdep, ls2d_z.qt)
+
 
     """
     Radiation variables
@@ -275,6 +286,7 @@ def create_case_input(
         add_nc_var('index_soil', ('z'), nc_soil, index_soil)
         add_nc_var('root_frac', ('z'), nc_soil, root_frac)
 
+
     """
     Aerosols
     """
@@ -293,6 +305,7 @@ def create_case_input(
         add_nc_var('aermr11', ('z'), nc_init, cams_z.aermr11.mean(axis=0))
 
     nc.close()
+
 
     """
     Create 2D binary input files (if needed)
@@ -314,6 +327,21 @@ def create_case_input(
 
         return mask
 
+
+    if heterogeneous_sfc:
+        """
+        Create surface mask for masked statistics.
+        """
+
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
+
+        wet = mask.astype(TF)
+        dry = 1-wet
+
+        wet.tofile('wet_mask.0000000')
+        dry.tofile('dry_mask.0000000')
+
+
     if not use_homogeneous_z0:
         """
         Create checkerboard pattern for z0m and z0h
@@ -325,8 +353,6 @@ def create_case_input(
         z0m_2d = np.zeros((jtot, itot), dtype=TF)
         z0h_2d = np.zeros((jtot, itot), dtype=TF)
 
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
-
         z0m_2d[ mask] = z0m
         z0m_2d[~mask] = z0m/2.
 
@@ -335,6 +361,7 @@ def create_case_input(
 
         z0m_2d.tofile('z0m.0000000')
         z0h_2d.tofile('z0h.0000000')
+
 
     if not use_homogeneous_ls:
         """
@@ -347,9 +374,6 @@ def create_case_input(
 
         exclude = ['z0h', 'z0m', 'water_mask', 't_bot_water']
         lsm_data = LSM_input(itot, jtot, ktot=4, TF=TF, debug=True, exclude_fields=exclude)
-
-        # Set surface fields:
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
 
         # Patched fields:
         lsm_data.c_veg[ mask] = ini['land_surface']['c_veg']
@@ -367,9 +391,18 @@ def create_case_input(
         lsm_data.cs_veg[:,:] = ini['land_surface']['cs_veg']
 
         lsm_data.t_soil[:,:,:] = t_soil[:, np.newaxis, np.newaxis]
-        lsm_data.theta_soil[:,:,:] = theta_soil[:, np.newaxis, np.newaxis]
         lsm_data.index_soil[:,:,:] = index_soil[:, np.newaxis, np.newaxis]
         lsm_data.root_frac[:,:,:] = root_frac[:, np.newaxis, np.newaxis]
+
+        # Create dry/wet patches.
+        vg = xr.open_dataset('van_genuchten_parameters.nc')
+
+        theta_wp = float(vg.theta_wp[int(index_soil[0])])
+        theta_fc = float(vg.theta_fc[int(index_soil[0])])
+        theta_cap = theta_fc - theta_wp
+
+        lsm_data.theta_soil[:,  mask] = theta_fc - 0.1 * theta_cap
+        lsm_data.theta_soil[:, ~mask] = theta_wp + 0.1 * theta_cap
 
         # Check if all the variables have been set:
         lsm_data.check()
