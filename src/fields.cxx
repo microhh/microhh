@@ -212,6 +212,7 @@ namespace
     void set_xy_mask(
             TF* const restrict mask,
             TF* const restrict maskh,
+            TF* const restrict mask_bot,
             const TF* const restrict xymask,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -237,6 +238,14 @@ namespace
                     const int ijk = ij + k*ijcells;
                     maskh[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
                 }
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*icells;
+                mask_bot[ij] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+            }
     }
 
     template<typename TF>
@@ -715,6 +724,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         set_xy_mask(
                 mask->fld.data(),
                 maskh->fld.data(),
+                maskh->fld_bot.data(),
                 xymasks.at(mask_name).data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
