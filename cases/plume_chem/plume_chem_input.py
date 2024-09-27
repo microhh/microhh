@@ -303,6 +303,7 @@ for j in range(-1,2):
             emi.add('thl', strength_T, False, x, y, z, sigma_x, sigma_y, sigma_z)
             emi.add('qt',  strength_q, False, x, y, z, sigma_x, sigma_y, sigma_z)
 
+
 """
 Create heterogeneous land-surface, here with simple block pattern to look at deposition differences.
 """
@@ -380,9 +381,9 @@ ini['source']['sourcelist'] = emi.source_list
 ini['chemistry']['swchemistry'] = sw_chemistry
 
 if (sw_chemistry):
-    crosslist='thl,qt,u,v,w,co2,co,no,no2,hno3,h2o2,o3,hcho,ho2,oh,no3,n2o5,rooh,c3h6,ro2,co2_path,no_path,no2_path,o3_path'
+    crosslist='thl,qt,u,v,w,thl_fluxbot,qt_fluxbot,co2,co,no,no2,hno3,h2o2,o3,hcho,ho2,oh,no3,n2o5,rooh,c3h6,ro2,co2_path,no_path,no2_path,o3_path'
 else:
-    crosslist='thl,qt,u,v,w,co2,co2_path'
+    crosslist='thl,qt,u,v,w,thl_fluxbot,qt_fluxbot,co2,co2_path'
 
 if (sw_land_surface):
     ini['boundary']['swboundary'] = 'surface_lsm'
