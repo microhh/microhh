@@ -1,9 +1,4 @@
-"""
-Simplified Jaenschwalde setup.
-Profiles are slightly idealised, from 04:00 UTC ERA5 data.
-Wind is rotated to be perfectly westerly.
-"""
-
+import matplotlib.pyplot as pl
 import numpy as np
 import pandas as pd
 import netCDF4 as nc
@@ -11,6 +6,7 @@ import netCDF4 as nc
 import microhh_tools as mht
 import helpers as hlp
 from constants import *
+from lsm_input import LSM_input
 
 """
 Settings.
@@ -25,16 +21,14 @@ itot = 64
 jtot = 32
 ktot = 96
 
-# Initial conditions have been fitted to ERA5 data at 04:00 UTC,
-# so picking another start time does not make a lot of sense.
-start_hour = 4
-end_hour = 12
+start_hour = 6
+end_hour = 18
 
 # Enable resolved plume rise:
 sw_plume_rise = True
 
 # Enable non-linear KPP chemistry:
-sw_chemistry = False
+sw_chemistry = True
 
 # Enable land-surface model and more detailled deposition.
 sw_land_surface = True
@@ -52,6 +46,8 @@ Create case input.
 if (sw_chemistry):
 
     # Read TUV output table.
+    # There is a total of 24 hour available, generated for the
+    # Jaenschwalde power plant on 23/05/2022.
     columns = ['time', 'sza', 'jo31d', 'jh2o2', 'jno2', 'jno3', 'jn2o5', 'jch2or', 'jch2om', 'jch3o2h']
     tuv = pd.read_table(
             'jaenschwalde_tuv_output.txt',
@@ -99,33 +95,40 @@ Define vertical grid and initial thl/qt/co2 profiles.
 dz = zsize / ktot
 z = np.arange(0.5*dz, zsize, dz)
 
-v_thl = np.array([285.7, 291.9, 293, 297.4, 307])
-z_thl = np.array([0, 400, 2000, 2500, 5000])
-thl = np.interp(z, z_thl, v_thl)
+def profile(zi, v_bulk, dv, gamma_v, clip_at_zero=False):
+    """
+    Create well mixed profile with jump and constant lapse rate above.
+    """
 
-z_qt = np.array([0, 400, 2000, 2500, 5000])
-v_qt = np.array([6.2, 4.93, 3.61, 1, 0.3])/1000
-qt = np.interp(z, z_qt, v_qt)
+    k_zi = np.abs(z - zi).argmin()
 
-z_u = np.array([0, 270, 3000, 5000])
-v_u = np.array([2.3, 8.5, 0.6, 5.7])
-u = np.interp(z, z_u, v_u)
+    profile = np.zeros(ktot)
+    profile[:k_zi] = v_bulk
+    profile[k_zi:] = v_bulk + dv + gamma_v * (z[k_zi:] - zi)
 
-v = np.zeros(ktot)
+    if clip_at_zero:
+        profile[profile < 0] = 0.
+
+    return profile
+
+
+# Vertical profiles.
+thl = profile(zi=1000, v_bulk=290,   dv=2,     gamma_v=0.006)
+qt  = profile(zi=1000, v_bulk=10e-3, dv=-2e-3, gamma_v=-0.003e-3, clip_at_zero=True)
+u   = np.ones(ktot) * 5
 co2 = np.zeros(ktot)
 
-# Surface fluxes, again idealised from ERA5.
+# Surface fluxes.
 t0 = start_hour*3600
 t1 = end_hour*3600
-td1 = 11.5*3600
-td2 = 14*3600
-
+td = 12*3600
 time = np.linspace(t0, t1, 32)
-wthl = 0.17   * np.sin(np.pi * (time-t0-1800) / td1)
-wqt  = 8.3e-5 * np.sin(np.pi * (time-t0) / td2)
 
-# Idealised diurnal cycle for radiation.
-sw_flux_dn = 600 * np.sin(np.pi * (time-t0-1800) / td1)
+wthl = 0.15 * np.sin(np.pi * (time-t0) / td)
+wqt  = 8e-5 * np.sin(np.pi * (time-t0) / td)
+
+# Surface radiation (only used with land-surface enabled).
+sw_flux_dn = 600 * np.sin(np.pi * (time-t0) / td)
 sw_flux_dn[sw_flux_dn < 0] = 0
 
 sw_flux_up = 0.2 * sw_flux_dn
@@ -133,6 +136,30 @@ sw_flux_up = 0.2 * sw_flux_dn
 lw_flux_dn = np.ones_like(sw_flux_dn) * 340
 lw_flux_up = np.ones_like(sw_flux_dn) * 400
 
+"""
+pl.figure(figsize=(10,5))
+
+pl.subplot(131)
+pl.plot(time/3600, wthl)
+pl.xlabel('time (h)')
+pl.ylabel('w`thl` (K m s-1)')
+
+pl.subplot(132)
+pl.plot(time/3600, wqt*1000)
+pl.xlabel('time (h)')
+pl.ylabel('w`qt` (g kg-1 m s-1)')
+
+pl.subplot(133)
+pl.plot(time/3600, sw_flux_dn, label='sw_flux_dn')
+pl.plot(time/3600, sw_flux_up, label='sw_flux_up')
+pl.plot(time/3600, lw_flux_dn, label='lw_flux_dn')
+pl.plot(time/3600, lw_flux_up, label='lw_flux_up')
+pl.xlabel('time (h)')
+pl.ylabel('sw_flux_dn` (W m-2)')
+pl.legend()
+
+pl.tight_layout()
+"""
 
 """
 Write input NetCDF file.
@@ -153,7 +180,6 @@ add_nc_var('z', ('z'), nc_file, z)
 nc_group_init = nc_file.createGroup('init');
 
 add_nc_var('u', ('z'), nc_group_init, u)
-add_nc_var('v', ('z'), nc_group_init, v)
 add_nc_var('thl', ('z'), nc_group_init, thl)
 add_nc_var('qt', ('z'), nc_group_init, qt)
 add_nc_var('co2', ('z'), nc_group_init, co2)
@@ -276,6 +302,57 @@ for j in range(-1,2):
         if sw_plume_rise:
             emi.add('thl', strength_T, False, x, y, z, sigma_x, sigma_y, sigma_z)
             emi.add('qt',  strength_q, False, x, y, z, sigma_x, sigma_y, sigma_z)
+
+"""
+Create heterogeneous land-surface, here with simple block pattern to look at deposition differences.
+"""
+if (sw_land_surface):
+
+    blocksize_i = 8
+    blocksize_j = 8
+
+    mask = np.zeros((jtot, itot), dtype=bool)
+    mask[:] = False
+
+    for j in range(jtot):
+        for i in range(itot):
+            patch_i = i // blocksize_i % 2 == 0
+            patch_j = j // blocksize_j % 2 == 0
+
+            if (patch_i and patch_j) or (not patch_i and not patch_j):
+                mask[j,i] = True
+
+    ls = LSM_input(itot, jtot, 4, sw_water=True, TF=float_type, debug=True, exclude_fields=['z0m', 'z0h'])
+
+    def set_value(variable, masked, non_masked):
+        ls[variable][ mask] = masked
+        ls[variable][~mask] = non_masked
+
+    # Spatially varying properties.
+    set_value('c_veg',      masked=0.8, non_masked=0)
+    set_value('lai'  ,      masked=2,   non_masked=0)
+    set_value('water_mask', masked=0,   non_masked=1)
+
+    # Constant properties.
+    ls['gD'][:,:] = 0
+    ls['rs_veg_min'][:,:] = 100
+    ls['rs_soil_min'][:,:] = 50
+    ls['lambda_stable'][:,:] = 10
+    ls['lambda_unstable'][:,:] = 10
+    ls['cs_veg'][:,:] = 0
+    ls['t_bot_water'][:,:] = 295
+
+    ls['t_soil'][:,:,:] = 290
+    ls['theta_soil'][:,:,:] = 0.2
+    ls['index_soil'][:,:,:] = 0
+    ls['root_frac'][:,:,:] = 0.25
+
+    # Check if all values are set.
+    ls.check()
+
+    # Save to binary (used by MicroHH) and NetCDF (just for checking).
+    ls.save_binaries(allow_overwrite=True)
+    ls.save_netcdf('lsm_input.nc', allow_overwrite=True)
 
 
 """

@@ -24,7 +24,7 @@ import numpy as np
 import os, sys
 
 class LSM_input:
-    def __init__(self, itot, jtot, ktot, TF=np.float64, debug=False, exclude_fields=[]):
+    def __init__(self, itot, jtot, ktot, sw_water=False, TF=np.float64, debug=False, exclude_fields=[]):
         """
         Data structure for the required input for the MicroHH LSM.
 
@@ -50,9 +50,13 @@ class LSM_input:
                 'c_veg', 'z0m', 'z0h', 'gD', 'lai',
                 'rs_veg_min', 'rs_soil_min',
                 'lambda_stable', 'lambda_unstable',
-                'cs_veg', 'water_mask']
+                'cs_veg']
         self.fields_3d = [
                 't_soil', 'theta_soil', 'index_soil', 'root_frac']
+
+        if sw_water:
+            self.fields_2d.append('water_mask')
+            self.fields_2d.append('t_bot_water')
 
         # Horizonal grid (cell centers)
         self.x = np.zeros(itot, dtype=TF)
@@ -160,6 +164,12 @@ class LSM_input:
 
         nc.close()
 
+
+    def __getitem__(self, key):
+        """
+        Implement `lsm_input[key]` functionality.
+        """
+        return getattr(self, key)
 
 
 if __name__ == '__main__':
