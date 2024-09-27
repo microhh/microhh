@@ -37,7 +37,7 @@ sw_land_surface = True
 """
 Read base .ini file for case settings.
 """
-ini = mht.Read_namelist('jaenschwalde.ini.base')
+ini = mht.Read_namelist('plume_chem.ini.base')
 
 
 """
@@ -50,7 +50,7 @@ if (sw_chemistry):
     # Jaenschwalde power plant on 23/05/2022.
     columns = ['time', 'sza', 'jo31d', 'jh2o2', 'jno2', 'jno3', 'jn2o5', 'jch2or', 'jch2om', 'jch3o2h']
     tuv = pd.read_table(
-            'jaenschwalde_tuv_output.txt',
+            'plume_chem_tuv_output.txt',
             sep='\\s+',
             skiprows=12,
             skipfooter=1,
@@ -171,7 +171,7 @@ def add_nc_var(name, dims, nc, data):
         var = nc.createVariable(name, np.float64, dims)
     var[:] = data
 
-nc_file = nc.Dataset('jaenschwalde_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
+nc_file = nc.Dataset('plume_chem_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 
 nc_file.createDimension('z', ktot)
 add_nc_var('z', ('z'), nc_file, z)
@@ -422,4 +422,4 @@ ini['source']['line_x'] = emi.line_x
 ini['source']['line_y'] = emi.line_y
 ini['source']['line_z'] = emi.line_z
 
-ini.save('jaenschwalde.ini', allow_overwrite=True)
+ini.save('plume_chem.ini', allow_overwrite=True)
