@@ -25,6 +25,8 @@ itot = 64
 jtot = 32
 ktot = 96
 
+# Initial conditions have been fitted to ERA5 data at 04:00 UTC,
+# so picking another start time does not make a lot of sense.
 start_hour = 4
 end_hour = 12
 
@@ -33,6 +35,9 @@ sw_plume_rise = True
 
 # Enable non-linear KPP chemistry:
 sw_chemistry = False
+
+# Enable land-surface model and more detailled deposition.
+sw_land_surface = True
 
 
 """
@@ -56,14 +61,14 @@ if (sw_chemistry):
             engine='python',
             names=columns,
             index_col='time')
-    
+
     # NOTE: `.loc` is value based, not on index.
     tuv = tuv.loc[start_hour:end_hour]
-    
+
     # Convert to seconds, and subtract starting time.
     tuv.index *= 3600
     tuv.index -= tuv.index.values[0]
-    
+
     # Emissions (?)
     emi_no = np.zeros(tuv.index.size)
     emi_isop = np.zeros(tuv.index.size)
@@ -119,6 +124,15 @@ time = np.linspace(t0, t1, 32)
 wthl = 0.17   * np.sin(np.pi * (time-t0-1800) / td1)
 wqt  = 8.3e-5 * np.sin(np.pi * (time-t0) / td2)
 
+# Idealised diurnal cycle for radiation.
+sw_flux_dn = 600 * np.sin(np.pi * (time-t0-1800) / td1)
+sw_flux_dn[sw_flux_dn < 0] = 0
+
+sw_flux_up = 0.2 * sw_flux_dn
+
+lw_flux_dn = np.ones_like(sw_flux_dn) * 340
+lw_flux_up = np.ones_like(sw_flux_dn) * 400
+
 
 """
 Write input NetCDF file.
@@ -156,7 +170,7 @@ if (sw_chemistry):
     # Chemistry input.
     nc_chem = nc_file.createGroup('timedep_chem');
     nc_chem.createDimension("time_chem", tuv.index.size)
-    
+
     add_nc_var("time_chem", ('time_chem'), nc_chem, tuv.index)
     add_nc_var("jo31d", ('time_chem'), nc_chem, tuv.jo31d)
     add_nc_var("jh2o2", ('time_chem'), nc_chem, tuv.jh2o2)
@@ -168,11 +182,27 @@ if (sw_chemistry):
     add_nc_var("jch3o2h", ('time_chem'), nc_chem, tuv.jch3o2h)
     add_nc_var("emi_isop", ('time_chem'), nc_chem, emi_isop)
     add_nc_var("emi_no", ('time_chem'), nc_chem, emi_no)
-    
+
     for name, value in species.items():
         profile = np.ones(ktot, dtype=np.float64)*value
         add_nc_var(name, ('z'), nc_group_init, profile)
         add_nc_var('{}_inflow'.format(name), ('z'), nc_group_init, profile)
+
+if (sw_land_surface):
+    nc_soil = nc_file.createGroup('soil')
+    nc_soil.createDimension('z', 4)
+    add_nc_var('z', ('z'), nc_soil, np.array([-1.945, -0.64, -0.175, -0.035]))
+
+    add_nc_var('theta_soil', ('z'), nc_soil, np.array([0.34, 0.25, 0.21, 0.18]))
+    add_nc_var('t_soil', ('z'), nc_soil, np.array([282, 287, 290, 286]))
+    add_nc_var('index_soil', ('z'), nc_soil, np.ones(4) * 2)
+    add_nc_var('root_frac', ('z'), nc_soil, np.array([0.05, 0.3, 0.4, 0.25]))
+
+    # Add idealized (prescribed) radiation.
+    add_nc_var('sw_flux_dn', ('time_surface'), nc_tdep, sw_flux_dn)
+    add_nc_var('sw_flux_up', ('time_surface'), nc_tdep, sw_flux_up)
+    add_nc_var('lw_flux_dn', ('time_surface'), nc_tdep, lw_flux_dn)
+    add_nc_var('lw_flux_up', ('time_surface'), nc_tdep, lw_flux_up)
 
 nc_file.close()
 
@@ -235,7 +265,7 @@ for j in range(-1,2):
         x = x0 + i*dx + j*ddx
         y = y0 + j*dy
         z = z0
-            
+
         emi.add('co2', strength_co2, True, x, y, z, sigma_x, sigma_y, sigma_z)
 
         if (sw_chemistry):
@@ -276,6 +306,26 @@ if (sw_chemistry):
     crosslist='thl,qt,u,v,w,co2,co,no,no2,hno3,h2o2,o3,hcho,ho2,oh,no3,n2o5,rooh,c3h6,ro2,co2_path,no_path,no2_path,o3_path'
 else:
     crosslist='thl,qt,u,v,w,co2,co2_path'
+
+if (sw_land_surface):
+    ini['boundary']['swboundary'] = 'surface_lsm'
+    ini['boundary']['sbcbot'] = 'dirichlet'
+    ini['boundary']['swtimedep'] = False
+    ini['boundary']['timedeplist'] = 'empty'
+
+    ini['radiation']['swradiation'] = 'prescribed'
+else:
+    ini['boundary']['swboundary'] = 'surface'
+    ini['boundary']['sbcbot'] = 'flux'
+    ini['boundary']['swtimedep'] = True
+    ini['boundary']['timedeplist'] = ['thl_sbot', 'qt_sbot']
+
+    ini['radiation']['swradiation'] = False
+
+if (sw_chemistry and sw_land_surface):
+    ini['deposition']['swdeposition'] = True
+else:
+    ini['deposition']['swdeposition'] = False
 
 ini['cross']['crosslist'] = crosslist
 ini['cross']['xz'] = ysize/2
