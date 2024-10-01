@@ -649,25 +649,26 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
-        grid     ->exec_stats(*stats);
-        fields   ->exec_stats(*stats);
-        thermo   ->exec_stats(*stats);
-        background ->exec_stats(*stats);
-        microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats, *thermo);
-        budget   ->exec_stats(*stats);
-        boundary ->exec_stats(*stats);
-        chemistry->exec_stats(iteration, time, *stats);
+        grid      ->exec_stats(*stats);
+        fields    ->exec_stats(*stats);
+        thermo    ->exec_stats(*stats);
+        background->exec_stats(*stats);
+        microphys ->exec_stats(*stats, *thermo, dt);
+        diff      ->exec_stats(*stats, *thermo);
+        budget    ->exec_stats(*stats);
+        boundary  ->exec_stats(*stats);
+        chemistry ->exec_stats(iteration, time, *stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
     if (cross->do_cross(itime))
     {
-        fields   ->exec_cross(*cross, iotime);
-        thermo   ->exec_cross(*cross, iotime);
-        microphys->exec_cross(*cross, iotime);
-        ib       ->exec_cross(*cross, iotime);
-        boundary ->exec_cross(*cross, iotime);
+        fields    ->exec_cross(*cross, iotime);
+        thermo    ->exec_cross(*cross, iotime);
+        microphys ->exec_cross(*cross, iotime);
+        ib        ->exec_cross(*cross, iotime);
+        boundary  ->exec_cross(*cross, iotime);
+        chemistry ->exec_cross(*cross, iotime);
     }
 
     // Save the 3d dumps to disk.
