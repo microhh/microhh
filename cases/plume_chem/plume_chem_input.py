@@ -85,6 +85,8 @@ if (sw_chemistry):
         'rooh': 3.6e-10,
         'c3h6': 3.3e-9,
         'ro2': 7e-12}
+
+    deposition_species = ['o3', 'no', 'no2', 'hno3', 'h2o2', 'rooh', 'hcho']
 else:
     species = {}
 
@@ -380,10 +382,19 @@ ini['source']['sourcelist'] = emi.source_list
 
 ini['chemistry']['swchemistry'] = sw_chemistry
 
+crosslist = ['thl', 'qt', 'u', 'v', 'w', 'thl_fluxbot', 'qt_fluxbot', 'co2']
+
 if (sw_chemistry):
-    crosslist='thl,qt,u,v,w,thl_fluxbot,qt_fluxbot,co2,co,no,no2,hno3,h2o2,o3,hcho,ho2,oh,no3,n2o5,rooh,c3h6,ro2,co2_path,no_path,no2_path,o3_path'
-else:
-    crosslist='thl,qt,u,v,w,thl_fluxbot,qt_fluxbot,co2,co2_path'
+    # Add chemicial species and their vertical integrals.
+    crosslist += list(species.keys())
+    crosslist += [f'{x}_path' for x in species.keys()]
+    crosslist += [f'vd{x}' for x in deposition_species]
+
+if (sw_land_surface and sw_chemistry):
+    # Add deposition for each land-surface tile.
+    for s in deposition_species:
+        for t in ['soil', 'wet', 'veg']:
+            crosslist.append(f'vd{s}_{t}')
 
 if (sw_land_surface):
     ini['boundary']['swboundary'] = 'surface_lsm'
