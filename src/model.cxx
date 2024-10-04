@@ -526,11 +526,15 @@ void Model<TF>::exec()
                         #endif
 
                         // Save data to disk.
+
+                        // Save the thermo before the split of the thread, to avoid overwrite during stats
+                        // leading to restart failures.
+                        thermo->save(iotime);
+
                         #pragma omp task default(shared)
                         {
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
-                            thermo  ->save(iotime);
                             boundary->save(iotime, *thermo);
                         }
                     }
