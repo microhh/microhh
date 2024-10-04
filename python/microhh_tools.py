@@ -582,6 +582,8 @@ def execute(command):
         raise Exception(
             '\'{}\' returned \'{}\'.'.format(
                 command, sp.returncode))
+    
+    return sp.returncode
 
 
 def run_cases(cases, executable, mode, outputfile=''):
