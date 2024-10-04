@@ -1008,14 +1008,15 @@ def run_restart(
 
 def copy_or_link(src, dst, link = False):
     if os.path.exists(dst):
-        os.remove(dst)
+        if os.path.isfile(dst):
+            os.remove(dst)
     if link:
         os.symlink(src, dst)
-        print("Linking ",end="")
+        # print("Linking ",end="")
     else:
         shutil.copy(src, dst)
-        print("Copying ",end="")
-    print(src," to ",dst)
+        # print("Copying ",end="")
+    # print(src," to ",dst)
 
 def copy_radfiles(srcdir = None, destdir = None, gpt = '128_112', link = False):
     if srcdir is None:

@@ -191,7 +191,7 @@ def create_case_input(
     add_nc_var('qt', ('z'), nc_init, ls2d_z.qt[0,:])
     add_nc_var('u', ('z'), nc_init, ls2d_z.u[0,:])
     add_nc_var('v', ('z'), nc_init, ls2d_z.v[0,:])
-    # add_nc_var('nudgefac', ('z'), nc_init, np.ones(ktot)/10800)
+    add_nc_var('nudgefac', ('z'), nc_init, np.ones(ktot)/10800)
 
     """
     Time varying forcings
