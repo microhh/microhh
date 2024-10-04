@@ -421,7 +421,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
     mp.at("v")->visc = visc;
     mp.at("w")->visc = visc;
 
-    init_diagnostic_field("p", "Pressure", "Pa", group_name, gd.sloc);
+    init_diagnostic_field("p", "Perturbation pressure divided by density", "m2 s-2", group_name, gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
     // before the init phase, where they are initialized in Fields::init()
