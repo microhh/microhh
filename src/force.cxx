@@ -527,6 +527,13 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
     {
         // Get profile with nudging factor as function of height
         group_nc.get_variable(nudge_factor, "nudgefac", {0}, {gd.ktot});
+        TF minnudge = 1e-6;
+        TF max = *std::max_element(nudge_factor.begin(), nudge_factor.end());
+        if (max < minnudge)
+        {
+            std::string msg = "The maximum value of the nudging factor is smaller than the minimum allowed value of " + std::to_string(minnudge);
+            throw std::runtime_error(msg);
+        }
         std::rotate(nudge_factor.rbegin(), nudge_factor.rbegin() + gd.kstart, nudge_factor.rend());
 
         // check whether the fields in the list exist in the prognostic fields
