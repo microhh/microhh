@@ -41,11 +41,13 @@ def create_case_input(
 
     # Link required files (if not present)
     if use_htessel:
-        mht.copy_lsmfiles(link=linknotcopy)
+        mht.copy_lsmfiles(srcdir='../../misc/', link=linknotcopy)
+
     if use_rrtmgp:
-        mht.copy_radfiles(gpt=gpt_set,link=linknotcopy)
+        mht.copy_radfiles(srcdir='../../rte-rrtmgp-cpp/rrtmgp-data/', gpt=gpt_set, link=linknotcopy)
+
     if use_aerosols:
-        mht.copy_aerosolfiles(link=linknotcopy)
+        mht.copy_aerosolfiles(srcdir='../../rte-rrtmgp-cpp/data/', link=linknotcopy)
 
 
     heterogeneous_sfc = not use_homogeneous_z0 or not use_homogeneous_ls
