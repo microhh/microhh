@@ -234,7 +234,7 @@ void Timeloop<TF>::set_time_step()
 
     if (adaptivestep)
     {
-        if (idt == 0)
+        if (idt == 0 || idtlim == 0)
         {
             std::string msg = "Required time step less than precision " + std::to_string(1./ifactor) + " of the time stepping";
             throw std::runtime_error(msg);
