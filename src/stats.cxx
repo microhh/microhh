@@ -745,9 +745,6 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
-    // Write message in case stats is triggered.
-    master.print_message("Saving statistics for time %f\n", time);
-
     // Finalize the total tendencies
     if (do_tendency())
     {
