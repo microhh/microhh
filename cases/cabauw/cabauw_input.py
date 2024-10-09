@@ -8,30 +8,6 @@ import os, shutil
 import microhh_tools as mht
 
 
-def link(f1, f2):
-    """
-    Create symbolic link from `f1` to `f2`, if `f2` does not yet exist.
-    """
-    if os.path.islink(f2):
-        os.remove(f2)
-    if os.path.exists(f1):
-        os.symlink(f1, f2)
-    else:
-        raise Exception('Source file {} does not exist!'.format(f1))
-
-
-def copy(f1, f2):
-    """
-    Copy `f1` to `f2`, if `f2` does not yet exist.
-    """
-    if os.path.exists(f2):
-        os.remove(f2)
-    if os.path.exists(f1):
-        shutil.copy(f1, f2)
-    else:
-        raise Exception('Source file {} does not exist!'.format(f1))
-
-
 def check_time_bounds(ds, start_date, end_date):
     """
     Check if start and end dates are withing Dataset bounds.
@@ -43,7 +19,7 @@ def check_time_bounds(ds, start_date, end_date):
         raise Exception(f'Start or end date is out-of-bounds. Limits are {ds.time[0].values} to {ds.time[-1].values}')
 
 
-copy_or_link = copy
+linknotcopy = False
 
 def create_case_input(
         start_date,
@@ -65,22 +41,14 @@ def create_case_input(
 
     # Link required files (if not present)
     if use_htessel:
-        copy_or_link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
-    if use_rrtmgp:
-        if gpt_set == '256_224':
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g256.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g224.nc', 'coefficients_sw.nc')
-        elif gpt_set == '128_112':
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g128.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g112.nc', 'coefficients_sw.nc')
-        else:
-            raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
+        mht.copy_lsmfiles(srcdir='../../misc/', link=linknotcopy)
 
-        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc')
-        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc')
+    if use_rrtmgp:
+        mht.copy_radfiles(srcdir='../../rte-rrtmgp-cpp/rrtmgp-data/', gpt=gpt_set, link=linknotcopy)
 
     if use_aerosols:
-        copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
+        mht.copy_aerosolfiles(srcdir='../../rte-rrtmgp-cpp/data/', link=linknotcopy)
+
 
     heterogeneous_sfc = not use_homogeneous_z0 or not use_homogeneous_ls
 
