@@ -2480,7 +2480,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         }
 
         if (do_column)
-            column.calc_column(name, array.fld.data(), no_offset);
+            column.calc_column(name, array.fld_g.data(), no_offset);
     };
 
     if (sw_longwave)
