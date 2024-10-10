@@ -1308,8 +1308,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
 
-        stats.add_prof("sw_heat_dir_rt"    , "Raytraced heating rates from direct radiation"   , "K s-2", "z", group_name);
-        stats.add_prof("sw_heat_dif_rt"    , "Raytraced heating rates from diffuse radiation"  , "K s-2", "z", group_name);
+        stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
+        stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
 
         if (sw_clear_sky_stats)
         {
@@ -1325,6 +1325,9 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         column.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
         column.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         column.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+
+        column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
+        column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
 
         if (sw_clear_sky_stats)
         {

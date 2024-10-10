@@ -158,6 +158,9 @@ def create_case_input(
     if heterogeneous_sfc:
         ini['stats']['xymasklist'] = ['wet_mask', 'dry_mask']
 
+    ini['column']['coordinates[x]'] = xsize/2
+    ini['column']['coordinates[y]'] = ysize/2
+
     ini.save('cabauw.ini', allow_overwrite=True)
 
     """
