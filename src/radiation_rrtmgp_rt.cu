@@ -2494,7 +2494,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
 
-        if (swtimedep_background)
+        if (do_stats && swtimedep_background)
         {
             stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
             stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());
