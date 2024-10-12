@@ -3,6 +3,8 @@
  * Copyright (c) 2011-2024 Chiel van Heerwaarden
  * Copyright (c) 2011-2024 Thijs Heus
  * Copyright (c) 2014-2024 Bart van Stratum
+ * Copyright (c) 2020-2024 Menno Veerman
+ * Copyright (c) 2022-2024 Mirjam Tijhuis
  *
  * This file is part of MicroHH
  *
