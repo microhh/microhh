@@ -572,7 +572,7 @@ std::vector<std::string> Cross<TF>::get_enabled_variables(const std::vector<std:
 
 template<typename TF>
 int Cross<TF>::cross_simple(
-        TF* restrict data, TF restrict offset, const std::string& name, const int iotime, const std::array<int,3>& loc)
+        TF* restrict data, TF restrict offset, const std::string& name, const int iotime, const std::array<int, 3>& loc)
 {
     auto& gd = grid.get_grid_data();
 
@@ -581,8 +581,10 @@ int Cross<TF>::cross_simple(
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
+
     char locstr[4];
-    std::sprintf(locstr,"%.1u%.1u%.1u",loc[0],loc[1],loc[2]);
+    std::snprintf(locstr, 4, "%1d%1d%1d", loc[0], loc[1], loc[2]);
+
     // Loop over the index arrays to save all xz cross sections.
     if (loc == gd.vloc)
     {
