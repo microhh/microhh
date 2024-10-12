@@ -1,6 +1,12 @@
 Contributors
 ------------
 
+The core development team is:
+
+ * Chiel van Heerwaarden, Wageningen University & Research
+ * Thijs Heus, Cleveland State University
+ * Bart van Stratum, Wageningen University & Research
+
 We are very grateful to the following major contributors to MicroHH:
 
  * Anja Ražnjević, Wageningen University & Research, development point source module
@@ -21,7 +27,8 @@ We also thank the following contributors for their work in various places in the
  * Tristan Roelofs, Wageningen University & Research
  * Wouter Mol, Wageningen University & Research
 
-Lastly, we would like to thank the following people from the Netherlands eScience Center (NLeSC) for their contributions to MicroHH through the RTE+RRTMGP ESiWACE project:    
+Lastly, we would like to thank the following people from the Netherlands eScience Center (NLeSC) for their contributions to MicroHH through the RTE+RRTMGP ESiWACE project:
+
  * Alessio Sclocco
  * Ben van Werkenhoven
  * Gijs van den Oord
