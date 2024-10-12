@@ -1,35 +1,49 @@
-import sys
+import glob
+import os
 
-if (len(sys.argv) == 2):
-    filename = sys.argv[1]
-else:
-    raise RuntimeError("Illegal number of arguments")
+files = glob.glob('../main/*')
+files += glob.glob('../src/*')
+files += glob.glob('../include/*')
+files += glob.glob('../python/*')
+files += ['../CMakeLists.txt']
 
-fileread = open(filename, "r")
-lines = fileread.readlines()
-fileread.close()
+for filename in files:
 
-# Find the line number where the copyright info starts.
-nline = 0
-for n in lines:
-    # Store the commenting style, to make sure C++, Python and Cmake work.
-    npos = n.find('Copyright')
-    if (npos != -1):
-        left_of_copyright = n[0:npos]
-        break
-    nline += 1
+    if not os.path.isdir(filename):
 
-# Delete the three lines of this header.
-del(lines[nline:nline + 3])
+        fileread = open(filename, "r")
+        lines = fileread.readlines()
+        fileread.close()
 
-newlines = ['{0}Copyright (c) 2011-2023 Chiel van Heerwaarden\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2011-2023 Thijs Heus\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2014-2023 Bart van Stratum\n'.format(left_of_copyright)]
+        # Find the line number where the copyright info starts.
+        found_copyright = False
 
-# Insert the new header.
-lines[nline:nline] = newlines[:]
+        nline = 0
+        for n in lines:
+            # Store the commenting style, to make sure C++, Python and Cmake work.
+            npos = n.find('Copyright')
+            if (npos != -1):
+                found_copyright = True
+                left_of_copyright = n[0:npos]
+                break
+            nline += 1
 
-# Save the output.
-filewrite = open(filename, "w")
-filewrite.writelines(lines)
-filewrite.close()
+        if found_copyright:
+
+            # Delete the three lines of this header.
+            del(lines[nline:nline + 3])
+
+            newlines = [f'{left_of_copyright}Copyright (c) 2011-2024 Chiel van Heerwaarden\n',
+                        f'{left_of_copyright}Copyright (c) 2011-2024 Thijs Heus\n',
+                        f'{left_of_copyright}Copyright (c) 2014-2024 Bart van Stratum\n']
+
+            # Insert the new header.
+            lines[nline:nline] = newlines[:]
+
+            # Save the output.
+            filewrite = open(filename, "w")
+            filewrite.writelines(lines)
+            filewrite.close()
+
+        else:
+            print(f'WARNING: file {filename} does not have a copyright header, skipping...')
