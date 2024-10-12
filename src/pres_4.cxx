@@ -5,7 +5,7 @@
  * Copyright (c) 2014-2024 Bart van Stratum
  *
  * The heptadiagonal matrix solver is
- * Copyright (c) 2014 Juan Pedro Mellado
+ * Copyright (c) 2014-2014 Juan Pedro Mellado
  *
  * This file is part of MicroHH
  *

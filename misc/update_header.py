@@ -1,5 +1,17 @@
 import glob
 import os
+import re
+
+new_year = 2024
+
+# These names always get their end year ++'ed.
+active_developers = [
+        'Chiel van Heerwaarden',
+        'Thijs Heus',
+        'Bart van Stratum',
+        'Menno Veerman',
+        'Mirjam Tijhuis',
+        'Steven van der Linden']
 
 files = glob.glob('../main/*')
 files += glob.glob('../src/*')
@@ -11,39 +23,49 @@ for filename in files:
 
     if not os.path.isdir(filename):
 
-        fileread = open(filename, "r")
-        lines = fileread.readlines()
-        fileread.close()
+        with open(filename, 'r') as f:
+            lines = f.readlines()
 
-        # Find the line number where the copyright info starts.
-        found_copyright = False
+        # Find the starting point of the copyright lines,
+        # and gather the copyright statements.
+        lines_in = []
+        start_line = None
 
-        nline = 0
-        for n in lines:
-            # Store the commenting style, to make sure C++, Python and Cmake work.
-            npos = n.find('Copyright')
-            if (npos != -1):
-                found_copyright = True
-                left_of_copyright = n[0:npos]
-                break
-            nline += 1
+        for n,line in enumerate(lines):
 
-        if found_copyright:
+            if 'Copyright' in line:
+                lines_in.append(line)
 
-            # Delete the three lines of this header.
-            del(lines[nline:nline + 3])
+                if start_line is None:
+                    start_line = n
 
-            newlines = [f'{left_of_copyright}Copyright (c) 2011-2024 Chiel van Heerwaarden\n',
-                        f'{left_of_copyright}Copyright (c) 2011-2024 Thijs Heus\n',
-                        f'{left_of_copyright}Copyright (c) 2014-2024 Bart van Stratum\n']
+        n_lines = len(lines_in)
+
+        if n_lines > 0:
+
+            # Delete old copyright lines.
+            del(lines[start_line : start_line + n_lines])
+
+            lines_out = []
+            for line in lines_in:
+                # Check if active contributer:
+                match = re.search(r'\d{4}-\d{4} (.+)$', line)
+                if match:
+                    name = match.group(1)
+                else:
+                    raise Exception(f'Cant extract name from {line} in {filename}')
+
+                if name in active_developers:
+                    lines_out.append( re.sub(r'(\d{4})-(\d{4})', rf'\1-{new_year}', line) )
+                else:
+                    lines_out.append( line )
 
             # Insert the new header.
-            lines[nline:nline] = newlines[:]
+            lines[start_line:start_line] = lines_out
 
             # Save the output.
-            filewrite = open(filename, "w")
-            filewrite.writelines(lines)
-            filewrite.close()
+            with open(filename, 'w') as f:
+                f.writelines(lines)
 
         else:
             print(f'WARNING: file {filename} does not have a copyright header, skipping...')
