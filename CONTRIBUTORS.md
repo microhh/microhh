@@ -4,13 +4,14 @@ Contributors
 We are very grateful to the following major contributors to MicroHH:
 
  * Anja Ražnjević, Wageningen University & Research, development point source module
+ * Ben van Werkhoven, Netherlands eScience Center (NLeSC): implementation Kernel Launcher and Kernel Tuner.
  * Elynn Wu, UC San Diego: implementation GCSS Radiation
  * Jacob Adamczyk, Cleveland State University, porting NSW6 microphysics to CUDA
  * Jeremy Gibbs, NOAA National Severe Storms Laboratory: implementation slope flows
  * Menno Veerman, Wageningen University & Research: porting RTE+RRTMGP to CUDA + development CUDA ray tracer
  * Mirjam Tijhuis, Wageningen University & Research: coupling aerosols to RTE+RRTMGP
  * Steven van der Linden, Delft University of Technology: Deardorff Turbulence Kinetic Energy model
- * Stijn Heldens & Ben van Werkhoven, Netherlands eScience Center (NLeSC): implementation Kernel Launcher and Kernel Tuner.
+ * Stijn Heldens, Netherlands eScience Center (NLeSC): implementation Kernel Launcher and Kernel Tuner.
 
 We also thank the following contributors for their work in various places in the code, or for testing and reporting issues:
 
