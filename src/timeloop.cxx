@@ -449,7 +449,7 @@ void Timeloop<TF>::save(int starttime, unsigned long itime_in, unsigned long idt
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "time.%07d", starttime);
+        std::snprintf(filename, 256, "time.%07d", starttime);
 
         master.print_message("Saving \"%s\" ... ", filename);
 
@@ -487,7 +487,7 @@ void Timeloop<TF>::load(int starttime)
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "time.%07d", starttime);
+        std::snprintf(filename, 256, "time.%07d", starttime);
 
         master.print_message("Loading \"%s\" ... ", filename);
 
