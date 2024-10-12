@@ -79,7 +79,8 @@ Timeloop<TF>::Timeloop(
         // NOTE: the following fields are NOT set by `strptime()`, which can lead to undefined behaviour.
         tm_utc_start.tm_isdst = 0;      // no daylight saving offset.
         tm_utc_start.tm_gmtoff = 0;     // no offset from UTC.
-        tm_utc_start.tm_zone = "utc";   // time zone = UTC.
+        char utc_string[] = "utc";
+        tm_utc_start.tm_zone = utc_string; // time zone = UTC.
     }
 
     if (sim_mode == Sim_mode::Post)
