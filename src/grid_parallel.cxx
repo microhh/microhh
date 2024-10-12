@@ -74,7 +74,7 @@ void Grid<TF>::save_grid()
     auto& md = master.get_MPI_data();
     int nerror = 0;
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "grid", 0);
+    std::snprintf(filename, 256, "%s.%07d", "grid", 0);
     master.print_message("Saving \"%s\" ... ", filename);
 
     MPI_File fh;
@@ -147,7 +147,7 @@ void Grid<TF>::load_grid()
 
     // LOAD THE GRID
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "grid", 0);
+    std::snprintf(filename, 256, "%s.%07d", "grid", 0);
     if (master.get_mpiid() == 0)
         std::printf("Loading \"%s\" ... ", filename);
 
