@@ -1,8 +1,9 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
+ * Copyright (c) 2022-2022 Stijn Heldens
  *
  * This file is part of MicroHH
  *

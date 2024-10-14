@@ -1,8 +1,10 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
+ * Copyright (c) 2020-2024 Menno Veerman
+ * Copyright (c) 2022-2024 Mirjam Tijhuis
  *
  * This file is part of MicroHH
  *
@@ -2480,7 +2482,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         }
 
         if (do_column)
-            column.calc_column(name, array.fld.data(), no_offset);
+            column.calc_column(name, array.fld_g.data(), no_offset);
     };
 
     if (sw_longwave)
@@ -2494,7 +2496,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
             save_stats_and_cross(*fields.sd.at("lw_flux_dn_clear"), "lw_flux_dn_clear", gd.wloc);
         }
 
-        if (swtimedep_background)
+        if (do_stats && swtimedep_background)
         {
             stats.set_prof_background("lw_flux_up_ref", lw_flux_up_col.v());
             stats.set_prof_background("lw_flux_dn_ref", lw_flux_dn_col.v());

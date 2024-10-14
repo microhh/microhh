@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -448,12 +448,6 @@ void Model<TF>::exec()
                     const int iotime = timeloop->get_iotime();
                     const double dt = timeloop->get_dt();
 
-                    // Write cross and dump messages here, as they don't have an `exec()` function...
-                    if (cross->do_cross(itime))
-                        master.print_message("Saving cross-sections for time %f\n", time);
-                    if (dump->do_dump(itime, idt))
-                        master.print_message("Saving field dumps for time %f\n", time);
-
                     // NOTE: `radiation->exec_all_stats()` needs to stay before `calculate_statistics()`...
                     if (column->do_column(itime) && !(stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt)))
                     {
@@ -531,11 +525,15 @@ void Model<TF>::exec()
                         #endif
 
                         // Save data to disk.
+
+                        // Save the thermo before the split of the thread, to avoid overwrite during stats
+                        // leading to restart failures.
+                        thermo->save(iotime);
+
                         #pragma omp task default(shared)
                         {
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
-                            thermo  ->save(iotime);
                             boundary->save(iotime, *thermo);
                         }
                     }
@@ -629,6 +627,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Do the statistics.
     if (stats->do_statistics(itime))
     {
+        master.print_message("Saving statistics for time %f\n", time);
+
         // Calculate statistics
         if (!stats->do_tendency())
             calc_masks();
@@ -646,6 +646,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Save the selected cross sections to disk, cross sections are handled on CPU.
     if (cross->do_cross(itime))
     {
+        master.print_message("Saving cross-sections for time %f\n", time);
+
         fields   ->exec_cross(*cross, iotime);
         thermo   ->exec_cross(*cross, iotime);
         microphys->exec_cross(*cross, iotime);
@@ -656,6 +658,8 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     // Save the 3d dumps to disk.
     if (dump->do_dump(itime, idt))
     {
+        master.print_message("Saving field dumps for time %f\n", time);
+
         fields   ->exec_dump(*dump, iotime);
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);

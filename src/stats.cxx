@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -287,11 +287,18 @@ namespace
         }
     }
 
+
     template<typename TF>
     void calc_mean_2d(
-            TF& out, const TF* const restrict fld,
-            const int istart, const int iend, const int jstart, const int jend,
-            const int icells, const int itot, const int jtot)
+            TF& out,
+            const TF* const restrict fld,
+            const unsigned int* const mask_bot,
+            const int nmask_bot,
+            const int flag,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells,
+            const int itot, const int jtot)
     {
         double tmp = 0.;
 
@@ -300,17 +307,19 @@ namespace
             for (int i=istart; i<iend; ++i)
             {
                 const int ij  = i + j*icells;
-                tmp += fld[ij];
+                tmp += in_mask<double>(mask_bot[ij], flag) * fld[ij];
             }
 
-        out = tmp / (itot*jtot);
+        out = tmp / nmask_bot;
     }
 
 
     template<typename TF>
     void calc_mean_projected_mask(
-            TF* const restrict prof, const TF* const restrict fld,
-            const unsigned int* const mask_bot, const int nmask_bot,
+            TF* const restrict prof,
+            const TF* const restrict fld,
+            const unsigned int* const mask_bot,
+            const int nmask_bot,
             const int flag,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -735,9 +744,6 @@ void Stats<TF>::exec(const int iteration, const double time, const unsigned long
 
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
-
-    // Write message in case stats is triggered.
-    master.print_message("Saving statistics for time %f\n", time);
 
     // Finalize the total tendencies
     if (do_tendency())
@@ -1324,15 +1330,28 @@ void Stats<TF>::set_mask_thres(
 
     if (mode == Stats_mask_type::Plus)
         calc_mask_thres<TF, Stats_mask_type::Plus>(
-                mfield.data(), mfield_bot.data(), flag, flagh,
-                fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
+                mfield.data(),
+                mfield_bot.data(),
+                flag,
+                flagh,
+                fld.fld.data(),
+                fldh.fld.data(),
+                fldh.fld_bot.data(),
+                threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells, gd.kcells);
+
     else if (mode == Stats_mask_type::Min)
         calc_mask_thres<TF, Stats_mask_type::Min>(
-                mfield.data(), mfield_bot.data(), flag, flagh,
-                fld.fld.data(), fldh.fld.data(), fldh.fld_bot.data(), threshold,
+                mfield.data(),
+                mfield_bot.data(),
+                flag,
+                flagh,
+                fld.fld.data(),
+                fldh.fld.data(),
+                fldh.fld_bot.data(),
+                threshold,
                 gd.istart, gd.jstart, gd.kstart,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.ijcells, gd.kcells);
@@ -1818,7 +1837,9 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 
 template<typename TF>
 void Stats<TF>::calc_stats_2d(
-        const std::string& varname, const std::vector<TF>& fld, const TF offset)
+        const std::string& varname,
+        const std::vector<TF>& fld,
+        const TF offset)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1826,17 +1847,32 @@ void Stats<TF>::calc_stats_2d(
     {
         for (auto& m : masks)
         {
-            calc_mean_2d(m.second.tseries.at(varname).data, fld.data(),
-                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells, gd.itot, gd.jtot);
-            master.sum(&m.second.tseries.at(varname).data, 1);
-            m.second.tseries.at(varname).data += offset;
+            if (m.second.nmask_bot > 0)
+            {
+                calc_mean_2d(
+                        m.second.tseries.at(varname).data,
+                        fld.data(),
+                        mfield_bot.data(),
+                        m.second.nmask_bot,
+                        m.second.flag,
+                        gd.istart, gd.iend,
+                        gd.jstart, gd.jend,
+                        gd.icells, gd.itot, gd.jtot);
+
+                master.sum(&m.second.tseries.at(varname).data, 1);
+                m.second.tseries.at(varname).data += offset;
+            }
+            else
+                m.second.tseries.at(varname).data = netcdf_fp_fillvalue<TF>();
         }
     }
 }
 
 template<typename TF>
 void Stats<TF>::calc_stats_soil(
-        const std::string varname, const std::vector<TF>& fld, const TF offset)
+        const std::string varname,
+        const std::vector<TF>& fld,
+        const TF offset)
 {
     /*
        Calculate soil statistics, using the surface mask
@@ -1852,8 +1888,10 @@ void Stats<TF>::calc_stats_soil(
             if (m.second.nmask_bot > 0)
             {
                 calc_mean_projected_mask(
-                        m.second.soil_profs.at(varname).data.data(), fld.data(),
-                        mfield_bot.data(), m.second.nmask_bot,
+                        m.second.soil_profs.at(varname).data.data(),
+                        fld.data(),
+                        mfield_bot.data(),
+                        m.second.nmask_bot,
                         m.second.flag,
                         agd.istart, agd.iend,
                         agd.jstart, agd.jend,
