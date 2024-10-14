@@ -175,14 +175,14 @@ struct DefaultTilingStrategy: TilingStrategy<DynBlockSize> {
 struct Grid_layout
 {
     const int istart;
-    const int jstart;
-    const int kstart;
     const int iend;
+    const int jstart;
     const int jend;
+    const int kstart;
     const int kend;
-    const int ii;
-    const int jj;
-    const int kk;
+    const int istride;
+    const int jstride;
+    const int kstride;
 
 #if !CUDA_RUNTIME_COMPILATION
     /**
@@ -194,14 +194,14 @@ struct Grid_layout
     {
         return {
             .istart = gd.istart,
-            .jstart = gd.jstart,
-            .kstart = gd.kstart,
             .iend = gd.iend,
+            .jstart = gd.jstart,
             .jend = gd.jend,
+            .kstart = gd.kstart,
             .kend = gd.kend,
-            .ii = 1,
-            .jj = gd.icells,
-            .kk = gd.ijcells
+            .istride = 1,
+            .jstride = gd.icells,
+            .kstride = gd.ijcells
         };
     }
 #endif
@@ -209,21 +209,21 @@ struct Grid_layout
     CUDA_HOST_DEVICE
     int operator()(int i, int j, int k) const
     {
-        return ii * i + jj * j + kk * k;
+        return i*istride + j*jstride + k*kstride;
     }
 
     CUDA_HOST_DEVICE
     bool operator==(const Grid_layout& that) const
     {
         return that.istart == istart &&
-                that.jstart == jstart &&
-                that.kstart == kstart &&
-                that.iend == iend &&
-                that.jend == jend &&
-                that.kend == kend &&
-                that.ii == ii &&
-                that.jj == jj &&
-                that.kk == kk;
+               that.iend == iend &&
+               that.jstart == jstart &&
+               that.jend == jend &&
+               that.kstart == kstart &&
+               that.kend == kend &&
+               that.istride == istride &&
+               that.jstride == jstride &&
+               that.kstride == kstride;
     }
 
     CUDA_HOST_DEVICE

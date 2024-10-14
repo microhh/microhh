@@ -35,7 +35,7 @@ class Dump
         Dump(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Dump();
 
-        void init(double);
+        void init();
         void create();
 
         unsigned long get_time_limit(unsigned long);

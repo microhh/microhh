@@ -84,6 +84,15 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     namespace dk = Diff_kernels_g;
     auto& gd = grid.get_grid_data();
 
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
@@ -109,8 +118,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         auto& dvdz_g  = boundary.get_dvdz_g();
 
         // Calculate total strain rate
-        launch_grid_kernel<diff_les::calc_strain2_g<TF, true>>(
-            gd,
+        launch_grid_kernel<Diff_les_kernels::calc_strain2_g<TF, true>>(
+            grid_layout,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -122,7 +131,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
             // Start with retrieving the stability information
-            diff_smag2::evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
+            Diff_smag2_kernels::evisc_neutral_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 z0m_g, gd.z_g, mlen_g,
                 gd.istart, gd.jstart, gd.kstart,
@@ -142,8 +151,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
-                gd,
+            launch_grid_kernel<Diff_smag2_kernels::evisc_g<TF, true>>(
+                grid_layout,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, dbdz_g,
                 mlen_g, z0m_g, gd.z_g,
@@ -158,8 +167,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
     else
     {
         // Calculate total strain rate
-        launch_grid_kernel<diff_les::calc_strain2_g<TF, false>>(
-            gd,
+        launch_grid_kernel<Diff_les_kernels::calc_strain2_g<TF, false>>(
+            grid_layout,
             fields.sd.at("evisc")->fld_g.view(),
             fields.mp.at("u")->fld_g,
             fields.mp.at("v")->fld_g,
@@ -171,7 +180,7 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
         // start with retrieving the stability information
         if (thermo.get_switch() == Thermo_type::Disabled)
         {
-            diff_smag2::evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
+            Diff_smag2_kernels::evisc_neutral_vandriest_g<TF><<<gridGPU, blockGPU>>>(
                 fields.sd.at("evisc")->fld_g,
                 fields.mp.at("u")->fld_g,
                 fields.mp.at("v")->fld_g,
@@ -194,8 +203,8 @@ void Diff_smag2<TF>::exec_viscosity(Stats<TF>&, Thermo<TF>& thermo)
             // Calculate eddy viscosity
             TF tPri = 1./tPr;
 
-            launch_grid_kernel<diff_smag2::evisc_g<TF, true>>(
-                gd,
+            launch_grid_kernel<Diff_smag2_kernels::evisc_g<TF, true>>(
+                grid_layout,
                 fields.sd.at("evisc")->fld_g.view(),
                 tmp1->fld_g, nullptr,
                 mlen_g, nullptr, gd.z_g,
@@ -223,6 +232,15 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
+    // Grid layout struct for cuda launcher.
+    Grid_layout grid_layout = {
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.istride,
+            gd.jstride,
+            gd.kstride};
+
     const TF dxidxi = TF(1)/(gd.dx * gd.dx);
     const TF dyidyi = TF(1)/(gd.dy * gd.dy);
     const TF tPri = TF(1)/tPr;
@@ -230,8 +248,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Do not use surface model.
     if (boundary.get_switch() == "default")
     {
-        launch_grid_kernel<diff_les::diff_uvw_g<TF, false>>(
-                gd,
+        launch_grid_kernel<Diff_les_kernels::diff_uvw_g<TF, false>>(
+                grid_layout,
                 fields.mt.at("u")->fld_g.view(),
                 fields.mt.at("v")->fld_g.view(),
                 fields.mt.at("w")->fld_g.view(),
@@ -253,8 +271,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            launch_grid_kernel<diff_les::diff_c_g<TF, false>>(
-                    gd,
+            launch_grid_kernel<Diff_les_kernels::diff_c_g<TF, false>>(
+                    grid_layout,
                     it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,
@@ -271,8 +289,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
     // Use surface model.
     else
     {
-        launch_grid_kernel<diff_les::diff_uvw_g<TF, true>>(
-                gd,
+        launch_grid_kernel<Diff_les_kernels::diff_uvw_g<TF, true>>(
+                grid_layout,
                 fields.mt.at("u")->fld_g.view(),
                 fields.mt.at("v")->fld_g.view(),
                 fields.mt.at("w")->fld_g.view(),
@@ -294,8 +312,8 @@ void Diff_smag2<TF>::exec(Stats<TF>& stats)
 
         for (auto it : fields.st)
         {
-            launch_grid_kernel<diff_les::diff_c_g<TF, true>>(
-                    gd,
+            launch_grid_kernel<Diff_les_kernels::diff_c_g<TF, true>>(
+                    grid_layout,
                     it.second->fld_g.view(),
                     fields.sp.at(it.first)->fld_g,
                     fields.sd.at("evisc")->fld_g,

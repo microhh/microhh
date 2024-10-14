@@ -27,7 +27,7 @@
 #include "fast_math.h"
 #include "monin_obukhov.h"
 
-namespace diff_tke2
+namespace Diff_tke2_kernels
 {
     namespace most = Monin_obukhov;
     namespace fm = Fast_math;
@@ -52,8 +52,8 @@ namespace diff_tke2
                 const TF* const __restrict__ mlen0,
                 const TF cn, const TF cm)
         {
-            const int ij  = i + j*gd.jj;
-            const int ijk = i + j*gd.jj + k*gd.kk;
+            const int ij  = i + j*gd.jstride;
+            const int ijk = i + j*gd.jstride + k*gd.kstride;
 
             // Variables for the wall damping and length scales
             const TF n_mason = TF(2.);
@@ -109,8 +109,8 @@ namespace diff_tke2
                 const TF* __restrict__ mlen0,
                 const TF cn, const TF ch1, const TF ch2)
         {
-            const int ij  = i + j*gd.jj;
-            const int ijk = i + j*gd.jj + k*gd.kk;
+            const int ij  = i + j*gd.jstride;
+            const int ijk = i + j*gd.jstride + k*gd.kstride;
 
             // Variables for the wall damping and length scales
             const TF n_mason = TF(2.);
@@ -165,8 +165,8 @@ namespace diff_tke2
                 const TF* const __restrict__ mlen0,
                 const TF cn, const TF ce1, const TF ce2)
         {
-            const int ij  = i + j*gd.jj;
-            const int ijk = i + j*gd.jj + k*gd.kk;
+            const int ij  = i + j*gd.jstride;
+            const int ijk = i + j*gd.jstride + k*gd.kstride;
 
             const TF n_mason = TF(2.);
 
@@ -215,8 +215,8 @@ namespace diff_tke2
                 const TF* const __restrict__ N2,
                 const TF* const __restrict__ bgradbot)
         {
-            const int ijk = i + j*gd.jj + k*gd.kk;
-            const int ij  = i + j*gd.jj;
+            const int ijk = i + j*gd.jstride + k*gd.kstride;
+            const int ij  = i + j*gd.jstride;
 
             // Calculate buoyancy destruction of SGS TKE based on Deardorff (1980)
             if (level.distance_to_start() == 0)
@@ -243,7 +243,7 @@ namespace diff_tke2
                 const TF* const __restrict__ evisc,
                 const TF* const __restrict__ strain2)
         {
-            const int ijk = i + j*gd.jj + k*gd.kk;
+            const int ijk = i + j*gd.jstride + k*gd.kstride;
 
             // Calculate shear production of SGS TKE based on Deardorff (1980)
             // NOTE: `strain2` is defined/calculated as:
