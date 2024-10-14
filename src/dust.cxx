@@ -30,6 +30,7 @@
 #include "dust.h"
 #include "constants.h"
 #include "timeloop.h"
+#include "constants.h"
 
 namespace
 {
@@ -89,6 +90,9 @@ Dust<TF>::~Dust()
 template<typename TF>
 void Dust<TF>::create(Timeloop<TF>& timeloop)
 {
+    if (!sw_dust)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     // Find minimum vertical grid spacing.
@@ -110,6 +114,9 @@ void Dust<TF>::create(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Dust<TF>::get_time_limit()
 {
+    if (!sw_dust)
+        return Constants::ulhuge;
+
     return idt_max;
 }
 
