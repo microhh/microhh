@@ -229,7 +229,7 @@ void Boundary_surface_bulk<TF>::load(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -270,7 +270,7 @@ void Boundary_surface_bulk<TF>::save(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Saving \"%s\" ... ", filename);
 
         const int kslice = 0;

@@ -1162,7 +1162,7 @@ void Thermo_moist<TF>::save(const int iotime)
         // Save the base state to disk
         FILE *pFile;
         char filename[256];
-        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
         pFile = fopen(filename, "wbx");
         master.print_message("Saving \"%s\" ... ", filename);
 
@@ -1186,7 +1186,7 @@ void Thermo_moist<TF>::save(const int iotime)
             TF* const restrict field, const std::string& name)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
         TF no_offset = 0.;
         
@@ -1222,7 +1222,7 @@ void Thermo_moist<TF>::load(const int iotime)
     if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", "thermo_basestate", iotime);
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
 
         std::printf("Loading \"%s\" ... ", filename);
 
@@ -1251,7 +1251,7 @@ void Thermo_moist<TF>::load(const int iotime)
             TF* const restrict field, const std::string& name)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
