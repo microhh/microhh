@@ -101,8 +101,18 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         i = std::min(i, gd.itot-1);
         j = std::min(j, gd.jtot-1);
 
-        columns.emplace_back(Column_struct{});
-        columns.back().coord = {i, j};
+        bool is_duplicate = false;
+        for (auto& col : columns)
+            if (col.coord[0] == i && col.coord[1] == j)
+            {
+                is_duplicate = true;
+                master.print_warning("Column #" + std::to_string(n) + " is a duplicate!");
+            }
+        if (is_duplicate == false)
+        {
+            columns.emplace_back(Column_struct{});
+            columns.back().coord = {i, j};
+        }
     }
 
     // Create a NetCDF file for the statistics.
@@ -113,7 +123,7 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
                  << std::setfill('0') << std::setw(5) << col.coord[0] << "."
                  << std::setfill('0') << std::setw(5) << col.coord[1] << "."
                  << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
-
+        std::cout << "Creating column file: " << filename.str() << std::endl;
         // Create new NetCDF file.
         // 1. Find the mpiid of the column.
         int mpiid_column = 0;
