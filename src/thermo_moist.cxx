@@ -865,7 +865,7 @@ namespace
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
             }
     }
-    
+
     template<typename TF>
     void calc_radiation_fields(
             TF* restrict T, TF* restrict T_h, TF* restrict vmr_h2o, TF* restrict rh,
@@ -944,7 +944,7 @@ namespace
 
     template<typename TF>
     void calc_radiation_columns(
-            TF* const restrict T, TF* const restrict T_h, 
+            TF* const restrict T, TF* const restrict T_h,
             TF* const restrict vmr_h2o, TF* const restrict rh,
             TF* const restrict clwp, TF* const restrict ciwp, TF* const restrict T_sfc,
             const TF* const restrict thl, const TF* const restrict qt, const TF* const restrict thl_bot,
@@ -1123,9 +1123,6 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     // Flag the options that are not read in init mode.
     if (sim_mode == Sim_mode::Init)
         inputin.flag_as_used("thermo", "pbot", "");
-    // if (sim_mode == Sim_mode::Run)
-    
-
 }
 
 template<typename TF>
@@ -1174,8 +1171,21 @@ void Thermo_moist<TF>::save(const int iotime)
         else
             master.print_message("OK\n");
 
+        fwrite(&bs.thl0 [gd.kstart], sizeof(TF), gd.ktot, pFile);
+        fwrite(&bs.qt0  [gd.kstart], sizeof(TF), gd.ktot, pFile);
+
         fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
         fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.pref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.prefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.exnref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.exnrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.rhoref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.rhorefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
         fclose(pFile);
     }
 
@@ -1189,7 +1199,7 @@ void Thermo_moist<TF>::save(const int iotime)
         std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
         TF no_offset = 0.;
-        
+
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
                 field, no_offset, tmp1->fld.data(), filename, kslice))
@@ -1236,10 +1246,28 @@ void Thermo_moist<TF>::load(const int iotime)
         else
         {
             master.print_message("OK\n");
-            if (fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
-                ++nerror;
-            if (fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot + 1)
-                ++nerror;
+
+            auto read = [&](std::vector<TF>& prof, const int size)
+            {
+                if (fread(&prof[gd.kstart], sizeof(TF), size, pFile) != (unsigned)size )
+                    ++nerror;
+            };
+
+            read(bs.thl0, gd.ktot);
+            read(bs.qt0, gd.ktot);
+
+            read(bs.thvref, gd.ktot);
+            read(bs.thvrefh, gd.ktot+1);
+
+            read(bs.pref, gd.ktot);
+            read(bs.prefh, gd.ktot+1);
+
+            read(bs.exnref, gd.ktot);
+            read(bs.exnrefh, gd.ktot+1);
+
+            read(bs.rhoref, gd.ktot);
+            read(bs.rhorefh, gd.ktot+1);
+
             fclose(pFile);
         }
     }
@@ -1283,12 +1311,17 @@ void Thermo_moist<TF>::load(const int iotime)
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc)
+void Thermo_moist<TF>::create_basestate(
+        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
     fields.set_calc_mean_profs(true);
+
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
@@ -1341,8 +1374,6 @@ void Thermo_moist<TF>::create(
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
-
-    create_basestate(inputin, input_nc);
 
     // Init the toolbox classes.
     boundary_cyclic.init();

@@ -31,7 +31,7 @@ dnmax=0.4
 [thermo]
 swthermo=moist
 swbasestate=anelastic
-pbot=1e5
+pbot=-1
 swupdatebasestate=1
 swtimedep_pbot=1
 
@@ -54,7 +54,6 @@ sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
 swtimedep_background=None
-#timedeplist_gas=None
 
 [aerosol]
 swaerosol=None
