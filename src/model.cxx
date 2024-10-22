@@ -312,7 +312,7 @@ void Model<TF>::save()
             timeloop->get_idt(),
             timeloop->get_iteration());
 
-    thermo->create_basestate(*input, *input_nc);
+    thermo->create_basestate(*input, *input_nc, *timeloop);
     thermo->save(timeloop->get_iotime());
 
     boundary->create_cold_start(*input_nc);
