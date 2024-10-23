@@ -84,6 +84,11 @@ def create_case_input(
     cams = cams.interp(time=ls2d.time)
     cams_z = cams.interp(z=z)
 
+    # Make sure aerosol concentrations are >= 0.
+    for v in cams_z:
+        if 'aermr' in v:
+            cams_z[v] = np.maximum(cams_z[v], 0.)
+
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
         # TODO: add to LS2D download...
