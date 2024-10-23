@@ -47,8 +47,8 @@ def test_restart(
 
     print(f'Testing {name:>16s}, htessel={use_htessel:1}, rrtmgp={use_rrtmgp:1}, rt={use_rt:1}, homog_z0={use_homogeneous_z0:1} homog_ls={use_homogeneous_ls:1}, aerosols={use_aerosols:1}, tdep_aer={use_tdep_aerosols:1}, tdep_gas={use_tdep_gasses:1}, tdep_bg={use_tdep_background:1}', end='')
 
-    itot = 8
-    jtot = 8
+    itot = 4
+    jtot = 4
     ktot = 128
 
     xsize = itot*50
@@ -96,7 +96,11 @@ def test_restart(
             restart_files.append('qr_gradbot', 'qs_gradbot', 'qg_gradbot')
 
     if not use_homogeneous_z0:
-        restart_files.append('obuk')
+        if use_htessel:
+            for tile in ['soil', 'veg', 'wet']:
+                restart_files.append(f'obuk_{tile}')
+        else:
+            restart_files.append('obuk')
 
 
     """
@@ -104,6 +108,7 @@ def test_restart(
     """
     to_rm = glob.glob('*00*')
     to_rm += glob.glob('*.txt')
+    to_rm += glob.glob('*.bin')
     to_rm += ['cabauw.ini', 'cabauw_input.nc', 'stderr.log', 'stdout.log']
 
     for f in to_rm:
@@ -162,6 +167,10 @@ def test_restart(
     for var in restart_files:
         shutil.move(f'{var}.{time_str}', f'restart_files/{var}.{time_str}')
 
+    # DEBUG: binary dumps
+    files = glob.glob('*.bin')
+    for f in files:
+        shutil.move(f, 'restart_files')
 
     """
     Run warm start.
@@ -237,59 +246,72 @@ def test_permutations(
             sw_micro='0')
 
 
+def test_base():
+    print('--- Testing base case with radiation and land-surface ---')
+
+    test_permutations(
+            archictecture_opts = ['gpu', 'cpu', 'cpumpi'],
+            precision_opts = ['sp', 'dp'],
+            htessel_opts = [True, False],
+            rrtmgp_opts = [True, False])
+
+
+def test_heterogeneous_surface():
+    print('--- Testing heterogeneous land-surface options ---')
+
+    test_permutations(
+            archictecture_opts = ['gpu', 'cpu'],
+            precision_opts = ['sp'],
+            htessel_opts = [True, False],
+            rrtmgp_opts = [False],
+            homogeneous_z0_opts = [True, False],
+            homogeneous_ls_opts = [True, False])
+
+
+def test_aerosols_and_bg():
+    print('--- Testing aerosols and time varying background ---')
+
+    test_permutations(
+            archictecture_opts = ['gpu', 'cpu'],
+            precision_opts = ['sp'],
+            htessel_opts = [False],
+            rrtmgp_opts = [True],
+            aerosols_opts = [True, False],
+            tdep_aerosols_opts = [True, False])
+
+    test_permutations(
+            archictecture_opts = ['gpu', 'cpu'],
+            precision_opts = ['sp'],
+            htessel_opts = [False],
+            rrtmgp_opts = [True],
+            tdep_gasses_opts = [True, False],
+            tdep_background_opts = [True, False])
+
+
+def test_rt():
+    print('--- Testing ray tracer ---')
+
+    test_permutations(
+            archictecture_opts = ['gpu'],
+            precision_opts = ['sp'],
+            htessel_opts = [True, False],
+            rrtmgp_opts = [True],
+            rt_opts = [True],
+            aerosols_opts = [True, False])
+
+
 if __name__ == '__main__':
 
     silent = True   # Suppress MicroHH stdout/err.
 
-    #test_restart('gpu', 'sp', use_htessel=True, use_rrtmgp=True)
-
-    def test_base():
-        print('--- Testing base case with radiation and land-surface ---')
-        test_permutations(
-                archictecture_opts = ['gpu', 'cpu', 'cpumpi'],
-                precision_opts = ['sp', 'dp'],
-                htessel_opts = [True, False],
-                rrtmgp_opts = [True, False])
-
-    def test_heterogeneous_surface():
-        print('--- Testing heterogeneous land-surface options ---')
-        test_permutations(
-                archictecture_opts = ['gpu', 'cpu'],
-                precision_opts = ['sp'],
-                htessel_opts = [True, False],
-                rrtmgp_opts = [False],
-                homogeneous_z0_opts = [True, False],
-                homogeneous_ls_opts = [True, False])
-
-    def test_aerosols_and_bg():
-        print('--- Testing aerosols and time varying background ---')
-        test_permutations(
-                archictecture_opts = ['gpu', 'cpu'],
-                precision_opts = ['sp'],
-                htessel_opts = [False],
-                rrtmgp_opts = [True],
-                aerosols_opts = [True, False],
-                tdep_aerosols_opts = [True, False])
-
-        test_permutations(
-                archictecture_opts = ['gpu', 'cpu'],
-                precision_opts = ['sp'],
-                htessel_opts = [False],
-                rrtmgp_opts = [True],
-                tdep_gasses_opts = [True, False],
-                tdep_background_opts = [True, False])
-
-    def test_rt():
-        print('--- Testing ray tracer ---')
-        test_permutations(
-                archictecture_opts = ['gpu'],
-                precision_opts = ['sp'],
-                htessel_opts = [True, False],
-                rrtmgp_opts = [True],
-                rt_opts = [True],
-                aerosols_opts = [True, False])
-
-    #test_base()
+    test_base()
     test_heterogeneous_surface()
-    #test_aerosols_and_bg()
-    #test_rt()
+    test_aerosols_and_bg()
+    test_rt()
+
+    #test_restart('cpu', 'sp', use_htessel=False, use_rrtmgp=False, use_homogeneous_z0=False)
+    #test_restart('cpu', 'sp', use_htessel=True, use_rrtmgp=False, use_homogeneous_z0=False)
+
+    #test_restart('gpu', 'sp', use_htessel=False, use_rrtmgp=True, use_rt=True)
+    #test_restart('gpu', 'sp', use_htessel=True, use_rrtmgp=True, use_rt=False)
+    #test_restart('gpu', 'sp', use_htessel=True, use_rrtmgp=True, use_rt=True)
