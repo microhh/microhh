@@ -11,6 +11,7 @@ import drycblles.drycblles_test as drycblles
 import bomex.bomex_test as bomex
 import rico.rico_test as rico
 import gabls1.gabls1_test as gabls1
+import arm.arm_test as arm
 
 modes = ['cpu', 'cpumpi', 'gpu']
 precs = ['dp', 'sp']
@@ -65,3 +66,8 @@ for prec in precs:
         mht.run_restart('rico',
                 rico.opt_small, rico.opt_mpi, rico.dict_opts,
                microhh_exec, mode, 'rico', experiment)
+
+        # ARM LES intercomparison
+        mht.run_restart('arm',
+                arm.opt_small, arm.opt_mpi, arm.dict_opts,
+               microhh_exec, mode, 'arm', experiment)

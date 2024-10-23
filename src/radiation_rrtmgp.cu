@@ -1215,7 +1215,7 @@ void Radiation_rrtmgp<TF>::exec(
 
             if (sw_longwave)
             {
-                if (swtimedep_background)
+                if (swtimedep_background || swtimedep_basestate)
                 {
                     // Calculate new background column (on the CPU).
                     Float* ph_g = thermo.get_basestate_fld_g("prefh");

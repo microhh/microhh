@@ -247,7 +247,6 @@ void Model<TF>::load()
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
 
-
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->create_stats(*stats);
@@ -309,7 +308,7 @@ void Model<TF>::save()
             timeloop->get_idt(),
             timeloop->get_iteration());
 
-    thermo->create_basestate(*input, *input_nc);
+    thermo->create_basestate(*input, *input_nc, *timeloop);
     thermo->save(timeloop->get_iotime());
 
     boundary->create_cold_start(*input_nc);

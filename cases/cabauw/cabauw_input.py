@@ -34,6 +34,7 @@ def create_case_input(
         use_homogeneous_z0,
         use_homogeneous_ls,
         gpt_set,
+        sw_micro,
         itot, jtot, ktot,
         xsize, ysize, zsize,
         TF,
@@ -82,6 +83,11 @@ def create_case_input(
     # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
     cams = cams.interp(time=ls2d.time)
     cams_z = cams.interp(z=z)
+
+    # Make sure aerosol concentrations are >= 0.
+    for v in cams_z:
+        if 'aermr' in v:
+            cams_z[v] = np.maximum(cams_z[v], 0.)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
@@ -157,6 +163,19 @@ def create_case_input(
 
     if heterogeneous_sfc:
         ini['stats']['xymasklist'] = ['wet_mask', 'dry_mask']
+
+    if sw_micro == 'nsw6':
+        ini['micro']['swmicro'] = sw_micro
+        ini['advec']['fluxlimit_list'] = ['qt', 'qr', 'qs', 'qg']
+        ini['limiter']['limitlist'] = ['qt', 'qr', 'qs', 'qg']
+    elif sw_micro == '2mom_warm':
+        ini['micro']['swmicro'] = sw_micro
+        ini['advec']['fluxlimit_list'] = ['qt', 'qr', 'nr']
+        ini['limiter']['limitlist'] = ['qt', 'qr', 'nr']
+    else:
+        ini['micro']['swmicro'] = False
+        ini['advec']['fluxlimit_list'] = ['qt']
+        ini['limiter']['limitlist'] = ['qt']
 
     ini['column']['coordinates[x]'] = xsize/2
     ini['column']['coordinates[y]'] = ysize/2
@@ -479,6 +498,8 @@ if __name__ == '__main__':
     use_tdep_gasses = False      # False = time fixed ERA5 (o3) and CAMS (co2, ch4) gasses.
     use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
 
+    sw_micro = '2mom_warm'
+
     """
     NOTE: `use_tdep_aerosols` and `use_tdep_gasses` specify whether the aerosols and gasses
           used by RRTMGP are updated inside the LES domain. If `use_tdep_background` is true, the
@@ -517,8 +538,9 @@ if __name__ == '__main__':
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,
+            sw_micro,
             itot, jtot, ktot,
             xsize, ysize, zsize,
             TF,
-            npx=2,
-            npy=2)
+            npx=1,
+            npy=1)

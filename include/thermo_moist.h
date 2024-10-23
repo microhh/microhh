@@ -59,7 +59,7 @@ class Thermo_moist : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
-        void create_basestate(Input&, Netcdf_handle&);
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&);
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)

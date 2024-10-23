@@ -1407,9 +1407,6 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     // Obukhov length restart files are only needed for the iterative solver
     if (!sw_constant_z0)
     {
-        // Read Obukhov length
-        load_2d_field(obuk.data(), "obuk", iotime);
-
         // Read spatial z0 fields
         load_2d_field(z0m.data(), "z0m", 0);
         load_2d_field(z0h.data(), "z0h", 0);
@@ -1426,6 +1423,9 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     {
         load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
         load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
+
+        if (!sw_constant_z0)
+            load_2d_field(tile.second.obuk.data(), "obuk_" + tile.first, iotime);
     }
 
     // In case of heterogeneous land-surface, read spatial properties.
@@ -1526,10 +1526,6 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
     save_2d_field(dvdz_mo.data(), "dvdz_mo");
     save_2d_field(dbdz_mo.data(), "dbdz_mo");
 
-    // Obukhov length restart files are only needed for the iterative solver.
-    if (!sw_constant_z0)
-        save_2d_field(obuk.data(), "obuk");
-
     // Don't save the initial soil temperature/moisture for heterogeneous runs.
     if (sw_homogeneous || iotime > 0)
     {
@@ -1544,6 +1540,9 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
     {
         save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
         save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
+
+        if (!sw_constant_z0)
+            save_2d_field(tile.second.obuk.data(),  "obuk_"  + tile.first);
     }
 
     // Check for any failures.
