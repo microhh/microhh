@@ -8,9 +8,9 @@ modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
 # Blacklist combinations.
-blacklist = (
-        ['dp', 'cpumpi']
-        )
+blacklist = [
+        ('dp', 'cpumpi')
+        ]
 
 # Link executables to working directory
 for prec in precs:
@@ -43,7 +43,7 @@ err = 0
 
 for prec in precs:
     for mode in modes:
-        if [prec, mode] not in blacklist:
+        if (prec, mode) not in blacklist:
 
             microhh_exec = 'microhh_{}_{}'.format(prec, mode)
             experiment   = '{}_{}'.format(prec, mode)
@@ -83,7 +83,7 @@ print('---------------------')
 
 for prec in precs:
     for mode in modes:
-        if [prec, mode] not in blacklist:
+        if (prec, mode) not in blacklist:
 
             microhh_exec = 'microhh_{}_{}'.format(prec, mode)
             experiment   = '{}_{}'.format(prec, mode)
