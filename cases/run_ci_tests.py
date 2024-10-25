@@ -7,6 +7,11 @@ import microhh_tools as mht
 modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
+# Blacklist combinations.
+blacklist = (
+        ['dp', 'cpumpi']
+        )
+
 # Link executables to working directory
 for prec in precs:
     for mode in modes:
@@ -38,18 +43,20 @@ err = 0
 
 for prec in precs:
     for mode in modes:
-        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
-        experiment   = '{}_{}'.format(prec, mode)
+        if [prec, mode] not in blacklist:
 
-        for case in les_cases:
-            err += mht.run_case(case,
-                    les_options, mpi_options,
-                    microhh_exec, mode, case, experiment)
+            microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+            experiment   = '{}_{}'.format(prec, mode)
 
-        for case in dns_cases:
-            err += mht.run_case(case,
-                    dns_options, mpi_options,
-                    microhh_exec, mode, case, experiment)
+            for case in les_cases:
+                err += mht.run_case(case,
+                        les_options, mpi_options,
+                        microhh_exec, mode, case, experiment)
+
+            for case in dns_cases:
+                err += mht.run_case(case,
+                        dns_options, mpi_options,
+                        microhh_exec, mode, case, experiment)
 
 
 # Restart tests for a DNS + LES case
@@ -76,16 +83,18 @@ print('---------------------')
 
 for prec in precs:
     for mode in modes:
-        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
-        experiment   = '{}_{}'.format(prec, mode)
+        if [prec, mode] not in blacklist:
 
-        err += mht.run_restart('drycbl',
-                dns_options, mpi_options, dns_perturbations,
-                microhh_exec, mode, 'drycbl', experiment)
+            microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+            experiment   = '{}_{}'.format(prec, mode)
 
-        err += mht.run_restart('bomex',
-                les_options, mpi_options, les_perturbations,
-                microhh_exec, mode, 'bomex', experiment)
+            err += mht.run_restart('drycbl',
+                    dns_options, mpi_options, dns_perturbations,
+                    microhh_exec, mode, 'drycbl', experiment)
+
+            err += mht.run_restart('bomex',
+                    les_options, mpi_options, les_perturbations,
+                    microhh_exec, mode, 'bomex', experiment)
 
 if err > 0:
     sys.exit('One of more travis case tests failed!')
