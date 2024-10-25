@@ -50,14 +50,14 @@ jobs:
           make -j 4
           cd ..
 
-      ## Configure and build with MPI
-      #- name: Configure and build (with MPI)
-      #  run: |
-      #    mkdir build_dp_cpumpi
-      #    cd build_dp_cpumpi
-      #    cmake -DSYST=ubuntu_20lts -DUSEMPI=true ..
-      #    make -j 4
-      #    cd ..
+      # Configure and build with MPI
+      - name: Configure and build SP + CPUMPI
+        run: |
+          mkdir build_sp_cpumpi
+          cd build_sp_cpumpi
+          cmake -DSYST=ubuntu_20lts -DUSESP=true -DUSEMPI=true ..
+          make -j 4
+          cd ..
 
       # Run tests
       - name: Run tests
