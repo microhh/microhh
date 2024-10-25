@@ -33,7 +33,7 @@ jobs:
           pip3 install --user numpy netcdf4
 
       # Configure and build without MPI
-      - name: Configure and build (no MPI)
+      - name: Configure and build DP + CPU
         run: |
           mkdir build_dp_cpu
           cd build_dp_cpu
@@ -41,14 +41,14 @@ jobs:
           make -j 4
           cd ..
 
-      ## Configure and build without MPI, in SP
-      #- name: Configure and build (no MPI)
-      #  run: |
-      #    mkdir build_dp_cpu
-      #    cd build_dp_cpu
-      #    cmake -DSYST=ubuntu_20lts -DUSESP=true ..
-      #    make -j 4
-      #    cd ..
+      # Configure and build without MPI, in SP
+      - name: Configure and build SP + CPU
+        run: |
+          mkdir build_sp_cpu
+          cd build_sp_cpu
+          cmake -DSYST=ubuntu_20lts -DUSESP=true ..
+          make -j 4
+          cd ..
 
       ## Configure and build with MPI
       #- name: Configure and build (with MPI)
@@ -60,8 +60,8 @@ jobs:
       #    cd ..
 
       # Run tests
-      #- name: Run tests
-      #  run: |
-      #    cd cases
-      #    python3 run_travis.py
+      - name: Run tests
+        run: |
+          cd cases
+          python3 run_ci_tests.py
 
