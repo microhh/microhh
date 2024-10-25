@@ -28,7 +28,6 @@ def execute(cmd, silent=True):
 def test_restart(
         architecture,
         precision,
-        use_kernel_launcher = False,
         use_htessel = False,
         use_rrtmgp = False,
         use_homogeneous_z0 = True,
@@ -40,9 +39,8 @@ def test_restart(
         use_tdep_background = False,
         sw_micro = '0'):
 
-    kl_flag = '_kl' if use_kernel_launcher else ''
-    executable = f'../../build_{precision}_{architecture}{kl_flag}/microhh'
-    name = f'build_{precision}_{architecture}{kl_flag}'
+    executable = f'../../build_{precision}_{architecture}/microhh'
+    name = f'build_{precision}_{architecture}'
     TF = np.float32 if precision=='sp' else np.float64
 
     print(f'Testing {name:>16s}, htessel={use_htessel:1}, rrtmgp={use_rrtmgp:1}, rt={use_rt:1}, homog_z0={use_homogeneous_z0:1} homog_ls={use_homogeneous_ls:1}, aerosols={use_aerosols:1}, tdep_aer={use_tdep_aerosols:1}, tdep_gas={use_tdep_gasses:1}, tdep_bg={use_tdep_background:1}', end='')
@@ -213,7 +211,6 @@ def test_restart(
 def test_permutations(
         archictecture_opts,
         precision_opts,
-        kernel_launcher_opts = [False],
         htessel_opts = [False],
         rrtmgp_opts = [False],
         homogeneous_z0_opts = [True],
@@ -242,7 +239,6 @@ def test_permutations(
             permutation[8],
             permutation[9],
             permutation[10],
-            permutation[11],
             sw_micro='0')
 
 
@@ -250,7 +246,7 @@ def test_base():
     print('--- Testing base case with radiation and land-surface ---')
 
     test_permutations(
-            archictecture_opts = ['gpu', 'cpu', 'cpumpi'],
+            archictecture_opts = ['gpu', 'gpu_kl', 'cpu', 'cpumpi'],
             precision_opts = ['sp', 'dp'],
             htessel_opts = [True, False],
             rrtmgp_opts = [True, False])
