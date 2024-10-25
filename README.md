@@ -1,7 +1,7 @@
 MicroHH
 -------
 
-[![CI Status](https://github.com/bartvstratum/microhh/actions/workflows/develop.yml/badge.svg)](https://github.com/bartvstratum/microhh/actions/)
+[![CI Status](https://github.com/microhh/microhh/actions/workflows/develop.yml/badge.svg)](https://github.com/microhh/microhh/actions/)
 [![Documentation Status](https://readthedocs.org/projects/microhh/badge/?version=latest)](https://microhh.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13923894.svg)](https://doi.org/10.5281/zenodo.13923894)
 
