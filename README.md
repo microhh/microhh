@@ -30,14 +30,13 @@ In order to compile MicroHH you need:
 
 Downloading the code
 --------------------
-Check out the code from GitHub using
+MicroHH includes Git submodules, so it is essential to ensure these are downloaded properly when cloning the code. Check out the code with all submodules included using:
 
     git clone --recurse-submodules https://github.com/microhh/microhh.git
 
-In case you had already checked out the repository without checking out the submodules, use:
+If you get compilation errors related to missing RTE+RRTMGP source files, you probably forgot the `--recurse-submodules` flag. You can correct that with:
 
     git submodule update --init --recursive
-
 
 Compilation of the code
 -----------------------
