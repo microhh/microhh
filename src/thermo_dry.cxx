@@ -808,6 +808,8 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
+    bs_stats = bs;
+
     get_thermo_field(*output, "b",false, true);
     column.calc_column("b", output->fld.data(), no_offset);
 

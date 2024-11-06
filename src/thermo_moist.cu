@@ -522,7 +522,8 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k < kend+1)
+        // Exclude surface, is calculated below without saturation adjustment.
+        if (i < iend && j < jend && k > kstart && k < kend+1)
         {
             const TF exnh = exner(ph[k]);
             const int ijk = i + j*jj + k*kk;
@@ -540,8 +541,10 @@ namespace
             const TF exn_bot = exner(ph[kstart]);
             const int ij = i + j*jj;
             const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
             T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+            T_h[ijk_nogc] = T_sfc[ij_nogc];
         }
     }
 
@@ -584,7 +587,8 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k < kend+1)
+        // Exclude surface, is calculated below without saturation adjustment.
+        if (i < iend && j < jend && k > kstart && k < kend+1)
         {
             const TF exnh = exner(ph[k]);
             const int ijk = i + j*jj + k*kk;
@@ -602,8 +606,10 @@ namespace
             const TF exn_bot = exner(ph[kstart]);
             const int ij = i + j*jj;
             const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
             T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+            T_h[ijk_nogc] = T_sfc[ij_nogc];
         }
     }
 
@@ -650,7 +656,7 @@ namespace
                 T[ijk_out] = ssa.t;
             }
 
-            if (k < kend+1)
+            if (k > kstart && k < kend+1)
             {
                 const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
                 const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
@@ -659,7 +665,10 @@ namespace
             }
 
             if (k == kstart)
+            {
                 T_sfc[ij_out] = thl_bot[ij] * exner(ph[kstart]);
+                T_h[ijk_out] = T_sfc[ij_out];
+            }
         }
     }
 
