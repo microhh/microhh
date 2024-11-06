@@ -9,10 +9,7 @@ Settings
 """
 float_type = np.float32     # np.float32 for -USESP=true, else np.float64.
 
-dust_bins = np.array([0, 2, 10, 20, 58, 83, 440])
-dust_diameter = 0.5*(dust_bins[1:] + dust_bins[:-1])
-
-dust_list = [f'{dust_bins[i]}-{dust_bins[i+1]}um' for i in range(dust_bins.size - 1)]
+dust_bins = np.array([0, 2, 10, 20, 58, 83, 440])  # (μm)
 
 xsize = 12800
 ysize = 6400
@@ -45,6 +42,8 @@ u = np.ones(ktot) * 2
 
 # All scalars start at concentration zero, with
 # inflow of air with concentration zero at lateral boundaries.
+dust_list = [f'{dust_bins[i]}-{dust_bins[i+1]}um' for i in range(dust_bins.size - 1)]
+
 scalars = {}
 for scalar in dust_list:
     scalars[scalar] = np.zeros(ktot)
@@ -58,6 +57,8 @@ rho_p = 1500   # Density particles [kg m-3]
 rho_a = 1.225  # Reference density air [kg m-3]
 nu = 1e-5      # Kinematic viscosity air [m2 s-1]
 g = 9.81       # Gravitational acceleration [m s-2]
+
+dust_diameter = 0.5*(dust_bins[1:] + dust_bins[:-1]) * 1e-6
 
 tau_p = dust_diameter**2 * rho_p / (18 * nu * rho_a)
 w_s = -tau_p * g
