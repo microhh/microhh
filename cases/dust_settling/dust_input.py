@@ -9,8 +9,10 @@ Settings
 """
 float_type = np.float32     # np.float32 for -USESP=true, else np.float64.
 
-dust_list = ['0-2um', '2-10um', '10-20um', '20-58um', '58-83um', '83-440um']
-dust_diameter = np.array([1, 6, 15, 39, 70.5, 261.5]) * 1e-6
+dust_bins = np.array([0, 2, 10, 20, 58, 83, 440])
+dust_diameter = 0.5*(dust_bins[1:] + dust_bins[:-1])
+
+dust_list = [f'{dust_bins[i]}-{dust_bins[i+1]}um' for i in range(dust_bins.size - 1)]
 
 xsize = 12800
 ysize = 6400
