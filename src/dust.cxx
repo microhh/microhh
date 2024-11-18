@@ -39,7 +39,7 @@ namespace
             TF* const restrict st,
             const TF* const restrict s,
             const TF* const dzhi,
-            const TF ws,
+            const TF w_terminal,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -51,7 +51,7 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jstride + k*kstride;
-                    st[ijk] -= ws * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
+                    st[ijk] -= w_terminal * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
                 }
     }
 }
@@ -70,10 +70,10 @@ Dust<TF>::Dust(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& 
         // Read gravitational settling velocities.
         for (auto& scalar : scalars)
         {
-            ws.emplace(scalar, inputin.get_item<TF>("dust", "ws", scalar));
+            w_terminal.emplace(scalar, inputin.get_item<TF>("dust", "w_terminal", scalar));
 
             // Raise error if any of the velocities is positive.
-            if (ws.at(scalar) > 0)
+            if (w_terminal.at(scalar) > 0)
                 throw std::runtime_error("Gravitational settling velocities need to be negative!");
         }
 
@@ -102,7 +102,7 @@ void Dust<TF>::create(Timeloop<TF>& timeloop)
 
     // Find maximum gravitational settling velocity.
     TF w_max = -TF(Constants::dbig);
-    for (auto& w : ws)
+    for (auto& w : w_terminal)
         w_max = std::max(w_max, std::abs(w.second));
 
     // Calculate maximum time step.
@@ -129,7 +129,7 @@ void Dust<TF>::exec(Stats<TF>& stats)
 
     auto& gd = grid.get_grid_data();
 
-    for (auto& w : ws)
+    for (auto& w : w_terminal)
         settle_dust<TF>(
                 fields.st.at(w.first)->fld.data(),
                 fields.sp.at(w.first)->fld.data(),

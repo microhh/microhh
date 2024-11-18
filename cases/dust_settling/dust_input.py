@@ -61,7 +61,7 @@ g = 9.81       # Gravitational acceleration [m s-2]
 dust_diameter = 0.5*(dust_bins[1:] + dust_bins[:-1]) * 1e-6
 
 tau_p = dust_diameter**2 * rho_p / (18 * nu * rho_a)
-w_s = -tau_p * g
+w_terminal = -tau_p * g
 
 # Create circular field with dust emissions.
 x0 = 0.15 * xsize
@@ -103,7 +103,7 @@ ini['boundary']['sbot_2d_list'] = dust_list
 
 ini['dust']['dustlist'] = dust_list
 for i in range(len(dust_list)):
-    ini['dust'][f'ws[{dust_list[i]}]'] = w_s[i]
+    ini['dust'][f'w_terminal[{dust_list[i]}]'] = w_terminal[i]
 
 # Statistics/crosses/...
 scalar_crosses = dust_list + [s+'_path' for s in dust_list]

@@ -51,6 +51,6 @@ class Dust
         unsigned long idt_max;
 
         // Gravitational settling velocities, negative downward.
-        std::map<std::string, TF> ws;
+        std::map<std::string, TF> w_terminal;
 };
 #endif

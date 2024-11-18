@@ -60,7 +60,7 @@ flow_direction[south]=outflow
 [dust]
 swdust=1
 dustlist=None
-ws=None
+w_terminal=None
 
 [fields]
 visc=1.e-5

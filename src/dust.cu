@@ -32,7 +32,7 @@ namespace
             TF* const __restrict__ st,
             const TF* const __restrict__ s,
             const TF* const __restrict__ dzhi,
-            const TF ws,
+            const TF w_terminal,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -46,7 +46,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jstride + k*kstride;
-            st[ijk] -= ws * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
+            st[ijk] -= w_terminal * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
         }
     }
 }
@@ -68,7 +68,7 @@ void Dust<TF>::exec(Stats<TF>& stats)
     dim3 gridGPU(gridi, gridj, gd.ktot);
     dim3 blockGPU(blocki, blockj, 1);
 
-    for (auto& w : ws)
+    for (auto& w : w_terminal)
         settle_dust_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(w.first)->fld_g,
                 fields.sp.at(w.first)->fld_g,
