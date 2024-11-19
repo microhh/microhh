@@ -46,6 +46,7 @@ template<typename> class Pres;
 template<typename> class Force;
 template<typename> class Aerosol;
 template<typename> class Background;
+template<typename> class Dust;
 template<typename> class Thermo;
 template<typename> class Microphys;
 template<typename> class Radiation;
@@ -106,6 +107,7 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
         std::shared_ptr<Limiter<TF>> limiter;
         std::shared_ptr<Source<TF>> source;
+        std::shared_ptr<Dust<TF>> dust;
 
         std::shared_ptr<Stats<TF>> stats;
         std::shared_ptr<Budget<TF>> budget;
