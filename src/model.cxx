@@ -42,7 +42,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
-#include "dust.h"
+#include "particle_bin.h"
 #include "thermo.h"
 #include "radiation.h"
 #include "microphys.h"
@@ -141,9 +141,10 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
-        dust      = std::make_shared<Dust   <TF>>(master, *grid, *fields, *input);
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
         background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
+
+        particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -267,7 +268,7 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
-    dust->create(*timeloop);
+    particle_bin->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
 
@@ -417,8 +418,8 @@ void Model<TF>::exec()
                 // Add point and line sources of scalars.
                 source->exec(*timeloop);
 
-                // Gravitational settling of dust.
-                dust->exec(*stats);
+                // Gravitational settling of binned dust types.
+                particle_bin->exec(*stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -765,16 +766,16 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(radiation->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dust     ->get_time_limit());
+    timeloop->set_time_step_limit(advec        ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff         ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo       ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(microphys    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(radiation    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(stats        ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(particle_bin->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();

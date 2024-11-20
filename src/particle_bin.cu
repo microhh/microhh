@@ -22,17 +22,17 @@
 
 #include "grid.h"
 #include "fields.h"
-#include "dust.h"
+#include "particle_bin.h"
 #include "tools.h"
 
 namespace
 {
     template<typename TF> __global__
-    void settle_dust_g(
+    void settle_particles_g(
             TF* const __restrict__ st,
             const TF* const __restrict__ s,
             const TF* const __restrict__ dzhi,
-            const TF w_terminal,
+            const TF w_particles,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -46,16 +46,16 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jstride + k*kstride;
-            st[ijk] -= w_terminal * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
+            st[ijk] -= w_particles * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
         }
     }
 }
 
 #ifdef USECUDA
 template<typename TF>
-void Dust<TF>::exec(Stats<TF>& stats)
+void Particle_bin<TF>::exec(Stats<TF>& stats)
 {
-    if (!sw_dust)
+    if (!sw_particle)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -68,8 +68,8 @@ void Dust<TF>::exec(Stats<TF>& stats)
     dim3 gridGPU(gridi, gridj, gd.ktot);
     dim3 blockGPU(blocki, blockj, 1);
 
-    for (auto& w : w_terminal)
-        settle_dust_g<TF><<<gridGPU, blockGPU>>>(
+    for (auto& w : w_particle)
+        settle_particles_g<TF><<<gridGPU, blockGPU>>>(
                 fields.st.at(w.first)->fld_g,
                 fields.sp.at(w.first)->fld_g,
                 gd.dzhi_g,
@@ -84,7 +84,7 @@ void Dust<TF>::exec(Stats<TF>& stats)
 #endif
 
 #ifdef FLOAT_SINGLE
-template class Dust<float>;
+template class Particle_bin<float>;
 #else
-template class Dust<double>;
+template class Particle_bin<double>;
 #endif

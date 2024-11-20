@@ -57,10 +57,10 @@ flow_direction[north]=outflow
 flow_direction[east]=outflow
 flow_direction[south]=outflow
 
-[dust]
-swdust=1
-dustlist=None
-w_terminal=None
+[particle_bin]
+sw_particle=1
+particle_list=None
+w_particle=None
 
 [fields]
 visc=1.e-5
