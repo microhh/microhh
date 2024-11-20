@@ -27,19 +27,20 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "dust.h"
 #include "constants.h"
 #include "timeloop.h"
 #include "constants.h"
 
+#include "particle_bin.h"
+
 namespace
 {
     template<typename TF>
-    void settle_dust(
+    void settle_particles(
             TF* const restrict st,
             const TF* const restrict s,
             const TF* const dzhi,
-            const TF w_terminal,
+            const TF w_particle,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -51,46 +52,46 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jstride + k*kstride;
-                    st[ijk] -= w_terminal * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
+                    st[ijk] -= w_particle * (s[ijk+kstride]-s[ijk])*dzhi[k+1];
                 }
     }
 }
 
 
 template<typename TF>
-Dust<TF>::Dust(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+Particle_bin<TF>::Particle_bin(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     master(masterin), grid(gridin), fields(fieldsin)
 {
-    sw_dust = inputin.get_item<bool>("dust", "swdust", "", false);
+    sw_particle = inputin.get_item<bool>("particle_bin", "sw_particle", "", false);
 
-    if (sw_dust)
+    if (sw_particle)
     {
-        std::vector<std::string> scalars = inputin.get_list<std::string>("dust", "dustlist", "", std::vector<std::string>());
+        std::vector<std::string> scalars = inputin.get_list<std::string>("particle_bin", "particle_list", "", std::vector<std::string>());
 
         // Read gravitational settling velocities.
         for (auto& scalar : scalars)
         {
-            w_terminal.emplace(scalar, inputin.get_item<TF>("dust", "w_terminal", scalar));
+            w_particle.emplace(scalar, inputin.get_item<TF>("particle_bin", "w_particle", scalar));
 
             // Raise error if any of the velocities is positive.
-            if (w_terminal.at(scalar) > 0)
+            if (w_particle.at(scalar) > 0)
                 throw std::runtime_error("Gravitational settling velocities need to be negative!");
         }
 
         // Constraint on time stepping.
-        cfl_max = inputin.get_item<TF>("dust", "cfl_max", "", 1.2);
+        cfl_max = inputin.get_item<TF>("particle_bin", "cfl_max", "", 1.2);
     }
 }
 
 template<typename TF>
-Dust<TF>::~Dust()
+Particle_bin<TF>::~Particle_bin()
 {
 }
 
 template<typename TF>
-void Dust<TF>::create(Timeloop<TF>& timeloop)
+void Particle_bin<TF>::create(Timeloop<TF>& timeloop)
 {
-    if (!sw_dust)
+    if (!sw_particle)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -102,7 +103,7 @@ void Dust<TF>::create(Timeloop<TF>& timeloop)
 
     // Find maximum gravitational settling velocity.
     TF w_max = -TF(Constants::dbig);
-    for (auto& w : w_terminal)
+    for (auto& w : w_particle)
         w_max = std::max(w_max, std::abs(w.second));
 
     // Calculate maximum time step.
@@ -112,9 +113,9 @@ void Dust<TF>::create(Timeloop<TF>& timeloop)
 }
 
 template<typename TF>
-unsigned long Dust<TF>::get_time_limit()
+unsigned long Particle_bin<TF>::get_time_limit()
 {
-    if (!sw_dust)
+    if (!sw_particle)
         return Constants::ulhuge;
 
     return idt_max;
@@ -122,15 +123,15 @@ unsigned long Dust<TF>::get_time_limit()
 
 #ifndef USECUDA
 template<typename TF>
-void Dust<TF>::exec(Stats<TF>& stats)
+void Particle_bin<TF>::exec(Stats<TF>& stats)
 {
-    if (!sw_dust)
+    if (!sw_particle)
         return;
 
     auto& gd = grid.get_grid_data();
 
-    for (auto& w : w_terminal)
-        settle_dust<TF>(
+    for (auto& w : w_particle)
+        settle_particles<TF>(
                 fields.st.at(w.first)->fld.data(),
                 fields.sp.at(w.first)->fld.data(),
                 gd.dzhi.data(),
@@ -143,7 +144,7 @@ void Dust<TF>::exec(Stats<TF>& stats)
 #endif
 
 #ifdef FLOAT_SINGLE
-template class Dust<float>;
+template class Particle_bin<float>;
 #else
-template class Dust<double>;
+template class Particle_bin<double>;
 #endif

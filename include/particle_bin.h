@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DUST_H
-#define DUST_H
+#ifndef PARTICLE_BIN_H
+#define PARTICLE_BIN_H
 
 class Master;
 class Input;
@@ -31,11 +31,11 @@ template<typename> class Stats;
 template<typename> class Timeloop;
 
 template<typename TF>
-class Dust
+class Particle_bin
 {
     public:
-        Dust(Master&, Grid<TF>&, Fields<TF>&, Input&);
-        ~Dust();
+        Particle_bin(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Particle_bin();
 
         void exec(Stats<TF>&);
         void create(Timeloop<TF>&);
@@ -46,11 +46,11 @@ class Dust
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        bool sw_dust;
+        bool sw_particle;
         TF cfl_max;
         unsigned long idt_max;
 
         // Gravitational settling velocities, negative downward.
-        std::map<std::string, TF> w_terminal;
+        std::map<std::string, TF> w_particle;
 };
 #endif
