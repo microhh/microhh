@@ -814,6 +814,10 @@ void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
 template<typename TF>
 void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {
+    #ifndef USECUDA
+    bs_stats = bs;
+    #endif
+
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
 
