@@ -23,6 +23,9 @@
 import numpy as np
 import xarray as xr
 import pyproj
+from numba import jit, prange
+import asyncio
+import glob
 
 
 def get_cross_locations_for_lbcs(
@@ -33,6 +36,7 @@ def get_cross_locations_for_lbcs(
         n_ghost, n_sponge):
     """
     Get `xz` and `yz` cross-section locations for nesting.
+
     NOTE: the resulting locations are a bit "spacious"
           (i.e. might contain more locations than strictly needed).
           This needs to be refined further...
@@ -59,6 +63,11 @@ def get_cross_locations_for_lbcs(
         Number of ghost cells.
     n_buffer : int
         Number of lateral sponge layer cells.
+
+    Returns:
+    -------
+    xz, yz : np.ndarray(dtype=float, ndim=1)
+        Arrays with `xz` and `yz` cross-section locations.
     """
 
     x0 = np.floor((xstart_nest - n_ghost  * dx_child) / dx_parent) * dx_parent - dx_parent/2
@@ -91,6 +100,7 @@ def get_lbc_xr_dataset(
         z, zh,
         time,
         n_ghost, n_sponge,
+        x_offset, y_offset,
         dtype=np.float64):
     """
     Create an Xarray Dataset that contains the correct
@@ -120,8 +130,17 @@ def get_lbc_xr_dataset(
         Number of ghost cells.
     n_sponge : int
         Number of lateral sponge layer cells.
+    x_offset : float
+        x-offset of domain in parent.
+    y_offset : float
+        y-offset of domain in parent.
     dtype : np.float32 / np.float64
         Datatype used by MicroHH (SP=float32, DP=float64).
+
+    Returns:
+    -------
+    ds : xr.Dataset
+        Xarray dataset with correct dimensions/variables/..
     """
 
     nt = time.size
@@ -130,11 +149,11 @@ def get_lbc_xr_dataset(
     dx = xsize/itot
     dy = ysize/jtot
 
-    x = np.arange(dx/2, xsize, dx)
-    xh = np.arange(0, xsize, dx)
+    x = np.arange(dx/2, xsize, dx) + x_offset
+    xh = np.arange(0, xsize, dx) + x_offset
 
-    y = np.arange(dy/2, ysize, dy)
-    yh = np.arange(0, ysize, dy)
+    y = np.arange(dy/2, ysize, dy) + y_offset
+    yh = np.arange(0, ysize, dy) + y_offset
 
     nlbc = n_ghost + n_sponge
 
@@ -252,7 +271,7 @@ def write_lbcs_as_binaries(
     -----------
     lbc_ds : Xarray.Dataset
         Input Dataset, created by `get_lbc_xr_dataset()`
-    dtype : np.float32 || np.float64
+    dtype : ∈(np.float32, np.float64)
         Datatype
     output_dir : str, optional
         Output directory of binary files.
@@ -322,6 +341,15 @@ class Domain:
         self.dx = dx
         self.dy = dy
 
+        self.xsize = itot * dx
+        self.ysize = jtot * dy
+
+        self.x = np.arange(dx/2, self.xsize, dx)
+        self.y = np.arange(dy/2, self.ysize, dy)
+
+        self.xh = np.arange(0, self.xsize, dx)
+        self.yh = np.arange(0, self.ysize, dy)
+
         self.i0_in_parent = i0_in_parent
         self.j0_in_parent = j0_in_parent
 
@@ -336,6 +364,12 @@ class Domain:
             self.start_time = 0
             self.end_time = end_time
 
+            self.x_offset_in_parent = 0
+            self.y_offset_in_parent = 0
+
+            self.x_offset = 0
+            self.y_offset = 0
+
         else:
             # Inner domains.
             if start_offset is None or end_offset is None:
@@ -347,14 +381,20 @@ class Domain:
             self.start_time = 0
             self.end_time = parent.end_time + end_offset - start_offset
 
+            self.x_offset_in_parent = (parent.xsize - self.xsize) / 2.
+            self.y_offset_in_parent = (parent.xsize - self.xsize) / 2.
+
+            self.x_offset = self.x_offset_in_parent + parent.x_offset
+            self.y_offset = self.x_offset_in_parent + parent.y_offset
+
         self.parent = parent
         self.child = child
 
         self.work_path = work_path
         self.work_dir = f'{work_path}/{name}'
 
-        self.xsize = itot * dx
-        self.ysize = jtot * dy
+        self.bbox_x = np.array([self.x_offset, self.x_offset+self.xsize, self.x_offset+self.xsize, self.x_offset, self.x_offset])
+        self.bbox_y = np.array([self.y_offset, self.y_offset, self.y_offset+self.ysize, self.y_offset+self.ysize, self.y_offset])
 
         if center_in_parent:
             self.center_in_parent()
@@ -476,3 +516,44 @@ class Projection:
         y -= self.y_offset
         return x,y
 
+
+#def run_async(f):
+#    """
+#    Decorator to run processes asynchronous with `asyncio`.
+#    """
+#    def wrapped(*args, **kwargs):
+#        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+#    return wrapped
+
+
+#@run_async
+def interp_lbcs_with_xr(lbc_ds, fld, loc, xz, yz, interpolation_method, float_type, output_dir):
+    """
+    Interpolate single LBC, and write as binary input file for MicroHH.
+    """
+    #print(f' - Processing {fld}-{loc}')
+
+    # Short cuts.
+    name = f'{fld}_{loc}'
+    dims = lbc_ds[name].dims
+
+    # Dimensions in LBC file.
+    xloc, yloc = dims[3], dims[2]
+
+    # Dimensions in cross-section.
+    xloc_in = 'xh' if 'xh' in xloc else 'x'
+    yloc_in = 'yh' if 'yh' in yloc else 'y'
+
+    # Switch between yz and xz crosses.
+    cc = yz if loc in ['west','east'] else xz
+
+    # Interpolate!
+    ip = cc[fld].interp({yloc_in: lbc_ds[yloc], xloc_in: lbc_ds[xloc]}, method=interpolation_method)
+
+    # Check if interpolation was success.
+    if np.any(np.isnan(ip[fld].values)):
+        raise Exception('Interpolated BCs contain NaNs!')
+
+    ip[fld].values.astype(float_type).tofile(f'{output_dir}/lbc_{fld}_{loc}.0000000')
+
+    del ip
