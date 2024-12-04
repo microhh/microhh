@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -86,9 +86,11 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat_liq(const TF T)
     {
         #ifdef __CUDACC__
-        const TF x = fmax(TF(-75.), T-T0<TF>);
+        // const TF x = fmax(TF(-75.), T-T0<TF>);
+        const TF x = fmin(fmax(TF(-75.), T-T0<TF>), TF(50.));       // Limit the temperature range to avoid numerical errors
         #else
-        const TF x = std::max(TF(-75.), T-T0<TF>);
+        // const TF x = std::max(TF(-75.), T-T0<TF>);
+        const TF x = std::min(std::max(TF(-75.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #endif
 
         // return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
@@ -107,9 +109,11 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat_ice(const TF T)
     {
         #ifdef __CUDACC__
-        const TF x = fmax(TF(-100.), T-T0<TF>);
+        // const TF x = fmax(TF(-100.), T-T0<TF>);
+        const TF x = fmin(fmax(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #else
-        const TF x = std::max(TF(-100.), T-T0<TF>);
+        // const TF x = std::max(TF(-100.), T-T0<TF>);
+        const TF x = std::min(std::max(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #endif
 
         return TF(611.15)*std::exp(TF(22.452)*x / (TF(272.55)+x));

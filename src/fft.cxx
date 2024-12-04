@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2020 Chiel van Heerwaarden
- * Copyright (c) 2011-2020 Thijs Heus
- * Copyright (c) 2014-2020 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -127,7 +127,7 @@ void FFT<float>::load()
     auto& gd = grid.get_grid_data();
 
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+    std::snprintf(filename, 256, "%s.%07d", "fftwplan", 0);
 
     master.print_message("Loading \"%s\" ... ", filename);
 
@@ -191,7 +191,7 @@ void FFT<double>::load()
     auto& gd = grid.get_grid_data();
 
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+    std::snprintf(filename, 256, "%s.%07d", "fftwplan", 0);
 
     master.print_message("Loading \"%s\" ... ", filename);
 
@@ -301,7 +301,7 @@ void FFT<float>::save()
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+        std::snprintf(filename, 256, "%s.%07d", "fftwplan", 0);
 
         master.print_message("Saving \"%s\" ... ", filename);
 
@@ -371,7 +371,7 @@ void FFT<double>::save()
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+        std::snprintf(filename, 256, "%s.%07d", "fftwplan", 0);
 
         master.print_message("Saving \"%s\" ... ", filename);
 
