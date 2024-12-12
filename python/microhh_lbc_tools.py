@@ -28,6 +28,38 @@ import asyncio
 import glob
 
 
+def check_grid_decomposition(itot, jtot, ktot, npx, npy):
+    """
+    Check whether grid / MPI decomposition is valid
+    """
+
+    err = False
+    if itot%npx != 0:
+        print('ERROR in grid: itot%npx != 0')
+        err = True
+
+    if itot%npy != 0:
+        print('ERROR in grid: itot%npy != 0')
+        err = True
+
+    if jtot%npx != 0 and npy > 1:
+        print('ERROR in grid: jtot%npx != 0')
+        err = True
+
+    if jtot%npy != 0:
+        print('ERROR in grid: jtot%npy != 0')
+        err = True
+
+    if ktot%npx != 0:
+        print('ERROt in grid: ktot%npx != 0')
+        err = True
+
+    if err:
+        print(f'Grid: itot={itot}, jtot={jtot}, ktot={ktot}, npx={npx}, npy={npy}: NOT OKAY!')
+    else:
+        print(f'Grid: itot={itot}, jtot={jtot}, ktot={ktot}, npx={npx}, npy={npy}: OKAY!')
+
+
 def get_cross_locations_for_lbcs(
         xstart_nest, ystart_nest,
         xend_nest, yend_nest,
@@ -287,6 +319,7 @@ class Domain:
             name,
             itot,
             jtot,
+            ktot,
             dx,
             dy,
             work_path,
@@ -297,7 +330,9 @@ class Domain:
             j0_in_parent=None,
             parent=None,
             child=None,
-            center_in_parent=False):
+            center_in_parent=False,
+            npx=None,
+            npy=None):
         """
         Domain and nesting specification.
 
@@ -309,6 +344,8 @@ class Domain:
             Number of grid points in x-direction.
         jtot : int
             Number of grid points in y-direction.
+        ktot : int
+            Number of grid points in z-direction.
         dx : float
             Grid spacing in x-direction.
         dy : float
@@ -331,12 +368,17 @@ class Domain:
             Child of current domain.
         center_in_parent : bool, optional
             Center current domain in parent domain.
+        npx : int, optional
+            Number of cores in x-direction.
+        npy : int, optional
+            Number of cores in y-direction.
         """
 
         self.name = name
 
         self.itot = itot
         self.jtot = jtot
+        self.ktot = ktot
 
         self.dx = dx
         self.dy = dy
@@ -396,8 +438,14 @@ class Domain:
         self.bbox_x = np.array([self.x_offset, self.x_offset+self.xsize, self.x_offset+self.xsize, self.x_offset, self.x_offset])
         self.bbox_y = np.array([self.y_offset, self.y_offset, self.y_offset+self.ysize, self.y_offset+self.ysize, self.y_offset])
 
+        self.npx = npx
+        self.npy = npy
+
         if center_in_parent:
             self.center_in_parent()
+
+        if npx is not None and npy is not None:
+            check_grid_decomposition(itot, jtot, ktot, npx, npy)
 
 
     def center_in_parent(self):
@@ -406,6 +454,12 @@ class Domain:
         """
         x0 = (self.parent.xsize - self.xsize) / 2.
         y0 = (self.parent.ysize - self.ysize) / 2.
+
+        print('ASDF')
+        if x0 % self.parent.dx != 0:
+            print('Oiii (1)')
+        if self.xsize % self.parent.dx != 0:
+            print('Oiii (2)')
 
         self.i0_in_parent = int(np.round(x0 / self.parent.dx))
         self.j0_in_parent = int(np.round(y0 / self.parent.dy))
