@@ -127,13 +127,18 @@ def get_cross_locations_for_lbcs(
 
 def get_lbc_xr_dataset(
         fields,
-        xsize, ysize,
-        itot, jtot,
-        z, zh,
+        xsize,
+        ysize,
+        itot,
+        jtot,
+        z,
+        zh,
         time,
-        n_ghost, n_sponge,
-        x_offset, y_offset,
-        dtype=np.float64):
+        n_ghost,
+        n_sponge,
+        x_offset = 0,
+        y_offset = 0,
+        dtype = np.float64):
     """
     Create an Xarray Dataset that contains the correct
     variables / dimensions / coordinates needed to
@@ -142,7 +147,7 @@ def get_lbc_xr_dataset(
 
     Parameters:
     ----------
-    fields : str
+    fields : list(str)
         List with prognostic field names.
     xsize : float
         Size of LES domain in x-direction.
@@ -152,19 +157,19 @@ def get_lbc_xr_dataset(
         Number of grid points in x-direction.
     jtot : int
         Number of grid points in y-direction.
-    z : np.ndarray
+    z : np.ndarray(float)
         Array with the full level grid point heights.
-    zh : np.ndarray
+    zh : np.ndarray(float)
         Array with the half level grid point heights.
-    time : np.ndarray
+    time : np.ndarray(int)
         Array with LBC times.
     n_ghost : int
         Number of ghost cells.
     n_sponge : int
         Number of lateral sponge layer cells.
-    x_offset : float
+    x_offset : float, optional
         x-offset of domain in parent.
-    y_offset : float
+    y_offset : float, optional
         y-offset of domain in parent.
     dtype : np.float32 / np.float64
         Datatype used by MicroHH (SP=float32, DP=float64).
@@ -225,13 +230,13 @@ def get_lbc_xr_dataset(
 
         yp[i] = y[0] - (n_ghost-i)*dy
         yhp[i] = yh[0] - (n_ghost-i)*dy
-        
+
         xp[itot+n_ghost+i] = x[-1] + (i+1)*dx
         xhp[itot+n_ghost+i] = xh[-1] + (i+1)*dx
 
         yp[jtot+n_ghost+i] = y[-1] + (i+1)*dy
         yhp[jtot+n_ghost+i] = yh[-1] + (i+1)*dy
-    
+
     # Define coordinates.
     coords = {
         'time': time,
@@ -291,7 +296,7 @@ def get_lbc_xr_dataset(
     return ds
 
 
-def write_lbcs_as_binaries(
+def write_lbcs_as_binaries_old(
         lbc_ds,
         dtype,
         output_dir='.'):
@@ -307,15 +312,102 @@ def write_lbcs_as_binaries(
         Datatype
     output_dir : str, optional
         Output directory of binary files.
+
+    Returns:
+    -------
+    None
     """
 
     for var in lbc_ds:
         lbc_ds[var].values.astype(dtype).tofile(f'{output_dir}/lbc_{var}.0000000')
 
 
+def write_lbcs_as_binaries(
+        lbc_ds,
+        variables,
+        dtype,
+        output_dir='.'):
+    """
+    Write data variables from the Xarray Dataset `lbc_ds`
+    in binary format as input to MicroHH.
+
+    Updated version, which packs all edges into a single binary.
+
+    Parameters:
+    -----------
+    lbc_ds : Xarray.Dataset
+        Input Dataset, created by `get_lbc_xr_dataset()`
+    variables : list
+        List of variables names to pack.
+    dtype : ∈(np.float32, np.float64)
+        Datatype
+    output_dir : str, optional
+        Output directory of binary files.
+
+    Returns:
+    -------
+    None
+    """
+
+    times = lbc_ds['time'].values
+    edges = ['west', 'north', 'east', 'south']
+
+    for var in variables:
+
+        # Create buffer to pack all edges of a single variable.
+        size = 0
+        for edge in edges:
+            size += lbc_ds[f'{var}_{edge}'][0,:,:,:].size
+        out = np.empty(size, dtype=dtype)
+
+        for t in range(times.size):
+
+            # Pack variables into buffer.
+            index = 0
+            for edge in edges:
+                data = lbc_ds[f'{var}_{edge}'][t,:,:,:].values
+                out[index : index+data.size] = data.flatten()
+                index += data.size
+
+            # Save in binary format for MicroHH.
+            out.tofile(f'{output_dir}/lbc_{var}.{times[t]:07d}')
+
+
+def interp_lbcs_with_xr(lbc_ds, fld, loc, xz, yz, interpolation_method, float_type, output_dir):
+    """
+    Interpolate single LBC, and write as binary input file for MicroHH.
+    """
+    #print(f' - Processing {fld}-{loc}')
+
+    # Short cuts.
+    name = f'{fld}_{loc}'
+    dims = lbc_ds[name].dims
+
+    # Dimensions in LBC file.
+    xloc, yloc = dims[3], dims[2]
+
+    # Dimensions in cross-section.
+    xloc_in = 'xh' if 'xh' in xloc else 'x'
+    yloc_in = 'yh' if 'yh' in yloc else 'y'
+
+    # Switch between yz and xz crosses.
+    cc = yz if loc in ['west','east'] else xz
+
+    # Interpolate!
+    ip = cc[fld].interp({yloc_in: lbc_ds[yloc], xloc_in: lbc_ds[xloc]}, method=interpolation_method)
+
+    # Check if interpolation was success.
+    if np.any(np.isnan(ip[fld].values)):
+        raise Exception('Interpolated BCs contain NaNs!')
+
+    ip[fld].values.astype(float_type).tofile(f'{output_dir}/lbc_{fld}_{loc}.0000000')
+
+    del ip
+
+
 class Domain:
     def __init__(
-            self, 
+            self,
             name,
             itot,
             jtot,
@@ -571,43 +663,41 @@ class Projection:
         return x,y
 
 
-#def run_async(f):
-#    """
-#    Decorator to run processes asynchronous with `asyncio`.
-#    """
-#    def wrapped(*args, **kwargs):
-#        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
-#    return wrapped
-
-
-#@run_async
-def interp_lbcs_with_xr(lbc_ds, fld, loc, xz, yz, interpolation_method, float_type, output_dir):
+if __name__ == '__main__':
     """
-    Interpolate single LBC, and write as binary input file for MicroHH.
+    Just for testing...
     """
-    #print(f' - Processing {fld}-{loc}')
 
-    # Short cuts.
-    name = f'{fld}_{loc}'
-    dims = lbc_ds[name].dims
+    zsize = 3200
+    ktot = 64
+    dz = zsize / ktot
+    z = np.arange(dz/2, zsize, dz)
+    zh = np.arange(0, zsize, dz)
+    time = np.arange(0, 3600, 60)
+    variables = ['u', 'v', 'w', 'thl', 'qt']
+    dtype = np.float32
 
-    # Dimensions in LBC file.
-    xloc, yloc = dims[3], dims[2]
+    # Create Xarray dataset that has the correct variables
+    # and dimensions for each domain edge.
+    lbc_ds = get_lbc_xr_dataset(
+        fields = variables,
+        xsize = 3200,
+        ysize = 3200,
+        itot = 32,
+        jtot = 32,
+        z = z,
+        zh = zh,
+        time = time,
+        n_ghost = 3,
+        n_sponge = 5,
+        x_offset = 1600,
+        y_offset = 1600,
+        dtype = dtype)
 
-    # Dimensions in cross-section.
-    xloc_in = 'xh' if 'xh' in xloc else 'x'
-    yloc_in = 'yh' if 'yh' in yloc else 'y'
+    # Fill with usefull values...
 
-    # Switch between yz and xz crosses.
-    cc = yz if loc in ['west','east'] else xz
-
-    # Interpolate!
-    ip = cc[fld].interp({yloc_in: lbc_ds[yloc], xloc_in: lbc_ds[xloc]}, method=interpolation_method)
-
-    # Check if interpolation was success.
-    if np.any(np.isnan(ip[fld].values)):
-        raise Exception('Interpolated BCs contain NaNs!')
-
-    ip[fld].values.astype(float_type).tofile(f'{output_dir}/lbc_{fld}_{loc}.0000000')
-
-    del ip
+    # Write as binary files as input for MicroHH.
+    write_lbcs_as_binaries(
+        lbc_ds = lbc_ds,
+        variables = variables,
+        dtype = dtype)
