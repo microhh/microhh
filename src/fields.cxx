@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -212,6 +212,7 @@ namespace
     void set_xy_mask(
             TF* const restrict mask,
             TF* const restrict maskh,
+            TF* const restrict mask_bot,
             const TF* const restrict xymask,
             const int istart, const int iend,
             const int jstart, const int jend,
@@ -237,6 +238,14 @@ namespace
                     const int ijk = ij + k*ijcells;
                     maskh[ijk] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
                 }
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*icells;
+                mask_bot[ij] = xymask[ij] > TF(0.5) ? TF(1) : TF(0);
+            }
     }
 
     template<typename TF>
@@ -412,7 +421,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
     mp.at("v")->visc = visc;
     mp.at("w")->visc = visc;
 
-    init_diagnostic_field("p", "Pressure", "Pa", group_name, gd.sloc);
+    init_diagnostic_field("p", "Perturbation pressure divided by density", "m2 s-2", group_name, gd.sloc);
 
     // Set a default of 4 temporary fields. Other classes can increase this number
     // before the init phase, where they are initialized in Fields::init()
@@ -715,6 +724,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         set_xy_mask(
                 mask->fld.data(),
                 maskh->fld.data(),
+                maskh->fld_bot.data(),
                 xymasks.at(mask_name).data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
@@ -1239,7 +1249,7 @@ void Fields<TF>::save(int n)
     for (auto& f : ap)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
+        std::snprintf(filename, 256, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Saving \"%s\" ... ", filename);
 
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
@@ -1282,7 +1292,7 @@ void Fields<TF>::load(int n)
     {
         // The offset is kept at zero, otherwise bitwise identical restarts is not possible.
         char filename[256];
-        std::sprintf(filename, "%s.%07d", f.second->name.c_str(), n);
+        std::snprintf(filename, 256, "%s.%07d", f.second->name.c_str(), n);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_field3d(
@@ -1304,7 +1314,7 @@ void Fields<TF>::load(int n)
     for (auto& mask : xymasks)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", mask.first.c_str(), 0);
+        std::snprintf(filename, 256, "%s.%07d", mask.first.c_str(), 0);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(

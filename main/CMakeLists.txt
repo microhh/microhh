@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2023 Chiel van Heerwaarden
-#  Copyright (c) 2011-2023 Thijs Heus
-#  Copyright (c) 2014-2023 Bart van Stratum
+#  Copyright (c) 2011-2024 Chiel van Heerwaarden
+#  Copyright (c) 2011-2024 Thijs Heus
+#  Copyright (c) 2014-2024 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -24,7 +24,11 @@ include_directories(${INCLUDE_DIRS} "../include")
 # retrieve the git hash from the current commit
 find_package(Git)
 if(GIT_EXECUTABLE)
-  exec_program(git ${CMAKE_CURRENT_SOURCE_DIR} ARGS "describe --dirty" OUTPUT_VARIABLE GITHASH RETURN_VALUE GITRETURN)
+  execute_process(
+    COMMAND git describe --dirty
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE GITHASH
+    RESULT_VARIABLE GITRETURN)
   if(NOT GITRETURN MATCHES 0)
     set(GITHASH "not available")
   endif()

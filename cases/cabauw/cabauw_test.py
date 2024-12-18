@@ -4,6 +4,7 @@ import numpy as np
 
 from cabauw_input import create_case_input
 from microhh_tools import execute
+from datetime import datetime
 
 #def execute(task):
 #    return subprocess.call(task, shell=True, executable='/bin/bash')
@@ -22,12 +23,19 @@ def test_cabauw_case(executable):
     ysize = jtot*50
     zsize = 4000
 
+    start_date = datetime(year=2016, month=8, day=15, hour=6)
+    end_date   = datetime(year=2016, month=8, day=15, hour=18)
+    
     endtime = 10
 
     # Don't test ray-tracer for now..
     use_rt = False
     # include or exclude aerosols
     use_aerosols = False
+    use_tdep_aerosols = False
+    use_tdep_gasses = False
+    use_tdep_background = False
+
 
     gpt_set = '128_112'
 
@@ -60,16 +68,21 @@ def test_cabauw_case(executable):
 
                     # Create input files and .ini file from .ini.base.
                     create_case_input(
+                            start_date,
+                            end_date,
                             use_htessel,
                             use_rrtmgp,
                             use_rt,
                             use_aerosols,
+                            use_tdep_aerosols,
+                            use_tdep_gasses,
+                            use_tdep_background,
                             use_homogeneous_z0,
                             use_homogeneous_ls,
                             gpt_set,
                             itot, jtot, ktot,
                             xsize, ysize, zsize,
-                            endtime, TF)
+                            TF)
 
                     # Init and run case.
                     ret = 0
