@@ -2588,6 +2588,7 @@ void Thermo_moist<TF>::create_column(Column<TF>& column)
     if (column.get_switch())
     {
         // Vertical profiles
+        column.add_prof("T", "Absolute temperature", "K", "z");
         column.add_prof("thv", "Virtual potential temperature", "K", "z");
         column.add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
         column.add_prof("qi", "Ice mixing ratio", "kg kg-1", "z");
@@ -2826,6 +2827,9 @@ void Thermo_moist<TF>::exec_column(Column<TF>& column)
     auto output = fields.get_tmp();
 
     // Vertical profiles
+    get_thermo_field(*output, "T", false, true);
+    column.calc_column("T", output->fld.data(), no_offset);
+
     get_thermo_field(*output, "thv", false, true);
     column.calc_column("thv", output->fld.data(), no_offset);
 

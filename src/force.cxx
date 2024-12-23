@@ -227,6 +227,40 @@ namespace
         }
     }
 
+
+    template<typename TF>
+    void calc_rotation(
+            TF* const restrict ut,
+            TF* const restrict vt,
+            const TF* const restrict u,
+            const TF* const restrict v,
+            const TF* const restrict fc_2d,
+            const TF ugrid, const TF vgrid,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ij = i + j*jj;
+                    const int ijk = i + j*jj + k*kk;
+
+                    const TF fc_u = TF(0.5)*(fc_2d[ij-ii] + fc_2d[ij]);
+                    const TF fc_v = TF(0.5)*(fc_2d[ij-jj] + fc_2d[ij]);
+
+                    ut[ijk] +=  fc_u * (TF(0.25)*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid);
+                    vt[ijk] += -fc_v * (TF(0.25)*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid);
+                }
+    }
+
     template<typename TF>
     void calc_large_scale_source(
             TF* const restrict st, const TF* const restrict sls,
@@ -400,6 +434,8 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
     std::string swnudge_in  = inputin.get_item<std::string>("force", "swnudge" , "", "0");
     std::string swls_in     = inputin.get_item<std::string>("force", "swls"    , "", "0");
 
+    swrotation_2d = inputin.get_item<bool>("force", "swrotation_2d", "", false);
+
     if (swwls_in == "mean" || swwls_in == "local")
         swwls_mom = inputin.get_item<bool>("force", "swwls_mom", "", false);
 
@@ -551,6 +587,9 @@ void Force<TF>::init()
             nudgeprofs[it] = std::vector<TF>(gd.kcells);
     }
 
+    if (swrotation_2d)
+        fc_2d.resize(gd.ijcells);
+
     boundary_cyclic.init();
 }
 
@@ -670,6 +709,27 @@ void Force<TF>::create(Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats
 
         fields.release_tmp(tmp1);
         fields.release_tmp(tmp2);
+    }
+
+    if (swrotation_2d)
+    {
+        auto tmp1 = fields.get_tmp();
+
+        Field3d_io field3d_io(master, grid);
+
+        // Load the coriolis parameter.
+        char filename[256];
+        int n = 0;
+        std::sprintf(filename, "fc.%07d", n);
+        master.print_message("Loading \"%s\" ... ", filename);
+        if (field3d_io.load_xy_slice(fc_2d.data(), tmp1->fld.data(), filename))
+            master.print_message("FAILED\n");
+        else
+            master.print_message("OK\n");
+
+        boundary_cyclic.exec_2d(fc_2d.data());
+
+        fields.release_tmp(tmp1);
     }
 
     if (swls == Large_scale_tendency_type::Enabled)
@@ -851,6 +911,21 @@ void Force<TF>::exec(double dt, Thermo<TF>& thermo, Stats<TF>& stats)
                     gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
         }
+    }
+
+
+    if (swrotation_2d)
+    {
+        calc_rotation<TF>(
+                fields.mt.at("u")->fld.data(), fields.mt.at("v")->fld.data(),
+                fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(),
+                fc_2d.data(),
+                gd.utrans,
+                gd.vtrans,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells);
     }
 
     if (swls == Large_scale_tendency_type::Enabled)

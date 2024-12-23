@@ -94,6 +94,8 @@ class Force
         Nudging_type swnudge;
         bool swwls_mom;
 
+        bool swrotation_2d;  ///< Rotation only, but with 2D fc field.
+
         TF uflux; ///< Mean velocity used to enforce constant flux.
         TF dpdx;  ///< Large-scale pressure gradient
         TF fc;    ///< Coriolis parameter.
