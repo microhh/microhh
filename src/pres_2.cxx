@@ -101,8 +101,14 @@ template<typename TF>
 TF Pres_2<TF>::check_divergence()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    return calc_divergence(fields.mp.at("u")->fld.data(), fields.mp.at("v")->fld.data(), fields.mp.at("w")->fld.data(),
-                           gd.dzi.data(), fields.rhoref.data(), fields.rhorefh.data());
+
+    return calc_divergence(
+            fields.mp.at("u")->fld.data(),
+            fields.mp.at("v")->fld.data(),
+            fields.mp.at("w")->fld.data(),
+            gd.dzi.data(),
+            fields.rhoref.data(),
+            fields.rhorefh.data());
 }
 #endif
 
