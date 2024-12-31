@@ -3,7 +3,7 @@ import numpy as np
 
 sys.path.append('../../python/')
 import microhh_tools as mht
-from taylorgreen import TaylorGreen
+from taylorgreen_funcs import Parse_TaylorGreen
 
 no_opts = {}
 
@@ -39,7 +39,7 @@ def check_convergence(case_name, case_dir, experiment):
         err_w = []
         err_p = []
         for n in ns:
-            c = TaylorGreen(time, visc, f'local_itot{n:03d}_{name}')
+            c = Parse_TaylorGreen(time, visc, f'local_itot{n:03d}_{name}')
             err_u.append(c.u_err)
             err_w.append(c.w_err)
             err_p.append(c.p_err)
