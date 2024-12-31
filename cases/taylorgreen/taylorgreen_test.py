@@ -1,11 +1,5 @@
 import sys
-import os
-import copy
-import shutil
-import struct
-from matplotlib.backends.backend_pdf import PdfPages
-from pylab import *
-from numpy import *
+import numpy as np
 
 sys.path.append('../../python/')
 import microhh_tools as mht
@@ -54,7 +48,7 @@ def check_convergence(case_name, case_dir, experiment):
         return cases, err_u, err_w, err_p
 
     def convergence(errors):
-        return (np.log(errors[-1]) - log(errors[0])) / (log(dxs[-1]) - log(dxs[0]))
+        return (np.log(errors[-1]) - np.log(errors[0])) / (np.log(dxs[-1]) - np.log(dxs[0]))
 
     # 2nd order.
     advec2,  err_u_2,  err_w_2,  err_p_2  = parse('swadvec2')
