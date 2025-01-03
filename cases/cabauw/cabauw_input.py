@@ -126,6 +126,8 @@ def create_case_input(
         ini['boundary']['sbcbot'] = 'dirichlet'
 
         ini['land_surface']['swags'] = use_ags
+        if use_ags:
+            ini['fields']['slist'] = 'co2'
     else:
         ini['boundary']['swboundary'] = 'surface'
         ini['boundary']['sbcbot'] = 'flux'
@@ -197,6 +199,8 @@ def create_case_input(
     nc_init = nc.createGroup('init')
     add_nc_var('thl', ('z'), nc_init, ls2d_z.thl[0,:])
     add_nc_var('qt', ('z'), nc_init, ls2d_z.qt[0,:])
+    if use_ags:
+        add_nc_var('co2', ('z'), nc_init, cams_z.co2[0,:])
     add_nc_var('u', ('z'), nc_init, ls2d_z.u[0,:])
     add_nc_var('v', ('z'), nc_init, ls2d_z.v[0,:])
     add_nc_var('nudgefac', ('z'), nc_init, np.ones(ktot)/10800)
@@ -501,11 +505,11 @@ if __name__ == '__main__':
     zsize = 4000
     ktot = 160
 
-    itot = 32
-    jtot = 32
+    itot = 16
+    jtot = 16
 
-    xsize = 3200
-    ysize = 3200
+    xsize = 1600
+    ysize = 1600
 
     # Create input files.
     create_case_input(
@@ -526,4 +530,4 @@ if __name__ == '__main__':
             xsize, ysize, zsize,
             TF,
             npx=2,
-            npy=2)
+            npy=4)

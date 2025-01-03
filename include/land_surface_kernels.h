@@ -226,6 +226,20 @@ namespace Land_surface_kernels
             }
     }
 
+    template<typename TF>
+    inline TF e1_approx(const TF x)
+    {
+        // E1() approximation, from: https://doi.org/10.1016/S0022-1694(99)00184-5
+        const TF euler = TF(0.5772156649015329);
+        const TF G = std::exp(-euler);
+        const TF b = std::pow(TF(2) * ((TF(1) - G) / (G * (TF(2) - G))), TF(0.5));
+        const TF h_inf = (TF(1) - G) * (fm::pow2(G) - TF(6) * G + TF(12)) / (TF(3) * G * fm::pow2(TF(2) - G) * b);
+        const TF q = TF(20/47.) * std::pow(x, std::pow(TF(31/26.), TF(0.5)));
+        const TF h = TF(1) / (TF(1) + x * std::pow(x, TF(0.5)));
+        const TF E1 = std::exp(-x) / (G + (TF(1) - G) * std::exp(-x / (TF(1) - G))) * std::log(TF(1) + G / x - (TF(1) - G) / fm::pow2(h + b * x));
+        return E1;
+    }
+
 
     template<typename TF>
     void calc_canopy_resistance_ags(
@@ -242,7 +256,6 @@ namespace Land_surface_kernels
             //const TF* const restrict albedo,
             const TF* const restrict vpds,
             const int* const restrict ags_index,
-            // Vegetation specific constants:
             const TF* const restrict alpha0,
             const TF* const restrict t2gm,
             const TF* const restrict gm298,
@@ -250,7 +263,7 @@ namespace Land_surface_kernels
             const TF* const restrict ammax298,
             const TF* const restrict f0,
             const TF* const restrict co2_comp298,
-            const TF cos_sza,
+            //const TF cos_sza,
             const TF rho,
             const TF rho_bot,
             const TF p_bot,
@@ -298,7 +311,7 @@ namespace Land_surface_kernels
 
                 // Calculate the CO2 compensation concentration (IFS eq. 8.92).
                 // "The compensation point Γ is defined as the CO2 concentration at which the net CO2 assimilation of a fully lit leaf becomes zero".
-                const TF co2_comp = rho_bot[ij] * co2_comp298[ia] * std::pow(q10lambda, TF(0.1) * (t_bot[j,i] - TF(298)));
+                const TF co2_comp = rho_bot * co2_comp298[ia] * std::pow(q10lambda, TF(0.1) * (t_bot[j,i] - TF(298)));
 
                 // Calculate the mesophyll conductance (IFS eq. 8.93).
                 // "The mesophyll conductance gm describes the transport of CO2 from the substomatal cavities to the mesophyll cells where the carbon is fixed".
@@ -321,7 +334,7 @@ namespace Land_surface_kernels
                 const TF cfrac = std::max(TF(0.01), f0[ia] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
 
                 // Absolute CO2 concentration. Input = [mol(CO2)/mol(air)], co2_abs = [mg(CO2)/m3(air)].
-                const TF co2_abs  = co2[ijk] * (Constants::xmco2<TF> / Constants::xmair<TF>) * TF(1e6) * rho[kstart];
+                const TF co2_abs  = co2[ijk] * (Constants::xmco2<TF> / Constants::xmair<TF>) * TF(1e6) * rho;
 
                 // CO2 concentration in leaf (IFS eq. ???).
                 //if (lrelaxci) then
@@ -430,7 +443,7 @@ namespace Land_surface_kernels
                     const TF dstar  = dmax / (agsa1 * (f0[ia] - fmin));
                     const TF tempy  = alphac * kx * par / (am + rdark);
 
-                    an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1(tempy * std::exp(-kx * lai[ij])) - e1(tempy)));
+                    an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
                     gc_inf = lai[ij] * (gmin[ia]/nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
                 }
 
@@ -455,7 +468,7 @@ namespace Land_surface_kernels
                 // Net flux of CO2 into the plant (An)
                 // co2_abs has units kg(CO2)/m3(air), so flux is in kg(co2)/m2/s.
                 const TF rs_co2 = TF(1) / gcco2;
-                an_co2[ij] = -(co2_abs - ci) / (ra[ij] + rs_co2[ij]);
+                an_co2[ij] = -(co2_abs - ci) / (ra[ij] + rs_co2);
             }
     }
 

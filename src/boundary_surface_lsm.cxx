@@ -384,6 +384,7 @@ void Boundary_surface_lsm<TF>::exec(
     thermo.get_buoyancy_surf(buoy->fld, *b_bot, false);
     const TF db_ref = thermo.get_db_ref();
 
+    const std::vector<TF>& rhoref = thermo.get_basestate_vector("rho");
     const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhoh");
     const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvh");
     const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnerh");
@@ -436,61 +437,39 @@ void Boundary_surface_lsm<TF>::exec(
 
     if (sw_ags)
     {
-        //lsmk::calc_canopy_resistance_ags(
-        //        tiles.at("veg").rs.data(),
-        //        an_co2.data(),
-        //        lai.data(),
-        //        (*T_bot).data(),
-        //        tiles.at("veg").ra.data(),
-        //        fields.sp.at("co2")->fld.data(),
-        //        fields.sp.at("thl")->fld.data(),
-        //        fields.sp.at("qt")->fld.data(),
-        //        sw_dn.data(),
-        //        (*theta_mean_n).data(),
-        //        // albedo, only for splitleaf...
-        //        (*vpds).data(),
-        //        ags_index.data(),
-        //        alpha0.data(),
-        //        t2gm.data(),
-        //        gm298.data(),
-        //        gmin.data(),
-        //        ammax298.data(),
-        //        f0.data(),
-        //        co2_comp298.data(),
+        bool sw_splitleaf = false;
 
-        //void calc_canopy_resistance_ags(
-        //    TF* const restrict rs,
-        //    TF* const restrict an_co2,
-        //    const TF* const restrict lai,
-        //    const TF* const restrict t_bot,
-        //    const TF* const restrict ra,
-        //    const TF* const restrict co2,
-        //    const TF* const restrict thl,
-        //    const TF* const restrict qt,
-        //    const TF* const restrict sw_flux_dn,
-        //    const TF* const restrict theta_rel_mean,
-        //    const TF* const restrict albedo,
-        //    const TF* const restrict vpds,
-        //    const int* const restrict ags_index,
-        //    // Vegetation specific constants:
-        //    const TF* const restrict alpha0,
-        //    const TF* const restrict t2gm,
-        //    const TF* const restrict gm298,
-        //    const TF* const restrict gmin,
-        //    const TF* const restrict ammax298,
-        //    const TF* const restrict f0,
-        //    const TF* const restrict co2_comp298,
-        //    const TF cos_sza,
-        //    const TF rho,
-        //    const TF rho_bot,
-        //    const TF p_bot,
-        //    const bool sw_splitleaf,
-        //    const int istart, const int iend,
-        //    const int jstart, const int jend,
-        //    const int kstart,
-        //    const int jstride,
-        //    const int kstride)
-
+        lsmk::calc_canopy_resistance_ags<TF>(
+                tiles.at("veg").rs.data(),
+                an_co2.data(),
+                lai.data(),
+                (*T_bot).data(),
+                tiles.at("veg").ra.data(),
+                fields.sp.at("co2")->fld.data(),
+                fields.sp.at("thl")->fld.data(),
+                fields.sp.at("qt")->fld.data(),
+                sw_dn.data(),
+                (*theta_mean_n).data(),
+                // albedo, only for splitleaf...
+                (*vpds).data(),
+                ags_index.data(),
+                alpha0.data(),
+                t2gm.data(),
+                gm298.data(),
+                gmin.data(),
+                ammax298.data(),
+                f0.data(),
+                co2_comp298.data(),
+                // cos_sza, only for splitleaf...
+                rhoref[gd.kstart],
+                rhorefh[gd.kstart],
+                prefh[gd.kstart],
+                sw_splitleaf,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells,
+                gd.ijcells);
     }
     else
     {

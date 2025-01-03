@@ -200,8 +200,8 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> runoff;         // Surface runoff from soil (m s-1)
 
         std::vector<int> ags_index;     // A-Gs vegetation index in lookup table.
-        std::vector<int> an_co2;        // CO2 assimilation (photosynthesis).
-        std::vector<int> resp_co2;      // CO2 respiration from soil.
+        std::vector<TF> an_co2;         // CO2 assimilation (photosynthesis).
+        std::vector<TF> resp_co2;       // CO2 respiration from soil.
 
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables
