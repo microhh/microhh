@@ -1364,6 +1364,12 @@ void Boundary_surface_lsm<TF>::create_stats(
         stats.add_time_series("G", "Surface soil heat flux", "W m-2", group_name);
         stats.add_time_series("S", "Surface storage heat flux", "W m-2", group_name);
 
+        if (sw_ags)
+        {
+            stats.add_time_series("co2_an", "Surface CO2 assimilation", "mol mol-1 m s-1", group_name);
+            stats.add_time_series("co2_resp", "Surface CO2 respiration", "mol mol-1 m s-1", group_name);
+        }
+
         // Soil
         stats.add_prof("t", "Soil temperature", "K", "zs", group_name);
         stats.add_prof("theta", "Soil volumetric water content", "-", "zs", group_name);
@@ -1401,6 +1407,12 @@ void Boundary_surface_lsm<TF>::create_stats(
         column.add_time_series("G", "Surface soil heat flux", "W m-2");
         column.add_time_series("S", "Surface storage heat flux", "W m-2");
 
+        if (sw_ags)
+        {
+            column.add_time_series("co2_an", "Surface CO2 assimilation", "mol mol-1 m s-1");
+            column.add_time_series("co2_resp", "Surface CO2 respiration", "mol mol-1 m s-1");
+        }
+
         if (sw_tile_stats_col)
             for (auto& tile : tiles)
             {
@@ -1424,7 +1436,14 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "H", "LE", "G", "S"};
+        std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "H", "LE", "G", "S", "co2_an", "co2_resp"};
+
+        if (sw_ags)
+        {
+            allowed_crossvars.push_back("co2_an");
+            allowed_crossvars.push_back("co2_resp");
+        }
+
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1662,6 +1681,10 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
             get_tiled_mean(tmp->fld_bot, var, TF(1));
             cross.cross_plane(tmp->fld_bot.data(), no_offset, var, iotime);
         }
+        else if (sw_ags && var == "co2_an")
+            cross.cross_plane(an_co2.data(), no_offset, var, iotime);
+        else if (sw_ags && var == "co2_resp")
+            cross.cross_plane(resp_co2.data(), no_offset, var, iotime);
     }
 
     fields.release_tmp(tmp);
@@ -1692,6 +1715,12 @@ void Boundary_surface_lsm<TF>::exec_stats(Stats<TF>& stats)
 
     get_tiled_mean(*fld_mean, "S", TF(1));
     stats.calc_stats_2d("S", *fld_mean, no_offset);
+
+    if (sw_ags)
+    {
+        stats.calc_stats_2d("co2_an", an_co2, no_offset);
+        stats.calc_stats_2d("co2_resp", resp_co2, no_offset);
+    }
 
     // Soil
     stats.calc_stats_soil("t", fields.sps.at("t")->fld, no_offset);
@@ -1743,6 +1772,12 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 
     get_tiled_mean(*fld_mean, "S", TF(1));
     column.calc_time_series("S", (*fld_mean).data(), no_offset);
+
+    if (sw_ags)
+    {
+        column.calc_time_series("co2_an", an_co2.data(), no_offset);
+        column.calc_time_series("co2_resp", resp_co2.data(), no_offset);
+    }
 
     if (sw_tile_stats_col)
         for (auto& tile : tiles)

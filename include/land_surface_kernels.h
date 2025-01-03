@@ -299,6 +299,10 @@ namespace Land_surface_kernels
         //sigma    = 0.2                                 # Scattering coefficient
         //kdfbl    = 0.8                                 # Diffuse radiation extinction coefficient for black leaves
 
+        // Fixed conversion factors.
+        const TF to_mgm3 = Constants::xmco2<TF> / Constants::xmair<TF> * TF(1e6) * rho;
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -311,7 +315,7 @@ namespace Land_surface_kernels
 
                 // Calculate the CO2 compensation concentration (IFS eq. 8.92).
                 // "The compensation point Γ is defined as the CO2 concentration at which the net CO2 assimilation of a fully lit leaf becomes zero".
-                const TF co2_comp = rho_bot * co2_comp298[ia] * std::pow(q10lambda, TF(0.1) * (t_bot[j,i] - TF(298)));
+                const TF co2_comp = rho_bot * co2_comp298[ia] * std::pow(q10lambda, TF(0.1) * (t_bot[ij] - TF(298)));
 
                 // Calculate the mesophyll conductance (IFS eq. 8.93).
                 // "The mesophyll conductance gm describes the transport of CO2 from the substomatal cavities to the mesophyll cells where the carbon is fixed".
@@ -333,8 +337,8 @@ namespace Land_surface_kernels
                 // Coupling factor (IFS eq. 8.101).
                 const TF cfrac = std::max(TF(0.01), f0[ia] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
 
-                // Absolute CO2 concentration. Input = [mol(CO2)/mol(air)], co2_abs = [mg(CO2)/m3(air)].
-                const TF co2_abs  = co2[ijk] * (Constants::xmco2<TF> / Constants::xmair<TF>) * TF(1e6) * rho;
+                // Absolute CO2 concentration. Input = [mol(CO2) mol-1(air)], co2_abs = [mg(CO2) m-3(air)].
+                const TF co2_abs  = co2[ijk] * to_mgm3;
 
                 // CO2 concentration in leaf (IFS eq. ???).
                 //if (lrelaxci) then
@@ -365,7 +369,7 @@ namespace Land_surface_kernels
                 // Autotrophic dark respiration (IFS eq. 8.99).
                 const TF rdark = am / TF(9);
 
-                // Photosynthetically active radiation.
+                // Photosynthetically active radiation [W m-2].
                 const TF par = TF(0.5) * std::max(TF(0.1), sw_flux_dn[ij]);
 
                 // Light use efficiency.
@@ -444,7 +448,7 @@ namespace Land_surface_kernels
                     const TF tempy  = alphac * kx * par / (am + rdark);
 
                     an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
-                    gc_inf = lai[ij] * (gmin[ia]/nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
+                    gc_inf = lai[ij] * (gmin[ia] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
                 }
 
                 //if (lrelaxgc) then
@@ -462,15 +466,16 @@ namespace Land_surface_kernels
                 const TF gcco2 = gc_inf;
 
                 // Output values from kernel:
-                // Surface resistances for moisture.
+                // Canopy resistances for moisture.
                 rs[ij] = TF(1) / (TF(1.6) * gcco2);
 
-                // Net flux of CO2 into the plant (An)
-                // co2_abs has units kg(CO2)/m3(air), so flux is in kg(co2)/m2/s.
-                const TF rs_co2 = TF(1) / gcco2;
-                an_co2[ij] = -(co2_abs - ci) / (ra[ij] + rs_co2);
+                // Net flux of CO2 into the plant (An).
+                // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
+                // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
+                an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
             }
     }
+
 
     template<typename TF>
     void calc_soil_resistance(
