@@ -230,7 +230,7 @@ namespace Land_surface_kernels
     template<typename TF>
     void calc_canopy_resistance_ags(
             TF* const restrict rs,
-            TF* const restrict rs_co2,
+            TF* const restrict an_co2,
             const TF* const restrict lai,
             const TF* const restrict t_bot,
             const TF* const restrict ra,
@@ -239,7 +239,7 @@ namespace Land_surface_kernels
             const TF* const restrict qt,
             const TF* const restrict sw_flux_dn,
             const TF* const restrict theta_rel_mean,
-            const TF* const restrict albedo,
+            //const TF* const restrict albedo,
             const TF* const restrict vpds,
             const int* const restrict ags_index,
             // Vegetation specific constants:
@@ -448,13 +448,14 @@ namespace Land_surface_kernels
                 //    gcco2 = gc_inf
                 const TF gcco2 = gc_inf;
 
-                // Surface resistances for moisture and carbon dioxide
+                // Output values from kernel:
+                // Surface resistances for moisture.
                 rs[ij] = TF(1) / (TF(1.6) * gcco2);
-                rs_co2[ij] = TF(1) / gcco2;
 
                 // Net flux of CO2 into the plant (An)
                 // co2_abs has units kg(CO2)/m3(air), so flux is in kg(co2)/m2/s.
-                an[ij] = -(co2_abs - ci) / (ra[ij] + rs_co2[ij]);
+                const TF rs_co2 = TF(1) / gcco2;
+                an_co2[ij] = -(co2_abs - ci) / (ra[ij] + rs_co2[ij]);
             }
     }
 

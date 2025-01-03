@@ -266,6 +266,7 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_free_drainage  = inputin.get_item<bool>("land_surface", "swfreedrainage", "", true);
     sw_water          = inputin.get_item<bool>("land_surface", "swwater", "", false);
     sw_homogenize_sfc = inputin.get_item<bool>("land_surface", "swhomogenizesfc", "", false);
+    sw_ags            = inputin.get_item<bool>("land_surface", "swags", "", false);
     sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
 
@@ -283,8 +284,11 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
         tiles.emplace(name, Surface_tile<TF>{});
 
     // Open NetCDF file with soil lookup table:
-    nc_lookup_table =
+    nc_lookup_table_vg =
         std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
+
+    if (sw_ags)
+        nc_lookup_table_ags = std::make_shared<Netcdf_file>(master, "ags_parameters.nc", Netcdf_mode::Read);
 
     // Checks:
     if (sw_homogeneous && sw_water)
@@ -430,33 +434,94 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    // Calculate vegetation/soil resistance functions `f`
-    lsmk::calc_resistance_functions(
-            (*f1).data(), (*f2).data(),
-            (*f2b).data(), (*f3).data(),
-            sw_dn.data(),
-            fields.sps.at("theta")->fld.data(),
-            (*theta_mean_n).data(),
-            (*vpd).data(),
-            gD_coeff.data(),
-            c_veg.data(),
-            theta_wp.data(),
-            theta_fc.data(),
-            theta_res.data(),
-            soil_index.data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            sgd.kend,
-            gd.icells, gd.ijcells);
+    if (sw_ags)
+    {
+        //lsmk::calc_canopy_resistance_ags(
+        //        tiles.at("veg").rs.data(),
+        //        an_co2.data(),
+        //        lai.data(),
+        //        (*T_bot).data(),
+        //        tiles.at("veg").ra.data(),
+        //        fields.sp.at("co2")->fld.data(),
+        //        fields.sp.at("thl")->fld.data(),
+        //        fields.sp.at("qt")->fld.data(),
+        //        sw_dn.data(),
+        //        (*theta_mean_n).data(),
+        //        // albedo, only for splitleaf...
+        //        (*vpds).data(),
+        //        ags_index.data(),
+        //        alpha0.data(),
+        //        t2gm.data(),
+        //        gm298.data(),
+        //        gmin.data(),
+        //        ammax298.data(),
+        //        f0.data(),
+        //        co2_comp298.data(),
 
-    // Calculate canopy resistance for veg and soil tiles.
-    lsmk::calc_canopy_resistance(
-            tiles.at("veg").rs.data(),
-            rs_veg_min.data(), lai.data(),
-            (*f1).data(), (*f2).data(), (*f3).data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+        //void calc_canopy_resistance_ags(
+        //    TF* const restrict rs,
+        //    TF* const restrict an_co2,
+        //    const TF* const restrict lai,
+        //    const TF* const restrict t_bot,
+        //    const TF* const restrict ra,
+        //    const TF* const restrict co2,
+        //    const TF* const restrict thl,
+        //    const TF* const restrict qt,
+        //    const TF* const restrict sw_flux_dn,
+        //    const TF* const restrict theta_rel_mean,
+        //    const TF* const restrict albedo,
+        //    const TF* const restrict vpds,
+        //    const int* const restrict ags_index,
+        //    // Vegetation specific constants:
+        //    const TF* const restrict alpha0,
+        //    const TF* const restrict t2gm,
+        //    const TF* const restrict gm298,
+        //    const TF* const restrict gmin,
+        //    const TF* const restrict ammax298,
+        //    const TF* const restrict f0,
+        //    const TF* const restrict co2_comp298,
+        //    const TF cos_sza,
+        //    const TF rho,
+        //    const TF rho_bot,
+        //    const TF p_bot,
+        //    const bool sw_splitleaf,
+        //    const int istart, const int iend,
+        //    const int jstart, const int jend,
+        //    const int kstart,
+        //    const int jstride,
+        //    const int kstride)
+
+    }
+    else
+    {
+        // Calculate vegetation/soil resistance functions `f`
+        lsmk::calc_resistance_functions(
+                (*f1).data(), (*f2).data(),
+                (*f2b).data(), (*f3).data(),
+                sw_dn.data(),
+                fields.sps.at("theta")->fld.data(),
+                (*theta_mean_n).data(),
+                (*vpd).data(),
+                gD_coeff.data(),
+                c_veg.data(),
+                theta_wp.data(),
+                theta_fc.data(),
+                theta_res.data(),
+                soil_index.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                sgd.kend,
+                gd.icells, gd.ijcells);
+
+        // Calculate canopy resistance for veg and soil tiles.
+        lsmk::calc_canopy_resistance(
+                tiles.at("veg").rs.data(),
+                rs_veg_min.data(), lai.data(),
+                (*f1).data(), (*f2).data(), (*f3).data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+    }
 
     lsmk::calc_soil_resistance(
             tiles.at("soil").rs.data(),
@@ -925,6 +990,7 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_xy(T_bot);
     fields.release_tmp_xy(T_a);
     fields.release_tmp_xy(vpd);
+    fields.release_tmp_xy(vpds);
     fields.release_tmp_xy(qsat_bot);
     fields.release_tmp_xy(dqsatdT_bot);
 
@@ -1068,7 +1134,7 @@ void Boundary_surface_lsm<TF>::init_land_surface()
     root_fraction.resize(sgd.ncells);
 
     // Resize the lookup table with van Genuchten parameters
-    const int size = nc_lookup_table->get_dimension_size("index");
+    int size = nc_lookup_table_vg->get_dimension_size("index");
 
     theta_res.resize(size);
     theta_wp.resize(size);
@@ -1088,6 +1154,25 @@ void Boundary_surface_lsm<TF>::init_land_surface()
 
     gamma_T_dry.resize(size);
     rho_C.resize(size);
+
+    if (sw_ags)
+    {
+        ags_index.resize(gd.ijcells);
+        an_co2.resize(gd.ijcells);
+        resp_co2.resize(gd.ijcells);
+
+        // Resize lookup table A-Gs vegetation parameters.
+        size = nc_lookup_table_ags->get_dimension_size("index");
+
+        alpha0.resize(size);
+        t2gm.resize(size);
+        r0.resize(size);
+        gm298.resize(size);
+        gmin.resize(size);
+        ammax298.resize(size);
+        f0.resize(size);
+        co2_comp298.resize(size);
+    }
 }
 
 template<typename TF>
@@ -1223,6 +1308,12 @@ void Boundary_surface_lsm<TF>::create(
         init_homogeneous(lambda_stable, "lambda_stable");
         init_homogeneous(lambda_unstable, "lambda_unstable");
         init_homogeneous(cs_veg, "cs_veg");
+
+        if (sw_ags)
+        {
+            const int value = input.get_item<int>("land_surface", "ags_index", "");
+            std::fill(ags_index.begin(), ags_index.begin()+agd.ijcells, value);
+        }
     }
     // else: these fields are read from 2D input files in `boundary->load()`.
 
@@ -1230,17 +1321,17 @@ void Boundary_surface_lsm<TF>::create(
     std::fill(tiles.at("wet").rs.begin(), tiles.at("wet").rs.begin()+agd.ijcells, 0.);
 
     // Read the lookup table with soil properties
-    const int size = nc_lookup_table->get_dimension_size("index");
-    nc_lookup_table->get_variable<TF>(theta_res, "theta_res", {0}, {size});
-    nc_lookup_table->get_variable<TF>(theta_wp,  "theta_wp",  {0}, {size});
-    nc_lookup_table->get_variable<TF>(theta_fc,  "theta_fc",  {0}, {size});
-    nc_lookup_table->get_variable<TF>(theta_sat, "theta_sat", {0}, {size});
+    const int size = nc_lookup_table_vg->get_dimension_size("index");
+    nc_lookup_table_vg->get_variable<TF>(theta_res, "theta_res", {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(theta_wp,  "theta_wp",  {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(theta_fc,  "theta_fc",  {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(theta_sat, "theta_sat", {0}, {size});
 
-    nc_lookup_table->get_variable<TF>(gamma_theta_sat, "gamma_sat", {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(gamma_theta_sat, "gamma_sat", {0}, {size});
 
-    nc_lookup_table->get_variable<TF>(vg_a, "alpha", {0}, {size});
-    nc_lookup_table->get_variable<TF>(vg_l, "l",     {0}, {size});
-    nc_lookup_table->get_variable<TF>(vg_n, "n",     {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(vg_a, "alpha", {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(vg_l, "l",     {0}, {size});
+    nc_lookup_table_vg->get_variable<TF>(vg_n, "n",     {0}, {size});
 
     for (int i=0; i<size; ++i)
         theta_res[i] = std::max(theta_res[i], TF(Constants::dsmall));
@@ -1252,6 +1343,21 @@ void Boundary_surface_lsm<TF>::create(
             gamma_T_dry.data(), rho_C.data(),
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), size);
+
+    if (sw_ags)
+    {
+        // Read lookup table A-Gs parameters.
+        const int size = nc_lookup_table_ags->get_dimension_size("index");
+
+        nc_lookup_table_ags->get_variable<TF>(alpha0,      "alpha0",      {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(t2gm,        "T2gm",        {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(r0,          "R0",          {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(gm298,       "gm298",       {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(gmin,        "gmin",        {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(ammax298,    "Ammax298",    {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(f0,          "f0",          {0}, {size});
+        nc_lookup_table_ags->get_variable<TF>(co2_comp298, "co2_comp298", {0}, {size});
+    }
 }
 
 template<typename TF>
@@ -1563,7 +1669,7 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
 
     auto tmp = fields.get_tmp();
     TF no_offset = 0.;
-    
+
     for (auto& var : cross_list)
     {
         if (var == "ustar")

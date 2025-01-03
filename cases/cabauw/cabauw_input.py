@@ -25,6 +25,7 @@ def create_case_input(
         start_date,
         end_date,
         use_htessel,
+        use_ags,
         use_rrtmgp,
         use_rt,
         use_aerosols,
@@ -123,6 +124,8 @@ def create_case_input(
     if use_htessel:
         ini['boundary']['swboundary'] = 'surface_lsm'
         ini['boundary']['sbcbot'] = 'dirichlet'
+
+        ini['land_surface']['swags'] = use_ags
     else:
         ini['boundary']['swboundary'] = 'surface'
         ini['boundary']['sbcbot'] = 'flux'
@@ -470,6 +473,7 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
+    use_ags = True               # False = Jarvis-Stewart, True = A-Gs.
     use_rrtmgp = True            # False = prescribed surface radiation from ERA5.
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
@@ -497,17 +501,18 @@ if __name__ == '__main__':
     zsize = 4000
     ktot = 160
 
-    itot = 512
-    jtot = 512
+    itot = 32
+    jtot = 32
 
-    xsize = 25600
-    ysize = 25600
+    xsize = 3200
+    ysize = 3200
 
     # Create input files.
     create_case_input(
             start_date,
             end_date,
             use_htessel,
+            use_ags,
             use_rrtmgp,
             use_rt,
             use_aerosols,

@@ -92,6 +92,9 @@ lambda_stable=10.0
 lambda_unstable=10.0
 cs_veg=0
 
+swags=0
+ags_index=0  # 0=grass.
+
 [force]
 swlspres=geo
 swtimedep_geo=1

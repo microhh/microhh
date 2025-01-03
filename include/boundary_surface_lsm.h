@@ -154,6 +154,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_tile_stats;
         bool sw_tile_stats_col;
         bool sw_homogenize_sfc;
+        bool sw_ags;
 
         TF emis_sfc;
 
@@ -174,8 +175,9 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> dvdz_mo;
         std::vector<TF> dbdz_mo;
 
-        // Lookup tables van Genuchten parameterisation
-        std::shared_ptr<Netcdf_file> nc_lookup_table;
+        // Lookup tables van Genuchten parameterisation & A-Gs scheme.
+        std::shared_ptr<Netcdf_file> nc_lookup_table_vg;
+        std::shared_ptr<Netcdf_file> nc_lookup_table_ags;
 
         // Soil cross-sections
         std::vector<std::string> crosslist;
@@ -197,6 +199,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> infiltration;   // Infiltration moisture into soil (m s-1)
         std::vector<TF> runoff;         // Surface runoff from soil (m s-1)
 
+        std::vector<int> ags_index;     // A-Gs vegetation index in lookup table.
+        std::vector<int> an_co2;        // CO2 assimilation (photosynthesis).
+        std::vector<int> resp_co2;      // CO2 respiration from soil.
+
         // Soil properties
         std::vector<int> soil_index;    // Index in lookup tables
         std::vector<TF> diffusivity;    // Full level (m2 s-1)
@@ -206,7 +212,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> source;         // Source term (unit s-1)
         std::vector<TF> root_fraction;  // Root fraction per soil layer (-)
 
-        // Lookup table data obtained from input NetCDF file:
+        // Lookup table data obtained from input van Genuchten NetCDF file:
         std::vector<TF> theta_res;  // Residual soil moisture content (m3 m-3)
         std::vector<TF> theta_wp;   // Soil moisture content at wilting point (m3 m-3)
         std::vector<TF> theta_fc;   // Soil moisture content at field capacity (m3 m-3)
@@ -227,6 +233,16 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> gamma_theta_min;  // Minimum conductivity (m s-1)
         std::vector<TF> gamma_T_dry;      // Heat conductivity dry soil (m s-1)
         std::vector<TF> rho_C;            // Volumetric soil heat capacity (J m-3 K-1)
+
+        // Lookup table data from input A-Gs NetCDF file.
+        std::vector<TF> alpha0;        // Lightuse efficiency at low light conditions
+        std::vector<TF> t2gm;          // Reference temperature calculation mesophyll conductance
+        std::vector<TF> r0;            // Soil respiration at 298 K?
+        std::vector<TF> gm298;         // Mesophyl conductance at 298 K
+        std::vector<TF> gmin;          // Cuticular minimum conductance
+        std::vector<TF> ammax298;      // CO2 maximal primary productivity
+        std::vector<TF> f0;            // Maximum value Cfrac
+        std::vector<TF> co2_comp298;   // CO2 compensation concentration at 298 K
 
         #ifdef USECUDA
         void print_ij(const TF*);
