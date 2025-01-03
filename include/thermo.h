@@ -87,7 +87,8 @@ class Thermo
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
         virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
         virtual void get_land_surface_fields(
-                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
 
         virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
         virtual TF get_db_ref() const = 0;

@@ -365,11 +365,12 @@ void Boundary_surface_lsm<TF>::exec(
     auto T_bot = fields.get_tmp_xy();
     auto T_a = fields.get_tmp_xy();
     auto vpd = fields.get_tmp_xy();
+    auto vpds = fields.get_tmp_xy();
     auto qsat_bot = fields.get_tmp_xy();
     auto dqsatdT_bot = fields.get_tmp_xy();
 
     thermo.get_land_surface_fields(
-        *T_bot, *T_a, *vpd, *qsat_bot, *dqsatdT_bot);
+        *T_bot, *T_a, *vpd, *vpds, *qsat_bot, *dqsatdT_bot);
 
     // NOTE: `get_buoyancy_surf` calculates the first model level buoyancy only,
     //       but since this is written at `kstart`, we can't use a 2D slice...

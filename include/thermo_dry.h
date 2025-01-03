@@ -117,7 +117,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                std::vector<TF>&, std::vector<TF>&)
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.

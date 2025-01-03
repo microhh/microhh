@@ -80,7 +80,7 @@ class Thermo_buoy : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                std::vector<TF>&, std::vector<TF>&)
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
         const std::vector<TF>& get_basestate_vector(std::string) const
             { throw std::runtime_error("Function get_basestate_vector not implemented"); }

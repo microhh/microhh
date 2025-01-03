@@ -80,7 +80,8 @@ class Thermo_moist : public Thermo<TF>
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const;
         void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const;
         void get_land_surface_fields(
-            std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool);
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&);
         void get_buoyancy_fluxbot(std::vector<TF>&, bool);
