@@ -59,7 +59,7 @@ namespace Diff_tke2_kernels
             // Variables for the wall damping and length scales
             const TF n_mason = TF(2.);
     
-            if (!sw_surface_model)
+            if constexpr (!sw_surface_model)
                 asm("trap;");
             else
             {
@@ -68,17 +68,17 @@ namespace Diff_tke2_kernels
                 if (level.distance_to_start() == 0)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(sgstke[ijk] / bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
+                        mlen = cn * sqrt(sgstke[ijk] / N2[ijk]);
                 }
     
-                TF fac  = min(mlen0[k], mlen);
+                TF fac = min(mlen0[k], mlen);
     
-                if (sw_mason) // Apply Mason's wall correction here
+                if constexpr (sw_mason) // Apply Mason's wall correction here
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                             (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
     
@@ -116,7 +116,7 @@ namespace Diff_tke2_kernels
             // Variables for the wall damping and length scales
             const TF n_mason = TF(2.);
 
-            if (!sw_surface_model)
+            if constexpr (!sw_surface_model)
                 asm("trap;");
             else
             {
@@ -125,17 +125,17 @@ namespace Diff_tke2_kernels
                 if (level.distance_to_start() == 0)
                 {
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(bgradbot[ij]);
+                        mlen = cn * sqrt(sgstke[ijk] / bgradbot[ij]);
                 }
                 else
                 {
                     if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * sqrt(sgstke[ijk]) / sqrt(N2[ijk]);
+                        mlen = cn * sqrt(sgstke[ijk] / N2[ijk]);
                 }
 
                 TF fac = min(mlen0[k], mlen);
 
-                if (sw_mason) // Apply Mason's wall correction here
+                if constexpr (sw_mason) // Apply Mason's wall correction here
                     fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                                 (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
@@ -178,18 +178,18 @@ namespace Diff_tke2_kernels
             if (level.distance_to_start() == 0)
             {
                 if (bgradbot[ij] > 0)
-                    mlen = cn * sqrt(a[ijk]) / sqrt(bgradbot[ij]);
+                    mlen = cn * sqrt(a[ijk] / bgradbot[ij]);
             }
             else
             {
                 if (N2[ijk] > 0)
-                    mlen = cn * sqrt(a[ijk]) / sqrt(N2[ijk]);
+                    mlen = cn * sqrt(a[ijk] / N2[ijk]);
             }
 
             TF fac  = min(mlen0[k], mlen);
 
             // Apply Mason's wall correction here
-            if (sw_mason)
+            if constexpr (sw_mason)
                 fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
                         (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
