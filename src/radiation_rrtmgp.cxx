@@ -679,7 +679,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
-    t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
+    // t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     // Read representative values for the surface properties that are used in the column calcs.
