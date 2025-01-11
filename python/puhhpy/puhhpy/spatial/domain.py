@@ -99,6 +99,8 @@ class Domain:
         self.parent = parent
         self.child = child
 
+        self.proj_str = proj_str
+
         self.dx = xsize / itot
         self.dy = ysize / jtot
 
@@ -141,11 +143,45 @@ class Domain:
                 raise Exception('Invalid child size in y-direction, not a multiple of parent dy.')
 
         # Calculate lat/lon of each grid point using provided Proj.4 / PyProj string.
+        self.proj = None
+
+        # Outer domain.
+        if parent is None and lon is not None and lat is not None:
+            if proj_str is None:
+                raise Exception('For spatial projections, specify the Proj.4 `proj_str`.')
+
+            self.proj = Projection(
+                self.xsize,
+                self.ysize,
+                self.itot,
+                self.jtot,
+                lon,
+                lat,
+                anchor,
+                proj_str
+            )
+
+        # Inner domain
+        elif parent is not None and parent.proj is not None:
+
+            istart_in_parent = int(self.xstart_in_parent / parent.dx)
+            jstart_in_parent = int(self.ystart_in_parent / parent.dy)
+
+            lon_sw = self.parent.proj.lon_h[jstart_in_parent, istart_in_parent]
+            lat_sw = self.parent.proj.lat_h[jstart_in_parent, istart_in_parent]
+
+            self.proj = Projection(
+                    self.xsize,
+                    self.ysize,
+                    self.itot,
+                    self.jtot,
+                    lon_sw,
+                    lat_sw,
+                    'southwest',
+                    self.parent.proj_str)
 
 
-
-
-def plot_domains(domains):
+def plot_domains(domains, use_projection=False, scatter_lonlat=False):
     """
     Plot position of all domains.
 
@@ -153,25 +189,77 @@ def plot_domains(domains):
     -----------
     domains : list(Domain)
         List of `Domain` instances.
+    use_projection : bool, optional
+        Plot domains on map in lon/lat space instead of x/y.
+    scatter_lonlat : bool, optional
+        Scatter half level lon/lat points, to check match parent/child position.
 
     Returns:
     --------
     None
     """
 
+    # NOTE: not nice to have imports at function level, but plotting related
+    #       imports can be a pain in the *** on some supercomputers.
     import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.io.img_tiles as cimgt
+    import cartopy.feature as cfeature
+
     plt.close('all')
 
-    plt.figure(layout='tight')
-    plt.subplot(aspect='equal')
+    if use_projection:
+        """
+        Plot domains on map in lon/lat projection.
+        """
 
-    for i,d in enumerate(domains):
+        p0 = domains[0].proj
 
-        bbox_x = [d.xoffset, d.xoffset+d.xsize, d.xoffset+d.xsize, d.xoffset, d.xoffset]
-        bbox_y = [d.yoffset, d.yoffset, d.yoffset+d.ysize, d.yoffset+d.ysize, d.yoffset]
-            
-        plt.plot(bbox_x, bbox_y, label=f'#{i}')
-    
-    plt.xlabel('x (m)')
-    plt.ylabel('y (m)')
-    plt.legend()
+        margin = 0.1*(p0.lon.max() - p0.lon.min())
+        extent = [p0.lon.min()-margin, p0.lon.max()+margin, p0.lat.min()-margin, p0.lat.max()+margin]
+
+        proj = ccrs.LambertConformal(
+            central_longitude=p0.central_lon,
+            central_latitude=p0.central_lat)
+
+        plt.figure(layout='tight')
+        ax = plt.subplot(projection=proj)
+
+        for i,d in enumerate(domains):
+            ax.plot(d.proj.bbox_lon, d.proj.bbox_lat, label=f'#i', transform=ccrs.PlateCarree())
+
+            if scatter_lonlat:
+                plt.scatter(d.proj.lon_h, d.proj.lat_h, s=1, transform=ccrs.PlateCarree())
+        plt.legend()
+
+        ax.set_extent(extent)
+
+        # Add coast lines, countries, etc.
+        ax.coastlines(resolution='10m', linewidth=0.8, color='0.5')
+
+        countries = cfeature.NaturalEarthFeature(
+                category='cultural', name='admin_0_boundary_lines_land', scale='10m', facecolor='none', zorder=100)
+        ax.add_feature(countries, edgecolor='0.5', linewidth=0.8)
+
+        lakes = cfeature.NaturalEarthFeature(
+                category='physical', name='lakes', scale='10m', facecolor='none', zorder=100)
+        ax.add_feature(lakes, edgecolor='0.5', linewidth=0.8)
+
+    else:
+        """
+        Simple plot domains in x/y space.
+        """
+
+        plt.figure(layout='tight')
+        plt.subplot(aspect='equal')
+
+        for i,d in enumerate(domains):
+
+            bbox_x = [d.xoffset, d.xoffset+d.xsize, d.xoffset+d.xsize, d.xoffset, d.xoffset]
+            bbox_y = [d.yoffset, d.yoffset, d.yoffset+d.ysize, d.yoffset+d.ysize, d.yoffset]
+
+            plt.plot(bbox_x, bbox_y, label=f'#{i}')
+
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.legend()
