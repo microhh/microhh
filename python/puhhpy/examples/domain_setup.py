@@ -104,6 +104,17 @@ def domain_setup_with_proj():
     plot_domains([d0, d1], use_projection=True, scatter_lonlat=True)
 
 
+    """
+    Using the projection.
+    Each domain has `.proj` instance that contains the lat/lon coordinates
+    (see docstring of `puhhpy.spatial.Projection`), and can do x/y <-> lon/lat transforms.
+    """
+    x,y = d0.proj.to_xy(4.92, 51.97)
+    lon,lat = d0.proj.to_lonlat(x, y)
+
+    print(f'Coordinates ({lon:.2f}, {lat:.2f}) degrees = ({x:.2f}, {y:.2f}) m in LES.')
+
+
 if __name__ == '__main__':
 
     # Demonstration without a spatial projection.
