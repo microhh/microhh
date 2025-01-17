@@ -258,7 +258,7 @@ void Radiation_gcss<TF>::exec(Thermo<TF>& thermo, double time, Timeloop<TF>& tim
     if (mu > mu_min)
     {
         calc_gcss_rad_SW_g<TF><<<gridGPU2D, blockGPU>>>(flx->fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
-            tmp->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
+            tmp->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dz_g,
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells, gd.ncells);
 
@@ -337,7 +337,7 @@ void Radiation_gcss<TF>::get_radiation_field_g(Field3d<TF>& fld, std::string nam
             thermo.get_thermo_field_g(*ql,"ql",false);
             calc_gcss_rad_SW_g<TF><<<gridGPU, blockGPU>>>(
                 fld.fld_g, ql->fld_g, fields.sp.at("qt")->fld_g,
-                tau->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dzi_g,
+                tau->fld_g, fields.rhoref_g, mu, gd.z_g, gd.dz_g,
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells, gd.ncells);
 

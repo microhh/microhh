@@ -102,7 +102,7 @@ namespace
     void sunray(
             const TF mu, const int i, const int j,
             const int kstart, const int kend, const int icells, const int ijcells,
-            std::vector<TF> tau, const TF tauc,
+            const TF* tau, const TF tauc,
             TF* const restrict swn)
     {
         const int jj = icells;
@@ -161,7 +161,7 @@ namespace
     template<typename TF>
     void calc_gcss_rad_SW(
             TF* const restrict swn, const TF* const restrict ql, const TF* const restrict qt,
-            const TF* const restrict rhoref, const TF* const z, const TF* const dzi,
+            const TF* const restrict rhoref, const TF* const z, const TF* const dz,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells, const int ncells, TF mu)
     {
@@ -187,14 +187,15 @@ namespace
                     tau[k] = TF(0.0);
                     if (ql[ijk]>1.E-5)
                     {
-                        tau[k] = std::max(TF(0.0) , TF(1.5) * ql[ijk] * rhoref[k] * (z[k]-z[km1]) / reff / rho_l);
+                        tau[k] = TF(1.5) * ql[ijk] * rhoref[k] *dz[k] / reff / rho_l;
+
                         tauc = tauc + tau[k];
                     }
                 }
                 sunray<TF>(
                         TF(mu), i, j,
                         kstart, kend, icells, ijcells,
-                        tau, tauc, swn);
+                        tau.data(), tauc, swn);
             }
         }
     }
@@ -203,7 +204,7 @@ namespace
     void calc_gcss_rad_LW(const TF* const restrict ql, const TF* const restrict qt,
     TF* const restrict lwp, TF* const restrict flx, const TF* const restrict rhoref,
     const TF fr0, const TF fr1, const TF xka, const TF div,
-    const TF* const z, const TF* const dzi,
+    const TF* const z, const TF* const dz,
     const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
     const int icells, const int ijcells)
     {
@@ -224,7 +225,7 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
                     const int km1 = std::max(1,k-1);
-                    lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[km1]));
+                    lwp[ij] = lwp[ij] + std::max( TF(0.0) , ql[ijk] * rhoref[k] * dz[k]);
                     flx[ijk] = fr1 * std::exp(TF(-1.0) * xka * lwp[ij]);
                     if ( (ql[ijk] > TF(0.01E-3) ) && ( qt[ijk] >= TF(0.008) ) )
                         ki = k; //this is the PBLH index
@@ -239,7 +240,7 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + k*kk;
                     // const int km1 = std::max(kstart+1,k-1);
-                    // lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * (z[k]-z[k-1]));
+                    lwp[ij] = lwp[ij] - std::max( TF(0.0) , ql[ijk] * rhoref[k] * dz[k]);
                     flx[ijk] = flx[ijk] + fr0 * std::exp(-1.0 * xka * lwp[ij]);
 
                     if ((k>ki) && (ki>1) && (fact>0.))
@@ -255,7 +256,7 @@ namespace
             TF* const restrict tt, const TF* const restrict ql, const TF* const restrict qt,
             TF* const restrict lwp, TF* const restrict flx, TF* const restrict swn, const TF* const restrict rhoref,
             const TF mu, const TF mu_min, const TF fr0, const TF fr1, const TF xka, const TF div,
-            const TF* const z, const TF* const dzi,
+            const TF* const z, const TF* const dz,
             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
             const int icells, const int ijcells, const int ncells)
     {
@@ -266,7 +267,7 @@ namespace
         calc_gcss_rad_LW<TF>(
                 ql,qt,
                 lwp, flx, rhoref, fr0, fr1, xka, div,
-                z, dzi,
+                z, dz,
                 istart, iend, jstart, jend, kstart, kend,
                 icells, ijcells);
 
@@ -279,7 +280,7 @@ namespace
                     const int ijk  = i + j*jj + k*kk;
                     const int km1 = std::max(kstart+1,k-1);
                     const int ijkm = i + j*jj + km1*kk;
-                    tt[ijk] = tt[ijk] - (flx[ijk] - flx[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
+                    tt[ijk] = tt[ijk] - (flx[ijk+kk] - flx[ijk]) / dz[k] / (rhoref[k] * Constants::cp<TF>);
                 }
             } // end of i
         } // end of j
@@ -288,7 +289,7 @@ namespace
         {
             calc_gcss_rad_SW<TF>(
                     swn, ql, qt,
-                    rhoref, z, dzi,
+                    rhoref, z, dz,
                     istart, iend, jstart, jend, kstart, kend,
                     icells, ijcells, ncells, mu);
 
@@ -301,7 +302,7 @@ namespace
                         const int ijk  = i + j*jj + k*kk;
                         const int km1 = std::max(kstart+1,k-1);
                         const int ijkm = i + j*jj + km1*kk;
-                        tt[ijk] = tt[ijk] + (swn[ijk] - swn[ijkm]) * dzi[k] / (rhoref[k] * Constants::cp<TF>);
+                        tt[ijk] = tt[ijk] + (swn[ijk+kk] - swn[ijk]) / dz[k] / (rhoref[k] * Constants::cp<TF>);
                     }
                 }
             }
@@ -373,7 +374,7 @@ void Radiation_gcss<TF>::exec(
             fields.st.at("thl")->fld.data(), ql->fld.data(), fields.sp.at("qt")->fld.data(),
             lwp->fld.data(), flx->fld.data(), swn->fld.data(), fields.rhoref.data(),
             mu, mu_min, fr0, fr1, xka, div,
-            gd.z.data(), gd.dzhi.data(),
+            gd.z.data(), gd.dz.data(),
             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
             gd.icells, gd.ijcells, gd.ncells);
 
@@ -409,7 +410,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string
         calc_gcss_rad_LW(
                 ql->fld.data(), fields.ap.at("qt")->fld.data(),
                 lwp->fld.data(), fld.fld.data(), fields.rhoref.data(), fr0, fr1, xka, div,
-                gd.z.data(), gd.dzi.data(),
+                gd.z.data(), gd.dz.data(),
                 gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                 gd.icells, gd.ijcells);
 
@@ -428,7 +429,7 @@ void Radiation_gcss<TF>::get_radiation_field(Field3d<TF>& fld, const std::string
             thermo.get_thermo_field(*ql, "ql", false, false);
             calc_gcss_rad_SW(
                     fld.fld.data(), ql->fld.data(), fields.ap.at("qt")->fld.data(),
-                    fields.rhoref.data(), gd.z.data(), gd.dzi.data(),
+                    fields.rhoref.data(), gd.z.data(), gd.dz.data(),
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells, gd.ncells, mu);
             fields.release_tmp(ql);
