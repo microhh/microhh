@@ -123,7 +123,7 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
                  << std::setfill('0') << std::setw(5) << col.coord[0] << "."
                  << std::setfill('0') << std::setw(5) << col.coord[1] << "."
                  << std::setfill('0') << std::setw(7) << timeloop.get_iotime() << ".nc";
-        std::cout << "Creating column file: " << filename.str() << std::endl;
+
         // Create new NetCDF file.
         // 1. Find the mpiid of the column.
         int mpiid_column = 0;
