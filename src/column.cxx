@@ -108,7 +108,7 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
                 is_duplicate = true;
                 master.print_warning("Column #" + std::to_string(n) + " is a duplicate!");
             }
-        if (is_duplicate == false)
+        if (!is_duplicate)
         {
             columns.emplace_back(Column_struct{});
             columns.back().coord = {i, j};
