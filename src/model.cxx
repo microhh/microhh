@@ -829,8 +829,8 @@ void Model<TF>::print_status()
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
             std::fprintf(
-                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s\n",
-                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE");
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
         }
         first = false;
     }
@@ -855,8 +855,8 @@ void Model<TF>::print_status()
 
         if (master.get_mpiid() == 0)
         {
-            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E\n",
-                    iter, time, cputime, dt, cfl, dn, div, mom, tke);
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
             std::fflush(dnsout);
         }
 
