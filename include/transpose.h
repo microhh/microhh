@@ -57,9 +57,7 @@ class Transpose
         bool mpi_types_allocated;
 
         #ifdef USEMPI
-        MPI_Datatype transposez;  ///< MPI datatype containing base blocks for z-orientation in zx-transpose.
         MPI_Datatype transposez2; ///< MPI datatype containing base blocks for z-orientation in zy-transpose.
-        MPI_Datatype transposex;  ///< MPI datatype containing base blocks for x-orientation in zx-transpose.
         MPI_Datatype transposex2; ///< MPI datatype containing base blocks for x-orientation in xy-transpose.
         MPI_Datatype transposey;  ///< MPI datatype containing base blocks for y-orientation in xy-transpose.
         MPI_Datatype transposey2; ///< MPI datatype containing base blocks for y-orientation in zy-transpose.
