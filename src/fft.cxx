@@ -52,8 +52,6 @@ void FFT<float>::init()
     fftouti = fftwf_alloc_real(gd.itot*gd.jmax);
     fftinj  = fftwf_alloc_real(gd.jtot*gd.iblock);
     fftoutj = fftwf_alloc_real(gd.jtot*gd.iblock);
-
-    transpose.init();
 }
 #else
 template<>
@@ -65,8 +63,6 @@ void FFT<double>::init()
     fftouti = fftw_alloc_real(gd.itot*gd.jmax);
     fftinj  = fftw_alloc_real(gd.jtot*gd.iblock);
     fftoutj = fftw_alloc_real(gd.jtot*gd.iblock);
-
-    transpose.init();
 }
 #endif
 
@@ -364,12 +360,12 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF*
         {
             const int ij = n;
             const int ijk = n + k*kk;
-            tmp1[ijk] = fftouti[ij];
+            data[ijk] = fftouti[ij];
         }
     }
 
     // Transpose again.
-    transpose.exec_xy(data, tmp1);
+    transpose.exec_xy(data, tmp1, tmp2);
 
     kk = gd.iblock*gd.jtot;
 
@@ -391,13 +387,13 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF*
         {
             const int ij = n;
             const int ijk = n + k*kk;
-            // Shift to use p in pressure solver.
-            tmp1[ijk] = fftoutj[ij];
+
+            data[ijk] = fftoutj[ij];
         }
     }
 
     // Transpose back to original orientation.
-    transpose.exec_yz(data, tmp1);
+    transpose.exec_yz(data, tmp1, tmp2);
 }
 
 
@@ -407,7 +403,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
     auto& gd = grid.get_grid_data();
 
     // Transpose back to y.
-    transpose.exec_zy(tmp1, data);
+    transpose.exec_zy(data, tmp1, tmp2);
 
     int kk = gd.iblock*gd.jtot;
 
@@ -419,7 +415,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
         {
             const int ij = n;
             const int ijk = n + k*kk;
-            fftinj[ij] = tmp1[ijk];
+            fftinj[ij] = data[ijk];
         }
 
         fftw_execute_wrapper<TF>(jplanb, jplanbf);
@@ -434,7 +430,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
     }
 
     // Transpose back to x.
-    transpose.exec_yx(tmp1, data);
+    transpose.exec_yx(data, tmp1, tmp2);
 
     kk = gd.itot*gd.jmax;
 
@@ -446,7 +442,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
         {
             const int ij = n;
             const int ijk = n + k*kk;
-            fftini[ij] = tmp1[ijk];
+            fftini[ij] = data[ijk];
         }
 
         fftw_execute_wrapper<TF>(iplanb, iplanbf);

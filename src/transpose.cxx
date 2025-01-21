@@ -28,8 +28,7 @@
 template<typename TF>
 Transpose<TF>::Transpose(Master& masterin, Grid<TF>& gridin) :
     master(masterin),
-    grid(gridin),
-    mpi_types_allocated(false)
+    grid(gridin)
 {
 }
 
@@ -37,14 +36,6 @@ Transpose<TF>::Transpose(Master& masterin, Grid<TF>& gridin) :
 template<typename TF>
 Transpose<TF>::~Transpose()
 {
-    exit_mpi();
-}
-
-
-template<typename TF>
-void Transpose<TF>::init()
-{
-    init_mpi();
 }
 
 
@@ -54,55 +45,6 @@ namespace
     template<typename TF> MPI_Datatype mpi_fp_type();
     template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
     template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
-}
-
-template<typename TF>
-void Transpose<TF>::init_mpi()
-{
-    auto& gd = grid.get_grid_data();
-
-    int datacount, datablock, datastride;
-
-    // transposez iblock/jblock/kblock
-    datacount = gd.iblock*gd.jblock*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
-    MPI_Type_commit(&transposez2);
-
-    // transposex iblock
-    datacount  = gd.jmax*gd.kblock;
-    datablock  = gd.iblock;
-    datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex2);
-    MPI_Type_commit(&transposex2);
-
-    // transposey
-    datacount  = gd.kblock;
-    datablock  = gd.iblock*gd.jmax;
-    datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey);
-    MPI_Type_commit(&transposey);
-
-    // transposey2
-    datacount  = gd.kblock;
-    datablock  = gd.iblock*gd.jblock;
-    datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey2);
-    MPI_Type_commit(&transposey2);
-
-    mpi_types_allocated = true;
-}
-
-
-template<typename TF>
-void Transpose<TF>::exit_mpi()
-{
-    if (mpi_types_allocated)
-    {
-        MPI_Type_free(&transposez2);
-        MPI_Type_free(&transposex2);
-        MPI_Type_free(&transposey);
-        MPI_Type_free(&transposey2);
-    }
 }
 
 
@@ -233,119 +175,274 @@ void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_s
 
 
 template<typename TF>
-void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
+void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
-    const int tag = 1;
+    if (md.npy == 1)
+        return;
+
+    // Compute the appropriate strides.
+    const int jj_x = gd.itot;
+    const int kk_x = gd.itot*gd.jmax;
+
+    const int jj_y = gd.iblock;
+    const int kk_y = gd.iblock*gd.jtot;
 
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jmax;
+    const int nn = gd.iblock*gd.jmax*gd.kblock;
 
-    for (int n=0; n<md.npy; ++n)
+    // Local copies to make OpenACC work.
+    const int npy = md.npy;
+    const int kblock = gd.kblock;
+    const int jmax = gd.jmax;
+    const int iblock = gd.iblock;
+
+    // Pack the buffers.
+    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    for (int n=0; n<npy; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jmax; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = (i + n*iblock) + j*jj_x + k*kk_x;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    buffer_send[ijk_buf] = data[ijk];
+                }
+
+    // Send and receive the buffers.
+    const int tag = 1;
+    const int nreqs = md.npy*2;
+    MPI_Request reqs[nreqs];
+    // #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*jj;
-        const int ijkr = n*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, md.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, md.commy, master.get_request_ptr());
+        for (int n=0; n<md.npy; ++n)
+        {
+            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
+            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
+        }
+        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
     }
 
-    master.wait_all();
+    // Unpack the buffer.
+    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    for (int n=0; n<npy; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jmax; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + (j + n*jmax)*jj_y + k*kk_y;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    data[ijk] = buffer_recv[ijk_buf];
+                }
 }
 
+
 template<typename TF>
-void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
+void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
-    const int tag = 1;
+    if (md.npy == 1)
+        return;
+
+    // Compute the appropriate strides.
+    const int jj_y = gd.iblock;
+    const int kk_y = gd.iblock*gd.jtot;
+
+    const int jj_x = gd.itot;
+    const int kk_x = gd.itot*gd.jmax;
 
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jmax;
+    const int nn = gd.iblock*gd.jmax*gd.kblock;
 
-    for (int n=0; n<md.npy; ++n)
+    // Local copies to make OpenACC work.
+    const int npy = md.npy;
+    const int kblock = gd.kblock;
+    const int jmax = gd.jmax;
+    const int iblock = gd.iblock;
+
+    // Pack the buffer.
+    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    for (int n=0; n<npy; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jmax; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + (j + n*jmax)*jj_y + k*kk_y;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    buffer_send[ijk_buf] = data[ijk];
+                }
+
+    // Send and receive the buffers.
+    const int tag = 1;
+    const int nreqs = md.npy*2;
+    MPI_Request reqs[nreqs];
+    // #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*kk;
-        const int ijkr = n*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey , n, tag, md.commy, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, md.commy, master.get_request_ptr());
+        for (int n=0; n<md.npy; ++n)
+        {
+            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
+            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
+        }
+        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
     }
 
-    master.wait_all();
+    // Unpack the buffers.
+    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    for (int n=0; n<npy; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jmax; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = (i + n*iblock) + j*jj_x + k*kk_x;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    data[ijk] = buffer_recv[ijk_buf];
+                }
 }
 
+
 template<typename TF>
-void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
+void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
-    const int tag = 1;
+    if (md.npx == 1)
+        return;
+
+    // Compute the appropriate strides.
+    const int jj_y = gd.iblock;
+    const int kk_y = gd.iblock*gd.jtot;
+
+    const int jj_z = gd.iblock;
+    const int kk_z = gd.iblock*gd.jblock;
 
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jblock;
+    const int nn = gd.iblock*gd.jblock*gd.kblock;
 
-    for (int n=0; n<md.npx; ++n)
+    // Local copies to make OpenACC work.
+    const int npx = md.npx;
+    const int kblock = gd.kblock;
+    const int jblock = gd.jblock;
+    const int iblock = gd.iblock;
+
+    // Pack the buffers.
+    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    for (int n=0; n<npx; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jblock; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + (j + n*jblock)*jj_y + k*kk_y;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    buffer_send[ijk_buf] = data[ijk];
+                }
+
+    // Send and receive the buffers.
+    const int tag = 1;
+    const int nreqs = md.npx*2;
+    MPI_Request reqs[nreqs];
+    // #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*gd.jblock*jj;
-        const int ijkr = n*gd.kblock*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, md.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, md.commx, master.get_request_ptr());
+        for (int n=0; n<md.npx; ++n)
+        {
+            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
+        }
+        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
     }
 
-    master.wait_all();
+    // Unpack the buffer.
+    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    for (int n=0; n<npx; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jblock; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + j*jj_z + (k + n*kblock)*kk_z;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    data[ijk] = buffer_recv[ijk_buf];
+                }
 }
 
+
 template<typename TF>
-void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
+void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
-    const int tag = 1;
+    if (md.npx == 1)
+        return;
+
+    // Compute the appropriate strides.
+    const int jj_y = gd.iblock;
+    const int kk_y = gd.iblock*gd.jtot;
+
+    const int jj_z = gd.iblock;
+    const int kk_z = gd.iblock*gd.jblock;
 
     const int jj = gd.iblock;
     const int kk = gd.iblock*gd.jblock;
+    const int nn = gd.iblock*gd.jblock*gd.kblock;
 
-    for (int n=0; n<md.npx; ++n)
+    // Local copies to make OpenACC work.
+    const int npx = md.npx;
+    const int kblock = gd.kblock;
+    const int jblock = gd.jblock;
+    const int iblock = gd.iblock;
+
+    // Pack the buffer.
+    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    for (int n=0; n<npx; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jblock; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + j*jj_z + (k + n*kblock)*kk_z;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    buffer_send[ijk_buf] = data[ijk];
+                }
+
+    // Send and receive the buffers.
+    const int tag = 1;
+    const int nreqs = md.npx*2;
+    MPI_Request reqs[nreqs];
+    // #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*gd.kblock*kk;
-        const int ijkr = n*gd.jblock*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, md.commx, master.get_request_ptr());
-        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, md.commx, master.get_request_ptr());
+        for (int n=0; n<md.npx; ++n)
+        {
+            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
+        }
+        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
     }
 
-    master.wait_all();
+    // Unpack the buffers.
+    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    for (int n=0; n<npx; ++n)
+        for (int k=0; k<kblock; ++k)
+            for (int j=0; j<jblock; ++j)
+                for (int i=0; i<iblock; ++i)
+                {
+                    const int ijk = i + (j + n*jblock)*jj_y + k*kk_y;
+                    const int ijk_buf = i + j*jj + k*kk + n*nn;
+                    data[ijk] = buffer_recv[ijk_buf];
+                }
 }
 #else
-
-template<typename TF>
-void Transpose<TF>::init_mpi()
-{
-}
-
-template<typename TF>
-void Transpose<TF>::exit_mpi()
-{
-}
+template<typename TF> void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
 #endif
 
 

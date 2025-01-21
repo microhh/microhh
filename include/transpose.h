@@ -32,6 +32,7 @@
 class Master;
 template<typename> class Grid;
 
+
 template<typename TF>
 class Transpose
 {
@@ -39,28 +40,15 @@ class Transpose
         Transpose(Master&, Grid<TF>&);
         ~Transpose();
 
-        void init();
-
         void exec_zx(TF* const restrict, TF* const restrict, TF* const restrict);
         void exec_xz(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_xy(TF* const restrict, TF* const restrict);
-        void exec_yx(TF* const restrict, TF* const restrict);
-        void exec_yz(TF* const restrict, TF* const restrict);
-        void exec_zy(TF* const restrict, TF* const restrict);
+        void exec_xy(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_yx(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_yz(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_zy(TF* const restrict, TF* const restrict, TF* const restrict);
 
     private:
         Master& master;
         Grid<TF>& grid;
-
-        void init_mpi();
-        void exit_mpi();
-        bool mpi_types_allocated;
-
-        #ifdef USEMPI
-        MPI_Datatype transposez2; ///< MPI datatype containing base blocks for z-orientation in zy-transpose.
-        MPI_Datatype transposex2; ///< MPI datatype containing base blocks for x-orientation in xy-transpose.
-        MPI_Datatype transposey;  ///< MPI datatype containing base blocks for y-orientation in xy-transpose.
-        MPI_Datatype transposey2; ///< MPI datatype containing base blocks for y-orientation in zy-transpose.
-        #endif
 };
 #endif
