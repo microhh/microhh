@@ -182,7 +182,9 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
 
         auto check_and_default = [&](std::vector<TF>& vec)
         {
-            if (vec.size() == 0 && source_x0.size() > 0)
+            if (vec.size() > 0 && vec.size() != source_x0.size())
+                throw std::runtime_error("Number of line input values doesn't match other source input values.");
+            else if (vec.size() == 0 && source_x0.size() > 0)
             {
                 vec.resize(source_x0.size());
                 std::fill(vec.begin(), vec.end(), TF(0));
