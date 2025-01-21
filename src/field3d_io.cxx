@@ -53,7 +53,7 @@ namespace
 template<typename TF>
 int Field3d_io<TF>::save_field3d(
         TF* const restrict data,
-        TF* const restrict tmp1, TF* const restrict tmp2,
+        TF* const restrict tmp1, TF* const restrict tmp2, TF* const restrict tmp3,
         const char* filename, const TF offset,
         const int kstart, const int kend)
 {
@@ -90,7 +90,7 @@ int Field3d_io<TF>::save_field3d(
     if (sw_transpose)
     {
         // Transpose the 3D field
-        tp.exec_zx(tmp2, tmp1);
+        tp.exec_zx(tmp2, tmp1, tmp3);
 
         // Create MPI datatype for writing transposed field
         int totsize [3] = {gd.kmax,   gd.jtot, gd.itot};
@@ -142,7 +142,7 @@ int Field3d_io<TF>::save_field3d(
 template<typename TF>
 int Field3d_io<TF>::load_field3d(
         TF* const restrict data,
-        TF* const restrict tmp1, TF* const restrict tmp2,
+        TF* const restrict tmp1, TF* const restrict tmp2, TF* const restrict tmp3,
         const char* filename, TF offset,
         const int kstart, const int kend)
 {
@@ -671,7 +671,7 @@ int Field3d_io<TF>::load_xy_slice(
 template<typename TF>
 int Field3d_io<TF>::save_field3d(
         TF* const restrict data,
-        TF* const restrict tmp1, TF* const restrict tmp2,
+        TF* const restrict tmp1, TF* const restrict tmp2, TF* const restrict tmp3,
         const char* filename, const TF offset,
         const int kstart, const int kend)
 {
@@ -712,7 +712,7 @@ int Field3d_io<TF>::save_field3d(
 template<typename TF>
 int Field3d_io<TF>::load_field3d(
         TF* const restrict data,
-        TF* const restrict tmp1, TF* const restrict tmp2,
+        TF* const restrict tmp1, TF* const restrict tmp2, TF* const restrict tmp3,
         const char* filename, const TF offset,
         const int kstart, const int kend)
 {

@@ -1349,9 +1349,12 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     auto& agd = grid.get_grid_data();
     auto& sgd = soil_grid.get_grid_data();
 
+    // CvH: My fix here is highly confusing, we need to request the tmp fields for the field3d_io class at a too early stage
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
     auto tmp3 = fields.get_tmp();
+
+    auto tmp4 = fields.get_tmp(); // CvH: I request tmp4 here, because 3 is already in use.
 
     int nerror = 0;
     const TF no_offset = TF(0);
@@ -1387,7 +1390,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
 
         if (field3d_io.load_field3d(
                 field,
-                tmp1->fld.data(), tmp2->fld.data(),
+                tmp1->fld.data(), tmp2->fld.data(), tmp4->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
         {
@@ -1469,6 +1472,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
     fields.release_tmp(tmp3);
+    fields.release_tmp(tmp4);
 }
 
 template<typename TF>
@@ -1478,6 +1482,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
 
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
+    auto tmp3 = fields.get_tmp();
 
     int nerror = 0;
     const TF no_offset = TF(0);
@@ -1509,7 +1514,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
         master.print_message("Saving \"%s\" ... ", filename);
 
         if (field3d_io.save_field3d(
-                field, tmp1->fld.data(), tmp2->fld.data(),
+                field, tmp1->fld.data(), tmp2->fld.data(), tmp3->fld.data(),
                 filename, no_offset,
                 sgd.kstart, sgd.kend))
         {
@@ -1553,6 +1558,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
 
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
+    fields.release_tmp(tmp3);
 }
 
 template<typename TF>

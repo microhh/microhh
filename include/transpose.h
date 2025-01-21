@@ -41,12 +41,12 @@ class Transpose
 
         void init();
 
-        void exec_zx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to x.
-        void exec_xz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from x to z.
-        void exec_xy(TF* const restrict, TF* const restrict); ///< changes the transpose orientation from x to y.
-        void exec_yx(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to x.
-        void exec_yz(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from y to z.
-        void exec_zy(TF* const restrict, TF* const restrict); ///< Changes the transpose orientation from z to y.
+        void exec_zx(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_xz(TF* const restrict, TF* const restrict);
+        void exec_xy(TF* const restrict, TF* const restrict);
+        void exec_yx(TF* const restrict, TF* const restrict);
+        void exec_yz(TF* const restrict, TF* const restrict);
+        void exec_zy(TF* const restrict, TF* const restrict);
 
     private:
         Master& master;
