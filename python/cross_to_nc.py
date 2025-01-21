@@ -38,6 +38,7 @@ def convert_to_nc(variables):
         for mode in modes:
             try:
                 otime = int(round(starttime / 10**iotimeprec))
+
                 if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
                     if mode != 'xy':
                         continue
@@ -54,7 +55,7 @@ def convert_to_nc(variables):
                         indexes_local = indexes
 
                         files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
-                                variable, mode, indexes_local[0], starttime))
+                                variable, mode, indexes_local[0], otime))
                         if len(files) == 0:
                             raise Exception('Cannot find any cross-section')
                         halflevel = files[0].split('.')[-3]
