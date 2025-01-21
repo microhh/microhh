@@ -456,13 +456,14 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
         {
             const int ij = n;
             const int ijk = n + k*kk;
-            // swap array here to avoid unnecessary 3d loop
-            data[ijk] = fftouti[ij] / gd.itot;
+            tmp1[ijk] = fftouti[ij] / gd.itot;
         }
     }
 
     // And transpose back...
-    transpose.exec_xz(tmp1, data);
+    // CvH This is very obscure, we pass the buffer back rather than the data, to avoid a copy.
+    // This could be made clear to let the user specify in place or out of place.
+    transpose.exec_xz(tmp1, data, tmp2);
 }
 
 
