@@ -79,8 +79,13 @@ namespace Diff_tke2_kernels
                 TF fac = min(mlen0[k], mlen);
     
                 if constexpr (sw_mason) // Apply Mason's wall correction here
-                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                            (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                {
+                    if constexpr (n_mason == 2)
+                        fac = sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                    else
+                        fac = pow(TF(1.) / (TF(1.)/pow(fac, TF(n_mason)) + TF(1.)/
+                                    (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                }
     
                 // Calculate eddy diffusivity for momentum.
                 evisc[ijk] = cm * fac * sqrt(sgstke[ijk]);
@@ -136,8 +141,13 @@ namespace Diff_tke2_kernels
                 TF fac = min(mlen0[k], mlen);
 
                 if constexpr (sw_mason) // Apply Mason's wall correction here
-                    fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                {
+                    if constexpr (n_mason == 2)
+                        fac = sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                    else
+                        fac = pow(TF(1.) / (TF(1.)/pow(fac, TF(n_mason)) + TF(1.)/
+                                    (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                }
 
                 // Calculate eddy diffusivity for momentum.
                 evisch[ijk] = (ch1 + ch2 * fac / mlen0[k]) * evisc[ijk];
@@ -186,12 +196,16 @@ namespace Diff_tke2_kernels
                     mlen = cn * sqrt(a[ijk] / N2[ijk]);
             }
 
-            TF fac  = min(mlen0[k], mlen);
+            TF fac = min(mlen0[k], mlen);
 
-            // Apply Mason's wall correction here
-            if constexpr (sw_mason)
-                fac = pow(TF(1.)/(TF(1.)/pow(fac, n_mason) + TF(1.)/
-                        (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+            if constexpr (sw_mason) // Apply Mason's wall correction here
+            {
+                if constexpr (n_mason == 2)
+                    fac = sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                else
+                    fac = pow(TF(1.) / (TF(1.)/pow(fac, TF(n_mason)) + TF(1.)/
+                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+            }
 
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
             at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac;
