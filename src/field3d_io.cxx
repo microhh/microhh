@@ -62,7 +62,6 @@ int Field3d_io<TF>::save_field3d(
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
     auto tp = Transpose<TF>(master, grid);
-    tp.init();
 
     // Extract the data from the 3d field without the ghost cells
     const int jj    = gd.icells;
@@ -151,7 +150,6 @@ int Field3d_io<TF>::load_field3d(
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
     auto tp = Transpose<TF>(master, grid);
-    tp.init();
 
     MPI_Datatype subarray;   // MPI datatype containing the dimensions of the total array that is contained in one process.
 

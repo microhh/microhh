@@ -187,9 +187,6 @@ void Grid<TF>::init()
 
     // initialize the communication functions
     init_mpi();
-
-    // Initialize the transposes.
-    transpose.init();
 }
 
 /**
