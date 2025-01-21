@@ -90,7 +90,7 @@ int Field3d_io<TF>::save_field3d(
     if (sw_transpose)
     {
         // Transpose the 3D field
-        tp.exec_zx(tmp2, tmp1, tmp3);
+        tp.exec_zx(tmp1, tmp2, tmp3);
 
         // Create MPI datatype for writing transposed field
         int totsize [3] = {gd.kmax,   gd.jtot, gd.itot};
@@ -122,7 +122,7 @@ int Field3d_io<TF>::save_field3d(
 
     if (sw_transpose)
     {
-        if (MPI_File_write_all(fh, tmp2, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+        if (MPI_File_write_all(fh, tmp1, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
             return 1;
     }
     else
@@ -199,7 +199,7 @@ int Field3d_io<TF>::load_field3d(
     }
     else
     {
-        if (MPI_File_read_all(fh, tmp2, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
+        if (MPI_File_read_all(fh, tmp1, count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE))
             return 1;
     }
 
@@ -208,7 +208,7 @@ int Field3d_io<TF>::load_field3d(
 
     // Transpose the 3D field
     if (sw_transpose)
-        tp.exec_xz(tmp2, tmp1);
+        tp.exec_xz(tmp1, tmp2, tmp3);
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;
@@ -222,13 +222,14 @@ int Field3d_io<TF>::load_field3d(
             {
                 const int ijk  = i+gd.igc + (j+gd.jgc)*jj + (k+kstart)*kk;
                 const int ijkb = i + j*jjb + k*kkb;
-                data[ijk] = tmp2[ijkb] - offset;
+                data[ijk] = tmp1[ijkb] - offset;
             }
 
     MPI_Type_free(&subarray);
 
     return 0;
 }
+
 
 template<typename TF>
 int Field3d_io<TF>::save_xz_slice(
