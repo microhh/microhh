@@ -63,22 +63,10 @@ void Transpose<TF>::init_mpi()
 
     int datacount, datablock, datastride;
 
-    // transposez
-    datacount = gd.imax*gd.jmax*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
-    MPI_Type_commit(&transposez);
-
     // transposez iblock/jblock/kblock
     datacount = gd.iblock*gd.jblock*gd.kblock;
     MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
     MPI_Type_commit(&transposez2);
-
-    // transposex imax
-    datacount  = gd.jmax*gd.kblock;
-    datablock  = gd.imax;
-    datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex);
-    MPI_Type_commit(&transposex);
 
     // transposex iblock
     datacount  = gd.jmax*gd.kblock;
@@ -110,9 +98,7 @@ void Transpose<TF>::exit_mpi()
 {
     if (mpi_types_allocated)
     {
-        MPI_Type_free(&transposez);
         MPI_Type_free(&transposez2);
-        MPI_Type_free(&transposex);
         MPI_Type_free(&transposex2);
         MPI_Type_free(&transposey);
         MPI_Type_free(&transposey2);
