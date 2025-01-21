@@ -148,10 +148,11 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
 
         auto tmp1 = fields.get_tmp();
         auto tmp2 = fields.get_tmp();
+        auto tmp3 = fields.get_tmp();
 
         if (field3d_io.save_field3d(
                     data,
-                    tmp1->fld.data(), tmp2->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(), tmp3->fld.data(),
                     filename, no_offset,
                     gd.kstart, gd.kend))
         {
@@ -161,6 +162,7 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
 
         fields.release_tmp(tmp1);
         fields.release_tmp(tmp2);
+        fields.release_tmp(tmp3);
     }
 }
 

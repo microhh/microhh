@@ -1244,6 +1244,7 @@ void Fields<TF>::save(int n)
 
     auto tmp1 = get_tmp();
     auto tmp2 = get_tmp();
+    auto tmp3 = get_tmp();
 
     int nerror = 0;
     for (auto& f : ap)
@@ -1255,7 +1256,7 @@ void Fields<TF>::save(int n)
         // The offset is kept at zero, because otherwise bitwise identical restarts are not possible.
         if (field3d_io.save_field3d(
                     f.second->fld.data(),
-                    tmp1->fld.data(), tmp2->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(), tmp3->fld.data(),
                     filename, no_offset,
                     gd.kstart, gd.kend))
         {
@@ -1270,6 +1271,7 @@ void Fields<TF>::save(int n)
 
     release_tmp(tmp1);
     release_tmp(tmp2);
+    release_tmp(tmp3);
 
     master.sum(&nerror, 1);
 
@@ -1285,6 +1287,7 @@ void Fields<TF>::load(int n)
 
     auto tmp1 = get_tmp();
     auto tmp2 = get_tmp();
+    auto tmp3 = get_tmp();
 
     int nerror = 0;
 
@@ -1297,7 +1300,7 @@ void Fields<TF>::load(int n)
 
         if (field3d_io.load_field3d(
                     f.second->fld.data(),
-                    tmp1->fld.data(), tmp2->fld.data(),
+                    tmp1->fld.data(), tmp2->fld.data(), tmp3->fld.data(),
                     filename, no_offset,
                     gd.kstart, gd.kend))
         {
@@ -1329,6 +1332,7 @@ void Fields<TF>::load(int n)
 
     release_tmp(tmp1);
     release_tmp(tmp2);
+    release_tmp(tmp3);
 
     master.sum(&nerror, 1);
 
