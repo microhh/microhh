@@ -170,13 +170,13 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * std::sqrt(sgstke[ijk] / bgradbot[ij]);
                     else
                         mlen = mlen0;
 
                     fac  = std::min(mlen0, mlen);
 
-                    if (sw_mason) // Apply Mason's wall correction here
+                    if constexpr (sw_mason) // Apply Mason's wall correction here
                         fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                     (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
@@ -197,13 +197,13 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if (N2[ijk] > 0) // Only if stably stratified, adapt length scale
-                            mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(sgstke[ijk] / N2[ijk]);
                         else
                             mlen = mlen0;
 
                         fac  = std::min(mlen0, mlen);
 
-                        if (sw_mason) // Apply Mason's wall correction here
+                        if constexpr (sw_mason) // Apply Mason's wall correction here
                             fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
                                         (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
 
