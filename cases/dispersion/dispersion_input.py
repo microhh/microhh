@@ -114,9 +114,9 @@ ini['source']['sigma_y'] = const_list(sigma_y)
 ini['source']['sigma_z'] = const_list(sigma_z)
 ini['source']['strength'] = const_list(strength)
 ini['source']['swvmr'] = const_list(sw_vmr)
-ini['source']['line_x'] = const_list(0)
-ini['source']['line_y'] = const_list(0)
-ini['source']['line_z'] = const_list(0)
+#ini['source']['line_x'] = const_list(0)
+#ini['source']['line_y'] = const_list(0)
+#ini['source']['line_z'] = const_list(0)
 
 # Statistics/crosses/...
 scalar_crosses = scalars + [s+'_path' for s in scalars]
