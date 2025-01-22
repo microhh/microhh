@@ -862,7 +862,6 @@ void Thermo_moist<TF>::clear_device()
 template<typename TF>
 void Thermo_moist<TF>::forward_device()
 {
-    // Copy fields to device
     auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
 
@@ -939,22 +938,17 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 
         fields.release_tmp(tmp);
 
-        cudaMemcpy(bs.pref_g,    bs.pref.data(),    gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.rhoref_g,  bs.rhoref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.rhorefh_g, bs.rhorefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        // Copy basestate back to GPU.
+        forward_device();
     }
 
     calc_buoyancy_tend_2nd_g<TF><<<gridGPU, blockGPU>>>(
-            fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
-            fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
+            fields.mt.at("w")->fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.thvrefh_g,
+            bs.exnrefh_g,
+            bs.prefh_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -962,7 +956,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 
     cudaDeviceSynchronize();
     stats.calc_tend(*fields.mt.at("w"), tend_name);
-
 }
 
 template<typename TF>
@@ -1009,11 +1002,8 @@ void Thermo_moist<TF>::get_thermo_field_g(
 
         fields.release_tmp(tmp);
 
-        // Only full level pressure and bs.exner needed for calculating buoyancy of ql
-        cudaMemcpy(bs.pref_g,   bs.pref.data(),     gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.prefh_g,  bs.prefh.data(),    gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnref_g, bs.exnref.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        // Copy basestate back to GPU.
+        forward_device();
     }
 
     if (name == "b")
