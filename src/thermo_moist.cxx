@@ -1159,12 +1159,13 @@ template<typename TF>
 void Thermo_moist<TF>::save(const int iotime)
 {
     auto& gd = grid.get_grid_data();
-
     int nerror = 0;
 
-    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    if ((master.get_mpiid() == 0) && (bs.swupdatebasestate || iotime == 0))
     {
-        // Save the base state to disk
+        // Save the base state to disk if the base state is updated,
+        // or for a cold start.
+
         FILE *pFile;
         char filename[256];
         std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
@@ -1237,10 +1238,13 @@ void Thermo_moist<TF>::load(const int iotime)
 
     int nerror = 0;
 
-    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    if ((master.get_mpiid() == 0))
     {
+        // Without update basestate, read the base state from time = 0.
+        const int iotime_bs = bs.swupdatebasestate ? iotime : 0;
+
         char filename[256];
-        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime_bs);
 
         std::printf("Loading \"%s\" ... ", filename);
 
@@ -1257,7 +1261,7 @@ void Thermo_moist<TF>::load(const int iotime)
 
             auto read = [&](std::vector<TF>& prof, const int size)
             {
-                if (fread(&prof[gd.kstart], sizeof(TF), size, pFile) != (unsigned)size )
+                if (fread(&prof[gd.kstart], sizeof(TF), size, pFile) != (unsigned)size)
                     ++nerror;
             };
 
@@ -1314,8 +1318,21 @@ void Thermo_moist<TF>::load(const int iotime)
     if (nerror)
         throw std::runtime_error("Error in loading thermo_moist basestate");
 
-    master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
-    master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);
+    // Broadcast to other MPI tasks.
+    master.broadcast(bs.thl0.data(), gd.kcells);
+    master.broadcast(bs.qt0.data(), gd.kcells);
+
+    master.broadcast(bs.thvref.data(), gd.kcells);
+    master.broadcast(bs.thvrefh.data(), gd.kcells);
+
+    master.broadcast(bs.pref.data(), gd.kcells);
+    master.broadcast(bs.prefh.data(), gd.kcells);
+
+    master.broadcast(bs.exnref.data(), gd.kcells);
+    master.broadcast(bs.exnrefh.data(), gd.kcells);
+
+    master.broadcast(bs.rhoref.data(), gd.kcells);
+    master.broadcast(bs.rhorefh.data(), gd.kcells);
 }
 
 template<typename TF>
