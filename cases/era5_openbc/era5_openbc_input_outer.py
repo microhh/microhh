@@ -37,76 +37,60 @@ from puhhpy.thermo import Basestate_moist
 from domain_definition import domains
 
 
-def setup_vertical_grid():
-    """
-    Setup vertical grid, and calculate data structure
-    similar to MicroHH's `Grid_data` struct.
-    """
-    # Linearly stretched vertical grid.
-    ktot = 128
-    dz0 = 20
-    alpha = 1.01
-
-    dz = dz0 * alpha**np.arange(ktot)
-    zh = np.zeros(ktot+1)
-    zh[1:] = np.cumsum(dz)
-    z = 0.5 * (zh[1:] + zh[:-1])
-    zsize = z[-1] + 0.5 * dz[-1]
-
-    # NOTE: it is important to use `puhhpy.spatial.Vertical_grid_2nd` to calculate the
-    #       vertical grid properties. These need to be perfectly identical to the 
-    #       definition in MicroHH, otherwise the initial fields and boundary
-    #       conditions won't be divergence free.
-
-    return Vertical_grid_2nd(z, zsize, remove_ghost=True)
+"""
+Settings
+"""
+start_date = datetime(year=2022, month=5, day=1, hour=12)
+end_date   = datetime(year=2022, month=5, day=1, hour=18)
+work_dir = 'test/'
+dtype = np.float64
 
 
-if __name__ == '__main__':
+"""
+Grid definition.
+Spatial projection is defined in `domain_definition.py`.
 
-    """
-    Settings
-    """
-    start_date = datetime(year=2022, month=5, day=1, hour=12)
-    end_date   = datetime(year=2022, month=5, day=1, hour=18)
-    work_dir = 'test/'
-    dtype = np.float64
+NOTE: vertical grid definition in (LS)2D is not identical to MicroHH's grid.
+      Use `puhhpy.spatial.Vertical_grid_2nd()` to make sure that the grid 
+      matches the one from MicroHH, otherwise the intial fields won't
+      be divergence free.
+"""
+hgrid = domains[0]
 
-    """
-    Grid definition.
-    Spatial projection is defined in `domain_definition.py`.
-    """
-    hgrid = domains[0]
-    vgrid = setup_vertical_grid()
+_ = ls2d.grid.Grid_linear_stretched(kmax=128, dz0=20, alpha=0.01)
+vgrid = Vertical_grid_2nd(_.z, _.zsize, remove_ghost=True)
 
-    """
-    Read ERA5, for now with (LS)2D.
-    """
-    settings = {
-        'central_lat' : hgrid.proj.central_lat,
-        'central_lon' : hgrid.proj.central_lon,
-        'case_name'   : 'slocs_rf',
-        'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/',
-        'start_date'  : start_date,
-        'end_date'    : end_date,
-        }
 
-    # 3D fields ERA5.
-    era_3d = ls2d.Read_era5(settings)
+"""
+Read ERA5, for now with (LS)2D.
+"""
+settings = {
+    'central_lat' : hgrid.proj.central_lat,
+    'central_lon' : hgrid.proj.central_lon,
+    'case_name'   : 'slocs_rf',
+    'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/',
+    'start_date'  : start_date,
+    'end_date'    : end_date,
+    }
 
-    # Forcings are not used, only mean profiles to calculate base state.
-    era_3d.calculate_forcings(n_av=1, method='2nd')
-    era_1d = era_3d.get_les_input(vgrid.z)
+# 3D fields ERA5.
+era_3d = ls2d.Read_era5(settings)
 
-    """
-    Calculate and save base state density.
-    NOTE: `puhhpy.thermo.Basestate_moist` includes one vertical ghost cell.
-    """
-    bs = Basestate_moist(
-        era_1d['thl'][0,:].values,
-        era_1d['qt'][0,:].values,
-        era_1d['ps'][0].values,
-        vgrid.z,
-        vgrid.zsize,
-        dtype)
+# Forcings are not used, only mean profiles to calculate base state.
+era_3d.calculate_forcings(n_av=1, method='2nd')
+era_1d = era_3d.get_les_input(vgrid.z)
 
-    bs.to_binary(f'{work_dir}/basestate.0000000')
+
+"""
+Calculate and save base state density.
+NOTE: `puhhpy.thermo.Basestate_moist` includes one vertical ghost cell.
+"""
+bs = Basestate_moist(
+    era_1d['thl'][0,:].values,
+    era_1d['qt'][0,:].values,
+    era_1d['ps'][0].values,
+    vgrid.z,
+    vgrid.zsize,
+    dtype)
+
+bs.to_binary(f'{work_dir}/basestate.0000000')

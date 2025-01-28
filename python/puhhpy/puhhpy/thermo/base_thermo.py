@@ -27,7 +27,7 @@ import numpy as np
 from numba import njit
 
 # Local library
-import puhhpy.constants  as cst
+import puhhpy.constants as cst
 
 
 @njit
