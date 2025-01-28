@@ -23,23 +23,23 @@ class Projection:
         `(lon_h, lat_h)`: lower-left edges of grid point (u,v location).
 
         Arguments:
-            ----------
-            xsize : float
-                Domain size LES in x-direction (m).
-            ysize : float
-                Domain size LES in y-direction (m).
-            itot : int
-                Number of grid points in x-direction (-).
-            jtot : int
-                Number of grid points in y-direction (-).
-            lon : float
-                Longitude of LES domain. See `anchor` below (degrees).
-            lat : float
-                Latitude of LES domain. See `anchor` below (degrees).
-            anchor : str, optional, default = 'center'
-                Anchor point of (`lon,lat`), ∈ ('center', 'southwest')
-            proj_str : str, optional, default = string for UTM31.
-                Proj.4 / pyproj projection string.
+        ----------
+        xsize : float
+            Domain size LES in x-direction (m).
+        ysize : float
+            Domain size LES in y-direction (m).
+        itot : int
+            Number of grid points in x-direction (-).
+        jtot : int
+            Number of grid points in y-direction (-).
+        lon : float
+            Longitude of LES domain. See `anchor` below (degrees).
+        lat : float
+            Latitude of LES domain. See `anchor` below (degrees).
+        anchor : str, optional, default = 'center'
+            Anchor point of (`lon,lat`), ∈ ('center', 'southwest')
+        proj_str : str, optional, default = string for UTM31.
+            Proj.4 / pyproj projection string.
         """
 
         self.proj_str = proj_str
