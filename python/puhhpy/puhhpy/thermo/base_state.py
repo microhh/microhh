@@ -33,7 +33,7 @@ from .base_thermo import exner, virtual_temperature, sat_adjust
 
 
 class Basestate_moist:
-    def __init__(self, thl, qt, pbot, z, zsize, dtype=np.float64):
+    def __init__(self, thl, qt, pbot, z, zsize, remove_ghost=False, dtype=np.float64):
         """
         Calculate moist thermodynamic base state,
         using a procedure identical to MicroHH.
@@ -41,6 +41,7 @@ class Basestate_moist:
         gd = Vertical_grid_2nd(z, zsize, dtype=dtype)
 
         self.gd = gd
+        self.remove_ghost = remove_ghost
         self.dtype = dtype
         
         self.pref = np.zeros(gd.kcells)
@@ -114,15 +115,38 @@ class Basestate_moist:
 
         self.pref[gd.kstart-1] = 2. * self.prefh[gd.kstart] - self.pref[gd.kstart]
 
+        if remove_ghost:
+            """
+            Strip off the ghost cells, to leave `ktot` full levels and `ktot+1` half levels.
+            """
+            self.pref = self.pref[gd.kstart:gd.kend]
+            self.prefh = self.prefh[gd.kstart:gd.kend+1]
+
+            self.rho = self.rho[gd.kstart:gd.kend]
+            self.rhoh = self.rhoh[gd.kstart:gd.kend+1]
+
+            self.thv = self.thv[gd.kstart:gd.kend]
+            self.thvh = self.thvh[gd.kstart:gd.kend+1]
+
+            self.ex = self.ex[gd.kstart:gd.kend]
+            self.exh = self.exh[gd.kstart:gd.kend+1]
+
+            self.thl = self.thl[gd.kstart:gd.kend]
+            self.qt  = self.qt[gd.kstart:gd.kend]
+
 
     def to_binary(self, grid_file):
         """
         Save base state in format required by MicroHH.
         """
 
-        gd = self.gd
-        rho = self.rho[gd.kstart:gd.kend]
-        rhoh = self.rhoh[gd.kstart:gd.kend+1]
+        if self.remove_ghost:
+            rho = self.rho
+            rhoh = self.rhoh
+        else:
+            gd = self.gd
+            rho = self.rho[gd.kstart:gd.kend]
+            rhoh = self.rhoh[gd.kstart:gd.kend+1]
 
         bs = np.concatenate((rho, rhoh)).astype(self.dtype)
         bs.tofile(grid_file)

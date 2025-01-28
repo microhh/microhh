@@ -30,11 +30,16 @@ sys.path.append('/home/bart/meteo/models/LS2D')  # TMP
 import ls2d
 
 # Local library (puhhpy).
-from puhhpy.spatial import Vertical_grid_2nd
-from puhhpy.thermo import Basestate_moist
+import puhhpy
+#from puhhpy.spatial import Vertical_grid_2nd
+#from puhhpy.thermo import Basestate_moist
 
 # Local library.
 from domain_definition import domains
+
+# Set debug level puhhpy
+from puhhpy.logger import logger
+logger.setLevel('DEBUG')
 
 
 """
@@ -52,13 +57,13 @@ Spatial projection is defined in `domain_definition.py`.
 
 NOTE: vertical grid definition in (LS)2D is not identical to MicroHH's grid.
       Use `puhhpy.spatial.Vertical_grid_2nd()` to make sure that the grid 
-      matches the one from MicroHH, otherwise the intial fields won't
+      matches the one from MicroHH, otherwise the initial fields won't
       be divergence free.
 """
 hgrid = domains[0]
 
-_ = ls2d.grid.Grid_linear_stretched(kmax=128, dz0=20, alpha=0.01)
-vgrid = Vertical_grid_2nd(_.z, _.zsize, remove_ghost=True)
+_g = ls2d.grid.Grid_linear_stretched(kmax=128, dz0=20, alpha=0.01)
+vgrid = puhhpy.spatial.Vertical_grid_2nd(_g.z, _g.zsize, remove_ghost=True)
 
 
 """
@@ -73,24 +78,50 @@ settings = {
     'end_date'    : end_date,
     }
 
-# 3D fields ERA5.
 era_3d = ls2d.Read_era5(settings)
 
-# Forcings are not used, only mean profiles to calculate base state.
+# Forcings are not used, only mean profiles to calculate base state density.
 era_3d.calculate_forcings(n_av=1, method='2nd')
 era_1d = era_3d.get_les_input(vgrid.z)
 
 
 """
 Calculate and save base state density.
-NOTE: `puhhpy.thermo.Basestate_moist` includes one vertical ghost cell.
 """
-bs = Basestate_moist(
+bs = puhhpy.thermo.Basestate_moist(
     era_1d['thl'][0,:].values,
     era_1d['qt'][0,:].values,
     era_1d['ps'][0].values,
     vgrid.z,
     vgrid.zsize,
-    dtype)
-
+    remove_ghost=True,
+    dtype=dtype)
+    
 bs.to_binary(f'{work_dir}/basestate.0000000')
+
+
+"""
+Create initial fields, tri-linearly interpolated from ERA5.
+The horizontal velocity fields are corrected to match the horizontal divergence between ERA5 and LES.
+This is needed to account for interpolation errors and differences in 3D ERA5 density and the 1D LES base state density.
+"""
+fields = dict(
+    thl = era_3d.thl[0,:,:,:],
+    qt = era_3d.qt[0,:,:,:],
+    u = era_3d.u[0,:,:,:],
+    v = era_3d.v[0,:,:,:],
+    w = era_3d.wls[0,:,:,:]
+)
+
+puhhpy.interpolate.interp_regular_latlon(
+    hgrid.proj,
+    vgrid.z,
+    vgrid.zh,
+    fields,
+    era_3d.lons,
+    era_3d.lats,
+    era_3d.z[0,:,:,:],
+    era_3d.zh[0,:,:,:],
+    bs.rho,
+    bs.rhoh,
+    work_dir)

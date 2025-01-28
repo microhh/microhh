@@ -47,10 +47,12 @@ d1 = Domain(
     center_in_parent=True
     )
 
-d0.child = d1
-
 domains = [d0, d1]
+
+for i in range(len(domains)-1):
+    domains[i].child = domains[i+1]
+
 
 if __name__ == '__main__':
 
-    plot_domains([d0, d1], use_projection=True, scatter_lonlat=True)
+    plot_domains([d0, d1], use_projection=True, scatter_lonlat=False)

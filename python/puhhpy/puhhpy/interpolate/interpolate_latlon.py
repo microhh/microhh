@@ -26,8 +26,9 @@
 import numpy as np
 
 # Local library
+from puhhpy.logger import logger
 
-def create_initial_fields(
+def interp_regular_latlon(
         proj,
         z_out,
         zh_out,
@@ -40,7 +41,7 @@ def create_initial_fields(
         rhoh_in,
         output_dir='.'):
         """
-        Interpolates the fields in the `fields_in` dictionary to the output lon/lat grid defined by the `proj` projection instance..
+        Interpolate the fields in the `fields_in` dictionary to the output lon/lat grid defined by the `proj` projection instance..
 
         Input requirements:
         - All 3D input fields must have dimensions `(level, lat, lon)`.
@@ -68,7 +69,7 @@ def create_initial_fields(
             Output full levels (m).
         zh_out : np.ndarray, shape (1,)
             Output half levels (m).
-        fields_out : dict
+        fields_in : dict
             Dictionary with field name : input array pairs.
             Input arrays should have shape (3,).
         lon_in : np.ndarray, shape (1,)
@@ -93,8 +94,15 @@ def create_initial_fields(
 
         # Checks.
         if lon_in.ndim != 1 or lat_in.ndim != 1:
-            raise Exception('Input lat/lon has to be a 1D array!')
+            logger.error('Input lat/lon has to be a 1D array!')
         if z_in.ndim != 3 or zh_in.ndim != 3:
-            raise Exception('Input height has to be a 3D array!')
+            logger.critical('Input height has to be a 3D array!')
         if z_out.ndim != 1 or zh_out.ndim != 1:
-            raise Exception('Output height has to be a 1D array!')
+            logger.critical('Output height has to be a 1D array!')
+
+        # Exception for (u,v,w), if all present.
+        if 'u' in fields_in.keys() and 'v' in fields_in.keys() and 'w' in fields_in.keys():
+             pass
+
+        for name, field in fields_in.items():
+             logger.info(name)
