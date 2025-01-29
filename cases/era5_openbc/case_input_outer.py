@@ -31,8 +31,6 @@ import ls2d
 
 # Local library (puhhpy).
 import puhhpy
-#from puhhpy.spatial import Vertical_grid_2nd
-#from puhhpy.thermo import Basestate_moist
 
 # Local library.
 from domain_definition import domains
@@ -50,6 +48,8 @@ end_date   = datetime(year=2022, month=5, day=1, hour=18)
 work_dir = 'test/'
 dtype = np.float64
 
+# Number of lateral sponge cells. Number of ghost cells is defined in `domain_definition.py`
+n_sponge = 5
 
 """
 Grid definition.
@@ -104,17 +104,17 @@ bs.to_binary(f'{work_dir}/basestate.0000000')
 Create initial fields, tri-linearly interpolated from ERA5.
 The horizontal velocity fields are corrected to match the horizontal divergence between ERA5 and LES.
 This is needed to account for interpolation errors and differences in 3D ERA5 density and the 1D LES base state density.
+Use the padded projection (hgrid.proj_pad), as we need one extra `u/v` value in the east/north to make the field divergence free.
 """
 fields = dict(
     thl = era_3d.thl[0,:,:,:],
     qt = era_3d.qt[0,:,:,:],
     u = era_3d.u[0,:,:,:],
     v = era_3d.v[0,:,:,:],
-    w = era_3d.wls[0,:,:,:]
-)
+    w = era_3d.wls[0,:,:,:])
 
-puhhpy.interpolate.interp_regular_latlon(
-    hgrid.proj,
+puhhpy.interpolate.interp_rect_to_curv_latlon(
+    hgrid.proj_pad,
     vgrid.z,
     vgrid.zh,
     fields,

@@ -27,8 +27,9 @@ import numpy as np
 
 # Local library
 from puhhpy.logger import logger
+from .interpolate_kernels import Rect_to_curv_interpolation_factors
 
-def interp_regular_latlon(
+def interp_rect_to_curv_latlon(
         proj,
         z_out,
         zh_out,
@@ -39,7 +40,8 @@ def interp_regular_latlon(
         zh_in,
         rho_in,
         rhoh_in,
-        output_dir='.'):
+        output_dir='.',
+        dtype=np.float64):
         """
         Interpolate the fields in the `fields_in` dictionary to the output lon/lat grid defined by the `proj` projection instance..
 
@@ -63,8 +65,8 @@ def interp_regular_latlon(
 
         Arguments:
         ----------
-        proj : `puhhpy.spatial.Projection` instance.
-            Output projection definition.
+        proj_pad : `puhhpy.spatial.Projection` instance.
+            Output projection definition, with ghost cells.
         z_out : np.ndarray, shape (1,)
             Output full levels (m).
         zh_out : np.ndarray, shape (1,)
@@ -94,15 +96,41 @@ def interp_regular_latlon(
 
         # Checks.
         if lon_in.ndim != 1 or lat_in.ndim != 1:
-            logger.error('Input lat/lon has to be a 1D array!')
+            logger.critical('input lat/lon has to be a 1D array!')
         if z_in.ndim != 3 or zh_in.ndim != 3:
-            logger.critical('Input height has to be a 3D array!')
+            logger.critical('input height has to be a 3D array!')
         if z_out.ndim != 1 or zh_out.ndim != 1:
-            logger.critical('Output height has to be a 1D array!')
+            logger.critical('output height has to be a 1D array!')
 
-        # Exception for (u,v,w), if all present.
+        # Strip off the mask (if present):
+        if isinstance(lon_in, np.ma.masked_array):
+             lon_in = lon_in.data
+        if isinstance(lat_in, np.ma.masked_array):
+             lat_in = lat_in.data
+
+        # Interpolation indexes/factors.
+        if 'u' in fields_in.keys():
+            if_u = Rect_to_curv_interpolation_factors(
+                lon_in, lat_in, proj.lon_u, proj.lat_u, dtype)
+
+        if 'v' in fields_in.keys():
+            if_v = Rect_to_curv_interpolation_factors(
+                lon_in, lat_in, proj.lon_v, proj.lat_v, dtype)
+
+        if_s = Rect_to_curv_interpolation_factors(
+            lon_in, lat_in, proj.lon, proj.lat, dtype)
+
+        """
+        If all momentum fields are present, correct horizontal velocities.
+        """
+        processed_uvw = False
         if 'u' in fields_in.keys() and 'v' in fields_in.keys() and 'w' in fields_in.keys():
-             pass
+            logger.debug('all momentum fields present, correction horizontal divergence.')
 
-        for name, field in fields_in.items():
-             logger.info(name)
+            processed_uvw = True
+
+
+
+
+        #for name, field in fields_in.items():
+        #     logger.info(name)

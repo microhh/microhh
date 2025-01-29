@@ -32,6 +32,7 @@ d0 = Domain(
      ysize=51200,
      itot=128,
      jtot=128,
+     n_ghost=3,
      lon=5.34,
      lat=53.4,
      anchor='center',
@@ -43,6 +44,7 @@ d1 = Domain(
     ysize=25600,
     itot=128,
     jtot=128,
+    n_ghost=3,
     parent=d0,
     center_in_parent=True
     )

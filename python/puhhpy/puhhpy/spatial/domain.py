@@ -27,6 +27,7 @@ import numpy as np
 
 # Local library
 from .projection import Projection
+from puhhpy.logger import logger
 
 
 class Domain:
@@ -36,6 +37,7 @@ class Domain:
             ysize,
             itot,
             jtot,
+            n_ghost,
             xstart_in_parent=None,
             ystart_in_parent=None,
             parent=None,
@@ -62,6 +64,8 @@ class Domain:
             Number of grid points in x-direction.
         jtot : int
             Number of grid points in y-direction.
+        n_ghost : int
+            Number of horizontal ghost cells.
         xstart_in_parent: float, optional
             x-offset in parent domain.
         ystart_in_parent: float, optional
@@ -88,13 +92,15 @@ class Domain:
 
         # Checks: child domain should know the relative position to its parent.
         if parent and (xstart_in_parent is None and ystart_in_parent is None and not center_in_parent):
-            raise Exception('Child domains need to specify the relative location to its parent.')
+            logger.critical('child domains need to specify the relative location to its parent.')
 
         self.itot = itot
         self.jtot = jtot
 
         self.xsize = xsize
         self.ysize = ysize
+
+        self.n_ghost = n_ghost
 
         self.parent = parent
         self.child = child
@@ -131,16 +137,18 @@ class Domain:
             self.xoffset = parent.xoffset + self.xstart_in_parent
             self.yoffset = parent.yoffset + self.ystart_in_parent
 
+
         # Check: half levels x/y parent and child need to coincide at lateral boundaries child.
         if self.parent is not None:
             if not np.isclose(self.xstart_in_parent % parent.dx, 0):
-                raise Exception('Invalid starting position x-direction child in parent domain.')
+                logger.critical('invalid starting position x-direction child in parent domain.')
             elif not np.isclose(self.ystart_in_parent % parent.dy, 0):
-                raise Exception('Invalid starting position y-direction child in parent domain.')
+                logger.critical('invalid starting position y-direction child in parent domain.')
             elif not np.isclose(self.xsize % parent.dx, 0):
-                raise Exception('Invalid child size in x-direction, not a multiple of parent dx.')
+                logger.critical('invalid child size in x-direction, not a multiple of parent dx.')
             elif not np.isclose(self.ysize % parent.dy, 0):
-                raise Exception('Invalid child size in y-direction, not a multiple of parent dy.')
+                logger.critical('invalid child size in y-direction, not a multiple of parent dy.')
+
 
         # Calculate lat/lon of each grid point using provided Proj.4 / PyProj string.
         self.proj = None
@@ -148,7 +156,7 @@ class Domain:
         # Outer domain.
         if parent is None and lon is not None and lat is not None:
             if proj_str is None:
-                raise Exception('For spatial projections, specify the Proj.4 `proj_str`.')
+                logger.critical('for spatial projections, specify the Proj.4 `proj_str`.')
 
             self.proj = Projection(
                 self.xsize,
@@ -170,6 +178,8 @@ class Domain:
             lon_sw = self.parent.proj.lon_h[jstart_in_parent, istart_in_parent]
             lat_sw = self.parent.proj.lat_h[jstart_in_parent, istart_in_parent]
 
+            self.proj_str = self.parent.proj_str
+
             self.proj = Projection(
                     self.xsize,
                     self.ysize,
@@ -178,7 +188,34 @@ class Domain:
                     lon_sw,
                     lat_sw,
                     'southwest',
-                    self.parent.proj_str)
+                    self.proj_str)
+
+
+        if self.proj is not None:
+            # Create projection with padding for interpolation horizontal ghost cells.
+
+            itot_p = self.itot + 2*n_ghost
+            jtot_p = self.jtot + 2*n_ghost
+
+            xsize_p = itot_p * self.dx
+            ysize_p = jtot_p * self.dy
+
+            self.proj_pad = Projection(
+                    xsize_p,
+                    ysize_p,
+                    itot_p,
+                    jtot_p,
+                    self.proj.central_lon,
+                    self.proj.central_lat,
+                    'center',
+                    self.proj_str)
+
+            # Define start/end indices
+            self.istart = n_ghost
+            self.iend = self.itot + n_ghost
+
+            self.jstart = n_ghost
+            self.jend = self.jtot + n_ghost
 
 
 def plot_domains(domains, use_projection=False, scatter_lonlat=False):
@@ -226,10 +263,11 @@ def plot_domains(domains, use_projection=False, scatter_lonlat=False):
         ax = plt.subplot(projection=proj)
 
         for i,d in enumerate(domains):
-            ax.plot(d.proj.bbox_lon, d.proj.bbox_lat, label=f'#i', transform=ccrs.PlateCarree())
+            ax.plot(d.proj.bbox_lon, d.proj.bbox_lat, label=f'#{i}', transform=ccrs.PlateCarree())
 
             if scatter_lonlat:
                 plt.scatter(d.proj.lon_h, d.proj.lat_h, s=1, transform=ccrs.PlateCarree())
+
         plt.legend()
 
         ax.set_extent(extent)
