@@ -695,9 +695,7 @@ void Model<TF>::setup_stats()
 
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
-std::cout << "SETUP initialize masks" << std::endl;
         stats->initialize_masks();
-std::cout << "SETUP get masks" << std::endl;
         for (auto& mask_name : mask_list)
         {
             // Get the mask from one of the mask providing classes
@@ -717,7 +715,6 @@ std::cout << "SETUP get masks" << std::endl;
                 throw std::runtime_error(error_message);
             }
         }
-        std::cout << "finalize masks" << std::endl;
         stats->finalize_masks();
 
         if (stats->do_tendency())
@@ -735,10 +732,8 @@ void Model<TF>::calc_masks()
 {
     // Prepare all the masks.
     const std::vector<std::string>& mask_list = stats->get_mask_list();
-std::cout << "initialize masks" << std::endl;
 
     stats->initialize_masks();
-std::cout << "get masks" << std::endl;
     for (auto& mask_name : mask_list)
     {
         // Get the mask from one of the mask providing classes
@@ -793,7 +788,6 @@ void Model<TF>::add_statistics_masks()
     // Check whether the mask can be retrieved from any of the mask-providing classes
     for (auto& mask_name : mask_list)
     {
-        std::cout << "add masks "<< mask_name << std::endl;
         if (mask_name == "default")
             stats->add_mask(mask_name);
         else if (fields->has_mask(mask_name))

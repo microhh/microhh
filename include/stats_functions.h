@@ -53,10 +53,12 @@ namespace Stats_functions
     template<typename TF, Stats_mask_type mode> CUDA_MACRO
     TF is_false(const TF value, const TF threshold)
     {
+        bool result;
         if (mode == Stats_mask_type::Plus)
-            return (value <= threshold);
+            result = (value <= threshold);
         else if (mode == Stats_mask_type::Min)
-            return (value > threshold);
+            result = (value > threshold);
+        return result;
     }
 
     template<typename TF>
@@ -86,7 +88,7 @@ namespace Stats_functions
         for (int k=0; k<kcells; ++k)
         {
             if (nmask[k] == 0)
-                data[k] = 77777;
+                data[k] =  netcdf_fp_fillvalue<TF>();
         }
     }
 
@@ -574,7 +576,7 @@ namespace Stats_functions
         if (i < icells && j < jcells)
         {
             const int ij = i + j*icells;
-            slice[ij] = 1.;//fld[ij] * ( mask[ij] & flag );
+            slice[ij] = fld[ij] * ((mask[ij] & flag) != 0);
         }
     }
 #endif

@@ -223,7 +223,6 @@ namespace Tools_g
         if (n < nsize)
             a[n] = val;
     }
-
     template<typename TF> __global__
     void mult_by_val(TF* __restrict__ a, int nsize, TF val)
     {
@@ -232,6 +231,25 @@ namespace Tools_g
         if (n < nsize)
             a[n] *= val;
     }
+
+    template<typename TF> __global__
+    void add_val(TF* __restrict__ a, const TF* const __restrict__ fld, int nsize, TF val)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] = fld[n] + val;
+    }
+
+    template<typename TF> __global__
+    void raise_to_pow(TF* __restrict__ a, const int nsize, const int exponent)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] = pow(a[n], exponent);
+    }
+
 
     int next_pow_of_2(unsigned int x)
     {
@@ -337,6 +355,43 @@ namespace Tools_g
         cuda_check_error();
     }
 
+    template<typename TF> __global__
+    void interpolate_2nd_g(TF*const  __restrict__ out, const TF* const __restrict__ in, const int iih, const int jjh, const int kkh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    {
+        // const int iih = 0;//(locin[0]-locout[0]);
+        // const int jjh = 0;//(locin[1]-locout[1])*jj;
+        // const int kkh = 0;//(locin[2]-locout[2])*kk;
+
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        int k  = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            if (k == kstart - 1 && kkh == -kk)
+            {
+                out[ijk] = 0.25*(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                         + 0.25*(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ]);
+            }
+            else if ( k == kend - 1 && kkh == kk)
+            {
+                out[ijk] = 1. *(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                         + 1. *(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ])
+                         - 0.5*(0.5*in[ijk        -kkh] + 0.5*in[ijk+iih    -kkh])
+                         - 0.5*(0.5*in[ijk    +jjh-kkh] + 0.5*in[ijk+iih+jjh-kkh]);
+            }
+            else
+            {
+                out[ijk] =  0.25*(0.5*in[ijk            ] + 0.5*in[ijk+iih        ])
+                        + 0.25*(0.5*in[ijk    +jjh    ] + 0.5*in[ijk+iih+jjh    ])
+                        + 0.25*(0.5*in[ijk        +kkh] + 0.5*in[ijk+iih    +kkh])
+                        + 0.25*(0.5*in[ijk    +jjh+kkh] + 0.5*in[ijk+iih+jjh+kkh]);
+            }
+        }
+    }
+
 }
 
 template void Tools_g::reduce_interior<double>(const double*, double*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
@@ -348,3 +403,10 @@ template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
 template  __global__ void Tools_g::set_to_val(unsigned int* __restrict__, int, unsigned int);
 template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);
+
+template __global__ void Tools_g::add_val(double* __restrict__ a, const double* const __restrict__ fld, int nsize, double val);
+template __global__ void Tools_g::add_val(float* __restrict__ a, const float* const __restrict__ fld, int nsize, float val);
+template __global__ void Tools_g::raise_to_pow(double* __restrict__ a, const int nsize, const int exponent);
+template __global__ void Tools_g::raise_to_pow(float* __restrict__ a, const int nsize, const int exponent);
+template  __global__ void Tools_g::interpolate_2nd_g(float* const  __restrict__ out, const float* const __restrict__ in, const int iih, const int jjh, const int kkh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk);
+template  __global__ void Tools_g::interpolate_2nd_g(double* const  __restrict__ out, const double* const __restrict__ in, const int iih, const int jjh, const int kkh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk);

@@ -702,7 +702,7 @@ void Fields<TF>::release_tmp_xy(std::shared_ptr<std::vector<TF>>& tmp)
         atmp_xy.push_back(std::move(tmp));
     }
 }
-
+#ifndef USECUDA
 template<typename TF>
 void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -753,6 +753,7 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         release_tmp(wf);
     }
 }
+#endif
 
 template<typename TF>
 void Fields<TF>::exec_stats(Stats<TF>& stats)
@@ -790,52 +791,52 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
         }
     }
 
-    auto& masks = stats.get_masks();
+    // auto& masks = stats.get_masks();
 
-    // The loop over masks inside of budget is necessary, because the mask mean is 
-    // required in order to compute the budget terms.
-    for (auto& m : masks)
-    {
-        // Calculate the mean of the fields.
-        stats.calc_mask_mean_profile(umodel, m, *mp.at("u"));
-        stats.calc_mask_mean_profile(vmodel, m, *mp.at("v"));
-        stats.calc_mask_mean_profile(wmodel, m, *mp.at("w"));
+    // // The loop over masks inside of budget is necessary, because the mask mean is 
+    // // required in order to compute the budget terms.
+    // for (auto& m : masks)
+    // {
+    //     // Calculate the mean of the fields.
+    //     stats.calc_mask_mean_profile(umodel, m, *mp.at("u"));
+    //     stats.calc_mask_mean_profile(vmodel, m, *mp.at("v"));
+    //     stats.calc_mask_mean_profile(wmodel, m, *mp.at("w"));
 
-        // Calculate kinetic and turbulent kinetic energy
-        auto ke  = get_tmp();
-        auto tke = get_tmp();
+    //     // Calculate kinetic and turbulent kinetic energy
+    //     auto ke  = get_tmp();
+    //     auto tke = get_tmp();
 
-        constexpr TF no_offset = 0.;
-        constexpr TF no_threshold = 0.;
+    //     constexpr TF no_offset = 0.;
+    //     constexpr TF no_threshold = 0.;
 
-        if (grid.get_spatial_order() == Grid_order::Second)
-        {
-            calc_kinetic_energy_2nd(
-                ke->fld.data(), tke->fld.data(),
-                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(), wmodel.data(),
-                gd.utrans, gd.vtrans,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
-        }
-        else
-        {
-            calc_kinetic_energy_4th(
-                ke->fld.data(), tke->fld.data(),
-                mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
-                umodel.data(), vmodel.data(), wmodel.data(),
-                gd.utrans, gd.vtrans,
-                gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-                gd.icells, gd.ijcells);
+    //     if (grid.get_spatial_order() == Grid_order::Second)
+    //     {
+    //         calc_kinetic_energy_2nd(
+    //             ke->fld.data(), tke->fld.data(),
+    //             mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+    //             umodel.data(), vmodel.data(), wmodel.data(),
+    //             gd.utrans, gd.vtrans,
+    //             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+    //             gd.icells, gd.ijcells);
+    //     }
+    //     else
+    //     {
+    //         calc_kinetic_energy_4th(
+    //             ke->fld.data(), tke->fld.data(),
+    //             mp.at("u")->fld.data(), mp.at("v")->fld.data(), mp.at("w")->fld.data(),
+    //             umodel.data(), vmodel.data(), wmodel.data(),
+    //             gd.utrans, gd.vtrans,
+    //             gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+    //             gd.icells, gd.ijcells);
 
-        }
-        stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
-        stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
+    //     }
+    //     stats.calc_mask_stats(m, "ke" , *ke , no_offset, no_threshold);
+    //     stats.calc_mask_stats(m, "tke", *tke, no_offset, no_threshold);
 
-        release_tmp(ke);
-        release_tmp(tke);
+    //     release_tmp(ke);
+    //     release_tmp(tke);
 
-    }
+    // }
 
 }
 

@@ -702,7 +702,7 @@ void Stats<TF>::add_fixed_prof_raw(
         const std::string& group_name,
         const std::vector<TF>& prof)
 {
-    
+
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
         throw std::runtime_error("Variable " + name + " is added twice in add_prof_raw()");
 
@@ -781,6 +781,7 @@ void Stats<TF>::initialize_masks()
         mfield_bot[n] = flagmax;
 }
 #endif
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::finalize_masks()
 {
@@ -815,7 +816,7 @@ void Stats<TF>::finalize_masks()
                     gd.kstart, gd.kend, gd.itot*gd.jtot);
     }
 }
-
+#endif
 template<typename TF>
 void Stats<TF>::set_mask_thres(
         std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
@@ -968,17 +969,17 @@ void Stats<TF>::calc_stats(
         const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     calc_stats_mean(varname, fld, offset);
-    calc_stats_moments(varname, fld, offset);
-    calc_stats_w(varname, fld, offset);
-    calc_stats_diff(varname, fld, offset);
-    calc_stats_flux(varname, fld, offset);
-    calc_stats_grad(varname, fld);
-    calc_stats_path(varname, fld);
-    calc_stats_cover(varname, fld, offset, threshold);
-    calc_stats_frac(varname, fld, offset, threshold);        
+    // calc_stats_moments(varname, fld, offset);
+    // calc_stats_w(varname, fld, offset);
+    // calc_stats_diff(varname, fld, offset);
+    // calc_stats_flux(varname, fld, offset);
+    // calc_stats_grad(varname, fld);
+    // calc_stats_path(varname, fld);
+    // calc_stats_cover(varname, fld, offset, threshold);
+    // calc_stats_frac(varname, fld, offset, threshold);
 }
 
-
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::calc_stats_mean(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
@@ -1014,8 +1015,9 @@ void Stats<TF>::calc_stats_mean(
         }
     }
 }
+#endif
 
-
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::calc_stats_moments(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
@@ -1052,7 +1054,7 @@ void Stats<TF>::calc_stats_moments(
         }
     }
 }
-
+#endif
 template<typename TF>
 void Stats<TF>::calc_stats_w(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
@@ -1362,9 +1364,6 @@ void Stats<TF>::calc_stats_2d(
                 calc_mean_2d(
                         m.second.tseries.at(varname).data,
                         fld.data(),
-                        mfield_bot.data(),
-                        m.second.nmask_bot,
-                        m.second.flag,
                         gd.istart, gd.iend,
                         gd.jstart, gd.jend,
                         gd.icells, gd.itot, gd.jtot);

@@ -197,7 +197,7 @@ class Stats
         std::vector<std::string> varlist;
         std::vector<std::string> varlist_soil;
         std::vector<std::string> varlist_background;
-        
+
         void add_operation(std::vector<std::string>&, const std::string&, const std::string&);
         void sanitize_operations_vector(const std::string&, std::vector<std::string>&);
         bool is_blacklisted(const std::string&, Stats_whitelist_type = Stats_whitelist_type::Default);
