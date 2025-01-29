@@ -1,24 +1,30 @@
 import logging
 from colorlog import ColoredFormatter
 
-logger = logging.getLogger("microHHpy")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger("ColoredLogger")
+logger.setLevel(logging.DEBUG)
 
 if not logger.handlers:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
 
     formatter = ColoredFormatter(
-        "%(log_color)s[%(asctime)s] [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        "[%(asctime)s] %(log_color)s[%(levelname)s] %(message)s'\033[0m",
+        datefmt="%Y/%m/%d %H:%M:%S",
         log_colors={
-            "DEBUG": "green",
-            "INFO": "",
-            "WARNING": "yellow",
+            "DEBUG": "fg_246",
+            "INFO": "",  # No color for INFO
+            "WARNING": "fg_208",
             "ERROR": "red",
-            "CRITICAL": "bold_red",
+            "CRITICAL": "red",
         },
     )
-    console_handler.setFormatter(formatter)
 
+    console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+
+    def critical_exception(message, *args, **kwargs):
+         logger._log(logging.CRITICAL, message, args, **kwargs)
+         raise RuntimeError(message)
+
+    logger.critical = critical_exception
