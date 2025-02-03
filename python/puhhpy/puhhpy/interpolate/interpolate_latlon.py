@@ -30,7 +30,7 @@ from puhhpy.logger import logger
 from .interpolate_kernels import Rect_to_curv_interpolation_factors
 
 def interp_rect_to_curv_latlon(
-        proj,
+        proj_pad,
         z_out,
         zh_out,
         fields_in,
@@ -94,6 +94,8 @@ def interp_rect_to_curv_latlon(
         None
         """
 
+        logger.info('interpolating t=0 from rectilinear to LES grid.')
+
         # Checks.
         if lon_in.ndim != 1 or lat_in.ndim != 1:
             logger.critical('input lat/lon has to be a 1D array!')
@@ -111,14 +113,14 @@ def interp_rect_to_curv_latlon(
         # Interpolation indexes/factors.
         if 'u' in fields_in.keys():
             if_u = Rect_to_curv_interpolation_factors(
-                lon_in, lat_in, proj.lon_u, proj.lat_u, dtype)
+                lon_in, lat_in, proj_pad.lon_u, proj_pad.lat_u, dtype)
 
         if 'v' in fields_in.keys():
             if_v = Rect_to_curv_interpolation_factors(
-                lon_in, lat_in, proj.lon_v, proj.lat_v, dtype)
+                lon_in, lat_in, proj_pad.lon_v, proj_pad.lat_v, dtype)
 
         if_s = Rect_to_curv_interpolation_factors(
-            lon_in, lat_in, proj.lon, proj.lat, dtype)
+            lon_in, lat_in, proj_pad.lon, proj_pad.lat, dtype)
 
         """
         If all momentum fields are present, correct horizontal velocities.
@@ -128,9 +130,3 @@ def interp_rect_to_curv_latlon(
             logger.debug('all momentum fields present, correction horizontal divergence.')
 
             processed_uvw = True
-
-
-
-
-        #for name, field in fields_in.items():
-        #     logger.info(name)

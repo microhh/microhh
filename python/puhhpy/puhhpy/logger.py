@@ -1,7 +1,7 @@
 import logging
 from colorlog import ColoredFormatter
 
-logger = logging.getLogger("ColoredLogger")
+logger = logging.getLogger("puhhpy")
 logger.setLevel(logging.DEBUG)
 
 if not logger.handlers:
@@ -9,10 +9,10 @@ if not logger.handlers:
     console_handler.setLevel(logging.DEBUG)
 
     formatter = ColoredFormatter(
-        "[%(asctime)s] %(log_color)s[%(levelname)s] %(message)s'\033[0m",
+        "[%(asctime)s] [%(name)s] %(log_color)s[%(levelname)s] %(message)s'\033[0m",
         datefmt="%Y/%m/%d %H:%M:%S",
         log_colors={
-            "DEBUG": "fg_246",
+            "DEBUG": "fg_244",
             "INFO": "",  # No color for INFO
             "WARNING": "fg_208",
             "ERROR": "red",
