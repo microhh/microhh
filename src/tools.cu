@@ -231,6 +231,14 @@ namespace Tools_g
         if (n < nsize)
             a[n] *= val;
     }
+    template<typename TF> __global__
+    void mult_by_arr(TF* __restrict__ a, int nsize, const TF* const __restrict__ arr)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] *= arr[n];
+    }
 
     template<typename TF> __global__
     void add_val(TF* __restrict__ a, const TF* const __restrict__ fld, int nsize, TF val)
@@ -400,9 +408,12 @@ template void Tools_g::reduce_all<double>(const double*, double*, int, int, int,
 template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);
 template  __global__ void Tools_g::set_to_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
+template  __global__ void Tools_g::set_to_val(int* __restrict__, int, int);
 template  __global__ void Tools_g::set_to_val(unsigned int* __restrict__, int, unsigned int);
 template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
 template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);
+template  __global__ void Tools_g::mult_by_arr(double* __restrict__, int, const double* const __restrict__);
+template  __global__ void Tools_g::mult_by_arr(float* __restrict__, int, const float* const  __restrict__);
 
 template __global__ void Tools_g::add_val(double* __restrict__ a, const double* const __restrict__ fld, int nsize, double val);
 template __global__ void Tools_g::add_val(float* __restrict__ a, const float* const __restrict__ fld, int nsize, float val);

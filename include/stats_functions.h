@@ -564,19 +564,35 @@ namespace Stats_functions
                 }
     }
 #ifdef __CUDACC__
+    // template<typename TF> __global__
+    // void apply_mask_g(
+    //         TF* slice, const TF* const __restrict__ fld,
+    //         const unsigned int* const __restrict__ mask, const unsigned int flag,
+    //         const int icells, const int jcells)
+    // {
+    //     const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    //     const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+    //     if (i < icells && j < jcells)
+    //     {
+    //         const int ij = i + j*icells;
+    //         slice[ij] = fld[ij] * ((mask[ij] & flag) != 0);
+    //     }
+    // }
     template<typename TF> __global__
     void apply_mask_g(
             TF* slice, const TF* const __restrict__ fld,
             const unsigned int* const __restrict__ mask, const unsigned int flag,
-            const int icells, const int jcells)
+            const int icells, const int jcells, const int kcells, const int ijcells)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
 
-        if (i < icells && j < jcells)
+        if (i < icells && j < jcells && k < kcells)
         {
-            const int ij = i + j*icells;
-            slice[ij] = fld[ij] * ((mask[ij] & flag) != 0);
+            const int ijk = i + j*icells + k*ijcells;
+            slice[ijk] = fld[ijk] * ((mask[ijk] & flag) != 0);
         }
     }
 #endif

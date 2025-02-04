@@ -361,7 +361,6 @@ void Stats<TF>::add_dimension(
 template<typename TF>
 void Stats<TF>::add_mask(const std::string& maskname)
 {
-    std::cout << "Adding mask " << maskname << std::endl;
     masks.emplace(maskname, Mask<TF>{});
     masks.at(maskname).name = maskname;
     masks.at(maskname).data_file = 0;
@@ -369,7 +368,6 @@ void Stats<TF>::add_mask(const std::string& maskname)
     int nmasks = masks.size();
     masks.at(maskname).flag  = (1 << (2 * (nmasks-1)    ));
     masks.at(maskname).flagh = (1 << (2 * (nmasks-1) + 1));
-    std::cout << "Added mask " << maskname << " with flag " << masks.at(maskname).flag << std::endl;
 }
 
 // Add a new profile to each of the NetCDF files.
@@ -969,7 +967,7 @@ void Stats<TF>::calc_stats(
         const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
 {
     calc_stats_mean(varname, fld, offset);
-    // calc_stats_moments(varname, fld, offset);
+    calc_stats_moments(varname, fld, offset);
     // calc_stats_w(varname, fld, offset);
     // calc_stats_diff(varname, fld, offset);
     // calc_stats_flux(varname, fld, offset);
