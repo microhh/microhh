@@ -121,7 +121,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
 

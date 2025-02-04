@@ -54,7 +54,7 @@ class Thermo_disabled : public Thermo<TF>
         // Interfacing functions to get buoyancy properties from other classes.
         void init() {};
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&) {};
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
         void exec(const double, Stats<TF>&) {};

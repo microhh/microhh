@@ -87,7 +87,7 @@ class Thermo_buoy : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
         void exec_stats(Stats<TF>&) {};
