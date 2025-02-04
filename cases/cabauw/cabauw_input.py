@@ -526,8 +526,8 @@ if __name__ == '__main__':
     zsize = 4000
     ktot = 160
 
-    itot = 16
-    jtot = 16
+    itot = 8
+    jtot = 8
 
     xsize = 1600
     ysize = 1600
@@ -551,5 +551,5 @@ if __name__ == '__main__':
             itot, jtot, ktot,
             xsize, ysize, zsize,
             TF,
-            npx=1,
-            npy=1)
+            npx=2,
+            npy=2)

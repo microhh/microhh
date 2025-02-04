@@ -397,6 +397,7 @@ void Boundary_surface_lsm<TF>::exec(
     auto f2b = fields.get_tmp_xy();
     auto f3  = fields.get_tmp_xy();
     auto theta_mean_n = fields.get_tmp_xy();
+    auto t_mean_n = fields.get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -419,10 +420,12 @@ void Boundary_surface_lsm<TF>::exec(
             gd.jstart, gd.jend,
             gd.icells);
 
-    // Calculate root fraction weighted mean soil water content
-    sk::calc_root_weighted_mean_theta(
+    // Calculate root fraction weighted mean soil temperature and water content
+    sk::calc_root_weighted_mean_values(
             (*theta_mean_n).data(),
+            (*t_mean_n).data(),
             fields.sps.at("theta")->fld.data(),
+            fields.sps.at("t")->fld.data(),
             soil_index.data(),
             root_fraction.data(),
             theta_wp.data(),
@@ -468,6 +471,16 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart,
                 gd.icells,
                 gd.ijcells);
+
+        lsmk::calc_soil_respiration_jacobs(
+                resp_co2.data(),
+                (*t_mean_n).data(),
+                r10.data(),
+                ea.data(),
+                rhorefh[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
     }
     else
     {
@@ -981,6 +994,7 @@ void Boundary_surface_lsm<TF>::exec(
     fields.release_tmp_xy(f2b);
     fields.release_tmp_xy(f3);
     fields.release_tmp_xy(theta_mean_n);
+    fields.release_tmp_xy(t_mean_n);
 }
 #endif
 

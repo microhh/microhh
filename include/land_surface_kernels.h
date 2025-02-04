@@ -471,6 +471,29 @@ namespace Land_surface_kernels
 
 
     template<typename TF>
+    void calc_soil_respiration_jacobs(
+            TF* const restrict resp_co2,
+            const TF* const restrict t_soil_mean,
+            const TF* const restrict r10,
+            const TF* const restrict ea,
+            const TF rho_bot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jstride;
+                resp_co2[ij] = r10[ij] * std::exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+            }
+    }
+
+
+    template<typename TF>
     void calc_soil_resistance(
             TF* const restrict rs,
             const TF* const restrict rs_min,
