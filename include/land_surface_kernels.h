@@ -255,9 +255,10 @@ namespace Land_surface_kernels
             const TF* const restrict theta_rel_mean,
             //const TF* const restrict albedo,
             const TF* const restrict vpds,
-            const int* const restrict ags_index,
             const TF* const restrict alpha0,
+            const TF* const restrict t1gm,
             const TF* const restrict t2gm,
+            const TF* const restrict t1am,
             const TF* const restrict gm298,
             const TF* const restrict gmin,
             const TF* const restrict ammax298,
@@ -275,20 +276,15 @@ namespace Land_surface_kernels
             const int kstride)
     {
         // Fixed constants.
-        const TF q10gm = TF(2);       // Parameter to calculate the mesophyll conductance
-        const TF q10am = TF(2);       // Parameter to calculate max primary productivity
-        const TF q10lambda = TF(1);   // Parameter to calculate the CO2 compensation concentration. (2 in IFS, 1.5 in DALES)
+        const TF q10gm = TF(2);      // Parameter to calculate the mesophyll conductance
+        const TF q10am = TF(2);      // Parameter to calculate max primary productivity
+        const TF q10lambda = TF(1);  // Parameter to calculate the CO2 compensation concentration. (2 in IFS, 1.5 in DALES)
 
-        // Reference temperatures calculation mesophyll conductance `g_m` (all in [K]).
-        const TF t1gm = TF(278);
+        const TF t2am = TF(311);     // Reference temperatures calculation max primary productivity [K]
 
-        // Reference temperatures calculation max primary productivity (all in [K]).
-        const TF t1am = TF(281);
-        const TF t2am = TF(311);
-
-        const TF nuco2q = TF(1.6);       // Ratio molecular viscosity water to carbon dioxide [-]
-        const TF ad = TF(0.07);         // Regression coefficient to calculate Cfrac [kPa-1]
-        const TF kx = TF(0.7);           // Extinction coefficient PAR in canopy [m_ground m_leaf-1]
+        const TF nuco2q = TF(1.6);   // Ratio molecular viscosity water to carbon dioxide [-]
+        const TF ad = TF(0.07);      // Regression coefficient to calculate Cfrac [kPa-1]
+        const TF kx = TF(0.7);       // Extinction coefficient PAR in canopy [m_ground m_leaf-1]
 
         // For sw_splitleaf.
         //nr_gauss = 3                                   # Amount of bins to use for Gaussian integrations
@@ -310,21 +306,18 @@ namespace Land_surface_kernels
                 const int ij  = i + j*jstride;
                 const int ijk = ij + kstart*kstride;
 
-                // A-Gs vegetation type in `ags_parameters.nc` lookup table.
-                const int ia = ags_index[ij];
-
                 // Calculate the CO2 compensation concentration (IFS eq. 8.92).
                 // "The compensation point Γ is defined as the CO2 concentration at which the net CO2 assimilation of a fully lit leaf becomes zero".
-                const TF co2_comp = rho_bot * co2_comp298[ia] * std::pow(q10lambda, TF(0.1) * (t_bot[ij] - TF(298)));
+                const TF co2_comp = rho_bot * co2_comp298[ij] * std::pow(q10lambda, TF(0.1) * (t_bot[ij] - TF(298)));
 
                 // Calculate the mesophyll conductance (IFS eq. 8.93).
                 // "The mesophyll conductance gm describes the transport of CO2 from the substomatal cavities to the mesophyll cells where the carbon is fixed".
-                const TF gm = gm298[ia] * std::pow(q10gm, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1gm - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2gm[ia])))) / TF(1000);
+                const TF gm = gm298[ij] * std::pow(q10gm, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1gm[ij] - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2gm[ij])))) / TF(1000);
 
                 // Calculate CO2 concentration inside the leaf (ci).
                 // NOTE: Differs from IFS
-                const TF fmin0 = gmin[ia] / nuco2q - TF(1./9.) * gm;
-                const TF fmin = std::pow(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ia] / nuco2q * gm), TF(0.5)) / (TF(2) * gm);
+                const TF fmin0 = gmin[ij] / nuco2q - TF(1./9.) * gm;
+                const TF fmin = std::pow(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ij] / nuco2q * gm), TF(0.5)) / (TF(2) * gm);
 
                 // Calculate atmospheric moisture deficit.
                 // "Therefore Ci/Cs is specified as a function of atmospheric moisture deficit Ds at the leaf surface".
@@ -332,10 +325,10 @@ namespace Land_surface_kernels
                 const TF ds = vpds[ij] / 1000.;
 
                 // This seems to differ from IFS?
-                const TF dmax = (f0[ia] - fmin) / ad;
+                const TF dmax = (f0[ij] - fmin) / ad;
 
                 // Coupling factor (IFS eq. 8.101).
-                const TF cfrac = std::max(TF(0.01), f0[ia] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
+                const TF cfrac = std::max(TF(0.01), f0[ij] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
 
                 // Absolute CO2 concentration. Input = [mol(CO2) mol-1(air)], co2_abs = [mg(CO2) m-3(air)].
                 const TF co2_abs  = co2[ijk] * to_mgm3;
@@ -357,7 +350,7 @@ namespace Land_surface_kernels
                 //endif
 
                 // Max gross primary production in high light conditions (Ag) (IFS eq. 8.94).
-                const TF ammax = ammax298[ia] * std::pow(q10am, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1am - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2am))));
+                const TF ammax = ammax298[ij] * std::pow(q10am, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1am[ij] - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2am))));
 
                 // Effect of soil moisture stress on gross assimilation rate.
                 // NOTE: this seems to be different in IFS...
@@ -373,7 +366,7 @@ namespace Land_surface_kernels
                 const TF par = TF(0.5) * std::max(TF(0.1), sw_flux_dn[ij]);
 
                 // Light use efficiency.
-                const TF alphac = alpha0[ia] * (co2_abs - co2_comp) / (co2_abs + 2 * co2_comp);
+                const TF alphac = alpha0[ij] * (co2_abs - co2_comp) / (co2_abs + 2 * co2_comp);
 
                 TF an, gc_inf;
                 if (sw_splitleaf)
@@ -426,7 +419,7 @@ namespace Land_surface_kernels
                 //        Hleaf[1:] = Hsun
 
                 //        Agl = fstr * (Am + Rdark) * (1 - np.exp(-alphac*Hleaf/(Am + Rdark)))
-                //        gleaf = gmin[ia]/nuco2q +  Agl/(co2_abs-ci)
+                //        gleaf = gmin[ij]/nuco2q +  Agl/(co2_abs-ci)
                 //        Fleaf = Agl - Rdark
 
                 //        Fshad  = Fleaf[0]
@@ -443,12 +436,12 @@ namespace Land_surface_kernels
                 else
                 {
                     // Calculate upscaling from leaf to canopy: net flow CO2 into the plant (An)
-                    const TF agsa1  = TF(1) / (TF(1) - f0[ia]);
-                    const TF dstar  = dmax / (agsa1 * (f0[ia] - fmin));
+                    const TF agsa1  = TF(1) / (TF(1) - f0[ij]);
+                    const TF dstar  = dmax / (agsa1 * (f0[ij] - fmin));
                     const TF tempy  = alphac * kx * par / (am + rdark);
 
                     an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
-                    gc_inf = lai[ij] * (gmin[ia] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
+                    gc_inf = lai[ij] * (gmin[ij] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
                 }
 
                 //if (lrelaxgc) then

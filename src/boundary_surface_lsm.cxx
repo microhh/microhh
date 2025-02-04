@@ -287,9 +287,6 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     nc_lookup_table_vg =
         std::make_shared<Netcdf_file>(master, "van_genuchten_parameters.nc", Netcdf_mode::Read);
 
-    if (sw_ags)
-        nc_lookup_table_ags = std::make_shared<Netcdf_file>(master, "ags_parameters.nc", Netcdf_mode::Read);
-
     // Checks:
     if (sw_homogeneous && sw_water)
         throw std::runtime_error("Homogeneous land-surface with water is not supported!\n");
@@ -452,9 +449,10 @@ void Boundary_surface_lsm<TF>::exec(
                 (*theta_mean_n).data(),
                 // albedo, only for splitleaf...
                 (*vpds).data(),
-                ags_index.data(),
                 alpha0.data(),
+                t1gm.data(),
                 t2gm.data(),
+                t1am.data(),
                 gm298.data(),
                 gmin.data(),
                 ammax298.data(),
@@ -1136,21 +1134,23 @@ void Boundary_surface_lsm<TF>::init_land_surface()
 
     if (sw_ags)
     {
-        ags_index.resize(gd.ijcells);
         an_co2.resize(gd.ijcells);
         resp_co2.resize(gd.ijcells);
 
-        // Resize lookup table A-Gs vegetation parameters.
-        size = nc_lookup_table_ags->get_dimension_size("index");
+        // A-Gs vegetation properties.
+        alpha0.resize(gd.ijcells);
+        t1gm.resize(gd.ijcells);
+        t2gm.resize(gd.ijcells);
+        t1am.resize(gd.ijcells);
+        gm298.resize(gd.ijcells);
+        gmin.resize(gd.ijcells);
+        ammax298.resize(gd.ijcells);
+        f0.resize(gd.ijcells);
+        co2_comp298.resize(gd.ijcells);
 
-        alpha0.resize(size);
-        t2gm.resize(size);
-        r0.resize(size);
-        gm298.resize(size);
-        gmin.resize(size);
-        ammax298.resize(size);
-        f0.resize(size);
-        co2_comp298.resize(size);
+        // Soil respiration constants.
+        r10.resize(gd.ijcells);
+        ea.resize(gd.ijcells);
     }
 }
 
@@ -1290,8 +1290,25 @@ void Boundary_surface_lsm<TF>::create(
 
         if (sw_ags)
         {
-            const int value = input.get_item<int>("land_surface", "ags_index", "");
-            std::fill(ags_index.begin(), ags_index.begin()+agd.ijcells, value);
+            auto init_homogeneous_default = [&](std::vector<TF>& field, std::string name, const TF default_value)
+            {
+                const TF value = input.get_item<TF>("land_surface", name.c_str(), "", default_value);
+                std::fill(field.begin(), field.begin()+agd.ijcells, value);
+            };
+
+            // Default to Jordi's short grass? Or shouldn't there be defaults?
+            init_homogeneous_default(alpha0, "alpha0", 0.014);
+            init_homogeneous_default(t1gm, "t1gm", 278.0);
+            init_homogeneous_default(t2gm, "t2gm", 301.0);
+            init_homogeneous_default(t1am, "t1am", 281.0);
+            init_homogeneous_default(gm298, "gm298", 7.0);
+            init_homogeneous_default(gmin, "gmin", 0.00025);
+            init_homogeneous_default(ammax298, "ammax298", 2.2);
+            init_homogeneous_default(f0, "f0", 0.89);
+            init_homogeneous_default(co2_comp298, "co2_comp298", 68.5);
+
+            init_homogeneous_default(r10, "r10", 0.23);
+            init_homogeneous_default(ea, "ea", 53300);
         }
     }
     // else: these fields are read from 2D input files in `boundary->load()`.
@@ -1322,21 +1339,6 @@ void Boundary_surface_lsm<TF>::create(
             gamma_T_dry.data(), rho_C.data(),
             vg_a.data(), vg_l.data(), vg_n.data(), gamma_theta_sat.data(),
             theta_res.data(), theta_sat.data(), theta_fc.data(), size);
-
-    if (sw_ags)
-    {
-        // Read lookup table A-Gs parameters.
-        const int size = nc_lookup_table_ags->get_dimension_size("index");
-
-        nc_lookup_table_ags->get_variable<TF>(alpha0,      "alpha0",      {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(t2gm,        "T2gm",        {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(r0,          "R0",          {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(gm298,       "gm298",       {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(gmin,        "gmin",        {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(ammax298,    "Ammax298",    {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(f0,          "f0",          {0}, {size});
-        nc_lookup_table_ags->get_variable<TF>(co2_comp298, "co2_comp298", {0}, {size});
-    }
 }
 
 template<typename TF>
