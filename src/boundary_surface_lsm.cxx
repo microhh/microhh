@@ -953,9 +953,6 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Si
     init_surface_layer(inputin);
     init_land_surface();
 
-    // Initialize the boundary cyclic.
-    boundary_cyclic.init();
-
     if (sim_mode == Sim_mode::Init)
     {
         inputin.flag_as_used("boundary", "swtimedep", "");

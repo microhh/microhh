@@ -157,9 +157,6 @@ void Boundary_surface_bulk<TF>::init(Input& inputin, Thermo<TF>& thermo, const S
     // 3. Allocate and initialize the 2D surface fields.
     init_surface(inputin);
 
-    // 4. Initialize the boundary cyclic.
-    boundary_cyclic.init();
-
     if (sim_mode == Sim_mode::Init)
     {
         inputin.flag_as_used("boundary", "swtimedep", "");

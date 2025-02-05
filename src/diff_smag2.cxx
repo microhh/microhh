@@ -299,7 +299,6 @@ Diff_smag2<TF>::~Diff_smag2()
 template<typename TF>
 void Diff_smag2<TF>::init()
 {
-    boundary_cyclic.init();
 }
 
 template<typename TF>

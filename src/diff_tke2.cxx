@@ -538,7 +538,6 @@ Diff_tke2<TF>::~Diff_tke2()
 template<typename TF>
 void Diff_tke2<TF>::init()
 {
-    boundary_cyclic.init();
 }
 
 template<typename TF>

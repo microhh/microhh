@@ -768,9 +768,6 @@ void Immersed_boundary<TF>::create()
     if (sw_ib == IB_type::Disabled)
         return;
 
-    // Init the toolbox classes.
-    boundary_cyclic.init();
-
     // Get grid and MPI information
     auto& gd  = grid.get_grid_data();
     auto& mpi = master.get_MPI_data();
