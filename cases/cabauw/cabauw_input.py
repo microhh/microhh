@@ -496,7 +496,7 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
-    use_ags = True               # False = Jarvis-Stewart, True = A-Gs.
+    use_ags = False               # False = Jarvis-Stewart, True = A-Gs.
     use_rrtmgp = True            # False = prescribed surface radiation from ERA5.
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
@@ -551,5 +551,5 @@ if __name__ == '__main__':
             itot, jtot, ktot,
             xsize, ysize, zsize,
             TF,
-            npx=2,
-            npy=2)
+            npx=1,
+            npy=1)

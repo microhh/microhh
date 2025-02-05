@@ -88,10 +88,22 @@ void Boundary_surface_lsm<TF>::exec(
     dim3 grid_gpu_2d_gc (gridi,  gridj,  1);
     dim3 block_gpu_2d_gc(blocki, blockj, 1);
 
+    // Tmp hack until we have Thijs' `get_tmp_xy_g()` in this code.
+    auto tmp_xy = fields.get_tmp_g();
+    int xy_index = 0;
+    auto get_tmp_xy = [&]()
+    {
+        TF* xy_ptr = &tmp_xy->fld_g[xy_index * gd.ijcells];
+        xy_index += 1;
+
+        if (xy_index >= gd.kcells)
+            throw std::runtime_error("Too many tmp XY slices!");
+
+        return xy_ptr;
+    };
+
     // Calculate filtered wind speed difference surface-atmosphere.
-    auto tmp1 = fields.get_tmp_g();
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* du_tot = tmp1->fld_bot_g;
+    TF* du_tot = get_tmp_xy();
 
     bsk::calc_dutot_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
         du_tot,
@@ -116,12 +128,12 @@ void Boundary_surface_lsm<TF>::exec(
     TF* lw_up = radiation.get_surface_radiation_g("lw_up");
 
     // Get (near-) surface thermo.
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* T_bot = tmp1->flux_bot_g;
-    TF* T_a = tmp1->grad_bot_g;
-    TF* vpd = tmp1->fld_top_g;
-    TF* qsat_bot = tmp1->flux_top_g;
-    TF* dqsatdT_bot = tmp1->grad_top_g;
+    TF* T_bot = get_tmp_xy();
+    TF* T_a = get_tmp_xy();
+    TF* vpd = get_tmp_xy();
+    TF* qsat_bot = get_tmp_xy();
+    TF* dqsatdT_bot = get_tmp_xy();
+    TF* vpds = get_tmp_xy();
 
     thermo.get_land_surface_fields_g(
         T_bot, T_a, vpd, qsat_bot, dqsatdT_bot);
@@ -139,18 +151,16 @@ void Boundary_surface_lsm<TF>::exec(
     const std::vector<TF>& prefh = thermo.get_basestate_vector("ph");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
-    auto tmp2 = fields.get_tmp_g();
-    TF* rain_rate = tmp2->fld_bot_g;
+    TF* rain_rate = get_tmp_xy();
     microphys.get_surface_rain_rate_g(rain_rate);
 
     // XY tmp fields for intermediate calculations
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* f1  = tmp2->flux_bot_g;
-    TF* f2  = tmp2->grad_bot_g;
-    TF* f2b = tmp2->fld_top_g;
-    TF* f3  = tmp2->flux_top_g;
-    TF* theta_mean_n = tmp2->grad_top_g;
-    TF* t_mean_n = tmp2->fld_g;
+    TF* f1  = get_tmp_xy();
+    TF* f2  = get_tmp_xy();
+    TF* f2b = get_tmp_xy();
+    TF* f3  = get_tmp_xy();
+    TF* theta_mean_n = get_tmp_xy();
+    TF* t_mean_n = get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -545,9 +555,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
-    fields.release_tmp_g(buoy);
-    fields.release_tmp_g(tmp2);
-
     if (sw_homogenize_sfc)
     {
         const int blockGPU = 256;
@@ -617,12 +624,12 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Set flux boundary conditions at top and bottom of soil column
     // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
-    get_tiled_mean_g(tmp1->fld_bot_g, "G", TF(1));
+    get_tiled_mean_g(tmp_xy->fld_bot_g, "G", TF(1));
 
     sk::set_bcs_temperature_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             fields.sps.at("t")->flux_top_g,
             fields.sps.at("t")->flux_bot_g,
-            tmp1->fld_bot_g,
+            tmp_xy->fld_bot_g,
             rho_C_g,
             soil_index_g,
             gd.istart, gd.iend,
@@ -731,7 +738,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate root water extraction
     lsmk::scale_tile_with_fraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-            tmp1->fld_bot_g.view(),
+            tmp_xy->fld_bot_g.view(),
             tiles.at("veg").LE_g,
             tiles.at("veg").fraction_g,
             gd.istart, gd.iend,
@@ -741,10 +748,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     sk::calc_root_water_extraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             source_g,
-            tmp1->fld_top_g.view(),
+            tmp_xy->fld_top_g.view(),
             fields.sps.at("theta")->fld_g,
             root_fraction_g,
-            tmp1->fld_bot_g,
+            tmp_xy->fld_bot_g,
             sgd.dzi_g,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
@@ -767,7 +774,9 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    fields.release_tmp_g(tmp1);
+
+    fields.release_tmp_g(buoy);
+    fields.release_tmp_g(tmp_xy);
 }
 
 template<typename TF>
