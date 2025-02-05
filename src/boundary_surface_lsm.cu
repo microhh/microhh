@@ -131,12 +131,12 @@ void Boundary_surface_lsm<TF>::exec(
     TF* T_bot = get_tmp_xy();
     TF* T_a = get_tmp_xy();
     TF* vpd = get_tmp_xy();
+    TF* vpds = get_tmp_xy();
     TF* qsat_bot = get_tmp_xy();
     TF* dqsatdT_bot = get_tmp_xy();
-    TF* vpds = get_tmp_xy();
 
     thermo.get_land_surface_fields_g(
-        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot);
+        T_bot, T_a, vpd, vpds, qsat_bot, dqsatdT_bot);
 
     // Get (near-) surface buoyancy.
     auto buoy = fields.get_tmp_g();
@@ -202,37 +202,47 @@ void Boundary_surface_lsm<TF>::exec(
     {
         bool sw_splitleaf = false;
 
-        //lsmk::calc_canopy_resistance_ags_g<<<grid_gpu_2d, block_gpu_2d>>>(
-        //        tiles.at("veg").rs_g,
-        //        an_co2_g,
-        //        lai_g,
-        //        T_bot,
-        //        tiles.at("veg").ra_g,
-        //        fields.sp.at("co2")->fld_g,
-        //        fields.sp.at("thl")->fld_g,
-        //        fields.sp.at("qt")->fld_g,
-        //        sw_dn,
-        //        theta_mean_n,
-        //        // albedo, only for splitleaf...
-        //        vpds,
-        //        alpha0_g,
-        //        t1gm_g,
-        //        t2gm_g,
-        //        t1am_g,
-        //        gm298_g,
-        //        gmin_g,
-        //        ammax298_g,
-        //        f0_g,
-        //        co2_comp298_g,
-        //        // cos_sza, only for splitleaf...
-        //        rhoref[gd.kstart],
-        //        rhorefh[gd.kstart],
-        //        sw_splitleaf,
-        //        gd.istart, gd.iend,
-        //        gd.jstart, gd.jend,
-        //        gd.kstart,
-        //        gd.icells,
-        //        gd.ijcells);
+        lsmk::calc_canopy_resistance_ags_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                tiles.at("veg").rs_g,
+                an_co2_g,
+                lai_g,
+                T_bot,
+                tiles.at("veg").ra_g,
+                fields.sp.at("co2")->fld_g,
+                fields.sp.at("thl")->fld_g,
+                fields.sp.at("qt")->fld_g,
+                sw_dn,
+                theta_mean_n,
+                // albedo, only for splitleaf...
+                vpds,
+                alpha0_g,
+                t1gm_g,
+                t2gm_g,
+                t1am_g,
+                gm298_g,
+                gmin_g,
+                ammax298_g,
+                f0_g,
+                co2_comp298_g,
+                // cos_sza, only for splitleaf...
+                rhoref[gd.kstart],
+                rhorefh[gd.kstart],
+                sw_splitleaf,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells,
+                gd.ijcells);
+
+        lsmk::calc_soil_respiration_jacobs_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                resp_co2_g,
+                t_mean_n,
+                r10_g,
+                ea_g,
+                rhorefh[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
     }
     else
     {

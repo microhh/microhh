@@ -447,6 +447,30 @@ namespace Land_surface_kernels_g
 
 
     template<typename TF> __global__
+    void calc_soil_respiration_jacobs_g(
+            TF* const restrict resp_co2,
+            const TF* const restrict t_soil_mean,
+            const TF* const restrict r10,
+            const TF* const restrict ea,
+            const TF rho_bot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jstride;
+            resp_co2[ij] = r10[ij] * exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+        }
+    }
+
+
+    template<typename TF> __global__
     void calc_soil_resistance_g(
             TF* const __restrict__ rs,
             const TF* const __restrict__ rs_min,
