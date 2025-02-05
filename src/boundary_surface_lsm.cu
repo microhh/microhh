@@ -952,6 +952,28 @@ void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMalloc(&source_g, tf_memsize_ijk));
     cuda_safe_call(cudaMalloc(&root_fraction_g, tf_memsize_ijk));
 
+    if (sw_ags)
+    {
+        // 3.1 A-Gs and soil respiration parameters.
+        cuda_safe_call(cudaMalloc(&alpha0_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t1gm_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t2gm_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t1am_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&gm298_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&gmin_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&ammax298_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&f0_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&co2_comp298_g, tf_memsize_ij));
+
+        // Soil respiration.
+        cuda_safe_call(cudaMalloc(&r10_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&ea_g, tf_memsize_ij));
+
+        // Surface CO2 fluxes.
+        cuda_safe_call(cudaMalloc(&an_co2_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&resp_co2_g, tf_memsize_ij));
+    }
+
     // 4. Init lookup table with van Genuchten parameters:
     const int memsize_vg_lut = theta_res.size() * sizeof(TF);
 
@@ -1043,6 +1065,24 @@ void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMemcpy(conductivity_h_g, conductivity_h.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(source_g, source.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(root_fraction_g, root_fraction.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
+
+    if (sw_ags)
+    {
+        // 3.1 Copy A-Gs parameters.
+        cuda_safe_call(cudaMemcpy(alpha0_g, alpha0.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t1gm_g, t1gm.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t2gm_g, t2gm.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t1am_g, t1am.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(gm298_g, gm298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(gmin_g, gmin.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(ammax298_g, ammax298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(f0_g, f0.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(co2_comp298_g, co2_comp298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+
+        // Soil respiration.
+        cuda_safe_call(cudaMemcpy(r10_g, r10.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(ea_g, ea.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+    }
 
     // 4. Copy lookup table with van Genuchten parameters:
     const int memsize_vg_lut = theta_res.size() * sizeof(TF);
@@ -1137,6 +1177,25 @@ void Boundary_surface_lsm<TF>::clear_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaFree(conductivity_h_g));
     cuda_safe_call(cudaFree(source_g));
     cuda_safe_call(cudaFree(root_fraction_g));
+
+    if (sw_ags)
+    {
+        cuda_safe_call(cudaFree(alpha0_g));
+        cuda_safe_call(cudaFree(t1gm_g));
+        cuda_safe_call(cudaFree(t2gm_g));
+        cuda_safe_call(cudaFree(t1am_g));
+        cuda_safe_call(cudaFree(gm298_g));
+        cuda_safe_call(cudaFree(gmin_g));
+        cuda_safe_call(cudaFree(ammax298_g));
+        cuda_safe_call(cudaFree(f0_g));
+        cuda_safe_call(cudaFree(co2_comp298_g));
+
+        cuda_safe_call(cudaFree(r10_g));
+        cuda_safe_call(cudaFree(ea_g));
+
+        cuda_safe_call(cudaFree(an_co2_g));
+        cuda_safe_call(cudaFree(resp_co2_g));
+    }
 
     cuda_safe_call(cudaFree(theta_res_g));
     cuda_safe_call(cudaFree(theta_wp_g));

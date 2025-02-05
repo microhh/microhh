@@ -198,9 +198,6 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> infiltration;    // Infiltration moisture into soil (m s-1)
         std::vector<TF> runoff;          // Surface runoff from soil (m s-1)
 
-        std::vector<TF> an_co2;          // CO2 assimilation (photosynthesis).
-        std::vector<TF> resp_co2;        // CO2 respiration from soil.
-
         // Soil properties
         std::vector<int> soil_index;     // Index in lookup tables
         std::vector<TF> diffusivity;     // Full level (m2 s-1)
@@ -224,6 +221,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         // Soil respiration properties.
         std::vector<TF> r10;             // Soil respiration at 10 deg C (mgCO2 m-2 s-1)
         std::vector<TF> ea;              // Activation energy (K)
+
+        // Surface fluxes CO2.
+        std::vector<TF> an_co2;          // CO2 assimilation (photosynthesis).
+        std::vector<TF> resp_co2;        // CO2 respiration from soil.
 
         // Lookup table data obtained from input van Genuchten NetCDF file:
         std::vector<TF> theta_res;       // Residual soil moisture content (m3 m-3)
@@ -277,19 +278,38 @@ class Boundary_surface_lsm : public Boundary<TF>
         int* water_mask_g;     // Mask for open water (-)
         TF* t_bot_water_g;
 
-        TF* interception_g;   // Interception rain/dew by surface (m s-1)
-        TF* throughfall_g;    // Throughfall rain/dew onto soil (m s-1)
-        TF* infiltration_g;   // Infiltration moisture into soil (m s-1)
-        TF* runoff_g;         // Surface runoff from soil (m s-1)
+        TF* interception_g;    // Interception rain/dew by surface (m s-1)
+        TF* throughfall_g;     // Throughfall rain/dew onto soil (m s-1)
+        TF* infiltration_g;    // Infiltration moisture into soil (m s-1)
+        TF* runoff_g;          // Surface runoff from soil (m s-1)
 
         // Soil properties
-        int* soil_index_g;    // Index in lookup tables
-        TF* diffusivity_g;    // Full level (m2 s-1)
-        TF* diffusivity_h_g;  // Half level (m2 s-1)
-        TF* conductivity_g;   // Full level (unit m s-1)
-        TF* conductivity_h_g; // Half level (unit m s-1)
-        TF* source_g;         // Source term (unit s-1)
-        TF* root_fraction_g;  // Root fraction per soil layer (-)
+        int* soil_index_g;     // Index in lookup tables
+        TF* diffusivity_g;     // Full level (m2 s-1)
+        TF* diffusivity_h_g;   // Half level (m2 s-1)
+        TF* conductivity_g;    // Full level (unit m s-1)
+        TF* conductivity_h_g;  // Half level (unit m s-1)
+        TF* source_g;          // Source term (unit s-1)
+        TF* root_fraction_g;   // Root fraction per soil layer (-)
+
+        // A-Gs vegetation properties.
+        TF* alpha0_g;          // Lightuse efficiency at low light conditions (mgCO2 J-1 PAR)
+        TF* t1gm_g;            // Reference temperature calculation mesophyll conductance (K)
+        TF* t2gm_g;            // Reference temperature calculation mesophyll conductance (K)
+        TF* t1am_g;            // Reference temperature calculation max primary production (K)
+        TF* gm298_g;           // Mesophyl conductance at 298 K (mm s-1)
+        TF* gmin_g;            // Cuticular minimum conductance (m s-1)
+        TF* ammax298_g;        // CO2 maximal primary productivity (mgCO2 m-2 s-1)
+        TF* f0_g;              // Maximum value Cfrac (-)
+        TF* co2_comp298_g;     // CO2 compensation concentration at 298 K (ppm)
+
+        // Soil respiration properties.
+        TF* r10_g;             // Soil respiration at 10 deg C (mgCO2 m-2 s-1)
+        TF* ea_g;              // Activation energy (K)
+
+        // Surface fluxes CO2.
+        TF* an_co2_g;          // CO2 assimilation (photosynthesis).
+        TF* resp_co2_g;        // CO2 respiration from soil.
 
         // Lookup table data obtained from input NetCDF file:
         TF* theta_res_g;  // Residual soil moisture content (m3 m-3)
