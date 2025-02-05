@@ -230,13 +230,13 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
     auto& md = master.get_MPI_data();
 
     // CvH fix this.
-    TF* buffer_send;
-    TF* buffer_recv;
+    std::vector<TF> buffer_send(gd.ncells);
+    std::vector<TF> buffer_recv(gd.ncells);
 
     cyclic_kernel(
             data,
-            buffer_send,
-            buffer_recv,
+            buffer_send.data(),
+            buffer_recv.data(),
             edge,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
@@ -252,13 +252,13 @@ void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
     auto& md = master.get_MPI_data();
 
     // CvH fix this.
-    TF* buffer_send;
-    TF* buffer_recv;
+    std::vector<TF> buffer_send(gd.ijcells);
+    std::vector<TF> buffer_recv(gd.ijcells);
 
     cyclic_kernel(
             data,
-            buffer_send,
-            buffer_recv,
+            buffer_send.data(),
+            buffer_recv.data(),
             Edge::Both_edges,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, 1,
@@ -273,13 +273,14 @@ void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    unsigned int* buffer_send;
-    unsigned int* buffer_recv;
+    // CvH Fix this.
+    std::vector<unsigned int> buffer_send(gd.ncells);
+    std::vector<unsigned int> buffer_recv(gd.ncells);
 
     cyclic_kernel(
             data,
-            buffer_send,
-            buffer_recv,
+            buffer_send.data(),
+            buffer_recv.data(),
             edge,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
@@ -294,13 +295,13 @@ void Boundary_cyclic<TF>::exec_2d(unsigned int* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    unsigned int* buffer_send;
-    unsigned int* buffer_recv;
+    std::vector<unsigned int> buffer_send(gd.ijcells);
+    std::vector<unsigned int> buffer_recv(gd.ijcells);
 
     cyclic_kernel<unsigned int>(
             data,
-            buffer_send,
-            buffer_recv,
+            buffer_send.data(),
+            buffer_recv.data(),
             Edge::Both_edges,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
