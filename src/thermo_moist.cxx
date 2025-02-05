@@ -1352,9 +1352,6 @@ void Thermo_moist<TF>::create(
 
     create_basestate(inputin, input_nc);
 
-    // Init the toolbox classes.
-    boundary_cyclic.init();
-
     // Set up output classes
     create_stats(stats);
     create_column(column);

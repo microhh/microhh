@@ -117,7 +117,6 @@ void Pres_2<TF>::init()
 
     work2d.resize(gd.imax*gd.jmax);
 
-    boundary_cyclic.init();
     fft.init();
 }
 

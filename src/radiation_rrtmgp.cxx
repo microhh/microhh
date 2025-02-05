@@ -920,9 +920,6 @@ void Radiation_rrtmgp<TF>::create(
     }
 
     crosslist = cross.get_enabled_variables(allowed_crossvars_radiation);
-
-    // Init toolboxes
-    boundary_cyclic.init();
 }
 
 template<typename TF>

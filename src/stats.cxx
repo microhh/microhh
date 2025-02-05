@@ -600,8 +600,6 @@ void Stats<TF>::init()
 
     auto& gd = grid.get_grid_data();
 
-    boundary_cyclic.init();
-
     isampletime = convert_to_itime(sampletime);
     statistics_counter = 0;
 

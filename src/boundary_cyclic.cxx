@@ -24,93 +24,204 @@
 #include "grid.h"
 #include "boundary_cyclic.h"
 
+
 template<typename TF>
 Boundary_cyclic<TF>::Boundary_cyclic(Master& masterin, Grid<TF>& gridin) :
     master(masterin),
-    grid(gridin),
-    mpi_types_allocated(false)
+    grid(gridin)
 {
 }
+
 
 template<typename TF>
 Boundary_cyclic<TF>::~Boundary_cyclic()
 {
-    exit_mpi();
 }
 
-template<typename TF>
-void Boundary_cyclic<TF>::init()
-{
-    init_mpi();
-}
 
 #ifdef USEMPI
 namespace
 {
-    template<typename TF> MPI_Datatype mpi_fp_type();
-    template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
-    template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
-}
+    template<typename TF> MPI_Datatype mpi_data_type();
+    template<> MPI_Datatype mpi_data_type<double>() { return MPI_DOUBLE; }
+    template<> MPI_Datatype mpi_data_type<float>() { return MPI_FLOAT; }
+    template<> MPI_Datatype mpi_data_type<unsigned int>() { return MPI_UNSIGNED; }
 
-template<typename TF>
-void Boundary_cyclic<TF>::init_mpi()
-{
-    auto& gd = grid.get_grid_data();
 
-    // create the MPI types for the cyclic boundary conditions
-    int datacount, datablock, datastride;
-
-    // east west
-    datacount  = gd.jcells*gd.kcells;
-    datablock  = gd.igc;
-    datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge);
-    MPI_Type_commit(&eastwestedge);
-    MPI_Type_vector(datacount, datablock, datastride, MPI_UNSIGNED, &eastwestedge_uint);
-    MPI_Type_commit(&eastwestedge_uint);
-
-    // north south
-    datacount  = gd.kcells;
-    datablock  = gd.icells*gd.jgc;
-    datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge);
-    MPI_Type_commit(&northsouthedge);
-    MPI_Type_vector(datacount, datablock, datastride, MPI_UNSIGNED, &northsouthedge_uint);
-    MPI_Type_commit(&northsouthedge_uint);
-
-    // east west 2d
-    datacount  = gd.jcells;
-    datablock  = gd.igc;
-    datastride = gd.icells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &eastwestedge2d);
-    MPI_Type_commit(&eastwestedge2d);
-    MPI_Type_vector(datacount, datablock, datastride, MPI_UNSIGNED, &eastwestedge2d_uint);
-    MPI_Type_commit(&eastwestedge2d_uint);
-
-    // north south 2d
-    datacount  = 1;
-    datablock  = gd.icells*gd.jgc;
-    datastride = gd.icells*gd.jcells;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &northsouthedge2d);
-    MPI_Type_commit(&northsouthedge2d);
-    MPI_Type_vector(datacount, datablock, datastride, MPI_UNSIGNED, &northsouthedge2d_uint);
-    MPI_Type_commit(&northsouthedge2d_uint);
-
-    mpi_types_allocated = true;
-}
-
-template<typename TF>
-void Boundary_cyclic<TF>::exit_mpi()
-{
-    if (mpi_types_allocated)
+    template<typename TF>
+    inline void cyclic_kernel(
+            TF* __restrict__ const data,
+            TF* __restrict__ const buffer_send,
+            TF* __restrict__ const buffer_recv,
+            const Edge edge,
+            const int istart, const int iend, const int jstart, const int jend,
+            const int icells, const int jcells, const int kcells,
+            const int jj, const int kk,
+            const MPI_data& md)
     {
-        MPI_Type_free(&eastwestedge);
-        MPI_Type_free(&northsouthedge);
+        const int igc = istart;
+        const int jgc = jstart;
 
-        MPI_Type_free(&eastwestedge2d);
-        MPI_Type_free(&northsouthedge2d);
+        if (edge == Edge::East_west_edge || edge == Edge::Both_edges)
+        {
+            const int jj_buf = igc;
+            const int kk_buf = igc*jcells;
+
+            // Pack the buffer.
+            #pragma acc parallel loop present(data, buffer_send) collapse(3)
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma GCC ivdep
+                    for (int i=0; i<igc; ++i)
+                    {
+                        const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                        const int ijk = iend-igc+i + j*jj + k*kk;
+                        buffer_send[ijk_buf] = data[ijk];
+                    }
+
+            MPI_Request reqs[2];
+            #pragma acc host_data use_device(buffer_send, buffer_recv)
+            {
+                MPI_Isend(buffer_send, igc*jcells*kcells, mpi_data_type<TF>(), md.neast, 1, md.commxy, &reqs[0]);
+                MPI_Irecv(buffer_recv, igc*jcells*kcells, mpi_data_type<TF>(), md.nwest, 1, md.commxy, &reqs[1]);
+                MPI_Waitall(2, reqs, MPI_STATUSES_IGNORE);
+            }
+
+            // Unpack the buffer.
+            #pragma acc parallel loop present(data, buffer_recv) collapse(3)
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma GCC ivdep
+                    for (int i=0; i<igc; ++i)
+                    {
+                        const int ijk = i + j*jj + k*kk;
+                        const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                        data[ijk] = buffer_recv[ijk_buf];
+                    }
+
+            // Pack the buffer.
+            #pragma acc parallel loop present(data, buffer_send) collapse(3)
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma GCC ivdep
+                    for (int i=0; i<igc; ++i)
+                    {
+                        const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                        const int ijk = i+istart + j*jj + k*kk;
+                        buffer_send[ijk_buf] = data[ijk];
+                    }
+
+            #pragma acc host_data use_device(buffer_send, buffer_recv)
+            {
+                MPI_Isend(buffer_send, igc*jcells*kcells, mpi_data_type<TF>(), md.nwest, 2, md.commxy, &reqs[0]);
+                MPI_Irecv(buffer_recv, igc*jcells*kcells, mpi_data_type<TF>(), md.neast, 2, md.commxy, &reqs[1]);
+                MPI_Waitall(2, reqs, MPI_STATUSES_IGNORE);
+            }
+
+            // Unpack the buffer.
+            #pragma acc parallel loop present(data, buffer_recv) collapse(3)
+            for (int k=0; k<kcells; ++k)
+                for (int j=0; j<jcells; ++j)
+                    #pragma GCC ivdep
+                    for (int i=0; i<igc; ++i)
+                    {
+                        const int ijk = i+iend + j*jj + k*kk;
+                        const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                        data[ijk] = buffer_recv[ijk_buf];
+                    }
+        }
+
+        if (edge == Edge::North_south_edge || edge == Edge::Both_edges)
+        {
+            // if the run is 3D, apply the BCs
+            if ((jend - jstart) > 1)
+            {
+                const int jj_buf = icells;
+                const int kk_buf = icells*jgc;
+
+                // Pack the buffer.
+                #pragma acc parallel loop present(data, buffer_send) collapse(3)
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc; ++j)
+                        #pragma GCC ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                            const int ijk = i + (jend-jgc+j)*jj + k*kk;
+                            buffer_send[ijk_buf] = data[ijk];
+                        }
+
+                MPI_Request reqs[2];
+                #pragma acc host_data use_device(buffer_send, buffer_recv)
+                {
+                    MPI_Isend(buffer_send, icells*jgc*kcells, mpi_data_type<TF>(), md.nnorth, 1, md.commxy, &reqs[0]);
+                    MPI_Irecv(buffer_recv, icells*jgc*kcells, mpi_data_type<TF>(), md.nsouth, 1, md.commxy, &reqs[1]);
+                    MPI_Waitall(2, reqs, MPI_STATUSES_IGNORE);
+                }
+
+                // Unpack the buffer.
+                #pragma acc parallel loop present(data, buffer_recv) collapse(3)
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc; ++j)
+                        #pragma GCC ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk = i + j*jj + k*kk;
+                            const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                            data[ijk] = buffer_recv[ijk_buf];
+                        }
+
+                // Pack the buffer.
+                #pragma acc parallel loop present(data, buffer_send) collapse(3)
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc; ++j)
+                        #pragma GCC ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                            const int ijk = i + (j+jstart)*jj + k*kk;
+                            buffer_send[ijk_buf] = data[ijk];
+                        }
+
+                #pragma acc host_data use_device(buffer_send, buffer_recv)
+                {
+                    MPI_Isend(buffer_send, icells*jgc*kcells, mpi_data_type<TF>(), md.nsouth, 2, md.commxy, &reqs[0]);
+                    MPI_Irecv(buffer_recv, icells*jgc*kcells, mpi_data_type<TF>(), md.nnorth, 2, md.commxy, &reqs[1]);
+                    MPI_Waitall(2, reqs, MPI_STATUSES_IGNORE);
+                }
+
+                // Unpack the buffer.
+                #pragma acc parallel loop present(data, buffer_recv) collapse(3)
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc; ++j)
+                        #pragma GCC ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijk = i + (j+jend)*jj + k*kk;
+                            const int ijk_buf = i + j*jj_buf + k*kk_buf;
+                            data[ijk] = buffer_recv[ijk_buf];
+                        }
+            }
+            // in case of 2D, fill all the ghost cells with the current value
+            else
+            {
+                #pragma acc parallel loop present(data) collapse(3)
+                for (int k=0; k<kcells; ++k)
+                    for (int j=0; j<jgc; ++j)
+                        #pragma GCC ivdep
+                        for (int i=0; i<icells; ++i)
+                        {
+                            const int ijkref   = i + jstart*jj   + k*kk;
+                            const int ijknorth = i + j*jj        + k*kk;
+                            const int ijksouth = i + (jend+j)*jj + k*kk;
+                            data[ijknorth] = data[ijkref];
+                            data[ijksouth] = data[ijkref];
+                        }
+            }
+        }
     }
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
@@ -118,62 +229,21 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
+    // CvH fix this.
+    TF* buffer_send;
+    TF* buffer_recv;
 
-    if (edge == Edge::East_west_edge || edge == Edge::Both_edges)
-    {
-        // Communicate east-west edges.
-        const int eastout = gd.iend-gd.igc;
-        const int westin  = 0;
-        const int westout = gd.istart;
-        const int eastin  = gd.iend;
-
-        // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge, md.neast, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ westin], ncount, eastwestedge, md.nwest, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[westout], ncount, eastwestedge, md.nwest, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ eastin], ncount, eastwestedge, md.neast, 2, md.commxy, master.get_request_ptr());
-        master.wait_all();
-    }
-
-    if (edge == Edge::North_south_edge || edge == Edge::Both_edges)
-    {
-        // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
-        if (gd.jtot > 1)
-        {
-            // Communicate north-south edges.
-            const int northout = (gd.jend-gd.jgc)*gd.icells;
-            const int southin  = 0;
-            const int southout = gd.jstart*gd.icells;
-            const int northin  = gd.jend  *gd.icells;
-
-            // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge, md.nnorth, 1, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ southin], ncount, northsouthedge, md.nsouth, 1, md.commxy, master.get_request_ptr());
-            MPI_Isend(&data[southout], ncount, northsouthedge, md.nsouth, 2, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ northin], ncount, northsouthedge, md.nnorth, 2, md.commxy, master.get_request_ptr());
-            master.wait_all();
-        }
-        // In case of 2D, fill all the ghost cells in the y-direction with the same value.
-        else
-        {
-            const int jj = gd.icells;
-            const int kk = gd.icells*gd.jcells;
-
-            for (int k=gd.kstart; k<gd.kend; ++k)
-                for (int j=0; j<gd.jgc; ++j)
-                    #pragma ivdep
-                    for (int i=0; i<gd.icells; ++i)
-                    {
-                        const int ijkref   = i + gd.jstart*jj   + k*kk;
-                        const int ijknorth = i + j*jj           + k*kk;
-                        const int ijksouth = i + (gd.jend+j)*jj + k*kk;
-                        data[ijknorth] = data[ijkref];
-                        data[ijksouth] = data[ijkref];
-                    }
-        }
-    }
+    cyclic_kernel(
+            data,
+            buffer_send,
+            buffer_recv,
+            edge,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, gd.kcells,
+            gd.icells, gd.ijcells,
+            md);
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
@@ -181,57 +251,21 @@ void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
+    // CvH fix this.
+    TF* buffer_send;
+    TF* buffer_recv;
 
-    // Communicate east-west edges.
-    const int eastout = gd.iend-gd.igc;
-    const int westin  = 0;
-    const int westout = gd.istart;
-    const int eastin  = gd.iend;
-
-    // Communicate north-south edges.
-    const int northout = (gd.jend-gd.jgc)*gd.icells;
-    const int southin  = 0;
-    const int southout = gd.jstart*gd.icells;
-    const int northin  = gd.jend  *gd.icells;
-
-    // First, send and receive the ghost cells in east-west direction.
-    MPI_Isend(&data[eastout], ncount, eastwestedge2d, md.neast, 1, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ westin], ncount, eastwestedge2d, md.nwest, 1, md.commxy, master.get_request_ptr());
-    MPI_Isend(&data[westout], ncount, eastwestedge2d, md.nwest, 2, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d, md.neast, 2, md.commxy, master.get_request_ptr());
-    master.wait_all();
-
-    // If the run is 3D, apply the BCs.
-    if (gd.jtot > 1)
-    {
-        // Second, send and receive the ghost cells in the north-south direction.
-        MPI_Isend(&data[northout], ncount, northsouthedge2d, md.nnorth, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ southin], ncount, northsouthedge2d, md.nsouth, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[southout], ncount, northsouthedge2d, md.nsouth, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ northin], ncount, northsouthedge2d, md.nnorth, 2, md.commxy, master.get_request_ptr());
-        master.wait_all();
-    }
-    // In case of 2D, fill all the ghost cells with the current value.
-    else
-    {
-        // Local copies for fast performance in loop.
-        const int jj = gd.icells;
-        const int jstart = gd.jstart;
-        const int jend = gd.jend;
-
-        for (int j=0; j<gd.jgc; ++j)
-            #pragma ivdep
-            for (int i=0; i<gd.icells; ++i)
-            {
-                const int ijref   = i + jstart*jj;
-                const int ijnorth = i + j*jj;
-                const int ijsouth = i + (jend+j)*jj;
-                data[ijnorth] = data[ijref];
-                data[ijsouth] = data[ijref];
-            }
-    }
+    cyclic_kernel(
+            data,
+            buffer_send,
+            buffer_recv,
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, 1,
+            gd.icells, gd.ijcells,
+            md);
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
@@ -239,62 +273,20 @@ void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
+    unsigned int* buffer_send;
+    unsigned int* buffer_recv;
 
-    if (edge == Edge::East_west_edge || edge == Edge::Both_edges)
-    {
-        // Communicate east-west edges.
-        const int eastout = gd.iend-gd.igc;
-        const int westin  = 0;
-        const int westout = gd.istart;
-        const int eastin  = gd.iend;
-
-        // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge_uint, md.neast, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ westin], ncount, eastwestedge_uint, md.nwest, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[westout], ncount, eastwestedge_uint, md.nwest, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ eastin], ncount, eastwestedge_uint, md.neast, 2, md.commxy, master.get_request_ptr());
-        master.wait_all();
-    }
-
-    if (edge == Edge::North_south_edge || edge == Edge::Both_edges)
-    {
-        // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
-        if (gd.jtot > 1)
-        {
-            // Communicate north-south edges.
-            const int northout = (gd.jend-gd.jgc)*gd.icells;
-            const int southin  = 0;
-            const int southout = gd.jstart*gd.icells;
-            const int northin  = gd.jend  *gd.icells;
-
-            // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge_uint, md.nnorth, 1, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ southin], ncount, northsouthedge_uint, md.nsouth, 1, md.commxy, master.get_request_ptr());
-            MPI_Isend(&data[southout], ncount, northsouthedge_uint, md.nsouth, 2, md.commxy, master.get_request_ptr());
-            MPI_Irecv(&data[ northin], ncount, northsouthedge_uint, md.nnorth, 2, md.commxy, master.get_request_ptr());
-            master.wait_all();
-        }
-        // In case of 2D, fill all the ghost cells in the y-direction with the same value.
-        else
-        {
-            const int jj = gd.icells;
-            const int kk = gd.icells*gd.jcells;
-
-            for (int k=gd.kstart; k<gd.kend; ++k)
-                for (int j=0; j<gd.jgc; ++j)
-                    #pragma ivdep
-                    for (int i=0; i<gd.icells; ++i)
-                    {
-                        const int ijkref   = i + gd.jstart*jj   + k*kk;
-                        const int ijknorth = i + j*jj           + k*kk;
-                        const int ijksouth = i + (gd.jend+j)*jj + k*kk;
-                        data[ijknorth] = data[ijkref];
-                        data[ijksouth] = data[ijkref];
-                    }
-        }
-    }
+    cyclic_kernel(
+            data,
+            buffer_send,
+            buffer_recv,
+            edge,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, gd.kcells,
+            gd.icells, gd.ijcells,
+            md);
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec_2d(unsigned int* const restrict data)
@@ -302,70 +294,22 @@ void Boundary_cyclic<TF>::exec_2d(unsigned int* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    const int ncount = 1;
+    unsigned int* buffer_send;
+    unsigned int* buffer_recv;
 
-    // Communicate east-west edges.
-    const int eastout = gd.iend-gd.igc;
-    const int westin  = 0;
-    const int westout = gd.istart;
-    const int eastin  = gd.iend;
-
-    // Communicate north-south edges.
-    const int northout = (gd.jend-gd.jgc)*gd.icells;
-    const int southin  = 0;
-    const int southout = gd.jstart*gd.icells;
-    const int northin  = gd.jend  *gd.icells;
-
-    // First, send and receive the ghost cells in east-west direction.
-    MPI_Isend(&data[eastout], ncount, eastwestedge2d_uint, md.neast, 1, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ westin], ncount, eastwestedge2d_uint, md.nwest, 1, md.commxy, master.get_request_ptr());
-    MPI_Isend(&data[westout], ncount, eastwestedge2d_uint, md.nwest, 2, md.commxy, master.get_request_ptr());
-    MPI_Irecv(&data[ eastin], ncount, eastwestedge2d_uint, md.neast, 2, md.commxy, master.get_request_ptr());
-    master.wait_all();
-
-    // If the run is 3D, apply the BCs.
-    if (gd.jtot > 1)
-    {
-        // Second, send and receive the ghost cells in the north-south direction.
-        MPI_Isend(&data[northout], ncount, northsouthedge2d_uint, md.nnorth, 1, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ southin], ncount, northsouthedge2d_uint, md.nsouth, 1, md.commxy, master.get_request_ptr());
-        MPI_Isend(&data[southout], ncount, northsouthedge2d_uint, md.nsouth, 2, md.commxy, master.get_request_ptr());
-        MPI_Irecv(&data[ northin], ncount, northsouthedge2d_uint, md.nnorth, 2, md.commxy, master.get_request_ptr());
-        master.wait_all();
-    }
-    // In case of 2D, fill all the ghost cells with the current value.
-    else
-    {
-        // Local copies for fast performance in loop.
-        const int jj = gd.icells;
-        const int jstart = gd.jstart;
-        const int jend = gd.jend;
-
-        for (int j=0; j<gd.jgc; ++j)
-            #pragma ivdep
-            for (int i=0; i<gd.icells; ++i)
-            {
-                const int ijref   = i + jstart*jj;
-                const int ijnorth = i + j*jj;
-                const int ijsouth = i + (jend+j)*jj;
-                data[ijnorth] = data[ijref];
-                data[ijsouth] = data[ijref];
-            }
-    }
+    cyclic_kernel<unsigned int>(
+            data,
+            buffer_send,
+            buffer_recv,
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, gd.kcells,
+            gd.icells, gd.ijcells,
+            md);
 }
+
 
 #else
-
-template<typename TF>
-void Boundary_cyclic<TF>::init_mpi()
-{
-}
-
-template<typename TF>
-void Boundary_cyclic<TF>::exit_mpi()
-{
-}
-
 template<typename TF>
 void Boundary_cyclic<TF>::exec(TF* restrict data, Edge edge)
 {
@@ -442,6 +386,7 @@ void Boundary_cyclic<TF>::exec(TF* restrict data, Edge edge)
     }
 }
 
+
 template<typename TF>
 void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
 {
@@ -505,6 +450,7 @@ void Boundary_cyclic<TF>::exec_2d(TF* restrict data)
             }
     }
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec(unsigned int* restrict data, Edge edge)
@@ -581,6 +527,7 @@ void Boundary_cyclic<TF>::exec(unsigned int* restrict data, Edge edge)
         }
     }
 }
+
 
 template<typename TF>
 void Boundary_cyclic<TF>::exec_2d(unsigned int* restrict data)

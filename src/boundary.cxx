@@ -285,7 +285,6 @@ void Boundary<TF>::init(Input& input, Thermo<TF>& thermo, const Sim_mode sim_mod
     }
 
     // Initialize the boundary cyclic.
-    boundary_cyclic.init();
     if (sim_mode == Sim_mode::Init)
     {
         input.flag_as_used("boundary", "swtimedep", "");

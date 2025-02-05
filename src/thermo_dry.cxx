@@ -440,9 +440,6 @@ void Thermo_dry<TF>::create(
                 bs.pbot, gd.kstart, gd.kend, gd.kcells);
     }
 
-    // Init the toolbox classes.
-    boundary_cyclic.init();
-
     // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);

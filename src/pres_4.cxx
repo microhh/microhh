@@ -171,7 +171,6 @@ void Pres_4<TF>::init()
     m6.resize(gd.kmax);
     m7.resize(gd.kmax);
 
-    boundary_cyclic.init();
     fft.init();
 }
 
