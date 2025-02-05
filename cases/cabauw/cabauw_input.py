@@ -228,8 +228,8 @@ def create_case_input(
     Time varying forcings
     """
     nc_tdep = nc.createGroup('timedep')
-    add_nc_dim('time_surface', ls2d_z.dims['time'], nc_tdep)
-    add_nc_dim('time_ls', ls2d_z.dims['time'], nc_tdep)
+    add_nc_dim('time_surface', ls2d_z.sizes['time'], nc_tdep)
+    add_nc_dim('time_ls', ls2d_z.sizes['time'], nc_tdep)
 
     add_nc_var('time_surface', ('time_surface'), nc_tdep, ls2d_z.time_sec)
     add_nc_var('time_ls', ('time_surface'), nc_tdep, ls2d_z.time_sec)
@@ -264,8 +264,8 @@ def create_case_input(
     """
     if use_rrtmgp:
         nc_rad = nc.createGroup('radiation')
-        add_nc_dim('lay', ls2d_z.dims['lay'], nc_rad)
-        add_nc_dim('lev', ls2d_z.dims['lev'], nc_rad)
+        add_nc_dim('lay', ls2d_z.sizes['lay'], nc_rad)
+        add_nc_dim('lev', ls2d_z.sizes['lev'], nc_rad)
 
         # Radiation variables on LES grid.
         xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
@@ -296,11 +296,11 @@ def create_case_input(
 
         if use_tdep_background or use_tdep_aerosols or use_tdep_gasses:
             # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
-            add_nc_dim('time_rad', ls2d_z.dims['time'], nc_tdep)
+            add_nc_dim('time_rad', ls2d_z.sizes['time'], nc_tdep)
             add_nc_var('time_rad', ('time_rad'), nc_tdep, ls2d_z.time_sec)
 
-            add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
-            add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
+            add_nc_dim('lay', ls2d_z.sizes['lay'], nc_tdep)
+            add_nc_dim('lev', ls2d_z.sizes['lev'], nc_tdep)
 
         if use_tdep_gasses:
             add_nc_var('o3',  ('time_rad', 'z'), nc_tdep, ls2d_z.o3*1e-6)
@@ -376,7 +376,7 @@ def create_case_input(
     """
     if use_htessel:
         nc_soil = nc.createGroup('soil')
-        nc_soil.createDimension('z', ls2d_z.dims['zs'])
+        nc_soil.createDimension('z', ls2d_z.sizes['zs'])
         add_nc_var('z', ('z'), nc_soil, ls2d.zs[::-1])
 
         add_nc_var('theta_soil', ('z'), nc_soil, theta_soil)
