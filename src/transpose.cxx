@@ -69,7 +69,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_s
     const int imax = gd.imax;
 
     // Pack the buffers.
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -85,7 +85,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_s
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
 
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npx; ++n)
         {
@@ -99,7 +99,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_s
     const int jj_x = gd.itot;
     const int kk_x = gd.itot*gd.jmax;
 
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -135,7 +135,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_s
     const int jmax = gd.jmax;
     const int imax = gd.imax;
 
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -150,7 +150,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_s
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npx; ++n)
         {
@@ -161,7 +161,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_s
     }
 
     // Unpack the buffers.
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -201,7 +201,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_s
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -216,7 +216,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_s
     const int tag = 1;
     const int nreqs = md.npy*2;
     MPI_Request reqs[nreqs];
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npy; ++n)
         {
@@ -227,7 +227,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_s
     }
 
     // Unpack the buffer.
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -267,7 +267,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_s
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -282,7 +282,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_s
     const int tag = 1;
     const int nreqs = md.npy*2;
     MPI_Request reqs[nreqs];
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npy; ++n)
         {
@@ -293,7 +293,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_s
     }
 
     // Unpack the buffers.
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -333,7 +333,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_s
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -348,7 +348,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_s
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npx; ++n)
         {
@@ -359,7 +359,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_s
     }
 
     // Unpack the buffer.
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -399,7 +399,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_s
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    // #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -414,7 +414,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_s
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    // #pragma acc host_data use_device(buffer_send, buffer_recv)
+    #pragma acc host_data use_device(buffer_send, buffer_recv)
     {
         for (int n=0; n<md.npx; ++n)
         {
@@ -425,7 +425,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_s
     }
 
     // Unpack the buffers.
-    // #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
