@@ -464,7 +464,6 @@ void Boundary_surface_lsm<TF>::exec(
                 // cos_sza, only for splitleaf...
                 rhoref[gd.kstart],
                 rhorefh[gd.kstart],
-                prefh[gd.kstart],
                 sw_splitleaf,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,

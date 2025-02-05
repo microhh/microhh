@@ -132,10 +132,11 @@ void Boundary_surface_lsm<TF>::exec(
     const TF db_ref = thermo.get_db_ref();
 
     // Get basestate vectors.
-    TF* rhorefh = thermo.get_basestate_fld_g("rhoh");
-    TF* thvrefh = thermo.get_basestate_fld_g("thvh");
-    TF* exnrefh = thermo.get_basestate_fld_g("exnerh");
-    TF* prefh   = thermo.get_basestate_fld_g("prefh");
+    const std::vector<TF>& rhoref = thermo.get_basestate_vector("rho");
+    const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhoh");
+    const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvh");
+    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnerh");
+    const std::vector<TF>& prefh = thermo.get_basestate_vector("ph");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
     auto tmp2 = fields.get_tmp_g();
@@ -149,6 +150,7 @@ void Boundary_surface_lsm<TF>::exec(
     TF* f2b = tmp2->fld_top_g;
     TF* f3  = tmp2->flux_top_g;
     TF* theta_mean_n = tmp2->grad_top_g;
+    TF* t_mean_n = tmp2->fld_g;
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -171,9 +173,11 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate root fraction weighted mean soil water content
-    sk::calc_root_weighted_mean_theta_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    sk::calc_root_weighted_mean_values_g<<<grid_gpu_2d, block_gpu_2d>>>(
             theta_mean_n,
+            t_mean_n,
             fields.sps.at("theta")->fld_g,
+            fields.sps.at("t")->fld_g,
             soil_index_g,
             root_fraction_g,
             theta_wp_g,
@@ -184,33 +188,72 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    // Calculate vegetation/soil resistance functions `f`.
-    lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            f1, f2, f2b, f3,
-            sw_dn,
-            fields.sps.at("theta")->fld_g,
-            theta_mean_n, vpd,
-            gD_coeff_g,
-            c_veg_g,
-            theta_wp_g,
-            theta_fc_g,
-            theta_res_g,
-            soil_index_g,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            sgd.kend,
-            gd.icells, gd.ijcells);
-    cuda_check_error();
+    if (sw_ags)
+    {
+        bool sw_splitleaf = false;
 
-    // Calculate canopy resistance for veg and soil tiles.
-    lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            tiles.at("veg").rs_g,
-            rs_veg_min_g, lai_g,
-            f1, f2, f3,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
+        //lsmk::calc_canopy_resistance_ags_g<<<grid_gpu_2d, block_gpu_2d>>>(
+        //        tiles.at("veg").rs_g,
+        //        an_co2_g,
+        //        lai_g,
+        //        T_bot,
+        //        tiles.at("veg").ra_g,
+        //        fields.sp.at("co2")->fld_g,
+        //        fields.sp.at("thl")->fld_g,
+        //        fields.sp.at("qt")->fld_g,
+        //        sw_dn,
+        //        theta_mean_n,
+        //        // albedo, only for splitleaf...
+        //        vpds,
+        //        alpha0_g,
+        //        t1gm_g,
+        //        t2gm_g,
+        //        t1am_g,
+        //        gm298_g,
+        //        gmin_g,
+        //        ammax298_g,
+        //        f0_g,
+        //        co2_comp298_g,
+        //        // cos_sza, only for splitleaf...
+        //        rhoref[gd.kstart],
+        //        rhorefh[gd.kstart],
+        //        sw_splitleaf,
+        //        gd.istart, gd.iend,
+        //        gd.jstart, gd.jend,
+        //        gd.kstart,
+        //        gd.icells,
+        //        gd.ijcells);
+    }
+    else
+    {
+        // Calculate vegetation/soil resistance functions `f`.
+        lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                f1, f2, f2b, f3,
+                sw_dn,
+                fields.sps.at("theta")->fld_g,
+                theta_mean_n, vpd,
+                gD_coeff_g,
+                c_veg_g,
+                theta_wp_g,
+                theta_fc_g,
+                theta_res_g,
+                soil_index_g,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                sgd.kend,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        // Calculate canopy resistance for veg and soil tiles.
+        lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                tiles.at("veg").rs_g,
+                rs_veg_min_g, lai_g,
+                f1, f2, f3,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+    }
 
     lsmk::calc_soil_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("soil").rs_g,
@@ -307,8 +350,8 @@ void Boundary_surface_lsm<TF>::exec(
                 lw_up,
                 buoy->fld_g,
                 buoy->fld_bot_g,
-                rhorefh,
-                exnrefh,
+                rhorefh[gd.kstart],
+                exnrefh[gd.kstart],
                 db_ref, emis_sfc,
                 TF(subdt),
                 gd.istart, gd.iend,
@@ -348,9 +391,9 @@ void Boundary_surface_lsm<TF>::exec(
                 fields.sp.at("thl")->fld_bot_g,
                 fields.sp.at("qt")->fld_bot_g,
                 tiles.at("wet").ra_g,
-                rhorefh,
-                prefh,
-                exnrefh,
+                rhorefh[gd.kstart],
+                prefh[gd.kstart],
+                exnrefh[gd.kstart],
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart,
@@ -359,7 +402,7 @@ void Boundary_surface_lsm<TF>::exec(
     }
 
     // Calculate tile averaged surface fluxes and values.
-    const TF rhoref_bot = thermo.get_basestate_vector("rhoh")[gd.kstart];
+    const TF rhoref_bot = rhorefh[gd.kstart];
     const TF rhocpi = TF(1) / (rhoref_bot * Constants::cp<TF>);
     const TF rholvi = TF(1) / (rhoref_bot * Constants::Lv<TF>);
     const TF no_scaling = TF(1);

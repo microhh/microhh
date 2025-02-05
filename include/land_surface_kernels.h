@@ -267,7 +267,6 @@ namespace Land_surface_kernels
             //const TF cos_sza,
             const TF rho,
             const TF rho_bot,
-            const TF p_bot,
             const bool sw_splitleaf,
             const int istart, const int iend,
             const int jstart, const int jend,
