@@ -316,7 +316,7 @@ namespace Land_surface_kernels
                 // Calculate CO2 concentration inside the leaf (ci).
                 // NOTE: Differs from IFS
                 const TF fmin0 = gmin[ij] / nuco2q - TF(1./9.) * gm;
-                const TF fmin = std::pow(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ij] / nuco2q * gm), TF(0.5)) / (TF(2) * gm);
+                const TF fmin = std::pow(std::max(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ij] / nuco2q * gm), TF(Constants::dsmall)), TF(0.5)) / (TF(2) * gm);
 
                 // Calculate atmospheric moisture deficit.
                 // "Therefore Ci/Cs is specified as a function of atmospheric moisture deficit Ds at the leaf surface".
@@ -465,6 +465,7 @@ namespace Land_surface_kernels
                 // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
                 // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
                 an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
+
 
                 if (std::isnan(rs[ij]))
                     throw std::runtime_error("Canopy resistance contains NaNs!");
