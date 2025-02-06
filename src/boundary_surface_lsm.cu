@@ -823,6 +823,12 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
     get_tiled_mean_g(tmp->fld_bot_g, "S", TF(1));
     column.calc_time_series("S", tmp->fld_bot_g, no_offset);
 
+    if (sw_ags)
+    {
+        column.calc_time_series("co2_an", an_co2_g, no_offset);
+        column.calc_time_series("co2_resp", resp_co2_g, no_offset);
+    }
+
     if (sw_tile_stats_col)
         for (auto& tile : tiles)
         {
