@@ -341,8 +341,8 @@ void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
     auto& md = master.get_MPI_data();
 
     // Turn into 2D
-    TF* buffer_send = grid.get_tmp_3d();
-    TF* buffer_recv = grid.get_tmp_3d();
+    TF* buffer_send = grid.get_tmp_2d();
+    TF* buffer_recv = grid.get_tmp_2d();
 
     cyclic_kernel(
             data,
@@ -354,8 +354,8 @@ void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
             gd.icells, gd.ijcells,
             md);
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    grid.release_tmp_2d(buffer_send);
+    grid.release_tmp_2d(buffer_recv);
 }
 
 
@@ -365,19 +365,21 @@ void Boundary_cyclic<TF>::exec(unsigned int* const restrict data, Edge edge)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // CvH Fix this.
-    std::vector<unsigned int> buffer_send(gd.ncells);
-    std::vector<unsigned int> buffer_recv(gd.ncells);
+    TF* buffer_send = grid.get_tmp_3d();
+    TF* buffer_recv = grid.get_tmp_3d();
 
     cyclic_kernel(
             data,
-            buffer_send.data(),
-            buffer_recv.data(),
+            reinterpret_cast<unsigned int*>(buffer_send),
+            reinterpret_cast<unsigned int*>(buffer_recv),
             edge,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
             gd.icells, gd.ijcells,
             md);
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -387,18 +389,21 @@ void Boundary_cyclic<TF>::exec_2d(unsigned int* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    std::vector<unsigned int> buffer_send(gd.ijcells);
-    std::vector<unsigned int> buffer_recv(gd.ijcells);
+    TF* buffer_send = grid.get_tmp_2d();
+    TF* buffer_recv = grid.get_tmp_2d();
 
     cyclic_kernel<unsigned int>(
             data,
-            buffer_send.data(),
-            buffer_recv.data(),
+            reinterpret_cast<unsigned int*>(buffer_send),
+            reinterpret_cast<unsigned int*>(buffer_recv),
             Edge::Both_edges,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
             gd.icells, gd.ijcells,
             md);
+
+    grid.release_tmp_2d(buffer_send);
+    grid.release_tmp_2d(buffer_recv);
 }
 
 
