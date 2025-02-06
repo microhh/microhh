@@ -80,6 +80,8 @@ swtilestats=0
 swtilestats_column=0
 switerseb=0
 swwater=0
+swags=None
+
 ktot=4
 
 gD=0.0
@@ -90,9 +92,6 @@ rs_soil_min=50
 lambda_stable=10.0
 lambda_unstable=10.0
 cs_veg=0
-
-swags=0
-ags_index=0  # 0=grass.
 
 [force]
 swlspres=geo

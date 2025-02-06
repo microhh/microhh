@@ -1190,8 +1190,11 @@ void Boundary_surface_lsm<TF>::backward_device(Thermo<TF>& thermo)
     for (auto& tile : tiles)
         lsmk::backward_device_tile(tile.second, gd.ijcells);
 
-    cuda_safe_call(cudaMemcpy(an_co2.data(), an_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy(resp_co2.data(), resp_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
+    if (sw_ags)
+    {
+        cuda_safe_call(cudaMemcpy(an_co2.data(), an_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(resp_co2.data(), resp_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
+    }
 }
 
 template<typename TF>
