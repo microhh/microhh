@@ -233,6 +233,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.kstart,
                 gd.icells,
                 gd.ijcells);
+        cuda_check_error();
 
         lsmk::calc_soil_respiration_jacobs_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
                 resp_co2_g,
@@ -243,6 +244,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+        cuda_check_error();
 
         lsmk::set_net_co2_flux_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
                 fields.sp.at("co2")->flux_bot_g,
@@ -251,6 +253,7 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+        cuda_check_error();
     }
     else
     {
