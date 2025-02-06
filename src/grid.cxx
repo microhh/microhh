@@ -567,8 +567,9 @@ TF* Grid<TF>::get_tmp_3d()
         // In case of insufficient tmp fields, allocate a new one.
         if (tmp_arrays.empty())
         {
-            master.print_message("Creating tmp array %d", this->n_tmp);
+            master.print_message("Creating tmp array %d\n", this->n_tmp);
             tmp = new TF[gd.ncells];
+            ++this->n_tmp;
         }
         else
         {
