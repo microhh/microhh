@@ -281,8 +281,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
-    auto tmp = fields.get_tmp();
-    fft.exec_forward(p, work3d, tmp->fld.data());
+    fft.exec_forward(p, work3d);
 
     jj = iblock;
     kk = iblock*jblock;
@@ -327,7 +326,7 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
          gd.iblock, gd.jblock, gd.kmax);
 
-    fft.exec_backward(p, work3d, tmp->fld.data());
+    fft.exec_backward(p, work3d);
 
     jj = imax;
     kk = imax*jmax;
@@ -359,8 +358,6 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
 
     // set the cyclic boundary conditions
     boundary_cyclic.exec(p);
-
-    fields.release_tmp(tmp);
 }
 
 template<typename TF>

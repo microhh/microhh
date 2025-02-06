@@ -333,7 +333,7 @@ namespace
 
 
 template<typename TF>
-void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2)
+void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
 {
     auto& gd = grid.get_grid_data();
 
@@ -398,7 +398,7 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF*
 
 
 template<typename TF>
-void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2)
+void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
 {
     auto& gd = grid.get_grid_data();
 
