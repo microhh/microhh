@@ -316,19 +316,21 @@ void Boundary_cyclic<TF>::exec(TF* const restrict data, Edge edge)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // CvH fix this.
-    std::vector<TF> buffer_send(gd.ncells);
-    std::vector<TF> buffer_recv(gd.ncells);
+    TF* buffer_send = grid.get_tmp_3d();
+    TF* buffer_recv = grid.get_tmp_3d();
 
     cyclic_kernel(
             data,
-            buffer_send.data(),
-            buffer_recv.data(),
+            buffer_send,
+            buffer_recv,
             edge,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, gd.kcells,
             gd.icells, gd.ijcells,
             md);
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -338,19 +340,22 @@ void Boundary_cyclic<TF>::exec_2d(TF* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    // CvH fix this.
-    std::vector<TF> buffer_send(gd.ijcells);
-    std::vector<TF> buffer_recv(gd.ijcells);
+    // Turn into 2D
+    TF* buffer_send = grid.get_tmp_3d();
+    TF* buffer_recv = grid.get_tmp_3d();
 
     cyclic_kernel(
             data,
-            buffer_send.data(),
-            buffer_recv.data(),
+            buffer_send,
+            buffer_recv,
             Edge::Both_edges,
             gd.istart, gd.iend, gd.jstart, gd.jend,
             gd.icells, gd.jcells, 1,
             gd.icells, gd.ijcells,
             md);
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
