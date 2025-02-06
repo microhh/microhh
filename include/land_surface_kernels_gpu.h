@@ -442,6 +442,12 @@ namespace Land_surface_kernels_g
             // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
             // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
             an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
+
+            if (isnan(rs[ij]))
+            {
+                printf("Canopy resistance contains NaNs!\n");
+                asm("trap;");
+            }
         }
     }
 
@@ -466,6 +472,26 @@ namespace Land_surface_kernels_g
         {
             const int ij  = i + j*jstride;
             resp_co2[ij] = r10[ij] * exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+        }
+    }
+
+
+    template<typename TF> __global__
+    void set_net_co2_flux_g(
+            TF* const restrict co2_flux,
+            const TF* const restrict co2_an,
+            const TF* const restrict co2_resp,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jstride;
+            co2_flux[ij] = co2_an[ij] + co2_resp[ij];
         }
     }
 

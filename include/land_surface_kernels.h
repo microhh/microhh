@@ -367,10 +367,10 @@ namespace Land_surface_kernels
                 // Light use efficiency.
                 const TF alphac = alpha0[ij] * (co2_abs - co2_comp) / (co2_abs + 2 * co2_comp);
 
-                TF an, gc_inf;
-                if (sw_splitleaf)
-                {
-                    throw std::runtime_error("Splitleaf A-Gs not (yet) implemented.");
+                //TF an, gc_inf;
+                //if (sw_splitleaf)
+                //{
+                //    throw std::runtime_error("Splitleaf A-Gs not (yet) implemented.");
 
                 //    PARdir   = 0.5 * max(0.1, sw_in[j,i])
                 //    PARdif   = 0.5 * max(0.1, sw_in[j,i])
@@ -431,17 +431,17 @@ namespace Land_surface_kernels
 
                 //    An     = LAI[j,i] * np.sum(weight_g * Fnet)
                 //    gc_inf = LAI[j,i] * np.sum(weight_g * gnet)
-                }
-                else
-                {
+                //}
+                //else
+                //{
                     // Calculate upscaling from leaf to canopy: net flow CO2 into the plant (An)
                     const TF agsa1  = TF(1) / (TF(1) - f0[ij]);
                     const TF dstar  = dmax / (agsa1 * (f0[ij] - fmin));
                     const TF tempy  = alphac * kx * par / (am + rdark);
 
-                    an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
-                    gc_inf = lai[ij] * (gmin[ij] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
-                }
+                    const TF an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
+                    const TF gc_inf = lai[ij] * (gmin[ij] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
+                //}
 
                 //if (lrelaxgc) then
                 //  if (gc_old_set) then
@@ -465,6 +465,9 @@ namespace Land_surface_kernels
                 // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
                 // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
                 an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
+
+                if (std::isnan(rs[ij]))
+                    throw std::runtime_error("Canopy resistance contains NaNs!");
             }
     }
 
@@ -488,6 +491,25 @@ namespace Land_surface_kernels
             {
                 const int ij  = i + j*jstride;
                 resp_co2[ij] = r10[ij] * std::exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+            }
+    }
+
+
+    template<typename TF>
+    void set_net_co2_flux(
+            TF* const restrict co2_flux,
+            const TF* const restrict co2_an,
+            const TF* const restrict co2_resp,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jstride;
+                co2_flux[ij] = co2_an[ij] + co2_resp[ij];
             }
     }
 

@@ -308,23 +308,6 @@ Boundary_surface_lsm<TF>::~Boundary_surface_lsm()
     //#endif
 }
 
-namespace
-{
-    template<typename TF>
-    void dump_field(
-        TF* const restrict fld,
-        std::string name,
-        const int size)
-    {
-        std::cout << "Saving: " << name << std::endl;
-        FILE *pFile;
-        pFile = fopen(name.c_str(), "wb");
-        if (pFile == NULL)
-            std::cout << "Error opening file" << std::endl;
-        fwrite(fld, sizeof(TF), size, pFile);
-        fclose(pFile);
-    }
-}
 
 #ifndef USECUDA
 template<typename TF>
@@ -480,6 +463,14 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+
+        lsmk::set_net_co2_flux(
+                fields.sp.at("co2")->flux_bot.data(),
+                an_co2.data(),
+                resp_co2.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
     }
     else
     {
@@ -575,9 +566,6 @@ void Boundary_surface_lsm<TF>::exec(
                     gd.kstart,
                     gd.icells, gd.jcells,
                     gd.ijcells);
-
-        //dump_field(tile.second.ustar.data(), "dump_cpu", gd.ijcells);
-        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes(
@@ -1013,12 +1001,17 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Si
     // Initialize the boundary cyclic.
     boundary_cyclic.init();
 
+    // Checks.
+    if (sw_ags && fields.sp.find("co2") == fields.sp.end())
+        throw std::runtime_error("A-Gs requires \"co2\" as a prognostic variable (units mol/mol).");
+    else if (sw_ags && sbc.at("co2").bcbot != Boundary_type::Flux_type)
+        throw std::runtime_error("A-Gs requires sbcbot[co2]=flux.");
+
     if (sim_mode == Sim_mode::Init)
     {
         inputin.flag_as_used("boundary", "swtimedep", "");
         inputin.flag_as_used("boundary", "timedeplist", "");
     }
-
 }
 
 template<typename TF>

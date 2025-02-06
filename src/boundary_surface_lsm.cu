@@ -243,6 +243,14 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
+
+        lsmk::set_net_co2_flux_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                fields.sp.at("co2")->flux_bot_g,
+                an_co2_g,
+                resp_co2_g,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
     }
     else
     {
