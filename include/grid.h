@@ -174,6 +174,9 @@ class Grid
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
+        TF* get_tmp_3d();
+        void release_tmp_3d(TF*);
+
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
         void clear_device();   // Deallocate the arrays onto the GPU
@@ -198,6 +201,9 @@ class Grid
         MPI_Datatype subi; // MPI datatype containing a subset of the entire x-axis.
         MPI_Datatype subj; // MPI datatype containing a subset of the entire y-axis.
         #endif
+
+        std::vector<TF*> tmp_arrays;
+        int n_tmp;
 
         bool swtimedep;
         std::map<std::string, Timedep<TF>*> tdep_latlon;

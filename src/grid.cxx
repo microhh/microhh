@@ -556,32 +556,42 @@ void Grid<TF>::interpolate_4th(TF* restrict out, const TF* restrict in, const in
             }
 }
 
-//
-// template<typename TF>
-// void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
-// {
-//     const int jj = icells;
-//     const int kk = ijcells;
-//
-//     for (int k=0; k<krange; ++k)
-//     {
-//         prof[k] = 0.;
-//         for (int j=jstart; j<jend; ++j)
-// #pragma ivdep
-//             for (int i=istart; i<iend; ++i)
-//             {
-//                 const int ijk  = i + j*jj + k*kk;
-//                 prof[k] += data[ijk];
-//             }
-//     }
-//
-//     master.sum(prof, krange);
-//
-//     const double n = itot*jtot;
-//
-//     for (int k=0; k<krange; ++k)
-//         prof[k] /= n;
-// }
+
+template<typename TF>
+TF* Grid<TF>::get_tmp_3d()
+{
+    TF* tmp = nullptr;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (tmp_arrays.empty())
+        {
+            master.print_message("Creating tmp array %d", this->n_tmp);
+            tmp = new TF[gd.ncells];
+        }
+        else
+        {
+            tmp = tmp_arrays.back();
+            tmp_arrays.pop_back();
+        }
+    }
+
+    return tmp;
+}
+
+
+template<typename TF>
+void Grid<TF>::release_tmp_3d(TF* tmp)
+{
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp array with value nullptr");
+
+        tmp_arrays.push_back(tmp);
+    }
+}
 
 
 #ifdef FLOAT_SINGLE
