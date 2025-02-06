@@ -337,7 +337,7 @@ void Pres_4<TF>::solve(
     const int kgc    = gd.kgc;
 
     auto tmp = fields.get_tmp();
-    fft.exec_forward(p, work3d, tmp->fld.data());
+    fft.exec_forward(p, work3d);
 
     int jj,kk,ik,ijk;
     int iindex,jindex;
@@ -483,7 +483,7 @@ void Pres_4<TF>::solve(
                 }
     }
 
-    fft.exec_backward(p, work3d, tmp->fld.data());
+    fft.exec_backward(p, work3d);
 
     // Put the pressure back onto the original grid including ghost cells.
     jj = imax;
@@ -526,8 +526,6 @@ void Pres_4<TF>::solve(
 
     // Set the cyclic boundary conditions.
     boundary_cyclic.exec(p);
-
-    fields.release_tmp(tmp);
 }
 
 template<typename TF>

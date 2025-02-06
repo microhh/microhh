@@ -49,13 +49,16 @@ namespace
 
 
 template<typename TF>
-void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_zx(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npx == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj = gd.imax;
@@ -109,17 +112,23 @@ void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
 template<typename TF>
-void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_xz(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npx == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     const int jj = gd.imax;
     const int kk = gd.imax*gd.jmax;
@@ -171,17 +180,23 @@ void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
 template<typename TF>
-void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_xy(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npy == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_x = gd.itot;
@@ -237,17 +252,23 @@ void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
 template<typename TF>
-void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_yx(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npy == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -303,17 +324,23 @@ void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
 template<typename TF>
-void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_yz(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npx == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -369,17 +396,23 @@ void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
 
 
 template<typename TF>
-void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv)
+void Transpose<TF>::exec_zy(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
     if (md.npx == 1)
         return;
+
+    TF* restrict buffer_send = grid.get_tmp_3d();
+    TF* restrict buffer_recv = grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -435,7 +468,11 @@ void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_s
                     const int ijk_buf = i + j*jj + k*kk + n*nn;
                     data[ijk] = buffer_recv[ijk_buf];
                 }
+
+    grid.release_tmp_3d(buffer_send);
+    grid.release_tmp_3d(buffer_recv);
 }
+
 #else
 template<typename TF> void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
 template<typename TF> void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}

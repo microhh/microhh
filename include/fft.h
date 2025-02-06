@@ -36,8 +36,8 @@ class FFT
         FFT(Master&, Grid<TF>&);
         ~FFT();
 
-        void exec_forward (TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_backward(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_forward (TF* const restrict, TF* const restrict);
+        void exec_backward(TF* const restrict, TF* const restrict);
 
         void init();
         void load();

@@ -333,12 +333,12 @@ namespace
 
 
 template<typename TF>
-void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2)
+void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
 {
     auto& gd = grid.get_grid_data();
 
     // Transpose the pressure field.
-    transpose.exec_zx(data, tmp1, tmp2);
+    transpose.exec_zx(data);
 
     int kk = gd.itot*gd.jmax;
 
@@ -365,7 +365,7 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF*
     }
 
     // Transpose again.
-    transpose.exec_xy(data, tmp1, tmp2);
+    transpose.exec_xy(data);
 
     kk = gd.iblock*gd.jtot;
 
@@ -393,17 +393,17 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1, TF*
     }
 
     // Transpose back to original orientation.
-    transpose.exec_yz(data, tmp1, tmp2);
+    transpose.exec_yz(data);
 }
 
 
 template<typename TF>
-void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF* const restrict tmp2)
+void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
 {
     auto& gd = grid.get_grid_data();
 
     // Transpose back to y.
-    transpose.exec_zy(data, tmp1, tmp2);
+    transpose.exec_zy(data);
 
     int kk = gd.iblock*gd.jtot;
 
@@ -430,7 +430,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
     }
 
     // Transpose back to x.
-    transpose.exec_yx(data, tmp1, tmp2);
+    transpose.exec_yx(data);
 
     kk = gd.itot*gd.jmax;
 
@@ -457,9 +457,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1, TF
     }
 
     // And transpose back...
-    // CvH This is very obscure, we pass the buffer back rather than the data, to avoid a copy.
-    // This could be made clear to let the user specify in place or out of place.
-    transpose.exec_xz(tmp1, data, tmp2);
+    transpose.exec_xz(tmp1);
 }
 
 
