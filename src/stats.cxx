@@ -968,7 +968,7 @@ void Stats<TF>::calc_stats(
 {
     calc_stats_mean(varname, fld, offset);
     calc_stats_moments(varname, fld, offset);
-    // calc_stats_w(varname, fld, offset);
+    calc_stats_w(varname, fld, offset);
     // calc_stats_diff(varname, fld, offset);
     // calc_stats_flux(varname, fld, offset);
     // calc_stats_grad(varname, fld);
@@ -1053,6 +1053,8 @@ void Stats<TF>::calc_stats_moments(
     }
 }
 #endif
+
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::calc_stats_w(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
@@ -1091,6 +1093,7 @@ void Stats<TF>::calc_stats_w(
     }
 }
 
+#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_diff(
@@ -1161,6 +1164,7 @@ void Stats<TF>::calc_stats_flux(
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::calc_stats_grad(
         const std::string& varname, const Field3d<TF>& fld)
@@ -1207,6 +1211,7 @@ void Stats<TF>::calc_stats_grad(
         }
     }
 }
+#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_path(

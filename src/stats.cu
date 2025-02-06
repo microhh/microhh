@@ -186,6 +186,105 @@ void Stats<TF>::calc_stats_moments(
     fields.release_tmp_g(masked);
     fields.release_tmp_g(dev);
 }
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_w(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    using namespace Tools_g;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 gridGPU2(gridi, gridj, 1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+    auto masked = fields.get_tmp_g();
+    auto advec_flux = fields.get_tmp_g();
+
+    // Calc Resolved Flux
+    name = varname + "_w";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        // advec.get_advec_flux(*advec_flux, fld);
+
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  advec_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
+            cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
+            for (int k=gd.kstart; k<gd.kend+1; ++k)
+            {
+                if (nmask[k])
+                    m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
+            }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+    fields.release_tmp_g(advec_flux);
+    fields.release_tmp_g(masked);
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_diff(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset)
+{
+    using namespace Tools_g;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 gridGPU2(gridi, gridj, 1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+    auto masked = fields.get_tmp_g();
+    auto diff_flux = fields.get_tmp_g();
+
+    // Calc Diffusive Flux
+    name = varname + "_diff";
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        // advec.get_advec_flux(*advec_flux, fld);
+
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), diff_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
+            cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
+            for (int k=gd.kstart; k<gd.kend+1; ++k)
+            {
+                if (nmask[k])
+                    m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
+            }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+    fields.release_tmp_g(diff_flux);
+    fields.release_tmp_g(masked);
+}
+
 #endif
 
 

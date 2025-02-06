@@ -348,7 +348,6 @@ void Advec_2<TF>::exec(Stats<TF>& stats)
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
 }
-#endif
 
 template<typename TF>
 void Advec_2<TF>::get_advec_flux(
@@ -387,6 +386,7 @@ void Advec_2<TF>::get_advec_flux(
     else
         throw std::runtime_error("Advec_2 cannot deliver flux field at that location");
 }
+#endif
 
 
 #ifdef FLOAT_SINGLE
