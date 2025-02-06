@@ -40,12 +40,12 @@ class Transpose
         Transpose(Master&, Grid<TF>&);
         ~Transpose();
 
-        void exec_zx(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_xz(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_xy(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_yx(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_yz(TF* const restrict, TF* const restrict, TF* const restrict);
-        void exec_zy(TF* const restrict, TF* const restrict, TF* const restrict);
+        void exec_zx(TF* const restrict);
+        void exec_xz(TF* const restrict);
+        void exec_xy(TF* const restrict);
+        void exec_yx(TF* const restrict);
+        void exec_yz(TF* const restrict);
+        void exec_zy(TF* const restrict);
 
     private:
         Master& master;
