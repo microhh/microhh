@@ -474,12 +474,12 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
 }
 
 #else
-template<typename TF> void Transpose<TF>::exec_zx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
-template<typename TF> void Transpose<TF>::exec_xz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
-template<typename TF> void Transpose<TF>::exec_xy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
-template<typename TF> void Transpose<TF>::exec_yx(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
-template<typename TF> void Transpose<TF>::exec_yz(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
-template<typename TF> void Transpose<TF>::exec_zy(TF* const restrict data, TF* const restrict buffer_send, TF* const restrict buffer_recv) {}
+template<typename TF> void Transpose<TF>::exec_zx(TF* const restrict data) {}
+template<typename TF> void Transpose<TF>::exec_xz(TF* const restrict data) {}
+template<typename TF> void Transpose<TF>::exec_xy(TF* const restrict data) {}
+template<typename TF> void Transpose<TF>::exec_yx(TF* const restrict data) {}
+template<typename TF> void Transpose<TF>::exec_yz(TF* const restrict data) {}
+template<typename TF> void Transpose<TF>::exec_zy(TF* const restrict data) {}
 #endif
 
 
