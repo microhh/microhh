@@ -46,11 +46,6 @@ if(NOT USECUDA)
   set(USECUDA FALSE)
 endif()
 
-# Crash on using CUDA and MPI together, not implemented yet.
-if(USEMPI AND USECUDA)
-  message(FATAL_ERROR "MPI support for CUDA runs is not supported yet")
-endif()
-
 # Load system specific settings if not set, force default.cmake.
 if(NOT SYST)
   set(SYST default)

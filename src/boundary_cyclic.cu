@@ -20,10 +20,14 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "grid.h"
 #include "tools.h"
 #include "boundary_cyclic.h"
+#include "boundary_cyclic_kernels.h"
 
+
+/*
 namespace
 {
     template<typename TF> __global__
@@ -157,6 +161,59 @@ void Boundary_cyclic<TF>::exec_2d_g(TF* data)
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     cuda_check_error();
+}
+*/
+
+
+template<typename TF>
+void Boundary_cyclic<TF>::exec_g(TF* const restrict data)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    TF* buffer_send = grid.get_tmp_3d_g();
+    TF* buffer_recv = grid.get_tmp_3d_g();
+
+    const bool use_gpu = true;
+
+    Boundary_cyclic_kernels::cyclic_kernel<TF, use_gpu>(
+            data,
+            buffer_send,
+            buffer_recv,
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, gd.kcells,
+            gd.icells, gd.ijcells,
+            md);
+
+    grid.release_tmp_3d_g(buffer_send);
+    grid.release_tmp_3d_g(buffer_recv);
+}
+
+
+template<typename TF>
+void Boundary_cyclic<TF>::exec_2d_g(TF* const restrict data)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    TF* buffer_send = grid.get_tmp_2d();
+    TF* buffer_recv = grid.get_tmp_2d();
+
+    const bool use_gpu = true;
+
+    Boundary_cyclic_kernels::cyclic_kernel<TF, use_gpu>(
+            data,
+            buffer_send,
+            buffer_recv,
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, 1,
+            gd.icells, gd.ijcells,
+            md);
+
+    grid.release_tmp_2d(buffer_send);
+    grid.release_tmp_2d(buffer_recv);
 }
 
 

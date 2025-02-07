@@ -24,6 +24,7 @@
 #include "tools.h"
 #include "math.h"
 
+
 template<typename TF>
 void Grid<TF>::prepare_device()
 {
@@ -71,6 +72,82 @@ void Grid<TF>::clear_device()
     gd.dzhi_g.free();
     gd.dzi4_g.free();
     gd.dzhi4_g.free();
+}
+
+
+template<typename TF>
+TF* Grid<TF>::get_tmp_3d_g()
+{
+    TF* tmp = nullptr;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (tmp_3d_gpu.empty())
+        {
+            master.print_message("Creating tmp_3d GPU array %d\n", n_tmp_3d_gpu);
+            cuda_safe_call(cudaMalloc(&tmp, gd.ncells*sizeof(TF)));
+            ++n_tmp_3d_gpu;
+        }
+        else
+        {
+            tmp = tmp_3d_gpu.back();
+            tmp_3d_gpu.pop_back();
+        }
+    }
+
+    return tmp;
+}
+
+
+template<typename TF>
+void Grid<TF>::release_tmp_3d_g(TF* tmp)
+{
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp_3d array with value nullptr");
+
+        tmp_3d_gpu.push_back(tmp);
+    }
+}
+
+
+template<typename TF>
+TF* Grid<TF>::get_tmp_2d_g()
+{
+    TF* tmp = nullptr;
+
+    #pragma omp critical
+    {
+        // In case of insufficient tmp fields, allocate a new one.
+        if (tmp_2d_gpu.empty())
+        {
+            master.print_message("Creating tmp_2d GPU array %d\n", n_tmp_2d_gpu);
+            cuda_safe_call(cudaMalloc(&tmp, gd.ncells*sizeof(TF)));
+            ++n_tmp_2d_gpu;
+        }
+        else
+        {
+            tmp = tmp_2d_gpu.back();
+            tmp_2d_gpu.pop_back();
+        }
+    }
+
+    return tmp;
+}
+
+
+template<typename TF>
+void Grid<TF>::release_tmp_2d_g(TF* tmp)
+{
+    #pragma omp critical
+    {
+        if (tmp == nullptr)
+            throw std::runtime_error("Cannot release a tmp_2d array with value nullptr");
+
+        tmp_2d_gpu.push_back(tmp);
+    }
 }
 
 

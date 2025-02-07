@@ -184,6 +184,13 @@ class Grid
         void prepare_device(); // Load the arrays onto the GPU
         void clear_device();   // Deallocate the arrays onto the GPU
 
+        TF* get_tmp_3d_g();
+        void release_tmp_3d_g(TF*);
+
+        TF* get_tmp_2d_g();
+        void release_tmp_2d_g(TF*);
+
+
     private:
         Master& master; // Reference to master class.
         Transpose<TF> transpose;
@@ -210,6 +217,12 @@ class Grid
 
         std::vector<TF*> tmp_2d;
         int n_tmp_2d;
+
+        std::vector<TF*> tmp_3d_gpu;
+        int n_tmp_3d_gpu;
+
+        std::vector<TF*> tmp_2d_gpu;
+        int n_tmp_2d_gpu;
 
         bool swtimedep;
         std::map<std::string, Timedep<TF>*> tdep_latlon;
