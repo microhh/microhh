@@ -57,6 +57,8 @@ class Thermo_disabled : public Thermo<TF>
         void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
+        void create_stats(Stats<TF>&) {};    ///< Initialization of the statistics.
+
         void exec(const double, Stats<TF>&) {};
         void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
