@@ -1378,6 +1378,8 @@ void Thermo_moist<TF>::create(
         Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
         Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
+    fields.set_calc_mean_profs(true);
+
     // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
@@ -1387,7 +1389,7 @@ void Thermo_moist<TF>::create(
     boundary_cyclic.init();
 
     // Set up output classes
-    create_stats(stats);
+    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);
