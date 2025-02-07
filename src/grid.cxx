@@ -50,6 +50,11 @@ Grid<TF>::Grid(Master& masterin, Input& input) :
 {
     mpitypes = false;
 
+    n_tmp_3d = 0;
+    n_tmp_2d = 0;
+    n_tmp_3d_gpu = 0;
+    n_tmp_2d_gpu = 0;
+
     gd.xsize = input.get_item<TF>("grid", "xsize", "");
     gd.ysize = input.get_item<TF>("grid", "ysize", "");
     gd.zsize = input.get_item<TF>("grid", "zsize", "");
