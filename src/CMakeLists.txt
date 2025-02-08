@@ -19,7 +19,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
-FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
+FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cpp" "../src/*.cu")
 include_directories("../include" "../rte-rrtmgp-cpp/include" SYSTEM ${INCLUDE_DIRS})
 
 add_library(microhhc STATIC ${sourcefiles})
@@ -27,9 +27,9 @@ target_include_directories(microhhc PRIVATE "../include" "../rte-rrtmgp-cpp/incl
 
 if(USECUDA)
     if(USEKERNELLAUNCHER)
-        target_link_libraries(microhhc PRIVATE CUDA::curand CUDA::cufft ${LIBS} kernel_launcher)
+        target_link_libraries(microhhc PRIVATE CUDA::cudart CUDA::curand CUDA::cufft ${LIBS} kernel_launcher)
     else()
-        target_link_libraries(microhhc PRIVATE CUDA::curand CUDA::cufft ${LIBS})
+        target_link_libraries(microhhc PRIVATE CUDA::cudart CUDA::curand CUDA::cufft ${LIBS})
     endif()
 else()
     target_link_libraries(microhhc PRIVATE ${LIBS})
