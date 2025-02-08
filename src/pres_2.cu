@@ -42,6 +42,7 @@
 #include "cuda_launcher.h"
 #include "cuda_tiling.h"
 
+
 namespace
 {
     //template<typename TF> __global__
@@ -217,6 +218,7 @@ namespace
     }
 } // End namespace.
 
+
 #ifdef USECUDA
 template<typename TF>
 void Pres_2<TF>::prepare_device()
@@ -244,10 +246,12 @@ void Pres_2<TF>::prepare_device()
     make_cufft_plan();
 }
 
+
 template<typename TF>
 void Pres_2<TF>::clear_device()
 {
 }
+
 
 template<typename TF>
 void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
@@ -267,25 +271,35 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     Grid_layout grid_layout_nogc = {
             0, gd.imax,
             0, gd.jmax,
-            0, gd.kmax,
+            0, gd.ktot,
             1,
             gd.imax,
             gd.imax*gd.jmax};
+
+    Grid_layout grid_layout_nogc_transpose = {
+            0, gd.iblock,
+            0, gd.jblock,
+            0, gd.ktot,
+            1,
+            gd.iblock,
+            gd.iblock*gd.jblock};
 
     // Grid layout for KL/CL launches over 2D, excluding ghost cells.
-    Grid_layout grid_layout_2d_nogc = {
-            0, gd.imax,
-            0, gd.jmax,
+    Grid_layout grid_layout_2d_nogc_transpose = {
+            0, gd.iblock,
+            0, gd.jblock,
             0, 1,
             1,
-            gd.imax,
-            gd.imax*gd.jmax};
+            gd.iblock,
+            gd.iblock*gd.jblock};
 
+    const TF dti = TF(1.)/dt;
+
+    /*
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
     const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
     const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-    const TF dti = TF(1.)/dt;
 
     // 3D grid
     dim3 gridGPU (gridi,  gridj,  gd.kmax);
@@ -294,6 +308,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     // 2D grid
     dim3 grid2dGPU (gridi,  gridj);
     dim3 block2dGPU(blocki, blockj);
+    */
 
     // Get two free tmp fields on gpu
     auto tmp1 = fields.get_tmp_g();
@@ -321,29 +336,28 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart);
 
-    fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+    // fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     launch_grid_kernel<Pres_2_kernels::solve_in_g<TF>>(
-            grid_layout_nogc,
+            grid_layout_nogc_transpose,
             fields.sd.at("p")->fld_g.view(),
             tmp1->fld_g,
             tmp2->fld_g.view(),
             a_g, c_g, gd.dz_g,
             fields.rhoref_g,
             bmati_g, bmatj_g,
-            gd.kstart, gd.kmax);
+            gd.kstart, gd.ktot);
 
-    // DOES NOT WORK (YET):
     launch_grid_kernel<Pres_2_kernels::tdma_g<TF>>(
-            grid_layout_2d_nogc,
+            grid_layout_2d_nogc_transpose,
             a_g,
             tmp2->fld_g,
             c_g,
             fields.sd.at("p")->fld_g.view(),
             tmp1->fld_g.view(),
-            gd.kmax);
+            gd.ktot);
 
-    fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+    // fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
@@ -372,6 +386,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("v"), tend_name);
     stats.calc_tend(*fields.mt.at("w"), tend_name);
 }
+
 
 template<typename TF>
 TF Pres_2<TF>::check_divergence()

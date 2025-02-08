@@ -494,6 +494,7 @@ void Pres<TF>::fft_backward(TF* __restrict__ p, TF* __restrict__ tmp1, TF* __res
     cuda_check_error();
 }
 
+
 // For debugging: FFTs need memory during execution. Check is enough memory is available..
 template<typename TF>
 void Pres<TF>::check_cufft_memory()

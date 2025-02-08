@@ -134,7 +134,7 @@ namespace Pres_2_kernels
                 const TF* const __restrict__ c,
                 TF* const __restrict__ p,
                 TF* const __restrict__ work3d,
-                const int kmax)
+                const int ktot)
         {
             const int ij = g(i, j, k);  // k=0
             const int kk = g.kstride;
@@ -142,7 +142,7 @@ namespace Pres_2_kernels
             TF work2d = b[ij];
             p[ij] /= work2d;
 
-            for (int k=1; k<kmax; k++)
+            for (int k=1; k<ktot; k++)
             {
                 const int ijk = ij + k*kk;
                 work3d[ijk] = c[k-1] / work2d;
@@ -151,7 +151,7 @@ namespace Pres_2_kernels
                 p[ijk] /= work2d;
             }
 
-            for (int k=kmax-2; k>=0; k--)
+            for (int k=ktot-2; k>=0; k--)
             {
                 const int ijk = ij + k*kk;
                 p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
