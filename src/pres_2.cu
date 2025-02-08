@@ -295,21 +295,6 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     const TF dti = TF(1.)/dt;
 
-    /*
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    // 3D grid
-    dim3 gridGPU (gridi,  gridj,  gd.kmax);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    // 2D grid
-    dim3 grid2dGPU (gridi,  gridj);
-    dim3 block2dGPU(blocki, blockj);
-    */
-
     // Get two free tmp fields on gpu
     auto tmp1 = fields.get_tmp_g();
     auto tmp2 = fields.get_tmp_g();
@@ -359,7 +344,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 
     fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
-    cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
+    // cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
     launch_grid_kernel<Pres_2_kernels::solve_out_g<TF>>(
             grid_layout_nogc,
