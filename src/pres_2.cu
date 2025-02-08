@@ -257,6 +257,7 @@ template<typename TF>
 void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
 
     // Grid layout for KL/CL launches over interior, including ghost cells.
     Grid_layout grid_layout_int = {
@@ -331,6 +332,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             a_g, c_g, gd.dz_g,
             fields.rhoref_g,
             bmati_g, bmatj_g,
+            md.mpicoordy*gd.iblock, md.mpicoordx*gd.jblock,
             gd.kstart, gd.ktot);
 
     launch_grid_kernel<Pres_2_kernels::tdma_g<TF>>(

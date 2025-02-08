@@ -87,6 +87,7 @@ namespace Pres_2_kernels
                 const TF* const __restrict__ rhoref,
                 const TF* const __restrict__ bmati,
                 const TF* const __restrict__ bmatj,
+                const int istart_abs, const int jstart_abs,
                 const int kstart, const int kmax)
         {
             const int ijk = g(i, j, k);
@@ -97,7 +98,10 @@ namespace Pres_2_kernels
             // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
             //  if(iindex == 0 && jindex == 0)
 
-            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
+            const int iindex = istart_abs + i;
+            const int jindex = jstart_abs + j;
+
+            b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
             p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
 
             if (level.distance_to_start() == 0)
@@ -109,7 +113,7 @@ namespace Pres_2_kernels
             else if (level.distance_to_end() == 0)
             {
                 // For wave number 0, which contains average, set pressure at top to zero
-                if (i == 0 && j == 0)
+                if (iindex == 0 && jindex == 0)
                     b[ijk] -= c[k];
                 else
                     b[ijk] += c[k];
