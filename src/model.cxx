@@ -583,6 +583,10 @@ void Model<TF>::prepare_gpu()
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
 
+    // Set the device number to the MPI id.
+    auto& md = master.get_MPI_data();
+    cudaSetDevice(md.mpiid % 4);
+
     grid     ->prepare_device();
     soil_grid->prepare_device();
 
