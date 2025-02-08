@@ -98,8 +98,8 @@ namespace
     }
 
 
-    template<typename rTF, typename cTF, bool forward> __global__
-    void complex_TF_x_g(
+    template<typename rTF, typename cTF, bool forward>
+    __global__ void complex_TF_x_g(
             cTF* __restrict__ cdata, rTF* __restrict__ ddata,
             const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki)
     {
@@ -194,20 +194,18 @@ void Pres<TF>::make_cufft_plan()
     const int rank = 1;
 
     // Float/double input
-    int i_ni[]    = {gd.itot};
-    int i_nj[]    = {gd.jtot};
+    int i_ni[] = {gd.itot};
+    int i_nj[] = {gd.jtot};
     int i_istride = 1;
-    int i_jstride = gd.itot;
-    int i_idist   = gd.itot;
-    int i_jdist   = 1;
+    int i_idist = gd.itot;
+    int i_jdist = gd.jtot;
 
     // Float/double-complex output
-    int o_ni[]    = {gd.itot/2+1};
-    int o_nj[]    = {gd.jtot/2+1};
+    int o_ni[] = {gd.itot/2+1};
+    int o_nj[] = {gd.jtot/2+1};
     int o_istride = 1;
-    int o_jstride = gd.itot;
-    int o_idist   = gd.itot/2+1;
-    int o_jdist   = 1;
+    int o_idist = gd.itot/2+1;
+    int o_jdist = gd.jtot/2+1;
 
     int nerror = 0;
 
