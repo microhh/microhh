@@ -342,9 +342,8 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             tmp1->fld_g.view(),
             gd.ktot);
 
+    // Out of place, tmp1 has the output.
     fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
-
-    // cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 
     launch_grid_kernel<Pres_2_kernels::solve_out_g<TF>>(
             grid_layout_nogc,
@@ -389,11 +388,11 @@ TF Pres_2<TF>::check_divergence()
     auto divergence = fields.get_tmp_g();
 
     calc_divergence_g<TF><<<gridGPU, blockGPU>>>(
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, divergence->fld_g,
-        gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
-        gd.icells, gd.ijcells,
-        gd.istart,  gd.jstart, gd.kstart,
-        gd.iend, gd.jend, gd.kend);
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g, divergence->fld_g,
+            gd.dzi_g, fields.rhoref_g, fields.rhorefh_g, gd.dxi, gd.dyi,
+            gd.icells, gd.ijcells,
+            gd.istart,  gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend);
     cuda_check_error();
 
     TF divmax = field3d_operators.calc_max_g(divergence->fld_g);
