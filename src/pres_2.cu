@@ -336,7 +336,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             gd.icells, gd.ijcells,
             gd.istart, gd.jstart, gd.kstart);
 
-    // fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+    fft_forward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     launch_grid_kernel<Pres_2_kernels::solve_in_g<TF>>(
             grid_layout_nogc_transpose,
@@ -357,7 +357,7 @@ void Pres_2<TF>::exec(double dt, Stats<TF>& stats)
             tmp1->fld_g.view(),
             gd.ktot);
 
-    // fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
+    fft_backward(fields.sd.at("p")->fld_g, tmp1->fld_g, tmp2->fld_g);
 
     cuda_safe_call(cudaMemcpy(tmp1->fld_g, fields.sd.at("p")->fld_g, gd.ncells*sizeof(TF), cudaMemcpyDeviceToDevice));
 

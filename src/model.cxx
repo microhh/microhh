@@ -582,8 +582,13 @@ void Model<TF>::prepare_gpu()
 {
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
+
     grid     ->prepare_device();
     soil_grid->prepare_device();
+
+    // Prepare pressure before fields as cuFFT plan generation for 3D needs temporary memory.
+    pres     ->prepare_device();
+
     fields   ->prepare_device();
     buffer   ->prepare_device();
     thermo   ->prepare_device();
@@ -595,8 +600,6 @@ void Model<TF>::prepare_gpu()
     radiation->prepare_device();
     column   ->prepare_device();
     aerosol  ->prepare_device();
-    // Prepare pressure last, for memory check
-    pres     ->prepare_device();
 }
 
 template<typename TF>
