@@ -86,7 +86,7 @@ TF* Grid<TF>::get_tmp_3d_g()
         if (tmp_3d_gpu.empty())
         {
             master.print_message("Creating tmp_3d GPU array %d\n", n_tmp_3d_gpu);
-            cuda_safe_call(cudaMalloc(&tmp, gd.ncells*sizeof(TF)));
+            cuda_safe_call(cudaMalloc((void**)&tmp, gd.ncells*sizeof(TF)));
             ++n_tmp_3d_gpu;
         }
         else
@@ -124,7 +124,8 @@ TF* Grid<TF>::get_tmp_2d_g()
         if (tmp_2d_gpu.empty())
         {
             master.print_message("Creating tmp_2d GPU array %d\n", n_tmp_2d_gpu);
-            cuda_safe_call(cudaMalloc(&tmp, gd.ncells*sizeof(TF)));
+            const int ncells_2d = std::max(gd.icells*gd.jcells, std::max(gd.icells*gd.kcells, gd.jcells*gd.kcells));
+            cuda_safe_call(cudaMalloc((void**)&tmp, ncells_2d*sizeof(TF)));
             ++n_tmp_2d_gpu;
         }
         else
