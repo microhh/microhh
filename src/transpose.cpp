@@ -58,8 +58,8 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
     if (md.npx == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj = gd.imax;
@@ -73,7 +73,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
     const int imax = gd.imax;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -100,7 +100,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
     const int jj_x = gd.itot;
     const int kk_x = gd.itot*gd.jmax;
 
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -111,8 +111,8 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -126,8 +126,8 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
     if (md.npx == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     const int jj = gd.imax;
     const int kk = gd.imax*gd.jmax;
@@ -143,7 +143,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
     const int jmax = gd.jmax;
     const int imax = gd.imax;
 
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -166,7 +166,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -177,8 +177,8 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -192,8 +192,8 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
     if (md.npy == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_x = gd.itot;
@@ -213,7 +213,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -237,7 +237,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffer.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -248,8 +248,8 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -263,8 +263,8 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
     if (md.npy == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -284,7 +284,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -308,7 +308,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -319,8 +319,8 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -334,8 +334,8 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
     if (md.npx == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -355,7 +355,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -379,7 +379,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffer.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -390,8 +390,8 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 
@@ -405,8 +405,8 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
     if (md.npx == 1)
         return;
 
-    TF* restrict buffer_send = grid.get_tmp_3d();
-    TF* restrict buffer_recv = grid.get_tmp_3d();
+    TF* restrict buffer_send = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
+    TF* restrict buffer_recv = (use_gpu) ? grid.get_tmp_3d_g() : grid.get_tmp_3d();
 
     // Compute the appropriate strides.
     const int jj_y = gd.iblock;
@@ -426,7 +426,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -450,7 +450,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
+    #pragma acc parallel loop deviceptr(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -461,8 +461,8 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
                     data[ijk] = buffer_recv[ijk_buf];
                 }
 
-    grid.release_tmp_3d(buffer_send);
-    grid.release_tmp_3d(buffer_recv);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_send) : grid.release_tmp_3d(buffer_send);
+    (use_gpu) ? grid.release_tmp_3d_g(buffer_recv) : grid.release_tmp_3d(buffer_recv);
 }
 
 #else
