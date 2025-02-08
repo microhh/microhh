@@ -197,8 +197,8 @@ void Boundary_cyclic<TF>::exec_2d_g(TF* const restrict data)
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    TF* buffer_send = grid.get_tmp_2d();
-    TF* buffer_recv = grid.get_tmp_2d();
+    TF* buffer_send = grid.get_tmp_2d_g();
+    TF* buffer_recv = grid.get_tmp_2d_g();
 
     const bool use_gpu = true;
 
@@ -212,8 +212,8 @@ void Boundary_cyclic<TF>::exec_2d_g(TF* const restrict data)
             gd.icells, gd.ijcells,
             md);
 
-    grid.release_tmp_2d(buffer_send);
-    grid.release_tmp_2d(buffer_recv);
+    grid.release_tmp_2d_g(buffer_send);
+    grid.release_tmp_2d_g(buffer_recv);
 }
 
 
