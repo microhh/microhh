@@ -89,7 +89,7 @@ int Field3d_io<TF>::save_field3d(
     if (sw_transpose)
     {
         // Transpose the 3D field
-        tp.exec_zx(tmp1);
+        tp.exec_zx<false>(tmp1);
 
         // Create MPI datatype for writing transposed field
         int totsize [3] = {gd.kmax,   gd.jtot, gd.itot};
@@ -206,7 +206,7 @@ int Field3d_io<TF>::load_field3d(
 
     // Transpose the 3D field
     if (sw_transpose)
-        tp.exec_xz(tmp1);
+        tp.exec_xz<false>(tmp1);
 
     const int jj  = gd.icells;
     const int kk  = gd.icells*gd.jcells;

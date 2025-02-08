@@ -49,6 +49,7 @@ namespace
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_zx(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -72,7 +73,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
     const int imax = gd.imax;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -88,21 +89,18 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
 
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+    for (int n=0; n<md.npx; ++n)
     {
-        for (int n=0; n<md.npx; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffer.
     const int jj_x = gd.itot;
     const int kk_x = gd.itot*gd.jmax;
 
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -119,6 +117,7 @@ void Transpose<TF>::exec_zx(TF* const restrict data)
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_xz(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -144,7 +143,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
     const int jmax = gd.jmax;
     const int imax = gd.imax;
 
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -159,18 +158,15 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+    for (int n=0; n<md.npx; ++n)
     {
-        for (int n=0; n<md.npx; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -187,6 +183,7 @@ void Transpose<TF>::exec_xz(TF* const restrict data)
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_xy(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -216,7 +213,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -231,18 +228,16 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
     const int tag = 1;
     const int nreqs = md.npy*2;
     MPI_Request reqs[nreqs];
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+
+    for (int n=0; n<md.npy; ++n)
     {
-        for (int n=0; n<md.npy; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffer.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -259,6 +254,7 @@ void Transpose<TF>::exec_xy(TF* const restrict data)
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_yx(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -288,7 +284,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -303,18 +299,16 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
     const int tag = 1;
     const int nreqs = md.npy*2;
     MPI_Request reqs[nreqs];
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+
+    for (int n=0; n<md.npy; ++n)
     {
-        for (int n=0; n<md.npy; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commy, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npy; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jmax; ++j)
@@ -331,6 +325,7 @@ void Transpose<TF>::exec_yx(TF* const restrict data)
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_yz(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -360,7 +355,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffers.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -375,18 +370,16 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+
+    for (int n=0; n<md.npx; ++n)
     {
-        for (int n=0; n<md.npx; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffer.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -403,6 +396,7 @@ void Transpose<TF>::exec_yz(TF* const restrict data)
 
 
 template<typename TF>
+template<bool use_gpu>
 void Transpose<TF>::exec_zy(TF* const restrict data)
 {
     auto& gd = grid.get_grid_data();
@@ -432,7 +426,7 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
     const int iblock = gd.iblock;
 
     // Pack the buffer.
-    #pragma acc parallel loop present(buffer_send, data) collapse(4)
+    #pragma acc parallel loop present(buffer_send, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -447,18 +441,16 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
     const int tag = 1;
     const int nreqs = md.npx*2;
     MPI_Request reqs[nreqs];
-    #pragma acc host_data use_device(buffer_send, buffer_recv)
+
+    for (int n=0; n<md.npx; ++n)
     {
-        for (int n=0; n<md.npx; ++n)
-        {
-            MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
-            MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
-        }
-        MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
+        MPI_Isend(&buffer_send[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n  ]);
+        MPI_Irecv(&buffer_recv[n*nn], nn, mpi_fp_type<TF>(), n, tag, md.commx, &reqs[2*n+1]);
     }
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE);
 
     // Unpack the buffers.
-    #pragma acc parallel loop present(buffer_recv, data) collapse(4)
+    #pragma acc parallel loop present(buffer_recv, data) collapse(4) if (use_gpu)
     for (int n=0; n<npx; ++n)
         for (int k=0; k<kblock; ++k)
             for (int j=0; j<jblock; ++j)
@@ -474,17 +466,46 @@ void Transpose<TF>::exec_zy(TF* const restrict data)
 }
 
 #else
-template<typename TF> void Transpose<TF>::exec_zx(TF* const restrict data) {}
-template<typename TF> void Transpose<TF>::exec_xz(TF* const restrict data) {}
-template<typename TF> void Transpose<TF>::exec_xy(TF* const restrict data) {}
-template<typename TF> void Transpose<TF>::exec_yx(TF* const restrict data) {}
-template<typename TF> void Transpose<TF>::exec_yz(TF* const restrict data) {}
-template<typename TF> void Transpose<TF>::exec_zy(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_zx(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_xz(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_xy(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_yx(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_yz(TF* const restrict data) {}
+template<typename TF> template<bool> void Transpose<TF>::exec_zy(TF* const restrict data) {}
 #endif
 
 
 #ifdef FLOAT_SINGLE
 template class Transpose<float>;
+
+template void Transpose<float>::exec_zx<true>(float* const restrict);
+template void Transpose<float>::exec_xz<true>(float* const restrict);
+template void Transpose<float>::exec_xy<true>(float* const restrict);
+template void Transpose<float>::exec_yx<true>(float* const restrict);
+template void Transpose<float>::exec_yz<true>(float* const restrict);
+template void Transpose<float>::exec_zy<true>(float* const restrict);
+
+template void Transpose<float>::exec_zx<false>(float* const restrict);
+template void Transpose<float>::exec_xz<false>(float* const restrict);
+template void Transpose<float>::exec_xy<false>(float* const restrict);
+template void Transpose<float>::exec_yx<false>(float* const restrict);
+template void Transpose<float>::exec_yz<false>(float* const restrict);
+template void Transpose<float>::exec_zy<false>(float* const restrict);
+
 #else
 template class Transpose<double>;
+
+template void Transpose<double>::exec_zx<true>(double* const restrict);
+template void Transpose<double>::exec_xz<true>(double* const restrict);
+template void Transpose<double>::exec_xy<true>(double* const restrict);
+template void Transpose<double>::exec_yx<true>(double* const restrict);
+template void Transpose<double>::exec_yz<true>(double* const restrict);
+template void Transpose<double>::exec_zy<true>(double* const restrict);
+
+template void Transpose<double>::exec_zx<false>(double* const restrict);
+template void Transpose<double>::exec_xz<false>(double* const restrict);
+template void Transpose<double>::exec_xy<false>(double* const restrict);
+template void Transpose<double>::exec_yx<false>(double* const restrict);
+template void Transpose<double>::exec_yz<false>(double* const restrict);
+template void Transpose<double>::exec_zy<false>(double* const restrict);
 #endif

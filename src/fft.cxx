@@ -338,7 +338,7 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
     auto& gd = grid.get_grid_data();
 
     // Transpose the pressure field.
-    transpose.exec_zx(data);
+    transpose.exec_zx<false>(data);
 
     int kk = gd.itot*gd.jmax;
 
@@ -365,7 +365,7 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
     }
 
     // Transpose again.
-    transpose.exec_xy(data);
+    transpose.exec_xy<false>(data);
 
     kk = gd.iblock*gd.jtot;
 
@@ -393,7 +393,7 @@ void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
     }
 
     // Transpose back to original orientation.
-    transpose.exec_yz(data);
+    transpose.exec_yz<false>(data);
 }
 
 
@@ -403,7 +403,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
     auto& gd = grid.get_grid_data();
 
     // Transpose back to y.
-    transpose.exec_zy(data);
+    transpose.exec_zy<false>(data);
 
     int kk = gd.iblock*gd.jtot;
 
@@ -430,7 +430,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
     }
 
     // Transpose back to x.
-    transpose.exec_yx(data);
+    transpose.exec_yx<false>(data);
 
     kk = gd.itot*gd.jmax;
 
@@ -457,7 +457,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
     }
 
     // And transpose back...
-    transpose.exec_xz(tmp1);
+    transpose.exec_xz<false>(tmp1);
 }
 
 
