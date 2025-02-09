@@ -110,17 +110,17 @@ void Field3d_operators<TF>::calc_mean_profile_g(TF* const restrict prof, const T
 
     // Optimized reduction method. This gives slightly different results compared to the CPU...
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-    auto tmp = fields.get_tmp_g();
+    TF* tmp = grid.get_tmp_3d_g();
 
     reduce_interior<TF>(
-        fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot,
+        fld, tmp, gd.imax, gd.istart, gd.iend, gd.jmax,
         gd.jstart, gd.jend, gd.kcells, 0, gd.icells, gd.ijcells, Sum_type);
 
     // Reduce jtot*kcells to kcells values
     reduce_all<TF>(
-        tmp->fld_g, prof, gd.jtot*gd.kcells, gd.kcells, gd.jtot, Sum_type, scalefac);
+        tmp, prof, gd.jmax*gd.kcells, gd.kcells, gd.jmax, Sum_type, scalefac);
 
-    fields.release_tmp_g(tmp);
+    grid.release_tmp_3d_g(tmp);
 }
 
 template<typename TF>
@@ -131,8 +131,8 @@ TF Field3d_operators<TF>::calc_mean_2d_g(const TF* const restrict fld)
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
-    const int gridi  = gd.itot/blocki + (gd.itot%blocki > 0);
-    const int gridj  = gd.jtot/blockj + (gd.jtot%blockj > 0);
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
     dim3 gridGPU(gridi, gridj);
     dim3 blockGPU(blocki, blockj);
@@ -166,21 +166,21 @@ TF Field3d_operators<TF>::calc_mean_g(const TF* const restrict fld)
     const TF scalefac = 1./(gd.itot*gd.jtot*gd.zsize);
     TF mean_value;
 
-    auto tmp = fields.get_tmp_g();
+    TF* tmp = grid.get_tmp_3d_g();
 
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Sum_type);
+    reduce_interior<TF>(fld, tmp, gd.imax, gd.istart, gd.iend, gd.jmax, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Sum_type);
     // Reduce jtot*ktot to ktot values
     for (int k=0; k<gd.ktot; ++k)
     {
-        reduce_all<TF> (&tmp->fld_g[gd.jtot*k], &tmp->fld_g[gd.jtot*gd.ktot+k], gd.jtot, 1., gd.jtot, Sum_type, gd.dz[k+gd.kstart]);
+        reduce_all<TF> (&tmp[gd.jmax*k], &tmp[gd.jmax*gd.ktot+k], gd.jmax, 1., gd.jmax, Sum_type, gd.dz[k+gd.kstart]);
     }
     // Reduce ktot values to a single value
-    reduce_all<TF>     (&tmp->fld_g[gd.jtot*gd.ktot], tmp->fld_g, gd.ktot, 1, gd.ktot, Sum_type, scalefac);
+    reduce_all<TF>     (&tmp[gd.jmax*gd.ktot], tmp, gd.ktot, 1, gd.ktot, Sum_type, scalefac);
     // Copy back result from GPU
-    cuda_safe_call(cudaMemcpy(&mean_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(&mean_value, tmp, sizeof(TF), cudaMemcpyDeviceToHost));
 
-    fields.release_tmp_g(tmp);
+    grid.release_tmp_3d_g(tmp);
 
     return mean_value;
 }
@@ -194,18 +194,18 @@ TF Field3d_operators<TF>::calc_max_g(const TF* const restrict fld)
     const TF scalefac = 1.;
     TF max_value;
 
-    auto tmp = fields.get_tmp_g();
+    TF* tmp = grid.get_tmp_3d_g();
 
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduce_interior<TF>(fld, tmp->fld_g, gd.itot, gd.istart, gd.iend, gd.jtot, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Max_type);
+    reduce_interior<TF>(fld, tmp, gd.imax, gd.istart, gd.iend, gd.jmax, gd.jstart, gd.jend, gd.ktot, gd.kstart, gd.icells, gd.ijcells, Max_type);
     // Reduce jtot*ktot to ktot values
-    reduce_all<TF>     (tmp->fld_g, &tmp->fld_g[gd.jtot*gd.ktot], gd.jtot*gd.ktot, gd.ktot, gd.jtot, Max_type, scalefac);
+    reduce_all<TF>     (tmp, &tmp[gd.jmax*gd.ktot], gd.jmax*gd.ktot, gd.ktot, gd.jmax, Max_type, scalefac);
     // Reduce ktot values to a single value
-    reduce_all<TF>     (&tmp->fld_g[gd.jtot*gd.ktot], tmp->fld_g, gd.ktot, 1, gd.ktot, Max_type, scalefac);
+    reduce_all<TF>     (&tmp[gd.jmax*gd.ktot], tmp, gd.ktot, 1, gd.ktot, Max_type, scalefac);
     // Copy back result from GPU
-    cuda_safe_call(cudaMemcpy(&max_value, tmp->fld_g, sizeof(TF), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(&max_value, tmp, sizeof(TF), cudaMemcpyDeviceToHost));
 
-    fields.release_tmp_g(tmp);
+    grid.release_tmp_3d_g(tmp);
 
     return max_value;
 }

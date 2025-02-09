@@ -253,7 +253,7 @@ TF Fields<TF>::check_mass()
     if (sp.begin() != sp.end())
         mass = field3d_operators.calc_mean_g(it->second->fld_g);
     else
-        mass = 0;
+        mass = TF(0);
 
     return mass;
 }
