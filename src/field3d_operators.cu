@@ -131,8 +131,8 @@ TF Field3d_operators<TF>::calc_mean_2d_g(const TF* const restrict fld)
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
     dim3 gridGPU(gridi, gridj);
     dim3 blockGPU(blocki, blockj);
@@ -142,7 +142,7 @@ TF Field3d_operators<TF>::calc_mean_2d_g(const TF* const restrict fld)
     cuda_safe_call(cudaMalloc(&mean_value_g, sizeof(TF)));
     cudaMemcpy(mean_value_g, &mean_value, sizeof(TF), cudaMemcpyHostToDevice);
 
-    // Very naive reduction from itot*jtot to single value.
+    // Very naive reduction from imax*jmax to single value.
     get_mean_2d<<<gridGPU, blockGPU>>>(
         mean_value_g, fld, scalefac,
         gd.istart, gd.iend,
