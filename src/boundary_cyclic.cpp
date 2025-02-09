@@ -22,7 +22,9 @@
 
 
 #include "grid.h"
+#ifdef USECUDA
 #include "tools.h"
+#endif
 #include "boundary_cyclic.h"
 #include "boundary_cyclic_kernels.h"
 

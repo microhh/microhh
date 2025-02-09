@@ -640,6 +640,36 @@ void Grid<TF>::release_tmp_2d(TF* tmp)
 }
 
 
+#ifndef USECUDA
+template<typename TF>
+TF* Grid<TF>::get_tmp_3d_g()
+{
+    throw std::runtime_error("Cannot request GPU tmp_3d array in CPU mode");
+}
+
+
+template<typename TF>
+void Grid<TF>::release_tmp_3d_g(TF* tmp)
+{
+    throw std::runtime_error("Cannot request GPU tmp_3d array in CPU mode");
+}
+
+
+template<typename TF>
+TF* Grid<TF>::get_tmp_2d_g()
+{
+    throw std::runtime_error("Cannot request GPU tmp_2d array in CPU mode");
+}
+
+
+template<typename TF>
+void Grid<TF>::release_tmp_2d_g(TF* tmp)
+{
+    throw std::runtime_error("Cannot request GPU tmp_2d array in CPU mode");
+}
+#endif
+
+
 #ifdef FLOAT_SINGLE
 template class Grid<float>;
 #else
