@@ -331,9 +331,6 @@ void Stats<TF>::finalize_masks()
     std::vector<TF> nmask_TF;
     nmask_TF.resize(gd.kcells);
 
-    const int nblock = 256;
-    int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-
     set_to_val_g<TF><<<gridGPU3, blockGPU>>>(
                 ones->fld_g, TF(1.0),
                 gd.icells, gd.jcells, gd.kcells, gd.ijcells);
@@ -347,11 +344,13 @@ void Stats<TF>::finalize_masks()
 
         cuda_safe_call(cudaMemcpy(nmask_TF.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
         for (int k = 0; k < gd.kcells; ++k)
-            it.second.nmask[k] = (int)( gd.itot * gd.jtot )*nmask_TF[k];
+            it.second.nmask[k] = (int)( gd.imax * gd.jmax )*nmask_TF[k];
 
         apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  ones->fld_g.data(), mfield_g, flagh, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
         field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
         cuda_safe_call(cudaMemcpy(it.second.nmaskh.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(int), cudaMemcpyDeviceToHost));
+        for (int k = 0; k < gd.kcells; ++k)
+            it.second.nmaskh[k] = (int)( gd.imax * gd.jmax )*nmask_TF[k];
 
         it.second.nmask_bot = it.second.nmaskh[gd.kstart];
 
