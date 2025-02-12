@@ -133,13 +133,43 @@ namespace Land_surface_kernels_g
     void calc_resistance_functions_g(
             TF* const __restrict__ f1,
             TF* const __restrict__ f2,
-            TF* const __restrict__ f2b,
             TF* const __restrict__ f3,
             const TF* const __restrict__ sw_dn,
-            const TF* const __restrict__ theta,
             const TF* const __restrict__ theta_mean_n,
             const TF* const __restrict__ vpd,
             const TF* const __restrict__ gD,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells, const int ijcells)
+    {
+        // Constants f1 calculation:
+        const TF a_f1 = 0.81;
+        const TF b_f1 = 0.004;
+        const TF c_f1 = 0.05;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+
+            // f1: reduction vegetation resistance as f(sw_in):
+            const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
+            f1[ij] = TF(1)/fmin( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
+
+            // f2: reduction vegetation resistance as f(theta):
+            f2[ij] = TF(1)/fmin( TF(1), fmax(TF(1e-9), theta_mean_n[ij]) );
+
+            // f3: reduction vegetation resistance as f(VPD):
+            f3[ij] = TF(1)/exp(-gD[ij] * vpd[ij]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_soil_resistance_function_g(
+            TF* const __restrict__ f2b,
+            const TF* const __restrict__ theta,
             const TF* const __restrict__ c_veg,
             const TF* const __restrict__ theta_wp,
             const TF* const __restrict__ theta_fc,
@@ -164,22 +194,13 @@ namespace Land_surface_kernels_g
             const int ijk = i + j*icells + (kend-1)*ijcells;    // Top soil layer
             const int si  = soil_index[ijk];
 
-            // f1: reduction vegetation resistance as f(sw_in):
-            const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
-            f1[ij] = TF(1)/fmin( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
-
-            // f2: reduction vegetation resistance as f(theta):
-            f2[ij] = TF(1)/fmin( TF(1), fmax(TF(1e-9), theta_mean_n[ij]) );
-
-            // f3: reduction vegetation resistance as f(VPD):
-            f3[ij] = TF(1)/exp(-gD[ij] * vpd[ij]);
-
             // f2b: reduction soil resistance as f(theta)
             const TF theta_min = c_veg[ij] * theta_wp[si] + (TF(1)-c_veg[ij]) * theta_res[si];
             const TF theta_rel = (theta[ijk] - theta_min) / (theta_fc[si] - theta_min);
             f2b[ij] = TF(1)/fmin(TF(1), fmax(TF(1e-9), theta_rel));
         }
     }
+
 
     template<typename TF> __global__
     void calc_canopy_resistance_g(

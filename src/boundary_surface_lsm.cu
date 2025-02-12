@@ -259,23 +259,19 @@ void Boundary_surface_lsm<TF>::exec(
     {
         // Calculate vegetation/soil resistance functions `f`.
         lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
-                f1, f2, f2b, f3,
+                f1,
+                f2,
+                f3,
                 sw_dn,
-                fields.sps.at("theta")->fld_g,
-                theta_mean_n, vpd,
+                theta_mean_n,
+                vpd,
                 gD_coeff_g,
-                c_veg_g,
-                theta_wp_g,
-                theta_fc_g,
-                theta_res_g,
-                soil_index_g,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
-                sgd.kend,
                 gd.icells, gd.ijcells);
         cuda_check_error();
 
-        // Calculate canopy resistance for veg and soil tiles.
+        // Calculate canopy resistance for vegetation.
         lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
                 tiles.at("veg").rs_g,
                 rs_veg_min_g, lai_g,
@@ -285,6 +281,21 @@ void Boundary_surface_lsm<TF>::exec(
                 gd.icells);
         cuda_check_error();
     }
+
+    // Calculate soil resistance functions `f2b`.
+    lsmk::calc_soil_resistance_function_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            f2b,
+            fields.sps.at("theta")->fld_g,
+            c_veg_g,
+            theta_wp_g,
+            theta_fc_g,
+            theta_res_g,
+            soil_index_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            sgd.kend,
+            gd.icells, gd.ijcells);
+    cuda_check_error();
 
     lsmk::calc_soil_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("soil").rs_g,
