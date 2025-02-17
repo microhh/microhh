@@ -448,7 +448,7 @@ void Thermo_dry<TF>::create(
     tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Set up output classes
-    create_stats(stats);
+    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);
