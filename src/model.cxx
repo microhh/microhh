@@ -290,6 +290,7 @@ void Model<TF>::load()
     advec->create(*stats);
     diff->create(*stats, false);
 
+    thermo->create_stats(*stats);
     budget->create(*stats);
 }
 
