@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 sys.path.append('../../python/')
 import microhh_tools as mht
-from conservation_funcs import Parse_conservation
+from . import conservation_funcs
 
 no_opts = {}
 
@@ -29,8 +29,8 @@ def check_convergence(case_name, case_dir, experiment_name):
     """
     dts = np.array([10., 5., 2.5, 1.25])
 
-    rk3 = Parse_conservation('rk3')
-    rk4 = Parse_conservation('rk4')
+    rk3 = conservation_funcs.Parse_conservation(case_dir, experiment_name, 'rk3')
+    rk4 = conservation_funcs.Parse_conservation(case_dir, experiment_name, 'rk4')
 
     def convergence(errors):
         return (np.log(errors[-1]) - np.log(errors[0])) / (np.log(dts[-1]) - np.log(dts[0]))
