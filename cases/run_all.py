@@ -9,8 +9,8 @@ import microhh_tools as mht
 modes = ['cpu', 'cpumpi', 'gpu']
 precs = ['dp', 'sp']
 
-les_cases   = ['rcemip']#'arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip', 'dycoms']  # cabauw+lasso missing
-dns_cases   = []#'drycbl', 'ekman', 'drycblslope', 'moser180', 'moser590']    # prandtlslope missing
+les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip', 'dycoms']  # cabauw+lasso missing
+dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser590']    # prandtlslope missing
 
 # Cases which require an additional preprocessing script.
 additional_pre = {}
