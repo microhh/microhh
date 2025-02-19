@@ -1338,7 +1338,7 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "H", "LE", "G", "S"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1558,20 +1558,26 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
-    auto tmp1 = fields.get_tmp();
+
+    auto tmp = fields.get_tmp();
     TF no_offset = 0.;
     
-    for (auto& it : cross_list)
+    for (auto& var : cross_list)
     {
-        if (it == "ustar")
-            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
-        else if (it == "obuk")
-            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
-        else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, "wl", iotime);
+        if (var == "ustar")
+            cross.cross_plane(ustar.data(), no_offset, var, iotime);
+        else if (var == "obuk")
+            cross.cross_plane(obuk.data(), no_offset, var, iotime);
+        else if (var == "wl")
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, var, iotime);
+        else if (var == "H" || var == "LE" || var == "G" || var == "S")
+        {
+            get_tiled_mean(tmp->fld_bot, var, TF(1));
+            cross.cross_plane(tmp->fld_bot.data(), no_offset, var, iotime);
+        }
     }
 
-    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp);
 }
 
 template<typename TF>

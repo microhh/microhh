@@ -655,7 +655,7 @@ int Cross<TF>::cross_plane(TF* restrict data, TF restrict offset, std::string na
 
     auto tmpfld = fields.get_tmp();
     auto tmp = tmpfld->fld.data();
-    
+
     std::snprintf(filename, 256, "%s.%s.%07d", name.c_str(), "xy.000", iotime);
     nerror += check_save(field3d_io.save_xy_slice(data, offset, tmp, filename), filename);
     fields.release_tmp(tmpfld);

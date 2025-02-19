@@ -1,5 +1,5 @@
-# Base .ini file for dispersion case. All `None` settings are set by
-# `dispersion_input.py`, and finally written into a new `dispersion.ini` file.
+# Base dust.ini file.
+# All `None` settings are set by `dust_input.py`, and finally written into a new `dust.ini` file.
 
 [master]
 npx=1
@@ -48,12 +48,19 @@ stop[th]=0.003
 z0m=0.1
 z0h=0.1
 
+sbot_2d_list=None
+
 scalar_outflow=None
-swtimedep_outflow=None
+swtimedep_outflow=False
 flow_direction[west]=inflow
 flow_direction[north]=outflow
 flow_direction[east]=outflow
 flow_direction[south]=outflow
+
+[particle_bin]
+sw_particle=1
+particle_list=None
+w_particle=None
 
 [fields]
 visc=1.e-5
@@ -64,21 +71,6 @@ rndseed=2
 rndamp[th]=0.1
 rndz=300.
 rndexp=2.
-
-[source]
-swsource=1
-sourcelist=None
-source_x0=None
-source_y0=None
-source_z0=None
-sigma_x=None
-sigma_y=None
-sigma_z=None
-strength=None
-swvmr=None
-#line_x=None
-#line_y=None
-#line_z=None
 
 [buffer]
 swbuffer=1
@@ -105,6 +97,6 @@ sampletime=300
 
 [cross]
 swcross=1
-crosslist=u,v,w,th
+crosslist=None
 sampletime=60
-xy=100
+xy=10,100
