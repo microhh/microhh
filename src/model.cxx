@@ -136,7 +136,6 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
         source    = Source<TF>   ::factory(master, *grid, *fields, *input);
-        budget    = Budget<TF>   ::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         force        = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer       = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
@@ -150,6 +149,9 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         column       = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
         dump         = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
         cross        = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
+
+        // Keep this after `stats` constructor.
+        budget    = Budget<TF>   ::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
         add_statistics_masks();

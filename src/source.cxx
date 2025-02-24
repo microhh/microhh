@@ -49,7 +49,7 @@ std::shared_ptr<Source<TF>> Source<TF>::factory(
 
     if (sw_source == "1")
     {
-        masterin.print_warning("swsource=1 is deprecated. Defaulting to swsource=gaussian");
+        masterin.print_warning("swsource=1 is deprecated. Defaulting to swsource=gaussian\n");
         sw_source = "gaussian";
     }
 
