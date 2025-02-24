@@ -14,7 +14,7 @@ def get_data(case_dir):
 
 
 class Parse_conservation:
-    def __init__(self, scheme):
+    def __init__(self, case_dir, experiment_name, scheme):
         """
         Parse momentum/tke/mass loss
         """
@@ -32,7 +32,7 @@ class Parse_conservation:
         self.mass_loss = np.zeros(self.N)
 
         for i,dt in enumerate(dts):
-            time, mom, tke, mass = get_data(f'local_{scheme}_dt{dt:04d}')
+            time, mom, tke, mass = get_data(f'{case_dir}/{experiment_name}_{scheme}_dt{dt:04d}')
 
             self.time.append(time)
             self.mom.append(mom)
@@ -42,7 +42,7 @@ class Parse_conservation:
             self.mom_loss[i] = mom[-1] - mom[1]
             self.tke_loss[i] = tke[-1] - tke[1]
             self.mass_loss[i] = mass[-1] - mass[1]
-        
+
         print(f'{scheme}: mom_loss = {self.mom_loss}')
         print(f'{scheme}: tke_loss = {self.tke_loss}')
         print(f'{scheme}: mass_loss = {self.mass_loss}')

@@ -688,6 +688,9 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
     sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
 
+    // This is a bit cheeky, should be a getter from `thermo`.
+    swtimedep_basestate = inputin.get_item<bool>("thermo", "swupdatebasestate", "", true);
+
     #ifndef USECUDA
     if (sw_homogenize_sfc_sw || sw_homogenize_sfc_lw || sw_homogenize_hr_sw || sw_homogenize_hr_lw)
         throw std::runtime_error("Radiation homogenization is not (yet) implemented on the CPU.");
@@ -826,7 +829,7 @@ void Radiation_rrtmgp<TF>::create(
     // Setup spatial filtering diffuse surace radiation (if enabled..)
     create_diffuse_filter();
 
-    // Setup timedependent gasses
+    // Setup time dependent gasses.
     auto& gd = grid.get_grid_data();
     const TF offset = 0;
     std::string timedep_dim = "time_rad";
@@ -1298,15 +1301,21 @@ void Radiation_rrtmgp<TF>::create_column_longwave(
 
     solve_longwave_column(
             optical_props_lw,
-            lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
-            lw_flux_dn_inc, thermo.get_basestate_vector("ph")[gd.kend],
+            lw_flux_up_col,
+            lw_flux_dn_col,
+            lw_flux_net_col,
+            lw_flux_dn_inc,
+            thermo.get_basestate_vector("ph")[gd.kend],
             gas_concs_col,
             kdist_lw,
             sources_lw,
             col_dry,
-            p_lay_col, p_lev_col,
-            t_lay_col, t_lev_col,
-            t_sfc, emis_sfc,
+            p_lay_col,
+            p_lev_col,
+            t_lay_col,
+            t_lev_col,
+            t_sfc,
+            emis_sfc,
             n_lay_col);
 
     // Save the reference profile fluxes in the stats.
@@ -1572,17 +1581,24 @@ void Radiation_rrtmgp<TF>::set_background_column_longwave(const TF p_top)
     for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         emis_sfc({ibnd, 1}) = this->emis_sfc_hom;
 
-    solve_longwave_column(optical_props_lw,
-                          lw_flux_up_col, lw_flux_dn_col, lw_flux_net_col,
-                          lw_flux_dn_inc, p_top,
-                          gas_concs_col,
-                          kdist_lw,
-                          sources_lw,
-                          col_dry,
-                          p_lay_col, p_lev_col,
-                          t_lay_col, t_lev_col,
-                          t_sfc, emis_sfc,
-                          n_lay_col);
+    solve_longwave_column(
+            optical_props_lw,
+            lw_flux_up_col,
+            lw_flux_dn_col,
+            lw_flux_net_col,
+            lw_flux_dn_inc,
+            p_top,
+            gas_concs_col,
+            kdist_lw,
+            sources_lw,
+            col_dry,
+            p_lay_col,
+            p_lev_col,
+            t_lay_col,
+            t_lev_col,
+            t_sfc,
+            emis_sfc,
+            n_lay_col);
 }
 
 template<typename TF>
@@ -1626,6 +1642,7 @@ template<typename TF>
 void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
+
     for (auto& it : tdep_gases)
     {
         it.second->update_time_dependent_prof(gasprofs.at(it.first), timeloop, gd.ktot);
@@ -1700,7 +1717,7 @@ void Radiation_rrtmgp<TF>::exec(
 
             if (sw_longwave)
             {
-                if (swtimedep_background)
+                if (swtimedep_background || swtimedep_basestate)
                 {
                     // Calculate new background column for the longwave.
                     const TF p_top = thermo.get_basestate_vector("ph")[gd.kend];
@@ -1915,6 +1932,12 @@ void Radiation_rrtmgp<TF>::exec(
 template<typename TF>
 std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& name)
 {
+    // Check if short/longwave is active, otherwise the fields below are not allocated.
+    if ((name == "sw_down" || name == "sw_up") && !sw_shortwave)
+        throw std::runtime_error("get_surface_radiation() requires swshortwave=true & swlongwave=true.");
+    else if ((name == "lw_down" || name == "lw_up") && !sw_longwave)
+        throw std::runtime_error("get_surface_radiation() requires swshortwave=true & swlongwave=true.");
+
     if (name == "sw_down")
         return sw_flux_dn_sfc;
     else if (name == "sw_up")

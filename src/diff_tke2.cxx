@@ -110,11 +110,17 @@ namespace
                     {
                         const int ij = i + j*jj;
                         const int ijk = i + j*jj + k*kk;
+
                         TF fac;
 
-                        if (sw_mason) // Apply Mason's wall correction
-                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(mlen0, n_mason) + TF(1.)/
-                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if constexpr (sw_mason) // Apply Mason's wall correction
+                        {
+                            if constexpr (n_mason == 2)
+                                fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(mlen0) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[kstart]+z0m[ij]))) ) );
+                            else
+                                fac = std::pow(TF(1.) / (TF(1.)/std::pow(mlen0, TF(n_mason)) + TF(1.)/
+                                            (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                        }
                         else
                             fac = mlen0;
 
@@ -155,7 +161,8 @@ namespace
        else
        {
             // Variables for the wall damping and length scales
-            const TF n_mason = TF(2.);
+            constexpr int n_mason = 2;
+
             TF mlen;
             TF fac;
 
@@ -170,15 +177,20 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * std::sqrt(sgstke[ijk] / bgradbot[ij]);
                     else
                         mlen = mlen0;
 
-                    fac  = std::min(mlen0, mlen);
+                    fac = std::min(mlen0, mlen);
 
-                    if (sw_mason) // Apply Mason's wall correction here
-                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    if constexpr (sw_mason) // Apply Mason's wall correction here
+                    {
+                        if constexpr (n_mason == 2)
+                            fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[kstart]+z0m[ij]))) ) );
+                        else
+                            fac = std::pow(TF(1.) / (TF(1.)/std::pow(fac, TF(n_mason)) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                    }
 
                     // Calculate eddy diffusivity for momentum.
                     evisc[ijk] = cm * fac * std::sqrt(sgstke[ijk]);
@@ -197,15 +209,20 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if (N2[ijk] > 0) // Only if stably stratified, adapt length scale
-                            mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(sgstke[ijk] / N2[ijk]);
                         else
                             mlen = mlen0;
 
-                        fac  = std::min(mlen0, mlen);
+                        fac = std::min(mlen0, mlen);
 
-                        if (sw_mason) // Apply Mason's wall correction here
-                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if constexpr (sw_mason) // Apply Mason's wall correction here
+                        {
+                            if constexpr (n_mason == 2)
+                                fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                            else
+                                fac = std::pow(TF(1.) / (TF(1.)/std::pow(fac, TF(n_mason)) + TF(1.)/
+                                            (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                        }
 
                         // Calculate eddy diffusivity for momentum.
                         evisc[ijk] = cm * fac * std::sqrt(sgstke[ijk]);
@@ -242,7 +259,8 @@ namespace
         else
         {
             // Variables for the wall damping and length scales
-            const TF n_mason = TF(2.);
+            constexpr int n_mason = 2;
+
             TF mlen;
             TF fac;
 
@@ -257,15 +275,20 @@ namespace
                     const int ijk = i + j*jj + kstart*kk;
 
                     if ( bgradbot[ij] > 0 ) // Only if stably stratified, adapt length scale
-                        mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(bgradbot[ij]);
+                        mlen = cn * std::sqrt(sgstke[ijk] / bgradbot[ij]);
                     else
                         mlen = mlen0;
 
-                    fac  = std::min(mlen0, mlen);
+                    fac = std::min(mlen0, mlen);
 
-                    if (sw_mason) // Apply Mason's wall correction here
-                        fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                    (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                    if constexpr (sw_mason) // Apply Mason's wall correction here
+                    {
+                        if constexpr (n_mason == 2)
+                            fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[kstart]+z0m[ij]))) ) );
+                        else
+                            fac = std::pow(TF(1.) / (TF(1.)/std::pow(fac, TF(n_mason)) + TF(1.)/
+                                        (std::pow(Constants::kappa<TF>*(z[kstart]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                    }
 
                     // Calculate eddy diffusivity for momentum.
                     evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
@@ -284,15 +307,20 @@ namespace
                         const int ijk = i + j*jj + k*kk;
 
                         if ( N2[ijk] > 0 ) // Only if stably stratified, adapt length scale
-                            mlen = cn * std::sqrt(sgstke[ijk]) / std::sqrt(N2[ijk]);
+                            mlen = cn * std::sqrt(sgstke[ijk] / N2[ijk]);
                         else
                             mlen = mlen0;
 
-                        fac  = std::min(mlen0, mlen);
+                        fac = std::min(mlen0, mlen);
 
-                        if (sw_mason) // Apply Mason's wall correction here
-                            fac = std::pow(TF(1.)/(TF(1.)/std::pow(fac, n_mason) + TF(1.)/
-                                        (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                        if constexpr (sw_mason) // Apply Mason's wall correction here
+                        {
+                            if constexpr (n_mason == 2)
+                                fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(fac) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                            else
+                                fac = std::pow(TF(1.) / (TF(1.)/std::pow(fac, TF(n_mason)) + TF(1.)/
+                                            (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                        }
 
                         // Calculate eddy diffusivity for momentum.
                         evisch[ijk] = (ch1 + ch2 * fac / mlen0 ) * evisc[ijk];
