@@ -197,6 +197,7 @@ void Source_gaussian<TF>::create(Input& input, Netcdf_handle& input_nc)
 }
 
 
+#ifndef USECUDA
 template<typename TF>
 void Source_gaussian<TF>::exec()
 {
@@ -280,6 +281,7 @@ void Source_gaussian<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         }
     }
 }
+#endif
 
 
 template<typename TF>
