@@ -28,6 +28,7 @@
 
 #include "source.h"
 #include "source_disabled.h"
+#include "source_gaussian.h"
 
 template<typename TF>
 Source<TF>::Source(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -46,14 +47,18 @@ std::shared_ptr<Source<TF>> Source<TF>::factory(
 {
     std::string sw_source = inputin.get_item<std::string>("source", "swsource", "", "0");
 
+    if (sw_source == "1")
+    {
+        masterin.print_warning("swsource=1 is deprecated. Defaulting to swsource=gaussian");
+        sw_source = "gaussian";
+    }
+
     if (sw_source == "0")
         return std::make_shared<Source_disabled<TF>>(masterin, gridin, fieldsin, inputin);
-
+    else if (sw_source == "gaussian")
+        return std::make_shared<Source_gaussian<TF>>(masterin, gridin, fieldsin, inputin);
     else
-    {
-        std::string msg = "Illegal option for \"swsource\".";
-        throw std::runtime_error(msg);
-    }
+        throw std::runtime_error("Illegal option for \"swsource\".");
 }
 
 
