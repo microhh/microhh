@@ -29,6 +29,7 @@
 #include "source.h"
 #include "source_disabled.h"
 #include "source_gaussian.h"
+#include "source_3d.h"
 
 template<typename TF>
 Source<TF>::Source(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& input) :
@@ -57,6 +58,8 @@ std::shared_ptr<Source<TF>> Source<TF>::factory(
         return std::make_shared<Source_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (sw_source == "gaussian")
         return std::make_shared<Source_gaussian<TF>>(masterin, gridin, fieldsin, inputin);
+    else if (sw_source == "3d")
+        return std::make_shared<Source_3d<TF>>(masterin, gridin, fieldsin, inputin);
     else
         throw std::runtime_error("Illegal option for \"swsource\".");
 }
