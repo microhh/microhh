@@ -375,6 +375,7 @@ unsigned long Diff_smag2<TF>::get_time_limit(unsigned long idt, double dt)
     // Get maximum from tmp1 field
     double dnmul = field3d_operators.calc_max_g(tmp1->fld_g);
     dnmul = std::max(Constants::dsmall, dnmul);
+    master.max(&dnmul, 1);
 
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
