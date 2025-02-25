@@ -392,6 +392,8 @@ double Advec_2i62<TF>::get_cfl(const double dt)
     TF cfl = field3d_operators.calc_max_g(tmp1->fld_g);
     fields.release_tmp_g(tmp1);
 
+    master.max(&cfl, 1);
+
     cfl = cfl*dt;
 
     return static_cast<double>(cfl);

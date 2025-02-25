@@ -391,11 +391,11 @@ double Advec_4m<TF>::get_cfl(const double dt)
     cuda_check_error();
 
     TF cfl = field3d_operators.calc_max_g(cfl_3d->fld_g);
-    // TO DO communicate.
+    fields.release_tmp_g(cfl_3d);
+
+    master.max(&cfl, 1);
 
     cfl = cfl*dt;
-
-    fields.release_tmp_g(cfl_3d);
 
     return cfl;
 }

@@ -175,9 +175,9 @@ double Advec_2<TF>::get_cfl(const double dt)
     cuda_check_error();
 
     TF cfl = field3d_operators.calc_max_g(tmp1->fld_g);
-    master.max(&cfl, 1);
-
     fields.release_tmp_g(tmp1);
+
+    master.max(&cfl, 1);
 
     cfl = cfl*dt;
 
