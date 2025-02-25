@@ -59,6 +59,13 @@ void Source_disabled<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
 }
 
+#ifdef USECUDA
+template<typename TF>
+void Source_disabled<TF>::prepare_device()
+{
+}
+#endif
+
 #ifdef FLOAT_SINGLE
 template class Source_disabled<float>;
 #else

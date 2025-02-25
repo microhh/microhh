@@ -23,10 +23,14 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
+#include <memory>
+
 class Master;
 class Input;
+class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
+template<typename> class Timeloop;
 
 
 template<typename TF>
@@ -42,6 +46,10 @@ class Source
         virtual void create(Input&, Netcdf_handle&) = 0;
         virtual void exec() = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
+
+        #ifdef USECUDA
+        virtual void prepare_device() = 0;
+        #endif
 
     protected:
         Master& master; ///< Pointer to master class.

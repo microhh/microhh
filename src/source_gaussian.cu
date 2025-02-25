@@ -156,6 +156,12 @@ void Source_gaussian<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         }
     }
 }
+
+
+template<typename TF>
+void Source_gaussian<TF>::prepare_device()
+{
+}
 #endif
 
 

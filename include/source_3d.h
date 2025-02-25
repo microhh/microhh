@@ -23,6 +23,9 @@
 #ifndef SOURCE_3D_H
 #define SOURCE_3D_H
 
+#include <map>
+#include <vector>
+
 #include "source.h"
 
 class Input;
@@ -39,6 +42,10 @@ class Source_3d : public Source<TF>
         void exec();
         void update_time_dependent(Timeloop<TF>&);
 
+        #ifdef USECUDA
+        void prepare_device();
+        #endif
+
     private:
         using Source<TF>::master;
         using Source<TF>::grid;
@@ -49,5 +56,9 @@ class Source_3d : public Source<TF>
 
         bool sw_timedep;    // Switch for time dependent 3D input.
         int ktot;           // Number of vertical levels with emissions.
+
+        #ifdef USECUDA
+        std::map<std::string, cuda_vector<TF>> emission_g;
+        #endif
 };
 #endif

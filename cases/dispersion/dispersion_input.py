@@ -11,15 +11,15 @@ scalars = ['s1', 's2']     # All scalars.
 scalars_outflow = ['s1']   # Scalars with non-periodic lateral BCs.
 swtimedep_outflow = False  # Time depedent lateral outflow profiles.
 
-xsize = 12800
+xsize = 6400
 ysize = 4800
 zsize = 3200
 
-itot = 256
+itot = 128
 jtot = 96
 ktot = 64
 
-endtime = 43200
+endtime = 7200
 
 """
 Source settings.
@@ -105,6 +105,7 @@ def const_list(value):
     value = int(value) if isinstance(value, bool) else value
     return len(scalars)*[value]
 
+ini['source']['swsource'] = 'gaussian'
 ini['source']['sourcelist'] = scalars
 ini['source']['source_x0'] = const_list(source_x0) 
 ini['source']['source_y0'] = const_list(source_y0) 
@@ -114,9 +115,9 @@ ini['source']['sigma_y'] = const_list(sigma_y)
 ini['source']['sigma_z'] = const_list(sigma_z)
 ini['source']['strength'] = const_list(strength)
 ini['source']['swvmr'] = const_list(sw_vmr)
-#ini['source']['line_x'] = const_list(0)
-#ini['source']['line_y'] = const_list(0)
-#ini['source']['line_z'] = const_list(0)
+ini['source']['line_x'] = const_list(0)
+ini['source']['line_y'] = const_list(0)
+ini['source']['line_z'] = const_list(0)
 
 # Statistics/crosses/...
 scalar_crosses = scalars + [s+'_path' for s in scalars]

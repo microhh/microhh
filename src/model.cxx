@@ -595,6 +595,7 @@ void Model<TF>::prepare_gpu()
     radiation->prepare_device();
     column   ->prepare_device();
     aerosol  ->prepare_device();
+    source   ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }

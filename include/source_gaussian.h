@@ -41,6 +41,10 @@ class Source_gaussian : public Source<TF>
         void exec();
         void update_time_dependent(Timeloop<TF>&);
 
+        #ifdef USECUDA
+        void prepare_device();
+        #endif
+
     private:
         using Source<TF>::master;
         using Source<TF>::grid;
