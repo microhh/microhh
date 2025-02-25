@@ -82,7 +82,7 @@ void Source_3d<TF>::create(Input& input, Netcdf_handle& input_nc)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s_emission.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         // Storage arrays don't have vertical ghost cells.
@@ -130,6 +130,9 @@ void Source_3d<TF>::exec()
 template<typename TF>
 void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 {
+    if (!sw_timedep)
+        return;
+
     throw std::runtime_error("Time dependent 3D emissions not (yet) implemented.");
 }
 #endif
