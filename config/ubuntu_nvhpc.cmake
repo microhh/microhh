@@ -1,7 +1,7 @@
 # CMake file for Ubuntu 20 and 22 LTS based on generic.cmake.
 
 if(USEMPI)
-    set(ENV{CC} mpicc )
+    set(ENV{CC} mpicc)
     set(ENV{CXX} mpicxx)
     set(ENV{FC} mpif90)
 else()
@@ -39,6 +39,7 @@ set(HDF5_LIB "hdf5_serial")
 set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necessary to add m z curl sz if necessary
 
 if(USECUDA)
+    set(CMAKE_CUDA_HOST_COMPILER $ENV{CXX})
     set(CMAKE_CUDA_ARCHITECTURES 86)
     set(USER_CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
     set(USER_CUDA_NVCC_FLAGS_RELEASE "-DNDEBUG")
