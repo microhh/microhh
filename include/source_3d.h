@@ -51,6 +51,8 @@ class Source_3d : public Source<TF>
         using Source<TF>::grid;
         using Source<TF>::fields;
 
+        void load_emission(std::vector<TF>&, const std::string&, const int);
+
         std::vector<std::string> sourcelist;
         std::map<std::string, std::vector<TF>> emission;
 

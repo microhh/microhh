@@ -64,52 +64,53 @@ void Source_3d<TF>::init()
 
 
 template<typename TF>
-void Source_3d<TF>::create(Input& input, Netcdf_handle& input_nc)
+void Source_3d<TF>::load_emission(std::vector<TF>& fld, const std::string& name, const int itime)
 {
     auto& gd = grid.get_grid_data();
 
-    // Create Field3_io instance to read the binary files.
+    // Create Field3_io instance to read the binary file.
     Field3d_io<TF> field3d_io(master, grid);
 
     auto tmp1 = fields.get_tmp();
     auto tmp2 = fields.get_tmp();
 
-    const int itime = 0;
-    int nerror = 0;
+    char filename[256];
+    std::snprintf(filename, 256, "%s_emission.%07d", name.c_str(), itime);
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    // Storage arrays don't have vertical ghost cells.
+    const int kstart = 0;
+    const int kend = this->ktot;
+
     const TF no_offset = 0;
 
-    auto load_3d_field = [&](
-            TF* const restrict field, const std::string& name, const int itime)
+    if (field3d_io.load_field3d(
+            fld.data(),
+            tmp1->fld.data(),
+            tmp2->fld.data(),
+            filename,
+            no_offset,
+            kstart,
+            kend))
     {
-        char filename[256];
-        std::snprintf(filename, 256, "%s_emission.%07d", name.c_str(), itime);
-        master.print_message("Loading \"%s\" ... ", filename);
+        master.print_message("FAILED\n");
+        throw std::runtime_error("Reading binary failed.");
+    }
+    else
+        master.print_message("OK\n");
 
-        // Storage arrays don't have vertical ghost cells.
-        const int kstart = 0;
-        const int kend = this->ktot;
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
+}
 
-        if (field3d_io.load_field3d(
-                field,
-                tmp1->fld.data(),
-                tmp2->fld.data(),
-                filename,
-                no_offset,
-                kstart,
-                kend))
-        {
-            master.print_message("FAILED\n");
-            nerror += 1;
-        }
-        else
-            master.print_message("OK\n");
-    };
+
+template<typename TF>
+void Source_3d<TF>::create(Input& input, Netcdf_handle& input_nc)
+{
+    const int itime = 0;
 
     for (auto& specie : sourcelist)
-        load_3d_field(emission.at(specie).data(), specie, itime);
-
-    if (nerror > 0)
-        throw std::runtime_error("Error loading emissions.");
+        load_emission(emission.at(specie), specie, itime);
 }
 
 
