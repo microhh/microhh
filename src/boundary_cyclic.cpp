@@ -286,6 +286,7 @@ void Boundary_cyclic<TF>::exec_2d_g(TF* const restrict data)
 }
 
 
+/*
 template<typename TF>
 void Boundary_cyclic<TF>::exec_g(unsigned int * data)
 {
@@ -348,6 +349,59 @@ void Boundary_cyclic<TF>::exec_2d_g(unsigned int* data)
         gd.istart, gd.jstart, gd.iend, gd.jend, gd.igc, gd.jgc);
 
     cuda_check_error();
+}
+*/
+
+
+template<typename TF>
+void Boundary_cyclic<TF>::exec_g(unsigned int* const restrict data)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    TF* buffer_send = grid.get_tmp_3d_g();
+    TF* buffer_recv = grid.get_tmp_3d_g();
+
+    const bool use_gpu = true;
+
+    Boundary_cyclic_kernels::cyclic_kernel<unsigned int, use_gpu>(
+            data,
+            reinterpret_cast<unsigned int*>(buffer_send),
+            reinterpret_cast<unsigned int*>(buffer_recv),
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, gd.kcells,
+            gd.icells, gd.ijcells,
+            md);
+
+    grid.release_tmp_3d_g(buffer_send);
+    grid.release_tmp_3d_g(buffer_recv);
+}
+
+
+template<typename TF>
+void Boundary_cyclic<TF>::exec_2d_g(unsigned int* const restrict data)
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    TF* buffer_send = grid.get_tmp_2d_g();
+    TF* buffer_recv = grid.get_tmp_2d_g();
+
+    const bool use_gpu = true;
+
+    Boundary_cyclic_kernels::cyclic_kernel<unsigned int, use_gpu>(
+            data,
+            reinterpret_cast<unsigned int*>(buffer_send),
+            reinterpret_cast<unsigned int*>(buffer_recv),
+            Edge::Both_edges,
+            gd.istart, gd.iend, gd.jstart, gd.jend,
+            gd.icells, gd.jcells, 1,
+            gd.icells, gd.ijcells,
+            md);
+
+    grid.release_tmp_2d_g(buffer_send);
+    grid.release_tmp_2d_g(buffer_recv);
 }
 
 

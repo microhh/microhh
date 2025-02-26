@@ -50,8 +50,8 @@ class Boundary_cyclic
         void exec_g(TF*);   // Fills the ghost cells in the periodic directions.
         void exec_2d_g(TF*); // Fills the ghost cells of one slice in the periodic directions.
 
-        void exec_g(unsigned int*);   // Fills the ghost cells in the periodic directions.
-        void exec_2d_g(unsigned int*); // Fills the ghost cells of one slice in the periodic directions.
+        void exec_g(unsigned int* const restrict);   // Fills the ghost cells in the periodic directions.
+        void exec_2d_g(unsigned int* const restrict); // Fills the ghost cells of one slice in the periodic directions.
 
     private:
         Master& master; // Reference to master class.
