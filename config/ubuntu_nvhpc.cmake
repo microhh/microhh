@@ -15,13 +15,13 @@ endif()
 if(USECUDA)
     set(USER_CXX_FLAGS "-acc -cuda -gpu=cc86")
     set(USER_CXX_FLAGS_RELEASE "-O3")
-    set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+    set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall")
 
     add_definitions(-DRESTRICTKEYWORD=__restrict__)
 else()
     set(USER_CXX_FLAGS "")
     set(USER_CXX_FLAGS_RELEASE "-O3")
-    set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+    set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall")
 
     set(USER_FC_FLAGS "-fPIC")
     set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3")
@@ -30,7 +30,7 @@ else()
 endif()
 
 
-set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall")
 
 set(NETCDF_LIB_C "netcdf")
 set(FFTW_LIB "fftw3")
