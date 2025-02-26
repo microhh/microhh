@@ -1209,6 +1209,32 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(
     cuda_check_error();
 }
 
+#ifdef USECUDA
+template<typename TF>
+void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+{
+
+    if (mask_name == "ql")
+    {
+        auto ql = fields.get_tmp_g();
+        auto qlh = fields.get_tmp_g();
+
+        get_thermo_field_g(*ql, "ql", true);
+        get_thermo_field_g(*qlh, "ql_h", true);
+
+        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp_g(ql);
+        fields.release_tmp_g(qlh);
+    }
+    else
+    {
+        std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
+        throw std::runtime_error(message);
+    }
+}
+#endif
+
 template<typename TF>
 void Thermo_moist<TF>::exec_column(Column<TF>& column)
 {

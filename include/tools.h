@@ -47,6 +47,15 @@ namespace Tools_g
     void set_to_val(TF* __restrict__, int, TF);
     template<typename TF> __global__
     void mult_by_val(TF* __restrict__, int, TF);
+    template<typename TF> __global__
+    void mult_by_arr(TF* __restrict__, int, const TF* const __restrict__ );
+    template<typename TF> __global__
+    void add_val(TF* __restrict__ , const TF* const __restrict__ , int , TF);
+    template<typename TF> __global__
+    void raise_to_pow(TF* __restrict__ , const int, const int);
+    template<typename TF> __global__
+    void interpolate_2nd_g(TF*const  __restrict__, const TF* const __restrict__, const int, const int, const int, const int, const int, const int , const int, const int, const int, const int, const int);
+
 
     struct cuda_exception : public std::exception
     {

@@ -27,10 +27,8 @@
 #include <mpi.h>
 #endif
 
-
 class Master;
 template<typename> class Grid;
-
 
 enum class Edge {East_west_edge, North_south_edge, Both_edges};
 
@@ -42,6 +40,7 @@ class Boundary_cyclic
         Boundary_cyclic(Master&, Grid<TF>&); // Constuctor of the boundary class.
         ~Boundary_cyclic();                  // Destructor of the boundary class.
 
+        void init();   // Initialize the fields.
         void exec(TF* const restrict, Edge=Edge::Both_edges); // Fills the ghost cells in the periodic directions.
         void exec_2d(TF* const restrict); // Fills the ghost cells of one slice in the periodic direction.
 
@@ -51,6 +50,8 @@ class Boundary_cyclic
         void exec_g(TF*);   // Fills the ghost cells in the periodic directions.
         void exec_2d_g(TF*); // Fills the ghost cells of one slice in the periodic directions.
 
+        void exec_g(unsigned int*);   // Fills the ghost cells in the periodic directions.
+        void exec_2d_g(unsigned int*); // Fills the ghost cells of one slice in the periodic directions.
 
     private:
         Master& master; // Reference to master class.

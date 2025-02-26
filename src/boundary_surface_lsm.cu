@@ -89,12 +89,10 @@ void Boundary_surface_lsm<TF>::exec(
     dim3 block_gpu_2d_gc(blocki, blockj, 1);
 
     // Calculate filtered wind speed difference surface-atmosphere.
-    auto tmp1 = fields.get_tmp_g();
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* du_tot = tmp1->fld_bot_g;
 
+    auto du_tot = fields.get_tmp_xy_g();
     bsk::calc_dutot_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-        du_tot,
+        du_tot->data(),
         fields.mp.at("u")->fld_g,
         fields.mp.at("v")->fld_g,
         fields.mp.at("u")->fld_bot_g,
@@ -103,7 +101,7 @@ void Boundary_surface_lsm<TF>::exec(
         gd.jstart, gd.jend,
         gd.kstart,
         gd.icells, gd.ijcells);
-    boundary_cyclic.exec_2d_g(du_tot);
+    boundary_cyclic.exec_2d_g(du_tot->data());
     cuda_check_error();
 
     //
@@ -117,14 +115,20 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Get (near-) surface thermo.
     // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* T_bot = tmp1->flux_bot_g;
-    TF* T_a = tmp1->grad_bot_g;
-    TF* vpd = tmp1->fld_top_g;
-    TF* qsat_bot = tmp1->flux_top_g;
-    TF* dqsatdT_bot = tmp1->grad_top_g;
+    auto T_bot = fields.get_tmp_xy_g();
+    auto T_a = fields.get_tmp_xy_g();
+    auto vpd = fields.get_tmp_xy_g();
+    auto qsat_bot = fields.get_tmp_xy_g();
+    auto dqsatdT_bot = fields.get_tmp_xy_g();
 
     thermo.get_land_surface_fields_g(
-        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot);
+        T_bot->data(), T_a->data(), vpd->data(), qsat_bot->data(), dqsatdT_bot->data());
+
+    fields.release_tmp_xy_g(T_bot);
+    fields.release_tmp_xy_g(T_a);
+    fields.release_tmp_xy_g(vpd);
+    fields.release_tmp_xy_g(qsat_bot);
+    fields.release_tmp_xy_g(dqsatdT_bot);
 
     // Get (near-) surface buoyancy.
     auto buoy = fields.get_tmp_g();
@@ -138,17 +142,15 @@ void Boundary_surface_lsm<TF>::exec(
     TF* prefh   = thermo.get_basestate_fld_g("prefh");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
-    auto tmp2 = fields.get_tmp_g();
-    TF* rain_rate = tmp2->fld_bot_g;
-    microphys.get_surface_rain_rate_g(rain_rate);
+    auto rain_rate = fields.get_tmp_xy_g();
+    microphys.get_surface_rain_rate_g(rain_rate->data());
 
     // XY tmp fields for intermediate calculations
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* f1  = tmp2->flux_bot_g;
-    TF* f2  = tmp2->grad_bot_g;
-    TF* f2b = tmp2->fld_top_g;
-    TF* f3  = tmp2->flux_top_g;
-    TF* theta_mean_n = tmp2->grad_top_g;
+    auto f1 = fields.get_tmp_xy_g();
+    auto f2 = fields.get_tmp_xy_g();
+    auto f2b = fields.get_tmp_xy_g();
+    auto f3 = fields.get_tmp_xy_g();
+    auto theta_mean_n = fields.get_tmp_xy_g();
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -172,7 +174,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate root fraction weighted mean soil water content
     sk::calc_root_weighted_mean_theta_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            theta_mean_n,
+            theta_mean_n->data(),
             fields.sps.at("theta")->fld_g,
             soil_index_g,
             root_fraction_g,
@@ -186,10 +188,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate vegetation/soil resistance functions `f`.
     lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            f1, f2, f2b, f3,
+            f1->data(), f2->data(), f2b->data(), f3->data(),
             sw_dn,
             fields.sps.at("theta")->fld_g,
-            theta_mean_n, vpd,
+            theta_mean_n->data(), vpd->data(),
             gD_coeff_g,
             c_veg_g,
             theta_wp_g,
@@ -206,7 +208,7 @@ void Boundary_surface_lsm<TF>::exec(
     lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("veg").rs_g,
             rs_veg_min_g, lai_g,
-            f1, f2, f3,
+            f1->data(), f2->data(), f3->data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
@@ -214,7 +216,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     lsmk::calc_soil_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("soil").rs_g,
-            rs_soil_min_g, f2b,
+            rs_soil_min_g, f2b->data(),
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.icells);
@@ -243,7 +245,7 @@ void Boundary_surface_lsm<TF>::exec(
                     tile.second.bfluxbot_g,
                     tile.second.ra_g,
                     tile.second.nobuk_g,
-                    du_tot,
+                    du_tot->data(),
                     buoy->fld_g,
                     buoy->fld_bot_g,
                     z0m_g, z0h_g,
@@ -263,7 +265,7 @@ void Boundary_surface_lsm<TF>::exec(
                     tile.second.bfluxbot_g,
                     tile.second.ra_g,
                     tile.second.nobuk_g,
-                    du_tot,
+                    du_tot->data(),
                     buoy->fld_g,
                     buoy->fld_bot_g,
                     z0m_g, z0h_g,
@@ -292,10 +294,10 @@ void Boundary_surface_lsm<TF>::exec(
                 tile.second.S_g,
                 tile.second.thl_bot_g,
                 tile.second.qt_bot_g,
-                T_a,
+                T_a->data(),
                 fields.sp.at("qt")->fld_g,
                 fields.sps.at("t")->fld_g,
-                qsat_bot, dqsatdT_bot,
+                qsat_bot->data(), dqsatdT_bot->data(),
                 tile.second.ra_g,
                 tile.second.rs_g,
                 lambda_stable_g,
@@ -494,7 +496,7 @@ void Boundary_surface_lsm<TF>::exec(
             tiles.at("veg").fraction_g,
             tiles.at("soil").fraction_g,
             tiles.at("wet").fraction_g,
-            rain_rate,
+            rain_rate->data(),
             c_veg_g,
             lai_g, subdt,
             gd.istart, gd.iend,
@@ -503,7 +505,12 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     fields.release_tmp_g(buoy);
-    fields.release_tmp_g(tmp2);
+    fields.release_tmp_xy_g(f1);
+    fields.release_tmp_xy_g(f2);
+    fields.release_tmp_xy_g(f2b);
+    fields.release_tmp_xy_g(f3);
+    fields.release_tmp_xy_g(theta_mean_n);
+    fields.release_tmp_xy_g(rain_rate);
 
     if (sw_homogenize_sfc)
     {
@@ -574,12 +581,13 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Set flux boundary conditions at top and bottom of soil column
     // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
-    get_tiled_mean_g(tmp1->fld_bot_g, "G", TF(1));
+    auto soil_G = fields.get_tmp_xy_g();
+    get_tiled_mean_g(soil_G->data(), "G", TF(1));
 
     sk::set_bcs_temperature_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             fields.sps.at("t")->flux_top_g,
             fields.sps.at("t")->flux_bot_g,
-            tmp1->fld_bot_g,
+            soil_G->data(),
             rho_C_g,
             soil_index_g,
             gd.istart, gd.iend,
@@ -587,6 +595,7 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
+    fields.release_tmp_xy_g(soil_G);
 
     // Calculate diffusive tendency
     sk::diff_explicit_g<TF, sw_source_term_t, sw_conductivity_term_t><<<grid_gpu_3d, block_gpu_3d>>>(
@@ -686,9 +695,11 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
+    auto tmp_xy = fields.get_tmp_xy_g();
+    auto LE_scale = fields.get_tmp_xy_g();
     // Calculate root water extraction
     lsmk::scale_tile_with_fraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-            tmp1->fld_bot_g.view(),
+            LE_scale->data(),
             tiles.at("veg").LE_g,
             tiles.at("veg").fraction_g,
             gd.istart, gd.iend,
@@ -698,16 +709,18 @@ void Boundary_surface_lsm<TF>::exec(
 
     sk::calc_root_water_extraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             source_g,
-            tmp1->fld_top_g.view(),
+            tmp_xy->view(),
             fields.sps.at("theta")->fld_g,
             root_fraction_g,
-            tmp1->fld_bot_g,
+            LE_scale->data(),
             sgd.dzi_g,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
     cuda_check_error();
+    fields.release_tmp_xy_g(LE_scale);
+    fields.release_tmp_xy_g(tmp_xy);
 
     // Calculate diffusive tendency
     sk::diff_explicit_g<TF, sw_source_term_theta, sw_conductivity_term_theta><<<grid_gpu_3d, block_gpu_3d>>>(
@@ -724,7 +737,8 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    fields.release_tmp_g(tmp1);
+
+    fields.release_tmp_xy_g(du_tot);
 }
 
 template<typename TF>
@@ -732,23 +746,23 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
 
-    auto tmp = fields.get_tmp_g();
+    auto tmp = fields.get_tmp_xy_g();
 
     column.calc_time_series("obuk", obuk_g, no_offset);
     column.calc_time_series("ustar", ustar_g, no_offset);
     column.calc_time_series("wl", fields.ap2d.at("wl")->fld_g, no_offset);
 
-    get_tiled_mean_g(tmp->fld_bot_g, "H", TF(1));
-    column.calc_time_series("H", tmp->fld_bot_g, no_offset);
+    get_tiled_mean_g(tmp->data(), "H", TF(1));
+    column.calc_time_series("H", tmp->data(), no_offset);
 
-    get_tiled_mean_g(tmp->fld_bot_g, "LE", TF(1));
-    column.calc_time_series("LE", tmp->fld_bot_g, no_offset);
+    get_tiled_mean_g(tmp->data(), "LE", TF(1));
+    column.calc_time_series("LE", tmp->data(), no_offset);
 
-    get_tiled_mean_g(tmp->fld_bot_g, "G", TF(1));
-    column.calc_time_series("G", tmp->fld_bot_g, no_offset);
+    get_tiled_mean_g(tmp->data(), "G", TF(1));
+    column.calc_time_series("G", tmp->data(), no_offset);
 
-    get_tiled_mean_g(tmp->fld_bot_g, "S", TF(1));
-    column.calc_time_series("S", tmp->fld_bot_g, no_offset);
+    get_tiled_mean_g(tmp->data(), "S", TF(1));
+    column.calc_time_series("S", tmp->data(), no_offset);
 
     if (sw_tile_stats_col)
         for (auto& tile : tiles)
@@ -770,7 +784,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
             column.calc_time_series("S_"+tile.first, tile.second.S_g, no_offset);
         }
 
-    fields.release_tmp_g(tmp);
+    fields.release_tmp_xy_g(tmp);
 }
 
 template<typename TF>

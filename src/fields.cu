@@ -33,6 +33,7 @@
 #include "column.h"
 #include "constants.h"
 #include "tools.h"
+#include "stats.h"
 #include "fast_math.h"
 #include "soil_field3d.h"
 
@@ -269,6 +270,67 @@ void Fields<TF>::exec()
     }
 }
 #endif
+#ifdef USECUDA
+template<typename TF>
+void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+
+    // We don't have to do anything for the default mask
+    if (mask_name == "default")
+        return;
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kmax-1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    // User XY masks
+    if (xymasks.find(mask_name) != xymasks.end())
+    {
+        // auto mask  = get_tmp_g();
+        // auto maskh = get_tmp_g();
+
+        // std::fill(mask->fld_g.begin(), mask->fld_g.end(), TF(0));
+        // std::fill(maskh->fld_g.begin(), maskh->fld_g.end(), TF(0));
+
+        // set_xy_mask_g(
+        //         mask->fld_g.data(),
+        //         maskh->fld_g.data(),
+        //         maskh->fld_g_bot.data(),
+        //         xymasks.at(mask_name).data(),
+        //         gd.istart, gd.iend,
+        //         gd.jstart, gd.jend,
+        //         gd.kstart, gd.kend,
+        //         gd.icells, gd.ijcells);
+
+        // const TF threshold = TF(0.5);
+        // stats.set_mask_thres_g(mask_name, *mask, *maskh, threshold, Stats_mask_type::Plus);
+
+        // release_tmp_g(mask);
+        // release_tmp_g(maskh);
+    }
+    else
+    {
+        // Interpolate w to full level:
+        auto wf = get_tmp_g();
+        interpolate_2nd_g<<<gridGPU, blockGPU>>>(wf->fld_g.data(), mp.at("w")->fld_g.data(), gd.wloc[0] - gd.sloc[0], gd.wloc[1] - gd.sloc[1], gd.wloc[2] - gd.sloc[2], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        // Calculate masks
+        const TF threshold = 0;
+        if (mask_name == "wplus")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
+        else if (mask_name == "wmin")
+            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+
+        release_tmp_g(wf);
+    }
+}
+#endif
 
 #ifdef USECUDA
 template<typename TF>
@@ -312,6 +374,51 @@ void Fields<TF>::release_tmp_g(std::shared_ptr<Field3d<TF>>& tmp)
     {
         cudaDeviceSynchronize();
         atmp_g.push_back(std::move(tmp));
+    }
+}
+#endif
+
+#ifdef USECUDA
+template<typename TF>
+std::shared_ptr<cuda_vector<TF>> Fields<TF>::get_tmp_xy_g()
+{
+    auto& gd = grid.get_grid_data();
+    std::shared_ptr<cuda_vector<TF>> tmp;
+
+    cudaDeviceSynchronize();
+
+    // In case of insufficient tmp fields, allocate a new one.
+    if (atmp_xy_g.empty())
+    {
+        static int ntmp_xy = 0;
+        ++ntmp_xy;
+        std::string fldname = "tmp_xy" + std::to_string(ntmp_xy);
+        std::string message = "Allocating temporary XY field: " + fldname;
+        master.print_message(message);
+
+        atmp_xy_g.push_back(std::make_shared<cuda_vector<TF>>(gd.ijcells));
+        tmp = atmp_xy_g.back();
+    }
+    else
+        tmp = atmp_xy_g.back();
+
+    atmp_xy_g.pop_back();
+
+    // Assign to a huge negative number in case of debug mode.
+    #ifdef __CUDACC_DEBUG__
+    set_to_val_g(tmp.get(), TF(-1e30), gd.ncells);
+    #endif
+
+    return tmp;
+}
+
+template<typename TF>
+void Fields<TF>::release_tmp_xy_g(std::shared_ptr<cuda_vector<TF>>& tmp)
+{
+    #pragma omp critical
+    {
+        cudaDeviceSynchronize();
+        atmp_xy_g.push_back(std::move(tmp));
     }
 }
 #endif

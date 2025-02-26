@@ -461,10 +461,10 @@ void Model<TF>::exec()
                         #ifdef USECUDA
                         #pragma omp taskwait
                         cpu_up_to_date = true;
-                        fields   ->backward_device();
-                        boundary ->backward_device(*thermo);
-                        thermo   ->backward_device();
-                        microphys->backward_device();
+                        // fields   ->backward_device();
+                        // boundary ->backward_device(*thermo);
+                        // thermo   ->backward_device();
+                        // microphys->backward_device();
                         #endif
 
                         radiation->exec_all_stats(
@@ -642,37 +642,37 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
-        grid     ->exec_stats(*stats);
+        // grid     ->exec_stats(*stats);
         fields   ->exec_stats(*stats);
-        thermo   ->exec_stats(*stats);
-        background ->exec_stats(*stats);
-        microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats, *thermo);
-        budget   ->exec_stats(*stats);
-        boundary ->exec_stats(*stats);
+        // thermo   ->exec_stats(*stats);
+        // background ->exec_stats(*stats);
+        // microphys->exec_stats(*stats, *thermo, dt);
+        // diff     ->exec_stats(*stats, *thermo);
+        // budget   ->exec_stats(*stats);
+        // boundary ->exec_stats(*stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
-    if (cross->do_cross(itime))
-    {
-        master.print_message("Saving cross-sections for time %f\n", time);
+    // if (cross->do_cross(itime))
+    // {
+    //     master.print_message("Saving cross-sections for time %f\n", time);
 
-        fields   ->exec_cross(*cross, iotime);
-        thermo   ->exec_cross(*cross, iotime);
-        microphys->exec_cross(*cross, iotime);
-        ib       ->exec_cross(*cross, iotime);
-        boundary ->exec_cross(*cross, iotime);
-    }
+    //     fields   ->exec_cross(*cross, iotime);
+    //     thermo   ->exec_cross(*cross, iotime);
+    //     microphys->exec_cross(*cross, iotime);
+    //     ib       ->exec_cross(*cross, iotime);
+    //     boundary ->exec_cross(*cross, iotime);
+    // }
 
-    // Save the 3d dumps to disk.
-    if (dump->do_dump(itime, idt))
-    {
-        master.print_message("Saving field dumps for time %f\n", time);
+    // // Save the 3d dumps to disk.
+    // if (dump->do_dump(itime, idt))
+    // {
+    //     master.print_message("Saving field dumps for time %f\n", time);
 
-        fields   ->exec_dump(*dump, iotime);
-        thermo   ->exec_dump(*dump, iotime);
-        microphys->exec_dump(*dump, iotime);
-    }
+    //     fields   ->exec_dump(*dump, iotime);
+    //     thermo   ->exec_dump(*dump, iotime);
+    //     microphys->exec_dump(*dump, iotime);
+    // }
 
     if (stats->do_statistics(itime))
     {
@@ -703,7 +703,6 @@ void Model<TF>::setup_stats()
 
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
-
         stats->initialize_masks();
         for (auto& mask_name : mask_list)
         {
@@ -794,7 +793,6 @@ template<typename TF>
 void Model<TF>::add_statistics_masks()
 {
     const std::vector<std::string>& mask_list = stats->get_mask_list();
-
     // Check whether the mask can be retrieved from any of the mask-providing classes
     for (auto& mask_name : mask_list)
     {

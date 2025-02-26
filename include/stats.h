@@ -25,6 +25,7 @@
 
 #include <regex>
 #include "boundary_cyclic.h"
+#include "field3d_operators.h"
 
 class Master;
 class Input;
@@ -186,6 +187,7 @@ class Stats
         Advec<TF>& advec;
         Diff<TF>& diff;
         Boundary_cyclic<TF> boundary_cyclic;
+        Field3d_operators<TF> field3d_operators;
 
         bool swstats;           ///< Statistics on/off switch
         bool swtendency;
@@ -195,7 +197,7 @@ class Stats
         std::vector<std::string> varlist;
         std::vector<std::string> varlist_soil;
         std::vector<std::string> varlist_background;
-        
+
         void add_operation(std::vector<std::string>&, const std::string&, const std::string&);
         void sanitize_operations_vector(const std::string&, std::vector<std::string>&);
         bool is_blacklisted(const std::string&, Stats_whitelist_type = Stats_whitelist_type::Default);
@@ -209,6 +211,8 @@ class Stats
         std::vector<std::string> masklist;
         std::vector<unsigned int> mfield;
         std::vector<unsigned int> mfield_bot;
+        cuda_vector<unsigned int> mfield_g;
+        cuda_vector<unsigned int> mfield_bot_g;
 
         // Tendency calculations
         std::map<std::string, std::vector<std::string>> tendency_order;
