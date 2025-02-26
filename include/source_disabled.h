@@ -35,7 +35,7 @@ class Source_disabled : public Source<TF>
         ~Source_disabled();
 
         void init();
-        void create(Input&, Netcdf_handle&);
+        void create(Input&, Timeloop<TF>&, Netcdf_handle&);
         void exec();
         void update_time_dependent(Timeloop<TF>&);
 

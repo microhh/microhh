@@ -141,8 +141,6 @@ namespace Source_gaussian_kernels_g
 
         if (i < iend && j < jend && k < kend)
         {
-            const int ijk = i + j*jstride + k*kstride;
-
             if (sw_vmr)
                 // Emissions come in [kmol tracers s-1] and are added to grid boxes in [VMR s-1] unit.
                 // rhoref [kg m-3] divided by xmair [kg kmol-1] transfers to units [kmol(tracer) / kmol(air) / s].

@@ -43,6 +43,30 @@ namespace Source_3d_kernels
 
                     st_out[ijk_out] += st_in[ijk_in];
                 }
-        }
+    }
+
+
+    template<typename TF>
+    void interpolate_emission(
+            TF* const __restrict__ emission_out,
+            const TF* const __restrict__ emission_prev,
+            const TF* const __restrict__ emission_next,
+            const TF fac0,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const TF fac1 = TF(1) - fac0;
+
+        for(int k = kstart; k<kend; ++k)
+            for(int j = jstart; j<jend; ++j)
+                #pragma ivdep
+                for(int i = istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
+                    emission_out[ijk] = fac0 * emission_prev[ijk] + fac1 * emission_next[ijk];
+                }
+    }
 }
 #endif

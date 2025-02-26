@@ -43,7 +43,7 @@ class Source
         static std::shared_ptr<Source> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
 
         virtual void init() = 0;
-        virtual void create(Input&, Netcdf_handle&) = 0;
+        virtual void create(Input&, Timeloop<TF>&, Netcdf_handle&) = 0;
         virtual void exec() = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
 

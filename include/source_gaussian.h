@@ -37,7 +37,7 @@ class Source_gaussian : public Source<TF>
         ~Source_gaussian();
 
         void init();
-        void create(Input&, Netcdf_handle&);
+        void create(Input&, Timeloop<TF>&, Netcdf_handle&);
         void exec();
         void update_time_dependent(Timeloop<TF>&);
 

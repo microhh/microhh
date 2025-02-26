@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "master.h"
 #include "netcdf_interface.h"
+#include "timeloop.h"
 
 #include "source.h"
 #include "source_3d.h"
@@ -40,7 +41,13 @@ Source_3d<TF>::Source_3d(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
 {
     sourcelist = inputin.get_list<std::string>("source", "sourcelist", "");
     ktot = inputin.get_item<int>("source", "ktot", "");
-    sw_timedep = inputin.get_item<bool>("source", "sw_timedep", "", false);
+    sw_timedep = inputin.get_item<bool>("source", "swtimedep", "", false);
+
+    if (sw_timedep)
+    {
+        const int loadtime = inputin.get_item<int>("source", "loadtime", "");
+        iloadfreq = convert_to_itime(loadtime);
+    }
 }
 
 
@@ -58,9 +65,121 @@ void Source_3d<TF>::init()
     // Size without vertical ghost cells.
     const int size = gd.ijcells * this->ktot;
 
+    if (sw_timedep)
+    {
+        for (auto& specie : sourcelist)
+        {
+            emission_prev.emplace(specie, std::vector<TF>(size));
+            emission_next.emplace(specie, std::vector<TF>(size));
+        }
+    }
+
     for (auto& specie : sourcelist)
         emission.emplace(specie, std::vector<TF>(size));
 }
+
+
+template<typename TF>
+void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& input_nc)
+{
+    const int itime = 0;
+
+    if (sw_timedep)
+    {
+        // Read emissions around current time, for interpolation.
+        const unsigned long itime = timeloop.get_itime();
+        const unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+
+        // Previous and next load times.
+        iloadtime_prev = itime/iloadfreq * iloadfreq;
+        iloadtime_next = iloadtime_prev + iloadfreq;
+
+        // IO time accounting for iotimeprec.
+        const unsigned long iotime_prev = int(iloadtime_prev / iiotimeprec);
+        const unsigned long iotime_next = int(iloadtime_next / iiotimeprec);
+
+        // Read previous and next emissions.
+        for (auto& specie : sourcelist)
+        {
+            load_emission(emission_prev.at(specie), specie, iotime_prev);
+            load_emission(emission_next.at(specie), specie, iotime_next);
+        }
+    }
+    else
+    {
+        // Read emissions which are constant in time.
+        for (auto& specie : sourcelist)
+            load_emission(emission.at(specie), specie, itime);
+    }
+}
+
+
+#ifndef USECUDA
+template<typename TF>
+void Source_3d<TF>::exec()
+{
+    auto& gd = grid.get_grid_data();
+
+    // Add emission to scalar tendencies.
+    for (auto& specie : sourcelist)
+        s3k::add_source_tend(
+            fields.st.at(specie)->fld.data(),
+            emission.at(specie).data(),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kstart + this->ktot,
+            gd.icells, gd.ijcells);
+}
+
+
+template<typename TF>
+void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
+{
+    if (!sw_timedep)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    unsigned long itime = timeloop.get_itime();
+
+    if (itime > iloadtime_next)
+    {
+        // Update two time states in memory.
+        iloadtime_prev = iloadtime_next;
+        iloadtime_next = iloadtime_prev + iloadfreq;
+
+        unsigned long iiotimeprec = timeloop.get_iiotimeprec();
+        const unsigned long iotime_next = int(iloadtime_next / iiotimeprec);
+
+        // Swap next -> prev field, and read new time.
+        for (auto& specie : sourcelist)
+        {
+            emission_prev.at(specie) = emission_next.at(specie);
+            load_emission(emission_next.at(specie), specie, iotime_next);
+        }
+    }
+
+    // Interpolate emissions in time.
+    const TF fac1 = TF(itime - iloadtime_prev) / TF(iloadtime_next - iloadtime_prev);
+    const TF fac0 = TF(1) - fac1;
+
+    // Emission fields don't have ghost cells.
+    const int kstart = 0;
+    const int kend = this->ktot;
+
+    // Interpolate emissions linearly in time.
+    for (auto& specie : sourcelist)
+        s3k::interpolate_emission(
+            emission.at(specie).data(),
+            emission_prev.at(specie).data(),
+            emission_next.at(specie).data(),
+            fac0,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            kstart, kend,
+            gd.icells, gd.ijcells);
+}
+#endif
 
 
 template<typename TF>
@@ -102,44 +221,6 @@ void Source_3d<TF>::load_emission(std::vector<TF>& fld, const std::string& name,
     fields.release_tmp(tmp1);
     fields.release_tmp(tmp2);
 }
-
-
-template<typename TF>
-void Source_3d<TF>::create(Input& input, Netcdf_handle& input_nc)
-{
-    const int itime = 0;
-
-    for (auto& specie : sourcelist)
-        load_emission(emission.at(specie), specie, itime);
-}
-
-
-#ifndef USECUDA
-template<typename TF>
-void Source_3d<TF>::exec()
-{
-    auto& gd = grid.get_grid_data();
-
-    for (auto& specie : sourcelist)
-        s3k::add_source_tend(
-            fields.st.at(specie)->fld.data(),
-            emission.at(specie).data(),
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kstart + this->ktot,
-            gd.icells, gd.ijcells);
-}
-
-
-template<typename TF>
-void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
-{
-    if (!sw_timedep)
-        return;
-
-    throw std::runtime_error("Time dependent 3D emissions not (yet) implemented.");
-}
-#endif
 
 
 #ifdef FLOAT_SINGLE

@@ -45,7 +45,7 @@ void Source_disabled<TF>::init()
 }
 
 template<typename TF>
-void Source_disabled<TF>::create(Input& input, Netcdf_handle& nc_in)
+void Source_disabled<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& nc_in)
 {
 }
 

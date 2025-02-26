@@ -38,7 +38,7 @@ class Source_3d : public Source<TF>
         ~Source_3d();
 
         void init();
-        void create(Input&, Netcdf_handle&);
+        void create(Input&, Timeloop<TF>&, Netcdf_handle&);
         void exec();
         void update_time_dependent(Timeloop<TF>&);
 
@@ -55,6 +55,14 @@ class Source_3d : public Source<TF>
 
         std::vector<std::string> sourcelist;
         std::map<std::string, std::vector<TF>> emission;
+
+        // For time varying emissions.
+        unsigned long iloadfreq;
+        unsigned long iloadtime_prev;
+        unsigned long iloadtime_next;
+
+        std::map<std::string, std::vector<TF>> emission_prev;
+        std::map<std::string, std::vector<TF>> emission_next;
 
         bool sw_timedep;    // Switch for time dependent 3D input.
         int ktot;           // Number of vertical levels with emissions.

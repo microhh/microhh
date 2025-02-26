@@ -265,7 +265,7 @@ void Model<TF>::load()
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
-    source->create(*input, *input_nc);
+    source->create(*input, *timeloop, *input_nc);
     particle_bin->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
