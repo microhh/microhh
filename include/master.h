@@ -74,17 +74,17 @@ class Master
         void broadcast(unsigned long*, int, int mpiid_to_send=0);
 
         // Overload the sum function.
-        void sum(int*, int);
-        void sum(double*, int);
-        void sum(float*, int);
+        void sum(int*, int) const;
+        void sum(double*, int) const;
+        void sum(float*, int) const;
 
         // Overload the max function.
-        void max(double*, int);
-        void max(float*, int);
+        void max(double*, int) const;
+        void max(float*, int) const;
 
         // Overload the min function.
-        void min(double*, int);
-        void min(float*, int);
+        void min(double*, int) const;
+        void min(float*, int) const;
 
         void print_message(const char *format, ...);
         void print_message(const std::ostringstream&);

@@ -230,37 +230,37 @@ void Master::broadcast(float* data, int datasize, int mpiid_to_send)
     MPI_Bcast(data, datasize, MPI_FLOAT, mpiid_to_send, md.commxy);
 }
 
-void Master::sum(int* var, int datasize)
+void Master::sum(int* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, md.commxy);
 }
 
-void Master::sum(double* var, int datasize)
+void Master::sum(double* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, md.commxy);
 }
 
-void Master::sum(float* var, int datasize)
+void Master::sum(float* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_SUM, md.commxy);
 }
 
-void Master::max(double* var, int datasize)
+void Master::max(double* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MAX, md.commxy);
 }
 
-void Master::max(float* var, int datasize)
+void Master::max(float* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_MAX, md.commxy);
 }
 
-void Master::min(double* var, int datasize)
+void Master::min(double* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, md.commxy);
 }
 
-void Master::min(float* var, int datasize)
+void Master::min(float* var, int datasize) const
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_MIN, md.commxy);
 }

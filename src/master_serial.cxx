@@ -95,11 +95,11 @@ void Master::broadcast(int* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(unsigned long* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(double* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(float* data, int datasize, int mpiid_to_send) {}
-void Master::sum(int* var, int datasize) {}
-void Master::sum(double* var, int datasize) {}
-void Master::sum(float* var, int datasize) {}
-void Master::max(double* var, int datasize) {}
-void Master::max(float* var, int datasize) {}
-void Master::min(double* var, int datasize) {}
-void Master::min(float* var, int datasize) {}
+void Master::sum(int* var, int datasize) const {}
+void Master::sum(double* var, int datasize) const {}
+void Master::sum(float* var, int datasize) const {}
+void Master::max(double* var, int datasize) const {}
+void Master::max(float* var, int datasize) const {}
+void Master::min(double* var, int datasize) const {}
+void Master::min(float* var, int datasize) const {}
 #endif
