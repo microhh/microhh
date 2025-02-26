@@ -59,7 +59,7 @@ void Source_3d<TF>::init()
     const int size = gd.ijcells * this->ktot;
 
     for (auto& specie : sourcelist)
-        emission[specie] = std::vector<TF>(size);
+        emission.emplace(specie, std::vector<TF>(size));
 }
 
 
@@ -106,7 +106,10 @@ void Source_3d<TF>::create(Input& input, Netcdf_handle& input_nc)
     };
 
     for (auto& specie : sourcelist)
-        load_3d_field(emission[specie].data(), specie, itime);
+        load_3d_field(emission.at(specie).data(), specie, itime);
+
+    if (nerror > 0)
+        throw std::runtime_error("Error loading emissions.");
 }
 
 

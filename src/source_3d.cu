@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+
 #include "tools.h"
 #include "grid.h"
 #include "fields.h"
@@ -74,9 +76,10 @@ void Source_3d<TF>::prepare_device()
     const int ncells = gd.ijcells * this->ktot;
     const int memsize = ncells * sizeof(TF);
 
+
     for (auto& specie : sourcelist)
     {
-        emission_g[specie] = cuda_vector<TF>(ncells);
+        emission_g.emplace(specie, cuda_vector<TF>(ncells));
         cuda_safe_call(cudaMemcpy(emission_g.at(specie), emission.at(specie).data(), memsize, cudaMemcpyHostToDevice));
     }
 }

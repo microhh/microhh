@@ -32,7 +32,7 @@ dy = ysize / jtot
 
 # Use `s2`, which used period BCs, so no mass is lost.
 scalars = ini['source']['sourcelist']
-strength = np.array(ini['source']['strength'])
+strength = np.array([1,1])#np.array(ini['source']['strength'])
 
 for time in range(0, ini['time']['endtime']+1, ini['time']['savetime']):
     correct_mass = strength * time
