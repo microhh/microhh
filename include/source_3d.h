@@ -69,6 +69,8 @@ class Source_3d : public Source<TF>
 
         #ifdef USECUDA
         std::map<std::string, cuda_vector<TF>> emission_g;
+        std::map<std::string, cuda_vector<TF>> emission_prev_g;
+        std::map<std::string, cuda_vector<TF>> emission_next_g;
         #endif
 };
 #endif

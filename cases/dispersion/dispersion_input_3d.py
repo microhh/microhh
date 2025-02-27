@@ -16,7 +16,7 @@ Settings
 TF = np.float32
 scalars = ['s1', 's2']       # All scalars.
 scalars_outflow = ['s1']     # Scalars with non-periodic lateral BCs.
-swtimedep_emission = True    # Time dependent emissions.
+swtimedep_emission = False    # Time dependent emissions.
 
 xsize = 6400
 ysize = 4800
