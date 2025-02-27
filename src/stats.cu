@@ -45,8 +45,11 @@
 #include "netcdf_interface.h"
 #include "stats_functions.h"
 #include "tools.h"
+#include "grid_kernels.h"
+
 
 using namespace Stats_functions;
+
 
 #ifdef USECUDA
 template<typename TF>
@@ -183,7 +186,8 @@ void Stats<TF>::calc_stats_moments(
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
-                for (int k = gd.kstart; k < gd.kend; ++k)
+
+                for (int k = gd.kstart; k < gd.kend+1; ++k)
                 {
                     int kk = k * gd.ijcells;
                     add_val<<<gd.ijcells, nblock>>>(&(dev->fld_g[kk]),&(fld.fld_g[kk]), gd.ijcells, - m.second.profs.at(varname).data[k] + offset);
@@ -329,6 +333,7 @@ void Stats<TF>::initialize_masks()
     set_to_val<<<ngrid, nblock>>>(mfield_bot_g.data(), gd.ijcells, flagmax);
 }
 
+
 template<typename TF>
 void Stats<TF>::finalize_masks()
 {
@@ -337,8 +342,8 @@ void Stats<TF>::finalize_masks()
 
     const int blocki = gd.ithread_block;
     const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int gridi = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
 
     dim3 gridGPU3(gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
@@ -350,48 +355,76 @@ void Stats<TF>::finalize_masks()
     auto ones = fields.get_tmp_g();
     const int nmemsize = gd.kcells*sizeof(int);
 
-    std::vector<TF> nmask_TF;
-    nmask_TF.resize(gd.kcells);
+    std::vector<TF> nmask_TF(gd.kcells);
 
     set_to_val_g<TF><<<gridGPU3, blockGPU>>>(
                 ones->fld_g, TF(1.0),
                 gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
     for (auto& it : masks)
     {
         unsigned int flag = it.second.flag;
         unsigned int flagh = it.second.flagh;
 
-        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  ones->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
-        field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
+        // Mask at the full level.
+        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
-        cuda_safe_call(cudaMemcpy(nmask_TF.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
-        for (int k = 0; k < gd.kcells; ++k)
-            it.second.nmask[k] = (int)( gd.imax * gd.jmax )*nmask_TF[k];
+        Grid_kernels::calc_mean_prof_kernel(
+                masked->fld_mean_g.data(),
+                masked->fld_g.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                0, gd.kcells,
+                gd.icells, gd.ijcells,
+                gd.itot*gd.jtot,
+                master);
 
-        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  ones->fld_g.data(), mfield_g, flagh, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
-        field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
-        cuda_safe_call(cudaMemcpy(it.second.nmaskh.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(int), cudaMemcpyDeviceToHost));
-        for (int k = 0; k < gd.kcells; ++k)
-            it.second.nmaskh[k] = (int)( gd.imax * gd.jmax )*nmask_TF[k];
-
-        it.second.nmask_bot = it.second.nmaskh[gd.kstart];
+        cuda_safe_call(cudaMemcpy(nmask_TF.data(), masked->fld_mean_g.data(), gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost));
 
         auto it1 = std::find(varlist.begin(), varlist.end(), "area");
         if (it1 != varlist.end())
-            calc_area(it.second.profs.at("area").data.data(), gd.sloc.data(), it.second.nmask.data(),
-                    gd.kstart, gd.kend, gd.itot*gd.jtot);
+        {
+            for (int k=0; k<gd.kcells; ++k)
+                it.second.profs.at("area").data[k] = nmask_TF[k];
+        }
+
+        for (int k=0; k<gd.kcells; ++k)
+            it.second.nmask[k] = static_cast<int>(gd.itot*gd.jtot*nmask_TF[k] + 0.5);
+
+
+        // Mask at the half level.
+        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flagh, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+        Grid_kernels::calc_mean_prof_kernel(
+                masked->fld_mean_g.data(),
+                masked->fld_g.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                0, gd.kcells,
+                gd.icells, gd.ijcells,
+                gd.itot*gd.jtot,
+                master);
+
+        cuda_safe_call(cudaMemcpy(nmask_TF.data(), masked->fld_mean_g.data(), gd.kcells*sizeof(int), cudaMemcpyDeviceToHost));
 
         it1 = std::find(varlist.begin(), varlist.end(), "areah");
         if (it1 != varlist.end())
-            calc_area(it.second.profs.at("areah").data.data(), gd.wloc.data(), it.second.nmaskh.data(),
-                    gd.kstart, gd.kend, gd.itot*gd.jtot);
+        {
+            for (int k=0; k<gd.kcells; ++k)
+                it.second.profs.at("areah").data[k] = nmask_TF[k];
+        }
 
-        master.sum(it.second.profs.at("area").data.data() , gd.kcells);
-        master.sum(it.second.profs.at("areah").data.data(), gd.kcells);
+        for (int k=0; k<gd.kcells; ++k)
+            it.second.nmaskh[k] = static_cast<int>(gd.itot*gd.jtot*nmask_TF[k] + 0.5);
+
+
+        // Set the surface mask.
+        it.second.nmask_bot = it.second.nmaskh[gd.kstart];
     }
+
     fields.release_tmp_g(masked);
     fields.release_tmp_g(ones);
 }
+
 
 template<typename TF>
 void Stats<TF>::set_mask_thres(

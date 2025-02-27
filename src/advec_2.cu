@@ -30,6 +30,7 @@
 #include "stats.h"
 #include "finite_difference.h"
 #include "field3d_operators.h"
+#include "grid_kernels.h"
 
 using namespace Finite_difference::O2;
 
@@ -181,15 +182,17 @@ namespace
     }
 
     template<typename TF>__global__
-    void calc_cfl_g(TF* __restrict__ u, TF* __restrict__ v, TF* __restrict__ w,
-                    TF* __restrict__ cfl, const TF* __restrict__ dzi, TF dxi, TF dyi,
-                    int jj, int kk,
-                    int istart, int jstart, int kstart,
-                    int iend, int jend, int kend)
+    void calc_cfl_g(
+            TF* __restrict__ cfl,
+            const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
+            const TF* __restrict__ dzi, const TF dxi, const TF dyi,
+            int jj, int kk,
+            int istart, int jstart, int kstart,
+            int iend, int jend, int kend)
     {
-        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k  = blockIdx.z + kstart;
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
         const int ii = 1;
 
         if (i < iend && j < jend && k < kend)
@@ -229,25 +232,32 @@ double Advec_2<TF>::get_cfl(const double dt)
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    auto tmp1 = fields.get_tmp_g();
+    TF* cfl = grid.get_tmp_3d_g();
 
     calc_cfl_g<TF><<<gridGPU, blockGPU>>>(
-        fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
-        tmp1->fld_g, gd.dzi_g, dxi, dyi,
-        gd.icells, gd.ijcells,
-        gd.istart,  gd.jstart, gd.kstart,
-        gd.iend,    gd.jend,   gd.kend);
+            cfl,
+            fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
+            gd.dzi_g, dxi, dyi,
+            gd.icells, gd.ijcells,
+            gd.istart, gd.jstart, gd.kstart,
+            gd.iend, gd.jend, gd.kend);
     cuda_check_error();
 
-    TF cfl = field3d_operators.calc_max_g(tmp1->fld_g);
-    fields.release_tmp_g(tmp1);
+    // Use OpenACC
+    double cfl_max = Grid_kernels::calc_max_kernel(
+            cfl,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells,
+            master);
 
-    master.max(&cfl, 1);
+    grid.release_tmp_3d_g(cfl);
 
-    cfl = cfl*dt;
-
-    return static_cast<double>(cfl);
+    cfl_max *= dt;
+    return cfl_max;
 }
+
 
 template<typename TF>
 void Advec_2<TF>::exec(Stats<TF>& stats)
