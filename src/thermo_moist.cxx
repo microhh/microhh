@@ -1403,7 +1403,7 @@ void Thermo_moist<TF>::create(
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
     // Set up output classes
-    create_stats(stats);
+    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);
