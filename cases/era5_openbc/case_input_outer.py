@@ -26,17 +26,20 @@ import sys
 
 # Third-party.
 import numpy as np
+
 sys.path.append('/home/bart/meteo/models/LS2D')  # TMP
 import ls2d
 
 # Local library (puhhpy).
-import puhhpy
+from microhhpy.spatial import Vertical_grid_2nd
+from microhhpy.thermo import Basestate_moist
+from microhhpy.interpolate import interp_rect_to_curv_latlon
 
 # Local library.
 from domain_definition import domains
 
 # Set debug level puhhpy
-from puhhpy.logger import logger
+from microhhpy.logger import logger
 logger.setLevel('DEBUG')
 
 
@@ -63,7 +66,7 @@ NOTE: vertical grid definition in (LS)2D is not identical to MicroHH's grid.
 hgrid = domains[0]
 
 _g = ls2d.grid.Grid_linear_stretched(kmax=128, dz0=20, alpha=0.01)
-vgrid = puhhpy.spatial.Vertical_grid_2nd(_g.z, _g.zsize, remove_ghost=True)
+vgrid = Vertical_grid_2nd(_g.z, _g.zsize, remove_ghost=True)
 
 
 """
@@ -88,7 +91,7 @@ era_1d = era_3d.get_les_input(vgrid.z)
 """
 Calculate and save base state density.
 """
-bs = puhhpy.thermo.Basestate_moist(
+bs = Basestate_moist(
     era_1d['thl'][0,:].values,
     era_1d['qt'][0,:].values,
     era_1d['ps'][0].values,
@@ -113,7 +116,7 @@ fields = dict(
     v = era_3d.v[0,:,:,:],
     w = era_3d.wls[0,:,:,:])
 
-puhhpy.interpolate.interp_rect_to_curv_latlon(
+interp_rect_to_curv_latlon(
     hgrid.proj_pad,
     vgrid.z,
     vgrid.zh,

@@ -23,9 +23,9 @@
 # Standard library
 
 # Third-party.
+from microhhpy.spatial import Domain, plot_domains
 
 # Local library
-from puhhpy.spatial import Domain, plot_domains
 
 d0 = Domain(
      xsize=51200,
