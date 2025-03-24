@@ -45,6 +45,36 @@ namespace Source_3d_kernels
                 }
     }
 
+    template<typename TF>
+    void add_source_tend_heat(
+            TF* const __restrict__ st_out,
+            const TF* const __restrict__ Te,    // Absolute emission temperature (K).
+            const TF* const __restrict__ Qe,    // Volume flux (m3 s-1).
+            const TF* const __restrict__ T,     // Absolute temperature LES.
+            const TF* const __restrict__ dz,
+            const TF dx,
+            const TF dy,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        for(int k = kstart; k<kend; ++k)
+        {
+            const TF Vi = TF(1) / (dx * dy * dz[k]);
+
+            for(int j = jstart; j<jend; ++j)
+                #pragma ivdep
+                for(int i = istart; i<iend; ++i)
+                {
+                    const int ijk_in = i + j*jstride + (k-kstart)*kstride;
+                    const int ijk = i + j*jstride + k*kstride;
+
+                    st_out[ijk] += Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
+                }
+        }
+    }
+
 
     template<typename TF>
     void interpolate_emission(

@@ -31,6 +31,7 @@ class Netcdf_handle;
 template<typename> class Grid;
 template<typename> class Fields;
 template<typename> class Timeloop;
+template<typename> class Thermo;
 
 
 template<typename TF>
@@ -44,7 +45,7 @@ class Source
 
         virtual void init() = 0;
         virtual void create(Input&, Timeloop<TF>&, Netcdf_handle&) = 0;
-        virtual void exec() = 0;
+        virtual void exec(Thermo<TF>&) = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         #ifdef USECUDA

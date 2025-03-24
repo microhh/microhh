@@ -38,7 +38,7 @@ class Source_gaussian : public Source<TF>
 
         void init();
         void create(Input&, Timeloop<TF>&, Netcdf_handle&);
-        void exec();
+        void exec(Thermo<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
         #ifdef USECUDA

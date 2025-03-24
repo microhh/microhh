@@ -28,6 +28,7 @@
 #include "master.h"
 #include "netcdf_interface.h"
 #include "timeloop.h"
+#include "thermo.h"
 
 #include "source.h"
 #include "source_3d.h"
@@ -40,8 +41,9 @@ Source_3d<TF>::Source_3d(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
     Source<TF>(masterin, gridin, fieldsin, inputin)
 {
     sourcelist = inputin.get_list<std::string>("source", "sourcelist", "");
-    ktot = inputin.get_item<int>("source", "ktot", "");
+    ktot       = inputin.get_item<int>("source", "ktot", "");
     sw_timedep = inputin.get_item<bool>("source", "swtimedep", "", false);
+    sw_heat    = inputin.get_item<bool>("source", "swheat", "", false);
 
     if (sw_timedep)
     {
@@ -72,10 +74,22 @@ void Source_3d<TF>::init()
             emission_prev.emplace(specie, std::vector<TF>(size));
             emission_next.emplace(specie, std::vector<TF>(size));
         }
+
+        if (sw_heat)
+        {
+            emission_prev.emplace("te", std::vector<TF>(size));
+            emission_next.emplace("qe", std::vector<TF>(size));
+        }
     }
 
     for (auto& specie : sourcelist)
         emission.emplace(specie, std::vector<TF>(size));
+
+    if (sw_heat)
+    {
+        emission.emplace("te", std::vector<TF>(size));
+        emission.emplace("qe", std::vector<TF>(size));
+    }
 }
 
 
@@ -104,19 +118,34 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
             load_emission(emission_prev.at(specie), specie, iotime_prev);
             load_emission(emission_next.at(specie), specie, iotime_next);
         }
+
+        if (sw_heat)
+        {
+            load_emission(emission_prev.at("te"), "te", iotime_prev);
+            load_emission(emission_prev.at("qe"), "qe", iotime_prev);
+
+            load_emission(emission_next.at("te"), "te", iotime_next);
+            load_emission(emission_next.at("qe"), "qe", iotime_next);
+        }
     }
     else
     {
         // Read emissions which are constant in time.
         for (auto& specie : sourcelist)
             load_emission(emission.at(specie), specie, itime);
+
+        if (sw_heat)
+        {
+            load_emission(emission.at("te"), "te", itime);
+            load_emission(emission.at("qe"), "qe", itime);
+        }
     }
 }
 
 
 #ifndef USECUDA
 template<typename TF>
-void Source_3d<TF>::exec()
+void Source_3d<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -129,6 +158,35 @@ void Source_3d<TF>::exec()
             gd.jstart, gd.jend,
             gd.kstart, gd.kstart + this->ktot,
             gd.icells, gd.ijcells);
+
+    if (sw_heat)
+    {
+        auto tmp = fields.get_tmp();
+        thermo.get_thermo_field(*tmp, "T", false, false);
+
+        // YIKES^3... Create a `thermo.get_temperature_var()` function?
+        std::string th_var;
+        if (thermo.get_switch() == Thermo_type::Dry)
+            th_var = "th";
+        else if (thermo.get_switch() == Thermo_type::Moist)
+            th_var = "thl";
+        else
+            throw std::runtime_error("No temperature field found.");
+
+        s3k::add_source_tend_heat(
+            fields.st.at(th_var)->fld.data(),
+            emission.at("te").data(),
+            emission.at("qe").data(),
+            tmp->fld.data(),
+            gd.dz.data(),
+            gd.dx, gd.dy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kstart + this->ktot,
+            gd.icells, gd.ijcells);
+
+        fields.release_tmp(tmp);
+    }
 }
 
 
@@ -167,8 +225,8 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     const int kstart = 0;
     const int kend = this->ktot;
 
-    // Interpolate emissions linearly in time.
-    for (auto& specie : sourcelist)
+    auto interpolate = [&](const std::string& specie)
+    {
         s3k::interpolate_emission(
             emission.at(specie).data(),
             emission_prev.at(specie).data(),
@@ -178,6 +236,17 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             gd.jstart, gd.jend,
             kstart, kend,
             gd.icells, gd.ijcells);
+    };
+
+    // Interpolate emissions linearly in time.
+    for (auto& specie : sourcelist)
+        interpolate(specie);
+
+    if (sw_heat)
+    {
+        interpolate("te");
+        interpolate("qe");
+    }
 }
 #endif
 

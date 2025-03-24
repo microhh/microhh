@@ -39,7 +39,7 @@ class Source_3d : public Source<TF>
 
         void init();
         void create(Input&, Timeloop<TF>&, Netcdf_handle&);
-        void exec();
+        void exec(Thermo<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
         #ifdef USECUDA
@@ -65,6 +65,7 @@ class Source_3d : public Source<TF>
         std::map<std::string, std::vector<TF>> emission_next;
 
         bool sw_timedep;    // Switch for time dependent 3D input.
+        bool sw_heat;       // Switch for emission of heat, input through emission temperature and volume flux.
         int ktot;           // Number of vertical levels with emissions.
 
         #ifdef USECUDA

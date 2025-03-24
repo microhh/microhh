@@ -416,7 +416,7 @@ void Model<TF>::exec()
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
                 // Add point and line sources of scalars.
-                source->exec();
+                source->exec(*thermo);
 
                 // Gravitational settling of binned dust types.
                 particle_bin->exec(*stats);
