@@ -25,6 +25,7 @@
 #include "tools.h"
 #include "grid.h"
 #include "fields.h"
+#include "thermo.h"
 
 #include "source_3d.h"
 #include "source_3d_kernels.cuh"
@@ -34,7 +35,7 @@ namespace s3k = Source_3d_kernels_g;
 
 #ifdef USECUDA
 template<typename TF>
-void Source_3d<TF>::exec()
+void Source_3d<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
@@ -55,6 +56,35 @@ void Source_3d<TF>::exec()
             gd.kstart, gd.kstart + this->ktot,
             gd.icells, gd.ijcells);
     cuda_check_error();
+
+    if (sw_heat)
+    {
+        auto tmp = fields.get_tmp_g();
+        thermo.get_thermo_field_g(*tmp, "T", false);
+
+        // YIKES^3... Create a `thermo.get_temperature_var()` function?
+        std::string th_var;
+        if (thermo.get_switch() == Thermo_type::Dry)
+            th_var = "th";
+        else if (thermo.get_switch() == Thermo_type::Moist)
+            th_var = "thl";
+        else
+            throw std::runtime_error("No temperature field found.");
+
+        s3k::add_source_tend_heat_g<TF><<<gridGPU, blockGPU>>>(
+            fields.st.at(th_var)->fld_g,
+            emission_g.at("te"),
+            emission_g.at("qe"),
+            tmp->fld_g,
+            gd.dz_g,
+            gd.dx, gd.dy,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kstart + this->ktot,
+            gd.icells, gd.ijcells);
+
+        fields.release_tmp_g(tmp);
+    }
 }
 
 
@@ -77,8 +107,7 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         unsigned long iiotimeprec = timeloop.get_iiotimeprec();
         const unsigned long iotime_next = int(iloadtime_next / iiotimeprec);
 
-        // Swap next -> prev field, and read new time.
-        for (auto& specie : sourcelist)
+        auto swap_and_load = [&](const std::string& specie)
         {
             // Swap/update host fields.
             emission_prev.at(specie) = emission_next.at(specie);
@@ -88,6 +117,16 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             const int memsize = gd.ijcells * this->ktot * sizeof(TF);
             cuda_safe_call(cudaMemcpy(emission_prev_g.at(specie), emission_next_g.at(specie), memsize, cudaMemcpyDeviceToDevice));
             cuda_safe_call(cudaMemcpy(emission_next_g.at(specie), emission_next.at(specie).data(), memsize, cudaMemcpyHostToDevice));
+        };
+
+        // Swap next -> prev field, and read new time.
+        for (auto& specie : sourcelist)
+            swap_and_load(specie);
+
+        if (sw_heat)
+        {
+            swap_and_load("qe");
+            swap_and_load("te");
         }
     }
 
@@ -107,8 +146,8 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     dim3 gridGPU (gridi, gridj, this->ktot);
     dim3 blockGPU(blocki, blockj, 1);
 
-    // Interpolate emissions linearly in time.
-    for (auto& specie : sourcelist)
+    auto interpolate = [&](const std::string& specie)
+    {
         s3k::interpolate_emission_g<TF><<<gridGPU, blockGPU>>>(
             emission_g.at(specie),
             emission_prev_g.at(specie),
@@ -118,10 +157,21 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
             gd.jstart, gd.jend,
             kstart, kend,
             gd.icells, gd.ijcells);
-    cuda_check_error();
+        cuda_check_error();
+    };
+
+    // Interpolate emissions linearly in time.
+    for (auto& specie : sourcelist)
+        interpolate(specie);
+
+    if (sw_heat)
+    {
+        interpolate("qe");
+        interpolate("te");
+    }
 }
 
-    
+
 template<typename TF>
 void Source_3d<TF>::prepare_device()
 {
@@ -130,9 +180,11 @@ void Source_3d<TF>::prepare_device()
     const int ncells = gd.ijcells * this->ktot;
     const int memsize = ncells * sizeof(TF);
 
-    if (sw_timedep)
+    auto add_emission = [&](const std::string& specie)
     {
-        for (auto& specie : sourcelist)
+        emission_g.emplace(specie, cuda_vector<TF>(ncells));
+
+        if (sw_timedep)
         {
             emission_prev_g.emplace(specie, cuda_vector<TF>(ncells));
             emission_next_g.emplace(specie, cuda_vector<TF>(ncells));
@@ -140,14 +192,17 @@ void Source_3d<TF>::prepare_device()
             cuda_safe_call(cudaMemcpy(emission_prev_g.at(specie), emission_prev.at(specie).data(), memsize, cudaMemcpyHostToDevice));
             cuda_safe_call(cudaMemcpy(emission_next_g.at(specie), emission_next.at(specie).data(), memsize, cudaMemcpyHostToDevice));
         }
-    }
+        else
+            cuda_safe_call(cudaMemcpy(emission_g.at(specie), emission.at(specie).data(), memsize, cudaMemcpyHostToDevice));
+    };
 
     for (auto& specie : sourcelist)
-    {
-        emission_g.emplace(specie, cuda_vector<TF>(ncells));
+        add_emission(specie);
 
-        if (!sw_timedep)
-            cuda_safe_call(cudaMemcpy(emission_g.at(specie), emission.at(specie).data(), memsize, cudaMemcpyHostToDevice));
+    if (sw_heat)
+    {
+        add_emission("qe");
+        add_emission("te");
     }
 }
 #endif

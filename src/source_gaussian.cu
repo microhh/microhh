@@ -44,7 +44,7 @@ namespace sgk_g = Source_gaussian_kernels_g;    // GPU kernels.
 
 #ifdef USECUDA
 template<typename TF>
-void Source_gaussian<TF>::exec()
+void Source_gaussian<TF>::exec(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 

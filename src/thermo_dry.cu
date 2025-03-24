@@ -144,6 +144,28 @@ namespace
             N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
+
+
+    template<typename TF> __global__
+    void calc_T_g(
+        TF* const __restrict__ T,
+        const TF* const __restrict__ th,
+        const TF* const __restrict__ exner,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jstride, const int kstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jstride + k*kstride;
+            T[ijk] = exner[k] * th[ijk];
+        }
+    }
 } // end namespace
 
 template<typename TF>
@@ -289,6 +311,18 @@ void Thermo_dry<TF>::get_thermo_field_g(
             bs.thref_g, gd.dzi_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "T")
+    {
+        calc_T_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("th")->fld_g,
+            bs.exnref_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
