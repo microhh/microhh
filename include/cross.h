@@ -56,6 +56,7 @@ class Cross
         int cross_path  (TF*, std::string, int);
         int cross_height_threshold(TF*, TF, Cross_direction, std::string, int);
         int cross_soil  (TF*, const std::string&, const int);
+        int cross_ymean (TF* const, const std::string&, const int);
 
     private:
         Master& master;

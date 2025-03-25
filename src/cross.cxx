@@ -86,7 +86,7 @@ namespace
         // interior
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
@@ -175,24 +175,65 @@ namespace
             int jstart, int jend,
             int kstart, int kend)
     {
-    // Path is integrated in first full level, set to zero first
-    for (int j=jstart; j<jend; j++)
-        #pragma ivdep
-        for (int i=istart; i<iend; i++)
-        {
-            const int ijk = i + j*jj + kstart*kk;
-            tmp[ijk] = 0.;
-        }
-
-    // Integrate with height
-    for (int k=kstart; k<kend; k++)
+        // Path is integrated in first full level, set to zero first
         for (int j=jstart; j<jend; j++)
-        #pragma ivdep
+            #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ijk1 = i + j*jj + kstart*kk;
-                const int ijk  = i + j*jj + k*kk;
-                tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                const int ijk = i + j*jj + kstart*kk;
+                tmp[ijk] = 0.;
+            }
+
+        // Integrate with height
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk1 = i + j*jj + kstart*kk;
+                    const int ijk  = i + j*jj + k*kk;
+                    tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                }
+    }
+
+
+    template<typename TF>
+    void calc_cross_ymean(
+            TF* const restrict out,
+            const TF* const restrict data,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        // Mean is calculated at `j=jstart` of 3D tmp field.
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + jstart*jstride + k*kstride;
+                out[ijk] = TF(0);
+            }
+
+        // Calculate mean in y.
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk_in = i + j*jstride + k*kstride;
+                    const int ijk_out  = i + jstart*jstride + k*kstride;
+
+                    out[ijk_out] += data[ijk_in];
+                }
+
+        // Divide out grid points in spanwise direction.
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + jstart*jstride + k*kstride;
+                out[ijk] /= (jend-jstart);
             }
     }
 
@@ -216,7 +257,6 @@ namespace
 
         if(upward) // Find lowest grid level where data > threshold
         {
-
             for (int j=jstart; j<jend; j++)
                 for (int i=istart; i<iend; i++)
                     for (int k=kstart; k<kend; k++)
@@ -717,7 +757,6 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 {
-
     int nerror = 0;
     TF no_offset = 0.;
     auto tmpfld = fields.get_tmp();
@@ -733,6 +772,47 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 
     nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], no_offset, name, iotime);
     fields.release_tmp(tmpfld);
+    return nerror;
+}
+
+
+template<typename TF>
+int Cross<TF>::cross_ymean(
+        TF* const restrict data,
+        const std::string& name,
+        const int iotime)
+{
+    #ifdef USEMPI
+    throw std::runtime_error("Spanwise averaged cross-sections are not supported with MPI!");
+    #endif
+
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+    const TF no_offset = 0;
+
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    calc_cross_ymean(
+        tmp1->fld.data(),
+        data,
+        gd.istart, gd.iend,
+        gd.jstart, gd.jend,
+        gd.kstart, gd.kend,
+        gd.icells, gd.ijcells);
+
+    const int slice = 0;
+
+    char filename[256];
+    std::snprintf(filename, 256, "%s.%s.%05d.%07d", name.c_str(), "xz.000", slice, iotime);
+
+    nerror += check_save(
+            field3d_io.save_xz_slice(tmp1->fld.data(), no_offset, tmp2->fld.data(), filename, slice, gd.kstart, gd.kend), filename);
+
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
+
     return nerror;
 }
 

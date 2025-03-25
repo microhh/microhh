@@ -583,20 +583,20 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
 
     if (cross.get_switch())
     {
-
         // Get global cross-list from cross.cxx
         std::vector<std::string>& crosslist_global = cross.get_crosslist();
 
         // Check different type of crosses and put them in their respective lists
         for (auto& it : ap)
         {
-            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "",         crosslist_global, cross_simple);
             check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
             check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
             check_added_cross(it.first, "_top",     crosslist_global, cross_top);
             check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
             check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
             check_added_cross(it.first, "_path",    crosslist_global, cross_path);
+            check_added_cross(it.first, "_ymean",   crosslist_global, cross_ymean);
         }
 
         for (auto& it : sd)
@@ -1390,6 +1390,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     TF no_offset = 0.;
     TF offset;
+
     for (auto& it : cross_simple)
     {
         if (it == "u")
@@ -1434,6 +1435,9 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     
     for (auto& it : cross_path)
         cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
+
+    for (auto& it : cross_ymean)
+        cross.cross_ymean(a.at(it)->fld.data(), a.at(it)->name+"_ymean", iotime);
 }
 
 template<typename TF>
