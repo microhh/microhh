@@ -45,7 +45,7 @@ class Source
 
         virtual void init() = 0;
         virtual void create(Input&, Timeloop<TF>&, Netcdf_handle&) = 0;
-        virtual void exec(Thermo<TF>&) = 0;
+        virtual void exec(Thermo<TF>&, Timeloop<TF>&) = 0;
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
         #ifdef USECUDA

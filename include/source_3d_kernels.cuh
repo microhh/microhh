@@ -45,16 +45,23 @@ namespace Source_3d_kernels_g
         }
     }
 
+    template <typename TF>
+    __device__ TF copysign2(const TF x, const TF y)
+    {
+        return (y >= 0) ? fabs(x) : -fabs(x);
+    }
 
     template<typename TF> __global__
     void add_source_tend_heat_g(
-            TF* const __restrict__ st_out,
+            TF* const __restrict__ th_tend,
             const TF* const __restrict__ Te,    // Absolute emission temperature (K).
             const TF* const __restrict__ Qe,    // Volume flux (m3 s-1).
-            const TF* const __restrict__ T,     // Absolute temperature LES.
+            const TF* const __restrict__ T,     // Absolute temperature LES (K).
             const TF* const __restrict__ dz,
+            const TF* const __restrict__ exner,
             const TF dx,
             const TF dy,
+            const TF subdti,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -70,7 +77,13 @@ namespace Source_3d_kernels_g
             const int ijk = i + j*jstride + k*kstride;
 
             const TF Vi = TF(1) / (dx * dy * dz[k]);
-            st_out[ijk] += Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
+            const TF exneri = TF(1) / exner[k];
+
+            // Prevent over- or under shooting the emission temperature.
+            const TF dTdt = Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
+            const TF dTdt_lim = copysign2(min(fabs(dTdt), fabs(Te[ijk_in] - T[ijk]) * subdti), dTdt);
+
+            th_tend[ijk] += dTdt_lim * exneri;
         }
     }
 

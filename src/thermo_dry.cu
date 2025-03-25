@@ -218,6 +218,7 @@ void Thermo_dry<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice));
 }
+
 template<typename TF>
 void Thermo_dry<TF>::backward_device()
 {
@@ -275,9 +276,7 @@ void Thermo_dry<TF>::exec(const double dt, Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("w"), tend_name);
 
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_thermo_field_g(
         Field3d<TF>& fld, const std::string& name, const bool cyclic)
@@ -335,9 +334,7 @@ void Thermo_dry<TF>::get_thermo_field_g(
     if (cyclic)
         boundary_cyclic.exec_g(fld.fld_g);
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
 {
@@ -357,9 +354,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 {
@@ -386,9 +381,25 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
-#endif
 
-#ifdef USECUDA
+template<typename TF>
+TF* Thermo_dry<TF>::get_basestate_fld_g(std::string name)
+{
+    if (name == "pref")
+        return bs.pref_g;
+    else if (name == "prefh")
+        return bs.prefh_g;
+    else if (name == "exner")
+        return bs.exnref_g;
+    else if (name == "exnerh")
+        return bs.exnrefh_g;
+    else
+    {
+        std::string error_message = "Can not get basestate field \"" + name + "\" from thermo_moist";
+        throw std::runtime_error(error_message);
+    }
+}
+
 template<typename TF>
 void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {

@@ -39,7 +39,7 @@ class Source_3d : public Source<TF>
 
         void init();
         void create(Input&, Timeloop<TF>&, Netcdf_handle&);
-        void exec(Thermo<TF>&);
+        void exec(Thermo<TF>&, Timeloop<TF>&);
         void update_time_dependent(Timeloop<TF>&);
 
         #ifdef USECUDA

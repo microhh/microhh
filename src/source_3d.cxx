@@ -145,7 +145,7 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
 
 #ifndef USECUDA
 template<typename TF>
-void Source_3d<TF>::exec(Thermo<TF>& thermo)
+void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 

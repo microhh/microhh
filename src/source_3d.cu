@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
+#include "timeloop.h"
 
 #include "source_3d.h"
 #include "source_3d_kernels.cuh"
@@ -35,7 +36,7 @@ namespace s3k = Source_3d_kernels_g;
 
 #ifdef USECUDA
 template<typename TF>
-void Source_3d<TF>::exec(Thermo<TF>& thermo)
+void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
@@ -59,8 +60,12 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo)
 
     if (sw_heat)
     {
+        const TF subdti = TF(1) / timeloop.get_sub_time_step();
+
         auto tmp = fields.get_tmp_g();
         thermo.get_thermo_field_g(*tmp, "T", false);
+
+        TF* exnref_g = thermo.get_basestate_fld_g("exner");
 
         // YIKES^3... Create a `thermo.get_temperature_var()` function?
         std::string th_var;
@@ -77,7 +82,9 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo)
             emission_g.at("qe"),
             tmp->fld_g,
             gd.dz_g,
+            exnref_g,
             gd.dx, gd.dy,
+            subdti,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart, gd.kstart + this->ktot,

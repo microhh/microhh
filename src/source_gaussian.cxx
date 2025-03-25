@@ -199,7 +199,7 @@ void Source_gaussian<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_ha
 
 #ifndef USECUDA
 template<typename TF>
-void Source_gaussian<TF>::exec(Thermo<TF>& thermo)
+void Source_gaussian<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>&)
 {
     auto& gd = grid.get_grid_data();
 

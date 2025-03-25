@@ -50,7 +50,7 @@ void Source_disabled<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_ha
 }
 
 template<typename TF>
-void Source_disabled<TF>::exec(Thermo<TF>& thermo)
+void Source_disabled<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 {
 }
 
