@@ -47,13 +47,15 @@ namespace Source_3d_kernels
 
     template<typename TF>
     void add_source_tend_heat(
-            TF* const __restrict__ st_out,
+            TF* const __restrict__ th_tend,
             const TF* const __restrict__ Te,    // Absolute emission temperature (K).
             const TF* const __restrict__ Qe,    // Volume flux (m3 s-1).
-            const TF* const __restrict__ T,     // Absolute temperature LES.
+            const TF* const __restrict__ T,     // Absolute temperature LES (K).
             const TF* const __restrict__ dz,
+            const TF* const __restrict__ exner,
             const TF dx,
             const TF dy,
+            const TF subdti,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -62,6 +64,7 @@ namespace Source_3d_kernels
         for(int k = kstart; k<kend; ++k)
         {
             const TF Vi = TF(1) / (dx * dy * dz[k]);
+            const TF exneri = TF(1) / exner[k];
 
             for(int j = jstart; j<jend; ++j)
                 #pragma ivdep
@@ -70,7 +73,10 @@ namespace Source_3d_kernels
                     const int ijk_in = i + j*jstride + (k-kstart)*kstride;
                     const int ijk = i + j*jstride + k*kstride;
 
-                    st_out[ijk] += Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
+                    const TF dTdt = Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
+                    const TF dTdt_lim = std::copysign(std::min(std::abs(dTdt), std::abs(Te[ijk_in] - T[ijk]) * subdti), dTdt);
+
+                    th_tend[ijk] += dTdt_lim * exneri;
                 }
         }
     }

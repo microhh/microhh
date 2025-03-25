@@ -161,8 +161,12 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
 
     if (sw_heat)
     {
+        const TF subdti = TF(1) / timeloop.get_sub_time_step();
+
         auto tmp = fields.get_tmp();
         thermo.get_thermo_field(*tmp, "T", false, false);
+
+        const std::vector<TF>& exnref = thermo.get_basestate_vector("exner");
 
         // YIKES^3... Create a `thermo.get_temperature_var()` function?
         std::string th_var;
@@ -179,7 +183,10 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
             emission.at("qe").data(),
             tmp->fld.data(),
             gd.dz.data(),
-            gd.dx, gd.dy,
+            exnref.data(),
+            gd.dx,
+            gd.dy,
+            subdti,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart, gd.kstart + this->ktot,
