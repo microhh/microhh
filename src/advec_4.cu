@@ -440,6 +440,111 @@ namespace
         }
     }
 
+
+    template<typename TF>__global__
+    void advec_s_g(TF* __restrict__ st, TF* __restrict__ s,
+                   TF* __restrict__ u,  TF* __restrict__ v, TF* __restrict__ w,
+                   const TF* __restrict__ rhoref, const TF* __restrict__ rhorefh,
+                   const TF* __restrict__ dzi, TF dxi, TF dyi,
+                   int jj, int kk,
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+        const int ii = 1;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            st[ijk] +=
+                - (  u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
+                   - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
+
+                - (  v[ijk+jj] * interp2(s[ijk   ], s[ijk+jj])
+                   - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi
+
+                - (  rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
+                   - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
+        }
+    }
+
+    template<typename TF>__global__
+    void advec_flux_u(TF* __restrict__ st, const TF* const __restrict__ s,
+                   const TF* const __restrict__ w,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart;
+
+        const int ii1 = 1;
+        const int ii2 = 2;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        if (i < icells && j < jcells && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            st[ijk] = (ci0<TF>*w[ijk-ii2] + ci1<TF>*w[ijk-ii1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+ii1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+        }
+    }
+
+    template<typename TF>__global__
+    void advec_flux_v(TF* __restrict__ st, const TF* const __restrict__ s,
+                   const TF* const __restrict__ w,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart;
+
+        const int jj1 = 1*icells;
+        const int jj2 = 2*icells;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        if (i < icells && j < jcells && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            st[ijk] = (ci0<TF>*w[ijk-jj2] + ci1<TF>*w[ijk-jj1] + ci2<TF>*w[ijk] + ci3<TF>*w[ijk+jj1]) * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+        }
+    }
+
+    template<typename TF>__global__
+    void advec_flux_w(TF* __restrict__ st, const TF* const __restrict__ s,
+                   const TF* const __restrict__ w,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart;
+
+        if (i < icells && j < jcells && k < kend)
+        {
+        const int ijk = i + j*icells + k*ijcells;
+        st[ijk] = w[ijk] * s[ijk];
+        }
+    }
+
+    template<typename TF>__global__
+    void advec_flux_s_g(TF* __restrict__ st, const TF* const __restrict__ s,
+                   const TF* const __restrict__ w,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart;
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+        if (i < icells && j < jcells && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            st[ijk] = w[ijk] * (ci0<TF>*s[ijk-kk2] + ci1<TF>*s[ijk-kk1] + ci2<TF>*s[ijk] + ci3<TF>*s[ijk+kk1]);
+        }
+    }
+
     template<typename TF> __global__
     void calc_cfl_g(TF* const __restrict__ tmp1,
                     const TF* __restrict__ u, const TF* __restrict__ v, const TF* __restrict__ w,
@@ -625,6 +730,47 @@ void Advec_4<TF>::exec(Stats<TF>& stats)
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
 }
+
+
+template<typename TF>
+void Advec_4<TF>::get_advec_flux(
+        Field3d<TF>& advec_flux, const Field3d<TF>& fld)
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    dim3 gridGPU(gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+    if (fld.loc == gd.uloc)
+    {
+        advec_flux_u<TF><<<gridGPU, blockGPU>>>(
+                advec_flux.fld_g.data(), fld.fld_g.data(), fields.mp.at("w")->fld_g.data(), gd.icells, gd.jcells, gd.kstart, gd.kend, gd.ijcells);
+    }
+    else if (fld.loc == gd.vloc)
+    {
+        advec_flux_v<TF><<<gridGPU, blockGPU>>>(
+                advec_flux.fld_g.data(), fld.fld_g.data(), fields.mp.at("w")->fld_g.data(), gd.icells, gd.jcells, gd.kstart, gd.kend, gd.ijcells);
+    }
+    else if (fld.loc == gd.wloc)
+    {
+        advec_flux_w<TF><<<gridGPU, blockGPU>>>(
+                advec_flux.fld_g.data(), fld.fld_g.data(), fields.mp.at("w")->fld_g.data(), gd.icells, gd.jcells, gd.kstart, gd.kend, gd.ijcells);
+    }
+    else if (fld.loc == gd.sloc)
+    {
+        advec_flux_s_g<TF><<<gridGPU, blockGPU>>>(
+                advec_flux.fld_g.data(), fld.fld_g.data(), fields.mp.at("w")->fld_g.data(), gd.icells, gd.jcells, gd.kstart, gd.kend, gd.ijcells);
+    }
+    else
+        throw std::runtime_error("Advec_4 cannot deliver flux field at that location");
+}
+
 #endif
 
 
