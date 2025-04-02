@@ -47,12 +47,6 @@ namespace Land_surface_kernels
         tile.thl_bot.resize(ijcells);
         tile.qt_bot.resize(ijcells);
 
-        tile.obuk.resize(ijcells);
-        tile.ustar.resize(ijcells);
-        tile.bfluxbot.resize(ijcells);
-        tile.nobuk.resize(ijcells);
-        tile.ra.resize(ijcells);
-
         tile.rs.resize(ijcells);
         tile.H.resize(ijcells);
         tile.LE.resize(ijcells);

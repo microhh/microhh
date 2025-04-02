@@ -41,13 +41,6 @@ struct Surface_tile
     std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
     std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
 
-    // Surface layer
-    std::vector<TF> obuk;     // Obukhov length (m)
-    std::vector<TF> ustar;    // Friction velocity (m s-1)
-    std::vector<TF> bfluxbot; // Friction velocity (m s-1)
-    std::vector<int> nobuk;   // Index in LUT
-    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
-
     // Land surface
     std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
     std::vector<TF> H;        // Sensible heat flux (W m-2)
@@ -170,6 +163,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         std::vector<TF> ustar;
         std::vector<TF> obuk;
+        std::vector<TF> ra;
 
         std::vector<TF> dudz_mo;
         std::vector<TF> dvdz_mo;
