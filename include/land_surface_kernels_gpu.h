@@ -1022,13 +1022,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMalloc(&tile.thl_bot_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.qt_bot_g, memsize_tf));
 
-        cuda_safe_call(cudaMalloc(&tile.obuk_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.ustar_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.bfluxbot_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.ra_g, memsize_tf));
-
-        cuda_safe_call(cudaMalloc(&tile.nobuk_g, memsize_int));
-
         cuda_safe_call(cudaMalloc(&tile.rs_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.H_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.LE_g, memsize_tf));
@@ -1042,13 +1035,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaFree(tile.fraction_g));
         cuda_safe_call(cudaFree(tile.thl_bot_g));
         cuda_safe_call(cudaFree(tile.qt_bot_g));
-
-        cuda_safe_call(cudaFree(tile.obuk_g));
-        cuda_safe_call(cudaFree(tile.ustar_g));
-        cuda_safe_call(cudaFree(tile.bfluxbot_g));
-        cuda_safe_call(cudaFree(tile.ra_g));
-
-        cuda_safe_call(cudaFree(tile.nobuk_g));
 
         cuda_safe_call(cudaFree(tile.rs_g));
         cuda_safe_call(cudaFree(tile.H_g));
@@ -1067,13 +1053,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMemcpy(tile.thl_bot_g, tile.thl_bot.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.qt_bot_g, tile.qt_bot.data(), memsize_tf, cudaMemcpyHostToDevice));
 
-        cuda_safe_call(cudaMemcpy(tile.obuk_g, tile.obuk.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.ustar_g, tile.ustar.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.bfluxbot_g, tile.bfluxbot.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.ra_g, tile.ra.data(), memsize_tf, cudaMemcpyHostToDevice));
-
-        cuda_safe_call(cudaMemcpy(tile.nobuk_g, tile.nobuk.data(), memsize_int, cudaMemcpyHostToDevice));
-
         cuda_safe_call(cudaMemcpy(tile.rs_g, tile.rs.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.H_g, tile.H.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.LE_g, tile.LE.data(), memsize_tf, cudaMemcpyHostToDevice));
@@ -1090,13 +1069,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMemcpy(tile.fraction.data(), tile.fraction_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.thl_bot.data(), tile.thl_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.qt_bot.data(), tile.qt_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
-
-        cuda_safe_call(cudaMemcpy(tile.obuk.data(), tile.obuk_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.ustar.data(), tile.ustar_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.bfluxbot.data(), tile.bfluxbot_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.ra.data(), tile.ra_g, memsize_tf, cudaMemcpyDeviceToHost));
-
-        cuda_safe_call(cudaMemcpy(tile.nobuk.data(), tile.nobuk_g, memsize_int, cudaMemcpyDeviceToHost));
 
         cuda_safe_call(cudaMemcpy(tile.rs.data(), tile.rs_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.H.data(), tile.H_g, memsize_tf, cudaMemcpyDeviceToHost));

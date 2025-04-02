@@ -139,6 +139,8 @@ void Boundary_surface_lsm<TF>::exec(
         T_bot, T_a, vpd, vpds, qsat_bot, dqsatdT_bot);
 
     // Get (near-) surface buoyancy.
+    // NOTE: unlike the CPU version, `get_buoyancy_surf_g` calculates
+    // the surface + first model level buoy, AND the surface buoy flux.
     auto buoy = fields.get_tmp_g();
     thermo.get_buoyancy_surf_g(*buoy);
     const TF db_ref = thermo.get_db_ref();
@@ -207,7 +209,7 @@ void Boundary_surface_lsm<TF>::exec(
                 an_co2_g,
                 lai_g,
                 T_bot,
-                tiles.at("veg").ra_g,
+                ra_g,
                 fields.sp.at("co2")->fld_g,
                 fields.sp.at("thl")->fld_g,
                 fields.sp.at("qt")->fld_g,
@@ -305,69 +307,55 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
+    // Calculate Obuk, ustar, and ra.
+    if (sw_constant_z0)
+        lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                ustar_g,
+                obuk_g,
+                buoy->flux_bot_g,
+                ra_g,
+                nobuk_g,
+                du_tot,
+                buoy->fld_g,
+                buoy->fld_bot_g,
+                z0m_g,
+                z0h_g,
+                zL_sl_g,
+                f_sl_g,
+                db_ref,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.jcells,
+                gd.ijcells);
+    else
+        lsmk::calc_stability_g<TF, false><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                ustar_g,
+                obuk_g,
+                buoy->flux_bot_g,
+                ra_g,
+                nobuk_g,
+                du_tot,
+                buoy->fld_g,
+                buoy->fld_bot_g,
+                z0m_g,
+                z0h_g,
+                zL_sl_g,
+                f_sl_g,
+                db_ref,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.jcells,
+                gd.ijcells);
+    cuda_check_error();
+
     // Loop over tiles, and calculate tile properties and fluxes
     for (auto& tile : tiles)
     {
         bool use_cs_veg = (tile.first == "veg");
-
-        //
-        // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
-        // from previous time step (= old method, similar to DALES).
-        // 2) Calculate new thl_bot such that SEB closes.
-        //
-        thermo.get_buoyancy_surf_g(
-                buoy->fld_bot_g,
-                tile.second.thl_bot_g,
-                tile.second.qt_bot_g);
-
-        // Calculate Obuk, ustar, and ra.
-        if (sw_constant_z0)
-            lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
-                    tile.second.ustar_g,
-                    tile.second.obuk_g,
-                    tile.second.bfluxbot_g,
-                    tile.second.ra_g,
-                    tile.second.nobuk_g,
-                    du_tot,
-                    buoy->fld_g,
-                    buoy->fld_bot_g,
-                    z0m_g, z0h_g,
-                    zL_sl_g,
-                    f_sl_g,
-                    db_ref,
-                    gd.z[gd.kstart],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart,
-                    gd.icells, gd.jcells,
-                    gd.ijcells);
-        else
-            lsmk::calc_stability_g<TF, false><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
-                    tile.second.ustar_g,
-                    tile.second.obuk_g,
-                    tile.second.bfluxbot_g,
-                    tile.second.ra_g,
-                    tile.second.nobuk_g,
-                    du_tot,
-                    buoy->fld_g,
-                    buoy->fld_bot_g,
-                    z0m_g, z0h_g,
-                    zL_sl_g,
-                    f_sl_g,
-                    db_ref,
-                    gd.z[gd.kstart],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart,
-                    gd.icells, gd.jcells,
-                    gd.ijcells);
-        cuda_check_error();
-
-        //auto tmp_cpu = fields.get_tmp();
-        //dump_field(tile.second.ustar_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
-        //fields.release_tmp(tmp_cpu);
-        //cudaDeviceSynchronize();
-        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
@@ -381,7 +369,7 @@ void Boundary_surface_lsm<TF>::exec(
                 fields.sp.at("qt")->fld_g,
                 fields.sps.at("t")->fld_g,
                 qsat_bot, dqsatdT_bot,
-                tile.second.ra_g,
+                ra_g,
                 tile.second.rs_g,
                 lambda_stable_g,
                 lambda_unstable_g,
@@ -432,7 +420,7 @@ void Boundary_surface_lsm<TF>::exec(
                 fields.sp.at("qt")->fld_g,
                 fields.sp.at("thl")->fld_bot_g,
                 fields.sp.at("qt")->fld_bot_g,
-                tiles.at("wet").ra_g,
+                ra_g,
                 rhorefh[gd.kstart],
                 prefh[gd.kstart],
                 exnrefh[gd.kstart],
@@ -452,8 +440,6 @@ void Boundary_surface_lsm<TF>::exec(
     // Surface fluxes.
     get_tiled_mean_g(fields.sp.at("thl")->flux_bot_g, "H", rhocpi);
     get_tiled_mean_g(fields.sp.at("qt")->flux_bot_g, "LE", rholvi);
-    get_tiled_mean_g(ustar_g, "ustar", no_scaling);
-    get_tiled_mean_g(buoy->flux_bot_g, "bfluxbot", no_scaling);
 
     // Surface values.
     get_tiled_mean_g(fields.sp.at("thl")->fld_bot_g, "thl_bot", TF(1));
@@ -462,17 +448,6 @@ void Boundary_surface_lsm<TF>::exec(
     // Set ghost cells `thl_bot`, `qt_bot`, needed for surface scheme
     boundary_cyclic.exec_2d_g(fields.sp.at("thl")->fld_bot_g);
     boundary_cyclic.exec_2d_g(fields.sp.at("qt")->fld_bot_g);
-
-    // Calculate bulk Obukhov length.
-    lsmk::calc_bulk_obuk_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-            obuk_g,
-            buoy->flux_bot_g,
-            ustar_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
 
     boundary_cyclic.exec_2d_g(ustar_g);
     boundary_cyclic.exec_2d_g(obuk_g);
@@ -845,11 +820,7 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
         {
             column.calc_time_series("c_"+tile.first, tile.second.fraction_g, no_offset);
 
-            column.calc_time_series("ustar_"+tile.first, tile.second.ustar_g, no_offset);
-            column.calc_time_series("obuk_"+tile.first, tile.second.obuk_g, no_offset);
-
             column.calc_time_series("rs_"+tile.first, tile.second.rs_g, no_offset);
-            column.calc_time_series("ra_"+tile.first, tile.second.ra_g, no_offset);
 
             column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot_g, no_offset);
             column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot_g, no_offset);
@@ -906,18 +877,6 @@ void Boundary_surface_lsm<TF>::get_tiled_mean_g(
         fld_veg  = tiles.at("veg").S_g;
         fld_soil = tiles.at("soil").S_g;
         fld_wet  = tiles.at("wet").S_g;
-    }
-    else if (name == "bfluxbot")
-    {
-        fld_veg  = tiles.at("veg").bfluxbot_g;
-        fld_soil = tiles.at("soil").bfluxbot_g;
-        fld_wet  = tiles.at("wet").bfluxbot_g;
-    }
-    else if (name == "ustar")
-    {
-        fld_veg  = tiles.at("veg").ustar_g;
-        fld_soil = tiles.at("soil").ustar_g;
-        fld_wet  = tiles.at("wet").ustar_g;
     }
     else if (name == "thl_bot")
     {
@@ -988,6 +947,7 @@ void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
     // Surface layer / Monin-Obukhov:
     cuda_safe_call(cudaMalloc(&obuk_g,  tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&ustar_g, tf_memsize_ij));
+    cuda_safe_call(cudaMalloc(&ra_g, tf_memsize_ij));
 
     z0m_g.allocate(gd.ijcells);
     z0h_g.allocate(gd.ijcells);
@@ -1103,6 +1063,7 @@ void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
     // Surface layer / Monin-Obukhov:
     cuda_safe_call(cudaMemcpy(obuk_g,  obuk.data(),  tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(ustar_g, ustar.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(ra_g, ra.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy(z0m_g, z0m.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(z0h_g, z0h.data(), tf_memsize_ij, cudaMemcpyHostToDevice));

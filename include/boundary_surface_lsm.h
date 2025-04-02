@@ -54,13 +54,6 @@ struct Surface_tile
     TF* thl_bot_g;  // Skin (liquid water) potential temperature (K)
     TF* qt_bot_g;   // Skin specific humidity (kg kg-1)
 
-    // Surface layer
-    TF* obuk_g;     // Obukhov length (m)
-    TF* ustar_g;    // Friction velocity (m s-1)
-    TF* bfluxbot_g; // Friction velocity (m s-1)
-    int* nobuk_g;   // Index in LUT
-    TF* ra_g;       // Aerodynamic resistance (s m-1)
-
     // Land surface
     TF* rs_g;       // Surface resistance (canopy or soil, s m-1)
     TF* H_g;        // Sensible heat flux (W m-2)
@@ -255,6 +248,7 @@ class Boundary_surface_lsm : public Boundary<TF>
 
         TF* ustar_g;
         TF* obuk_g;
+        TF* ra_g;
 
         cuda_vector<TF> dudz_mo_g;
         cuda_vector<TF> dvdz_mo_g;
