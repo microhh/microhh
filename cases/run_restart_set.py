@@ -3,8 +3,6 @@ import sys, os
 sys.path.append('../python/')
 import microhh_tools as mht
 
-import taylorgreen.taylorgreen_test as taylorgreen
-import conservation.conservation_test as conservation
 import moser180.moser180_test as moser180
 import drycbl.drycbl_test as drycbl
 import drycblles.drycblles_test as drycblles

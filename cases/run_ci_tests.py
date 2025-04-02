@@ -22,7 +22,7 @@ for prec in precs:
 
 # Short tests of init + run phase, to test if cases start
 les_cases   = ['arm', 'bomex', 'drycblles', 'gabls1', 'rico', 'sullivan2011']  # dycoms+lasso+rcemip missing
-dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
+dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser590']    # prandtlslope missing
 
 les_options = {
         'grid': {'itot': 8, 'jtot': 8, 'xsize': 800, 'ysize': 800},
