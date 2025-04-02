@@ -134,6 +134,7 @@ def create_case_input(
         ini['land_surface']['swags'] = use_ags
         if use_ags:
             ini['fields']['slist'] = 'co2'
+            ini['boundary']['sbcbot[co2]'] = 'flux'
     else:
         ini['boundary']['swboundary'] = 'surface'
         ini['boundary']['sbcbot'] = 'flux'
