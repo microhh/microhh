@@ -141,6 +141,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         bool sw_tile_stats_col;
         bool sw_homogenize_sfc;
         bool sw_ags;
+        bool sw_disable_wl;
 
         TF emis_sfc;
 

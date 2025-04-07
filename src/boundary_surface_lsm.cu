@@ -543,24 +543,27 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate changes in the liquid water reservoir
-    lsmk::calc_liquid_water_reservoir_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            fields.at2d.at("wl")->fld_g,
-            interception_g,
-            throughfall_g,
-            fields.ap2d.at("wl")->fld_g,
-            tiles.at("veg").LE_g,
-            tiles.at("soil").LE_g,
-            tiles.at("wet").LE_g,
-            tiles.at("veg").fraction_g,
-            tiles.at("soil").fraction_g,
-            tiles.at("wet").fraction_g,
-            rain_rate,
-            c_veg_g,
-            lai_g, subdt,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
+    if (!sw_disable_wl)
+    {
+        lsmk::calc_liquid_water_reservoir_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                fields.at2d.at("wl")->fld_g,
+                interception_g,
+                throughfall_g,
+                fields.ap2d.at("wl")->fld_g,
+                tiles.at("veg").LE_g,
+                tiles.at("soil").LE_g,
+                tiles.at("wet").LE_g,
+                tiles.at("veg").fraction_g,
+                tiles.at("soil").fraction_g,
+                tiles.at("wet").fraction_g,
+                rain_rate,
+                c_veg_g,
+                lai_g, subdt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+    }
 
     if (sw_homogenize_sfc)
     {

@@ -269,6 +269,7 @@ Boundary_surface_lsm<TF>::Boundary_surface_lsm(
     sw_ags            = inputin.get_item<bool>("land_surface", "swags", "", false);
     sw_tile_stats     = inputin.get_item<bool>("land_surface", "swtilestats", "", false);
     sw_tile_stats_col = inputin.get_item<bool>("land_surface", "swtilestats_column", "", false);
+    sw_disable_wl     = inputin.get_item<bool>("land_surface", "swdisable_wl", "", false);
 
     // BvS: for now, read surface emission from radiation group. This needs
     // to be coupled correctly, also for 2D varying emissivities.
@@ -707,23 +708,24 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
 
     // Calculate changes in the liquid water reservoir
-    lsmk::calc_liquid_water_reservoir(
-            fields.at2d.at("wl")->fld.data(),
-            interception.data(),
-            throughfall.data(),
-            fields.ap2d.at("wl")->fld.data(),
-            tiles.at("veg").LE.data(),
-            tiles.at("soil").LE.data(),
-            tiles.at("wet").LE.data(),
-            tiles.at("veg").fraction.data(),
-            tiles.at("soil").fraction.data(),
-            tiles.at("wet").fraction.data(),
-            (*rain_rate).data(),
-            c_veg.data(),
-            lai.data(), subdt,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
+    if (!sw_disable_wl)
+        lsmk::calc_liquid_water_reservoir(
+                fields.at2d.at("wl")->fld.data(),
+                interception.data(),
+                throughfall.data(),
+                fields.ap2d.at("wl")->fld.data(),
+                tiles.at("veg").LE.data(),
+                tiles.at("soil").LE.data(),
+                tiles.at("wet").LE.data(),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
+                (*rain_rate).data(),
+                c_veg.data(),
+                lai.data(), subdt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
 
     if (sw_homogenize_sfc)
     {
