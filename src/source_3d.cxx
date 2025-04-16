@@ -78,6 +78,9 @@ void Source_3d<TF>::init()
         if (sw_heat)
         {
             emission_prev.emplace("te", std::vector<TF>(size));
+            emission_next.emplace("te", std::vector<TF>(size));
+
+            emission_prev.emplace("qe", std::vector<TF>(size));
             emission_next.emplace("qe", std::vector<TF>(size));
         }
     }
@@ -122,9 +125,9 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
         if (sw_heat)
         {
             load_emission(emission_prev.at("te"), "te", iotime_prev);
-            load_emission(emission_prev.at("qe"), "qe", iotime_prev);
-
             load_emission(emission_next.at("te"), "te", iotime_next);
+
+            load_emission(emission_prev.at("qe"), "qe", iotime_prev);
             load_emission(emission_next.at("qe"), "qe", iotime_next);
         }
     }
