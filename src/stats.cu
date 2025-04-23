@@ -301,7 +301,6 @@ void Stats<TF>::calc_stats_diff(
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
             {
-                std::cout << varname<< k<<"nmask[k] = " << nmask[k] << std::endl;
                 if (nmask[k])
                     m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
             }

@@ -647,7 +647,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         // thermo   ->exec_stats(*stats);
         background ->exec_stats(*stats);
         // microphys->exec_stats(*stats, *thermo, dt);
-        // diff     ->exec_stats(*stats, *thermo);
+        diff     ->exec_stats(*stats, *thermo);
         // budget   ->exec_stats(*stats);
         // boundary ->exec_stats(*stats);
     }
