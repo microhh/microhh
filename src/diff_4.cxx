@@ -307,7 +307,7 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
 
 
 template<typename TF>
-void Diff_4<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& in)
+void Diff_4<TF>::get_diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& in)
 {
     auto& gd = grid.get_grid_data();
     calc_diff_flux(

@@ -156,6 +156,25 @@ namespace
             }
         }
     }
+
+    template<typename TF>__global__
+    void calc_diff_flux_g(TF* __restrict__ st, const TF* const __restrict__ data, const TF visc, const TF* __restrict__ const dzhi,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart;
+
+        const int kk1 = 1*ijcells;
+        const int kk2 = 2*ijcells;
+
+        if (i < icells && j < jcells && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            st[ijk] = - visc*(cg0<TF>*data[ijk-kk2] + cg1<TF>*data[ijk-kk1] + cg2<TF>*data[ijk] + cg3<TF>*data[ijk+kk1])*dzhi[k];
+        }
+    }
+
 }
 
 #ifdef USECUDA
@@ -215,6 +234,26 @@ void Diff_4<TF>::exec(Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("w"), tend_name);
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
+}
+
+
+template<typename TF>
+void Diff_4<TF>::get_diff_flux(
+        Field3d<TF>& diff_flux, const Field3d<TF>& fld)
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    dim3 gridGPU(gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+    calc_diff_flux_g<TF><<<gridGPU, blockGPU>>>(
+        diff_flux.fld_g.data(), fld.fld_g.data(), fld.visc, gd.dzhi4_g.data(), gd.icells, gd.jcells, gd.kstart, gd.kend, gd.ijcells);
 }
 #endif
 

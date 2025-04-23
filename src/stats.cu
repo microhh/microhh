@@ -260,6 +260,7 @@ void Stats<TF>::calc_stats_w(
     }
     fields.release_tmp_g(advec_flux);
     fields.release_tmp_g(masked);
+
 }
 
 
@@ -285,20 +286,22 @@ void Stats<TF>::calc_stats_diff(
     auto masked = fields.get_tmp_g();
     auto diff_flux = fields.get_tmp_g();
 
+
     // Calc Diffusive Flux
     name = varname + "_diff";
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
-        // advec.get_advec_flux(*advec_flux, fld);
+        diff.get_diff_flux(*diff_flux, fld);
 
         for (auto& m : masks)
         {
-            set_flag(flag, nmask, m.second, fld.loc[2]);
+            set_flag(flag, nmask, m.second, !fld.loc[2]);
             apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), diff_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
             {
+                std::cout << varname<< k<<"nmask[k] = " << nmask[k] << std::endl;
                 if (nmask[k])
                     m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
             }
@@ -309,6 +312,7 @@ void Stats<TF>::calc_stats_diff(
     }
     fields.release_tmp_g(diff_flux);
     fields.release_tmp_g(masked);
+
 }
 
 #endif

@@ -389,6 +389,83 @@ namespace Diff_kernels_g
     }
 
 
+    template<typename TF, Surface_model surface_model>__global__
+   //  template<typename TF> __global__
+    void calc_diff_flux_u_g(TF* __restrict__ out, const TF* const __restrict__ data, const TF* const __restrict__ w, const TF* const __restrict__ evisc, const TF dxi, const TF* __restrict__ const dzhi, const TF visc,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        constexpr int koffset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+      //   const TF tPr_i = TF(1)/tPr;
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart + koffset;
+        const int ii = 1;
+
+        if (i < icells && j < jcells && k < kend + 1 - koffset)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            const TF eviscu = 0.25*(evisc[ijk-ii-ijcells]+evisc[ijk-ii]+evisc[ijk-ijcells]+evisc[ijk]) + visc;
+            out[ijk] = - eviscu*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+         }
+    }
+
+
+    template<typename TF, Surface_model surface_model>__global__
+   //  template<typename TF> __global__
+    void calc_diff_flux_v_g(TF* __restrict__ out, const TF* const __restrict__ data, const TF* const __restrict__ w, const TF* const __restrict__ evisc, const TF dyi, const TF* __restrict__ const dzhi, const TF visc,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        constexpr int koffset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart + koffset;
+
+        if (i < icells && j < jcells && k < kend + 1 - koffset)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            const TF eviscv = 0.25*(evisc[ijk-icells-ijcells]+evisc[ijk-icells]+evisc[ijk-ijcells]+evisc[ijk]) + visc;
+            out[ijk] = - eviscv*( (data[ijk]-data[ijk-ijcells])*dzhi[k] + (w[ijk]-w[ijk-icells])*dyi );
+         }
+    }
+
+
+    template<typename TF, Surface_model surface_model>__global__
+   //  template<typename TF> __global__
+    void calc_diff_flux_c_g(TF* __restrict__ out, const TF* const __restrict__ data, const TF* const __restrict__ evisc, const TF* __restrict__ const dzhi, const TF tPr, const TF visc,
+                   const int icells, const int jcells, const int kstart, const int kend, const int ijcells)
+    {
+        constexpr int koffset = (surface_model == Surface_model::Disabled) ? 0 : 1;
+        const TF tPr_i = TF(1)/tPr;
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z + kstart + koffset;
+
+        if (i < icells && j < jcells && k < kend + 1 - koffset)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            const TF eviscc = 0.5*(evisc[ijk-ijcells]+evisc[ijk]) * tPr_i + visc;
+
+            out[ijk] = - eviscc*(data[ijk] - data[ijk-ijcells])*dzhi[k];
+         }
+    }
+
+
+    template<typename TF> __global__
+    void calc_diff_flux_bc(
+            TF* __restrict__ out, const TF* const __restrict__ data,
+            const int icells, const int jcells, const int k, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*icells;
+            const int ijk = i + j*icells + k*ijcells;
+            out[ijk] = data[ij];
+        }
+    }
+
     template<typename TF> __global__
     void calc_ghostcells_evisc(
             TF* __restrict__ evisc,

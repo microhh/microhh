@@ -967,8 +967,8 @@ void Stats<TF>::calc_stats(
     calc_stats_mean(varname, fld, offset);
     calc_stats_moments(varname, fld, offset);
     calc_stats_w(varname, fld, offset);
-    // calc_stats_diff(varname, fld, offset);
-    // calc_stats_flux(varname, fld, offset);
+    calc_stats_diff(varname, fld, offset);
+    calc_stats_flux(varname, fld, offset);
     // calc_stats_grad(varname, fld);
     // calc_stats_path(varname, fld);
     // calc_stats_cover(varname, fld, offset, threshold);
@@ -1090,8 +1090,9 @@ void Stats<TF>::calc_stats_w(
         fields.release_tmp(advec_flux);
     }
 }
-
 #endif
+
+#ifndef USECUDA
 
 template<typename TF>
 void Stats<TF>::calc_stats_diff(
@@ -1130,7 +1131,7 @@ void Stats<TF>::calc_stats_diff(
         fields.release_tmp(diff_flux);
     }
 }
-
+#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_flux(

@@ -632,8 +632,9 @@ void Diff_smag2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
     stats.calc_stats("evisc", *fields.sd.at("evisc"), no_offset, no_threshold);
 }
 
+#ifndef USECUDA
 template<typename TF>
-void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
+void Diff_smag2<TF>::get_diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
 {
     auto& gd = grid.get_grid_data();
 
@@ -707,7 +708,7 @@ void Diff_smag2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& res
         diff_flux_wrapper.template operator()<Surface_model::Disabled>();
     }
 }
-
+#endif
 
 #ifdef FLOAT_SINGLE
 template class Diff_smag2<float>;

@@ -46,7 +46,7 @@ class Diff_tke2 : public Diff<TF>
         void init();
         void exec(Stats<TF>&);
         void exec_viscosity(Stats<TF>&, Thermo<TF>&);
-        void diff_flux(Field3d<TF>&, const Field3d<TF>&);
+        void get_diff_flux(Field3d<TF>&, const Field3d<TF>&);
         void exec_stats(Stats<TF>&, Thermo<TF>&); // Pass Thermo<TF>& also in other diffusion classes
 
         #ifdef USECUDA

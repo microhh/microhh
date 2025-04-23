@@ -1027,8 +1027,9 @@ void Diff_tke2<TF>::exec_stats(Stats<TF>& stats, Thermo<TF>& thermo)
         stats.calc_stats("eviscs", *fields.sd.at("eviscs"), no_offset, no_threshold);
 }
 
+#ifndef USECUDA
 template<typename TF>
-void Diff_tke2<TF>::diff_flux(
+void Diff_tke2<TF>::get_diff_flux(
         Field3d<TF>& restrict out, const Field3d<TF>& restrict fld_in)
 {
     auto& gd = grid.get_grid_data();
@@ -1099,6 +1100,7 @@ void Diff_tke2<TF>::diff_flux(
                     gd.icells, gd.ijcells);
     }
 }
+#endif
 
 #ifdef FLOAT_SINGLE
 template class Diff_tke2<float>;

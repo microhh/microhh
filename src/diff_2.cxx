@@ -189,14 +189,14 @@ void Diff_2<TF>::exec(Stats<TF>& stats)
     for (auto it : fields.st)
         stats.calc_tend(*it.second, tend_name);
 }
-#endif
 
 template<typename TF>
-void Diff_2<TF>::diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
+void Diff_2<TF>::get_diff_flux(Field3d<TF>& restrict out, const Field3d<TF>& restrict data)
 {
     auto& gd = grid.get_grid_data();
     calc_diff_flux(out.fld.data(), data.fld.data(), data.visc, gd.dzhi.data(), gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
 }
+#endif
 
 
 #ifdef FLOAT_SINGLE

@@ -428,6 +428,91 @@ double Diff_smag2<TF>::get_dn(double dt)
 
     return dnmul*dt;
 }
+
+
+template<typename TF>
+void Diff_smag2<TF>::get_diff_flux(
+        Field3d<TF>& out, const Field3d<TF>& fld_in)
+{
+    using namespace Tools_g;
+    namespace dk = Diff_kernels_g;
+
+    auto& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    dim3 gridGPU(gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+
+    auto diff_flux_wrapper = [&]<Surface_model surface_model>()
+    // auto diff_flux_wrapper = [&]()
+    {
+        // Calculate the interior.
+        if (fld_in.loc[0] == 1)
+        {
+            dk::calc_diff_flux_u_g<TF, surface_model><<<gridGPU, blockGPU>>>(
+                    out.fld_g.data(),
+                    fld_in.fld_g.data(),
+                    fields.mp.at("w")->fld_g.data(),
+                    fields.sd.at("evisc")->fld_g.data(),
+                    gd.dxi, gd.dzhi_g.data(),
+                    fields.visc,
+                    gd.icells, gd.jcells,
+                    gd.kstart, gd.kend, gd.ijcells);
+        }
+        else if (fld_in.loc[1] == 1)
+        {
+            dk::calc_diff_flux_v_g<TF, surface_model><<<gridGPU, blockGPU>>>(
+                    out.fld_g.data(),
+                    fld_in.fld_g.data(),
+                    fields.mp.at("w")->fld_g.data(),
+                    fields.sd.at("evisc")->fld_g.data(),
+                    gd.dyi, gd.dzhi_g.data(),
+                    fields.visc,
+                    gd.icells, gd.jcells,
+                    gd.kstart, gd.kend, gd.ijcells);
+        }
+        else
+            dk::calc_diff_flux_c_g<TF, surface_model><<<gridGPU, blockGPU>>>(
+                    out.fld_g.data(),
+                    fld_in.fld_g.data(),
+                    fields.sd.at("evisc")->fld_g.data(),
+                    gd.dzhi_g.data(),
+                    tPr, fld_in.visc,
+                    gd.icells, gd.jcells,
+                    gd.kstart, gd.kend, gd.ijcells);
+    };
+
+    if (boundary.get_switch() != "default")
+    {
+        // Calculate the boundary fluxes.
+        dk::calc_diff_flux_bc<TF><<<gridGPU, blockGPU>>>(
+                out.fld_g,
+                fld_in.flux_bot_g,
+                gd.icells, gd.jcells,
+                gd.kstart, gd.ijcells);
+
+        dk::calc_diff_flux_bc<TF><<<gridGPU, blockGPU>>>(
+                out.fld_g,
+                fld_in.flux_top_g,
+                gd.icells, gd.jcells,
+                gd.kend, gd.ijcells);
+
+        // Calculate interior:
+        diff_flux_wrapper.template operator()<Surface_model::Enabled>();
+    }
+    else
+    {
+        // Calculate boundary and interior:
+        diff_flux_wrapper.template operator()<Surface_model::Disabled>();
+    }
+
+}
+
 #endif
 
 
