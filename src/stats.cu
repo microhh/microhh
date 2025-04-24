@@ -314,6 +314,70 @@ void Stats<TF>::calc_stats_diff(
 
 }
 
+
+
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_path(
+        const std::string& varname, const Field3d<TF>& fld)
+{
+    using namespace Tools_g;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int ijgrid  = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 gridGPU2(gridi, gridj, 1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+
+    // Calc Integrated Path
+    name = varname + "_path";
+
+    auto masked = fields.get_tmp_g();
+    auto mask_proj = fields.get_tmp_xy_g();
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            set_to_val<<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells, TF(1.));
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
+            field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data()); //not correct yet
+            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            TF denominator = field3d_operators.calc_sum_2d_g(mask_proj->data());
+
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
+            for (int k = gd.kstart; k < gd.kend+1; ++k)
+            {
+                int kk = k * gd.ijcells;
+                mult_by_val<TF><<<ijgrid, blocki>>>(&masked->fld_g[kk], gd.ijcells, TF(fields.rhoref[k]*gd.dz[k]));
+            }
+
+            m.second.tseries.at(name).data = field3d_operators.calc_sum_g(masked->fld_g)/denominator;
+            master.sum(&m.second.tseries.at(name).data, 1);
+        }
+    }
+
+    fields.release_tmp_g(masked);
+    fields.release_tmp_xy_g(mask_proj);
+
+}
+
+
+
 #endif
 
 

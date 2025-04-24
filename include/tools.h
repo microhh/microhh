@@ -50,6 +50,8 @@ namespace Tools_g
     template<typename TF> __global__
     void mult_by_arr(TF* __restrict__, int, const TF* const __restrict__ );
     template<typename TF> __global__
+    void sign_by_arr(TF* __restrict__, int);
+    template<typename TF> __global__
     void add_val(TF* __restrict__ , const TF* const __restrict__ , int , TF);
     template<typename TF> __global__
     void raise_to_pow(TF* __restrict__ , const int, const int);

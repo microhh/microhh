@@ -47,7 +47,11 @@ class Field3d_operators
         #ifdef USECUDA
         void calc_mean_profile_g(TF* const, const TF* const); // Calculate mean profile into fld_mean
         TF calc_mean_2d_g(const TF* const); // Calculate mean from 2D (xy) field.
+        void calc_proj_sum_g(TF* const, const TF* const); // Calculate the projected sum over the z axis.
         TF calc_mean_g(const TF* const); // Calculate volume-weighted mean.
+        void calc_sum_profile_g(TF* const, const TF* const); // Calculate sum profile into fld_mean
+        TF calc_sum_2d_g(const TF* const); // Calculate sum from 2D (xy) field.
+        TF calc_sum_g(const TF* const); // Calculate volume-weighted sum.
         TF calc_max_g(const TF* const);
         #endif
 

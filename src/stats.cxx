@@ -970,7 +970,7 @@ void Stats<TF>::calc_stats(
     calc_stats_diff(varname, fld, offset);
     calc_stats_flux(varname, fld, offset);
     // calc_stats_grad(varname, fld);
-    // calc_stats_path(varname, fld);
+    calc_stats_path(varname, fld);
     // calc_stats_cover(varname, fld, offset, threshold);
     // calc_stats_frac(varname, fld, offset, threshold);
 }
@@ -1212,6 +1212,7 @@ void Stats<TF>::calc_stats_grad(
 }
 #endif
 
+#ifndef USECUDA
 template<typename TF>
 void Stats<TF>::calc_stats_path(
         const std::string& varname, const Field3d<TF>& fld)
@@ -1246,6 +1247,8 @@ void Stats<TF>::calc_stats_path(
         }
     }
 }
+#endif
+
 
 template<typename TF>
 void Stats<TF>::calc_stats_cover(

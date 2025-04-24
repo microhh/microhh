@@ -241,6 +241,15 @@ namespace Tools_g
     }
 
     template<typename TF> __global__
+    void sign_by_arr(TF* __restrict__ a, int nsize)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            a[n] = (a[n] > 0) ? 1 : ((a[n] < 0) ? -1 : 0);
+    }
+
+    template<typename TF> __global__
     void add_val(TF* __restrict__ a, const TF* const __restrict__ fld, int nsize, TF val)
     {
         const int n = blockIdx.x*blockDim.x + threadIdx.x;
@@ -414,6 +423,8 @@ template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double
 template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);
 template  __global__ void Tools_g::mult_by_arr(double* __restrict__, int, const double* const __restrict__);
 template  __global__ void Tools_g::mult_by_arr(float* __restrict__, int, const float* const  __restrict__);
+template  __global__ void Tools_g::sign_by_arr(double* __restrict__, int);
+template  __global__ void Tools_g::sign_by_arr(float* __restrict__, int);
 
 template __global__ void Tools_g::add_val(double* __restrict__ a, const double* const __restrict__ fld, int nsize, double val);
 template __global__ void Tools_g::add_val(float* __restrict__ a, const float* const __restrict__ fld, int nsize, float val);
