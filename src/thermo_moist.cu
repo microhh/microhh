@@ -296,6 +296,28 @@ namespace
     }
 
     template<typename TF> __global__
+    void calc_thv_fluxbot_g(TF* __restrict__ thv_fluxbot,
+                                  TF* __restrict__ thl, TF* __restrict__ thl_fluxbot,
+                                  TF* __restrict__ qt, TF* __restrict__ qt_fluxbot,
+                                  int kstart, int icells, int jcells,
+                                  int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        // Calculate the surface buoyancy flux using the first model level temperature and humidity
+        // to ensure bitwise identical restarts.
+        if (i < icells && j < jcells)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*kk;
+
+            thv_fluxbot[ij] = virtual_temperature_flux_no_ql(
+                thl[ijk], thl_fluxbot[ij], qt[ijk], qt_fluxbot[ij]);
+        }
+    }
+
+    template<typename TF> __global__
     void calc_N2_g(TF* __restrict__ N2, TF* __restrict__ th,
                    TF* __restrict__ thvref, const TF* __restrict__ dzi,
                    int istart, int jstart, int kstart,
@@ -310,6 +332,24 @@ namespace
         {
             const int ijk = i + j*jj + k*kk;
             N2[ijk] = grav<TF>/thvref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_saturated_water_vapor_g(TF* __restrict__ qsat, TF* __restrict__ th, TF* __restrict__ qt,
+                             TF* __restrict__ exn, TF* __restrict__ p,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            qsat[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qs;
         }
     }
 
@@ -413,6 +453,65 @@ namespace
             qc[ijk] = fmax(qt[ijk] - sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]).qs, TF(0.));
         }
     }
+
+    template<typename TF> __global__
+    void calc_relative_humidity_g(TF* __restrict__ rh, TF* __restrict__ thl, TF* __restrict__ qt,
+                             TF* __restrict__ ex, TF* __restrict__ p,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            rh[ijk] = min( qt[ijk] / sat_adjust_g(thl[ijk], qt[ijk], p[k], ex[k]).qs, TF(1.));
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_T_g(TF* __restrict__ T, TF* __restrict__ thl, TF* __restrict__ qt,
+                             TF* __restrict__ exnref, TF* __restrict__ pref,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            T[ijk] = sat_adjust_g(thl[ijk], qt[ijk], pref[k], exnref[k]).t;
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_Th_g(TF* __restrict__ Th, TF* __restrict__ thl, TF* __restrict__ qt,
+                             TF* __restrict__ exnref, TF* __restrict__ pref,
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            const TF thlh = static_cast<TF>(0.5) * (thl[ijk-kk] + thl[ijk]); // Half level liq. water pot. temp.
+            const TF qth = static_cast<TF>(0.5) * (qt[ijk-kk] + qt[ijk]); // Half level specific hum.
+
+            Th[ijk] = sat_adjust_g(thlh, qth, pref[k], exnref[k]).t;
+        }
+    }
+
 
     template<typename TF> __global__
     void calc_thv_g(
@@ -971,7 +1070,8 @@ void Thermo_moist<TF>::get_thermo_field_g(
 
     dim3 gridGPU (gridi, gridj, gd.kcells);
     dim3 blockGPU(blocki, blockj, 1);
-
+    dim3 gridGPU2D (gridi, gridj, 1);
+    dim3 blockGPU2D(blocki, blockj, 1);
     dim3 gridGPU2 (gridi, gridj, gd.kmax);
     dim3 blockGPU2(blocki, blockj, 1);
 
@@ -1068,11 +1168,35 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
-    else if (name == "qlqi")
+    // else if (name == "qlqi") //DOUBLE!
+    // {
+    //     calc_condensate_g<TF><<<gridGPU2, blockGPU2>>>(
+    //         fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
+    //         bs.exnrefh_g, bs.prefh_g,
+    //         gd.istart,  gd.jstart,  gd.kstart,
+    //         gd.iend,    gd.jend,    gd.kend,
+    //         gd.icells, gd.ijcells);
+    //     cuda_check_error();
+    // }
+    else if (name == "qsat")
     {
-        calc_condensate_g<TF><<<gridGPU2, blockGPU2>>>(
-            fld.fld_g, fields.sp.at("thl")->fld_g, fields.sp.at("qt")->fld_g,
-            bs.exnrefh_g, bs.prefh_g,
+        calc_saturated_water_vapor_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.exnref_g, bs.pref_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "rh")
+    {
+        calc_relative_humidity_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.exnref_g, bs.pref_g,
             gd.istart,  gd.jstart,  gd.kstart,
             gd.iend,    gd.jend,    gd.kend,
             gd.icells, gd.ijcells);
@@ -1088,6 +1212,30 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
+    else if (name == "T")
+    {
+        calc_T_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.exnref_g, bs.pref_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "T_h")
+    {
+        calc_Th_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.exnrefh_g, bs.prefh_g,
+            gd.istart,  gd.jstart,  gd.kstart,
+            gd.iend,    gd.jend,    gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
     else if (name == "thv")
     {
         calc_thv_g<TF><<<gridGPU2, blockGPU2>>>(
@@ -1100,6 +1248,15 @@ void Thermo_moist<TF>::get_thermo_field_g(
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
+    }
+    else if (name == "thv_fluxbot")
+    {
+
+        calc_thv_fluxbot_g<TF><<<gridGPU2D, blockGPU2D>>>(
+            fld.flux_bot_g,
+            fields.sp.at("thl")->fld_g, fields.sp.at("thl")->flux_bot_g,
+            fields.sp.at("qt")->fld_g, fields.sp.at("qt")->flux_bot_g, gd.kstart, gd.icells, gd.jcells,
+            gd.icells, gd.ijcells);
     }
     else
     {
@@ -1209,7 +1366,6 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(
     cuda_check_error();
 }
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -1233,7 +1389,128 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         throw std::runtime_error(message);
     }
 }
-#endif
+
+template<typename TF>
+void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int blockk = 16;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int gridk  = gd.kcells/blockk + (gd.kcells%blockk > 0);
+    const int ijgrid = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+
+
+    // bs_stats = bs;
+
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+
+    // // Calculate the virtual temperature stats.
+    auto thv = fields.get_tmp_g();
+    thv->loc = gd.sloc;
+    get_thermo_field_g(*thv, "thv", true);
+    get_thermo_field_g(*thv, "thv_fluxbot", true);
+
+    stats.calc_stats("thv", *thv, no_offset, no_threshold);
+
+    fields.release_tmp_g(thv);
+
+    // Calculate the absolute temperature stats.
+    auto T = fields.get_tmp_g();
+    T->loc = gd.sloc;
+
+    get_thermo_field_g(*T, "T", true);
+    stats.calc_stats("T", *T, no_offset, no_threshold);
+
+    fields.release_tmp_g(T);
+
+    // Calculate the liquid water stats
+    auto ql = fields.get_tmp_g();
+    ql->loc = gd.sloc;
+    set_to_val<<<ngrid, nblock>>>(ql->fld_g.data(), gd.ncells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
+
+    get_thermo_field_g(*ql, "ql", true);
+    stats.calc_stats("ql", *ql, no_offset, no_threshold);
+
+    set_to_val<<<gridk, blockk>>>(ql->fld_mean_g.data(), gd.kcells, TF(0.));
+    set_to_val<<<ngrid, nblock>>>(ql->fld_g.data(), gd.ncells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->fld_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->fld_top_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->grad_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<ijgrid, blocki>>>(ql->grad_top_g.data(), gd.ijcells, TF(0.));
+
+    ql->loc = gd.wloc;
+    get_thermo_field_g(*ql, "ql_h", true);
+    ql->loc = gd.wloc;
+
+    stats.calc_stats_w("ql", *ql, no_offset);
+    stats.calc_stats_flux("ql", *ql, no_offset);
+
+    fields.release_tmp_g(ql);
+
+    // Calculate the ice stats
+    auto qi = fields.get_tmp_g();
+    qi->loc = gd.sloc;
+
+    get_thermo_field_g(*qi, "qi", true);
+    stats.calc_stats("qi", *qi, no_offset, no_threshold);
+
+    fields.release_tmp_g(qi);
+
+    // Calculate the combined liquid water and ice stats
+    auto qlqi = fields.get_tmp_g();
+    qlqi->loc = gd.sloc;
+
+    get_thermo_field_g(*qlqi, "qlqi", true);
+    stats.calc_stats("qlqi", *qlqi, no_offset, no_threshold);
+
+    fields.release_tmp_g(qlqi);
+
+    // Calculate the saturated water vapor stats
+    auto qsat = fields.get_tmp_g();
+    qsat->loc = gd.sloc;
+
+    get_thermo_field_g(*qsat, "qsat", true);
+    stats.calc_stats("qsat", *qsat, no_offset, no_threshold);
+
+    fields.release_tmp_g(qsat);
+
+    // Calculate the relative humidity
+    auto rh = fields.get_tmp_g();
+    rh->loc = gd.sloc;
+
+    get_thermo_field_g(*rh, "rh", true);
+    stats.calc_stats("rh", *rh, no_offset, no_threshold);
+
+    // // Surface values
+    // stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
+    // stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
+
+    fields.release_tmp_g(rh);
+
+    if (bs.swupdatebasestate)
+    {
+        backward_device();
+        stats.set_prof("phydro" , bs.pref);
+        stats.set_prof("phydroh", bs.prefh);
+        stats.set_prof("rho"    , bs.rhoref);
+        stats.set_prof("rhoh"   , bs.rhorefh);
+    }
+
+    cudaMemcpy(fields.sp.at("thl")->fld_mean.data(), fields.sp.at("thl")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+    stats.set_time_series("zi", gd.z[get_bl_depth()]);
+}
 
 template<typename TF>
 void Thermo_moist<TF>::exec_column(Column<TF>& column)

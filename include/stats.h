@@ -168,6 +168,9 @@ class Stats
         void calc_stats_frac(const std::string&, const Field3d<TF>&, const TF, const TF);
 
         void calc_stats_2d(const std::string&, const std::vector<TF>&, const TF);
+        #ifdef USECUDA
+        void calc_stats_2d_g(const std::string&, const cuda_vector<TF>&, const TF);
+        #endif
         void calc_stats_soil(const std::string, const std::vector<TF>&, const TF);
         void calc_covariance(const std::string&, const Field3d<TF>&, const TF, const TF, const int,
                              const std::string&, const Field3d<TF>&, const TF, const TF, const int);

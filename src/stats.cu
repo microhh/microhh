@@ -94,7 +94,51 @@ void Stats<TF>::calc_stats_mean(
     }
     fields.release_tmp_g(masked);
 
+    name = varname + "_bot";
+    calc_stats_2d_g(name, fld.fld_bot_g, offset);
 }
+
+template<typename TF>
+void Stats<TF>::calc_stats_2d_g(
+        const std::string& varname, const cuda_vector<TF>& fld, const TF offset)
+{
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+
+    dim3 gridGPU3(gridi, gridj, 1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+    auto masked = fields.get_tmp_xy_g();
+    // Calc mean of atmospheric variables
+    if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            if (m.second.nmask_bot > 0)
+            {
+
+                set_flag(flag, nmask, m.second, 1);
+                apply_mask_g<<<gridGPU3, blockGPU>>>(masked->data(),  fld.data(), mfield_g, flag, gd.icells, gd.jcells, 1, gd.ijcells);
+                m.second.tseries.at(varname).data = field3d_operators.calc_sum_2d_g(masked->data())/m.second.nmask_bot;
+                master.sum(&m.second.tseries.at(varname).data, 1);
+                m.second.tseries.at(varname).data += offset;
+            }
+            else
+                m.second.tseries.at(varname).data = netcdf_fp_fillvalue<TF>();
+
+        }
+    }
+    fields.release_tmp_xy_g(masked);
+
+}
+
 #endif
 
 
@@ -488,6 +532,54 @@ void Stats<TF>::calc_stats_frac(
 }
 
 
+template<typename TF>
+void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
+{
+
+    if (!doing_tendency)
+        return;
+
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int nblock = gd.ithread_block;
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+
+    std::string name = fld.name + "_" + tend_name;
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        tendency_order.at(fld.name).push_back(tend_name);
+        auto masked = fields.get_tmp_g();
+
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
+            cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
+            for (int k=gd.kstart; k<gd.kend+1; ++k)
+            {
+                if (nmask[k])
+                    m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
+            }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+        fields.release_tmp_g(masked);
+    }
+}
 
 #endif
 

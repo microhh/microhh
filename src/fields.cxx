@@ -44,7 +44,7 @@
 #include "diff.h"
 #include "fast_math.h"
 
-   
+
 namespace
 {
     template<typename TF>
@@ -768,8 +768,8 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
     for (auto& it : sp)
         stats.calc_stats(it.first, *it.second, no_offset, no_threshold);
 
-    for (auto& it : sp)
-        stats.calc_stats_2d(it.first + "_bot", it.second->fld_bot, no_offset);
+    // for (auto& it : sp)
+    //     stats.calc_stats_2d(it.first + "_bot", it.second->fld_bot, no_offset);
 
     stats.calc_stats("p", *sd.at("p"), no_offset, no_threshold);
 
@@ -791,7 +791,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
 
     // auto& masks = stats.get_masks();
 
-    // // The loop over masks inside of budget is necessary, because the mask mean is 
+    // // The loop over masks inside of budget is necessary, because the mask mean is
     // // required in order to compute the budget terms.
     // for (auto& m : masks)
     // {
@@ -901,7 +901,7 @@ void Fields<TF>::init_prognostic_field(
 
     // Record whether a WARNING needs to be thrown if the field does not exist in the input
     required_read[fldname] = required;
-    
+
 }
 
 template<typename TF>
@@ -1401,7 +1401,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        
+
         cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
     }
     for (auto& it : cross_lngrad)
@@ -1434,7 +1434,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = no_offset;
         cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
     }
-    
+
     for (auto& it : cross_path)
         cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }

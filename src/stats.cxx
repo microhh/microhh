@@ -971,8 +971,8 @@ void Stats<TF>::calc_stats(
     calc_stats_flux(varname, fld, offset);
     // calc_stats_grad(varname, fld);
     calc_stats_path(varname, fld);
-    // calc_stats_cover(varname, fld, offset, threshold);
-    // calc_stats_frac(varname, fld, offset, threshold);
+    calc_stats_cover(varname, fld, offset, threshold);
+    calc_stats_frac(varname, fld, offset, threshold);
 }
 
 #ifndef USECUDA
@@ -1010,6 +1010,8 @@ void Stats<TF>::calc_stats_mean(
             set_fillvalue_prof(m.second.profs.at(varname).data.data(), nmask, gd.kstart, gd.kcells);
         }
     }
+    name = varname + "_bot";
+    calc_stats_2d(name, fld->fld_bot, no_offset);
 }
 #endif
 
@@ -1286,7 +1288,6 @@ void Stats<TF>::calc_stats_cover(
     }
 
 }
-#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_frac(
@@ -1351,6 +1352,7 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
         }
     }
 }
+#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_2d(

@@ -1403,7 +1403,6 @@ void Thermo_moist<TF>::create(
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
     // Set up output classes
-    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);
@@ -2085,14 +2084,13 @@ void Thermo_moist<TF>::create_dump(Dump<TF>& dump)
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
 
-    #ifndef USECUDA
     bs_stats = bs;
-    #endif
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
@@ -2192,9 +2190,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     get_thermo_field(*rh, "rh", true, true);
     stats.calc_stats("rh", *rh, no_offset, no_threshold);
 
-    // // Surface values
-    // stats.calc_stats_2d("thl_bot", fields.ap.at("thl")->fld_bot, no_offset);
-    // stats.calc_stats_2d("qt_bot", fields.ap.at("qt")->fld_bot, no_offset);
 
     fields.release_tmp(rh);
 
@@ -2208,6 +2203,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
 
     stats.set_time_series("zi", gd.z[get_bl_depth()]);
 }
+#endif
 
 #ifndef USECUDA
 template<typename TF>

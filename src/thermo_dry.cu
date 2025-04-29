@@ -301,6 +301,32 @@ void Thermo_dry<TF>::get_thermo_field_g(
     if (cyclic)
         boundary_cyclic.exec_g(fld.fld_g);
 }
+
+
+template<typename TF>
+void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+
+    // calculate the buoyancy and its surface flux for the profiles
+    auto b = fields.get_tmp_g();
+    b->loc = gd.sloc;
+    get_thermo_field_g(*b, "b", true);
+    get_buoyancy_surf_g(*b);
+
+    stats.calc_stats("b", *b, no_offset, no_threshold);
+
+    fields.release_tmp_g(b);
+
+    cudaMemcpy(fields.sp.at("th")->fld_mean.data(), fields.sp.at("th")->fld_mean_g, gd.kcells*sizeof(TF), cudaMemcpyDeviceToHost);
+    stats.set_time_series("zi", gd.z[get_bl_depth()]);
+}
+
 #endif
 
 #ifdef USECUDA
