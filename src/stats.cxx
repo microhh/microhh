@@ -1247,7 +1247,6 @@ void Stats<TF>::calc_stats_path(
         }
     }
 }
-#endif
 
 
 template<typename TF>
@@ -1287,6 +1286,7 @@ void Stats<TF>::calc_stats_cover(
     }
 
 }
+#endif
 
 template<typename TF>
 void Stats<TF>::calc_stats_frac(

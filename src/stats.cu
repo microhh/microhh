@@ -354,7 +354,7 @@ void Stats<TF>::calc_stats_path(
             set_to_val<<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells, TF(1.));
             apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
-            field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data()); //not correct yet
+            field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
             sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
             TF denominator = field3d_operators.calc_sum_2d_g(mask_proj->data());
 
@@ -373,6 +373,117 @@ void Stats<TF>::calc_stats_path(
 
     fields.release_tmp_g(masked);
     fields.release_tmp_xy_g(mask_proj);
+
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_cover(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+
+{
+    using namespace Tools_g;
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int ijgrid  = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
+    const int nblock = gd.ithread_block;
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 gridGPU2(gridi, gridj, 1);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+
+    // Calc Integrated Path
+    name = varname + "_cover";
+
+    auto masked = fields.get_tmp_g();
+    auto mask_proj = fields.get_tmp_xy_g();
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+
+            set_to_val<<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells, TF(1.));
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
+            field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
+            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            TF denominator = field3d_operators.calc_sum_2d_g(mask_proj->data());
+
+            add_val<<<gd.ncells, nblock>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
+            field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
+            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            TF numerator = field3d_operators.calc_sum_2d_g(mask_proj->data());
+
+            m.second.tseries.at(name).data = numerator / denominator;
+            master.sum(&m.second.tseries.at(name).data, 1);
+        }
+    }
+
+    fields.release_tmp_g(masked);
+    fields.release_tmp_xy_g(mask_proj);
+
+}
+
+
+template<typename TF>
+void Stats<TF>::calc_stats_frac(
+        const std::string& varname, const Field3d<TF>& fld, const TF offset, const TF threshold)
+
+{
+    using namespace Tools_g;
+
+    auto& gd = grid.get_grid_data();
+
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
+    const int nblock = gd.ithread_block;
+    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+
+    dim3 gridGPU3(gridi, gridj, gd.kcells);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    unsigned int flag;
+    const int* nmask;
+    std::string name;
+    // Calc Fraction
+    name = varname + "_frac";
+
+    auto masked = fields.get_tmp_g();
+    if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
+    {
+        for (auto& m : masks)
+        {
+            add_val<<<ngrid, nblock>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
+            sign_by_arr<TF><<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells);
+            set_flag(flag, nmask, m.second, fld.loc[2]);
+            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
+            cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
+            for (int k=gd.kstart; k<gd.kend+1; ++k)
+            {
+                if (nmask[k])
+                    m.second.profs.at(name).data[k] *= gd.itot * gd.jtot / nmask[k];
+            }
+            master.sum(m.second.profs.at(name).data.data(), gd.kcells);
+
+            set_fillvalue_prof(m.second.profs.at(name).data.data(), nmask, gd.kstart, gd.kcells);
+        }
+    }
+    fields.release_tmp_g(masked);
 
 }
 
