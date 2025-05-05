@@ -1404,7 +1404,7 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     const int gridk  = gd.kcells/blockk + (gd.kcells%blockk > 0);
     const int ijgrid = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
     const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
+    const int ngrid  = gd.ncells/nblock + (gd.ncells%blocki > 0);
 
 
     // bs_stats = bs;
