@@ -78,12 +78,34 @@ def create_case_input(
     check_time_bounds(cams, start_date, end_date)
 
     # Remove top level CAMS to stay within RRTMGP pressure bounds.
-    cams = cams.sel(lay=slice(0, 135))
+    # cams = cams.sel(lay=slice(0, 135))
 
     # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
     cams = cams.interp(time=ls2d.time)
     cams_z = cams.interp(z=z)
-    if 'co2' not in cams_z.variables.keys():
+
+    # interpolate background CAMS profile to ERA5 levels (CAMS data comes at fewer levels)
+    cams_era_layers = xr.Dataset(
+        coords={
+            'time': ls2d.time,
+            'lay': ls2d.lay,
+        })
+
+    def interp_z(array, z_era, z_cams, time):
+        out = np.empty(z_era.shape)
+        for t in range(time.size):
+            out[t,:] = np.interp(z_era[t, :], z_cams[t, :], array[t,:])
+        return out
+
+    for var in list(cams.keys()):
+        if var[-4:] == '_lay':
+            if cams['lay'].size != ls2d['lay'].size:
+                data = interp_z(cams[var].data, ls2d['z_lay'].data, cams['z_lay'].data, ls2d['time'])
+            else:
+                data = cams[var].data   # in case the interpolation was already done before, just copy the data
+            cams_era_layers[var] = (('time', 'lay'), data)
+
+    if 'co2' not in list(cams_z.keys()):
         print('greenhouse gasses from CAMS not provided, using constant (RFMIP) values for co2 and ch4 instead')
         const_ghg = 1
     else:
@@ -298,8 +320,8 @@ def create_case_input(
         add_nc_var('h2o',   ('lay'), nc_rad, ls2d_z.h2o_lay.mean(axis=0))
         add_nc_var('o3',    ('lay'), nc_rad, ls2d_z.o3_lay.mean(axis=0)*1e-6)
         if not const_ghg:
-            add_nc_var('co2',   ('lay'), nc_rad, cams_z.co2_lay.mean(axis=0))
-            add_nc_var('ch4',   ('lay'), nc_rad, cams_z.ch4_lay.mean(axis=0))
+            add_nc_var('co2',   ('lay'), nc_rad, cams_era_layers.co2_lay.mean(axis=0))
+            add_nc_var('ch4',   ('lay'), nc_rad, cams_era_layers.ch4_lay.mean(axis=0))
 
         if use_tdep_background or use_tdep_aerosols or use_tdep_gasses:
             # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
@@ -326,8 +348,8 @@ def create_case_input(
             add_nc_var('h2o_bg', ('time_rad', 'lay'), nc_tdep, ls2d_z.h2o_lay)
             add_nc_var('o3_bg',  ('time_rad', 'lay'), nc_tdep, ls2d_z.o3_lay*1e-6)
             if not const_ghg:
-                add_nc_var('co2_bg', ('time_rad', 'lay'), nc_tdep, cams_z.co2_lay)
-                add_nc_var('ch4_bg', ('time_rad', 'lay'), nc_tdep, cams_z.ch4_lay)
+                add_nc_var('co2_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.co2_lay)
+                add_nc_var('ch4_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.ch4_lay)
 
         # Aerosols for domain and background column
         if use_aerosols:
@@ -343,30 +365,30 @@ def create_case_input(
             add_nc_var('aermr10', ('z'), nc_init, cams_z.aermr10.mean(axis=0))
             add_nc_var('aermr11', ('z'), nc_init, cams_z.aermr11.mean(axis=0))
 
-            add_nc_var('aermr01', ('lay'), nc_rad, cams_z.aermr01_lay.mean(axis=0))
-            add_nc_var('aermr02', ('lay'), nc_rad, cams_z.aermr02_lay.mean(axis=0))
-            add_nc_var('aermr03', ('lay'), nc_rad, cams_z.aermr03_lay.mean(axis=0))
-            add_nc_var('aermr04', ('lay'), nc_rad, cams_z.aermr04_lay.mean(axis=0))
-            add_nc_var('aermr05', ('lay'), nc_rad, cams_z.aermr05_lay.mean(axis=0))
-            add_nc_var('aermr06', ('lay'), nc_rad, cams_z.aermr06_lay.mean(axis=0))
-            add_nc_var('aermr07', ('lay'), nc_rad, cams_z.aermr07_lay.mean(axis=0))
-            add_nc_var('aermr08', ('lay'), nc_rad, cams_z.aermr08_lay.mean(axis=0))
-            add_nc_var('aermr09', ('lay'), nc_rad, cams_z.aermr09_lay.mean(axis=0))
-            add_nc_var('aermr10', ('lay'), nc_rad, cams_z.aermr10_lay.mean(axis=0))
-            add_nc_var('aermr11', ('lay'), nc_rad, cams_z.aermr11_lay.mean(axis=0))
+            add_nc_var('aermr01', ('lay'), nc_rad, cams_era_layers.aermr01_lay.mean(axis=0))
+            add_nc_var('aermr02', ('lay'), nc_rad, cams_era_layers.aermr02_lay.mean(axis=0))
+            add_nc_var('aermr03', ('lay'), nc_rad, cams_era_layers.aermr03_lay.mean(axis=0))
+            add_nc_var('aermr04', ('lay'), nc_rad, cams_era_layers.aermr04_lay.mean(axis=0))
+            add_nc_var('aermr05', ('lay'), nc_rad, cams_era_layers.aermr05_lay.mean(axis=0))
+            add_nc_var('aermr06', ('lay'), nc_rad, cams_era_layers.aermr06_lay.mean(axis=0))
+            add_nc_var('aermr07', ('lay'), nc_rad, cams_era_layers.aermr07_lay.mean(axis=0))
+            add_nc_var('aermr08', ('lay'), nc_rad, cams_era_layers.aermr08_lay.mean(axis=0))
+            add_nc_var('aermr09', ('lay'), nc_rad, cams_era_layers.aermr09_lay.mean(axis=0))
+            add_nc_var('aermr10', ('lay'), nc_rad, cams_era_layers.aermr10_lay.mean(axis=0))
+            add_nc_var('aermr11', ('lay'), nc_rad, cams_era_layers.aermr11_lay.mean(axis=0))
 
             if use_tdep_aerosols:
-                add_nc_var('aermr01_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr01_lay)
-                add_nc_var('aermr02_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr02_lay)
-                add_nc_var('aermr03_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr03_lay)
-                add_nc_var('aermr04_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr04_lay)
-                add_nc_var('aermr05_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr05_lay)
-                add_nc_var('aermr06_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr06_lay)
-                add_nc_var('aermr07_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr07_lay)
-                add_nc_var('aermr08_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr08_lay)
-                add_nc_var('aermr09_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr09_lay)
-                add_nc_var('aermr10_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr10_lay)
-                add_nc_var('aermr11_bg', ('time_rad', 'lay'), nc_tdep, cams_z.aermr11_lay)
+                add_nc_var('aermr01_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr01_lay)
+                add_nc_var('aermr02_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr02_lay)
+                add_nc_var('aermr03_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr03_lay)
+                add_nc_var('aermr04_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr04_lay)
+                add_nc_var('aermr05_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr05_lay)
+                add_nc_var('aermr06_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr06_lay)
+                add_nc_var('aermr07_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr07_lay)
+                add_nc_var('aermr08_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr08_lay)
+                add_nc_var('aermr09_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr09_lay)
+                add_nc_var('aermr10_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr10_lay)
+                add_nc_var('aermr11_bg', ('time_rad', 'lay'), nc_tdep, cams_era_layers.aermr11_lay)
 
                 add_nc_var('aermr01', ('time_rad', 'z'), nc_tdep, cams_z.aermr01)
                 add_nc_var('aermr02', ('time_rad', 'z'), nc_tdep, cams_z.aermr02)
