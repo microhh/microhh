@@ -152,6 +152,8 @@ xm_h2o = 18.01528
 eps = xm_h2o / xm_air
 TF = np.float32
 g = 9.81
+rho_liq = 1e3
+rho_ice = 917
 
 # size of null-collision grid:
 ng_x = 48
@@ -237,14 +239,14 @@ qi = read_if_exists(path+"qi", iotime, dims)
 iwp = qi * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
 
 nc0 = nl['micro']['Nc0']
-ftpnr_w = (4./3) * np.pi * nc0 * 1e3
-ftpnr_i = (4./3) * np.pi * 1e5 * 7e2
+ftpnr_w = (4./3) * np.pi * nc0 * rho_liq
+ftpnr_i = (2./3) * np.pi * 1e5 * rho_ice
 sig_fac = np.exp(np.log(1.34)*np.log(1.34))
 rel = np.where(lwp>0, 1e6 * sig_fac * (lwp / dz[:,np.newaxis,np.newaxis] / ftpnr_w)**(1./3), 0)
-rei = np.where(iwp>0, 1e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
+dei = np.where(iwp>0, 1e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
 
 rel = np.maximum(2.5, np.minimum(rel, 21.5))
-rei = np.maximum(10., np.minimum(rei, 180.))
+dei = np.maximum(10., np.minimum(dei, 180.))
 
 lwp *= 1e3 # g/m2
 iwp *= 1e3 # g/m2
@@ -348,7 +350,7 @@ nc_tlay[:] = np.append(tlay[:], np.tile(tlay_bg[zmin_idx:][:,None,None], (1, jto
 
 # We do not bother about t_lev yet  because the ray tracer is shortwave-only, but we do need to supply it in the netcdf
 nc_tlev = nc_out.createVariable("t_lev", TF, ("lev","y","x"))
-nc_tlev[:] = 0 
+nc_tlev[:] = 0
 
 # Liquid water path
 nc_lwp = nc_out.createVariable("lwp" , TF, ("lay","y","x"))
@@ -366,9 +368,9 @@ nc_iwp[:] = 0
 nc_iwp[:ktot] = iwp
 
 # Ice effective radius
-nc_rei = nc_out.createVariable("rei" , TF, ("lay","y","x"))
-nc_rei[:] = 0
-nc_rei[:ktot] = rei
+nc_dei = nc_out.createVariable("dei" , TF, ("lay","y","x"))
+nc_dei[:] = 0
+nc_dei[:ktot] = dei
 
 # surface properties
 nc_alb_dir = nc_out.createVariable("sfc_alb_dir", TF, ("y","x","band_sw"))

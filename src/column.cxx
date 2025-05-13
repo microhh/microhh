@@ -101,8 +101,18 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         i = std::min(i, gd.itot-1);
         j = std::min(j, gd.jtot-1);
 
-        columns.emplace_back(Column_struct{});
-        columns.back().coord = {i, j};
+        bool is_duplicate = false;
+        for (auto& col : columns)
+            if (col.coord[0] == i && col.coord[1] == j)
+            {
+                is_duplicate = true;
+                master.print_warning("Column #" + std::to_string(n) + " is a duplicate!");
+            }
+        if (!is_duplicate)
+        {
+            columns.emplace_back(Column_struct{});
+            columns.back().coord = {i, j};
+        }
     }
 
     // Create a NetCDF file for the statistics.

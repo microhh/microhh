@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2024 Chiel van Heerwaarden
  * Copyright (c) 2011-2024 Thijs Heus
  * Copyright (c) 2014-2024 Bart van Stratum
- *
+ * Copyright (c) 2014-2014 Juan Pedro Mellado
  * The heptadiagonal matrix solver is
  * Copyright (c) 2014-2014 Juan Pedro Mellado
  *

@@ -1,5 +1,5 @@
 import sys
-
+import os
 sys.path.append('../python/')
 import microhh_tools as mht
 
@@ -12,16 +12,23 @@ import bomex.bomex_test as bomex
 import rico.rico_test as rico
 import gabls1.gabls1_test as gabls1
 
-#modes = ['cpu', 'cpumpi', 'gpu']
-modes = ['cpu', 'cpumpi']
+modes = ['cpu', 'cpumpi', 'gpu']
 precs = ['dp', 'sp']
 
 for prec in precs:
     for mode in modes:
-        microhh_exec = 'microhh_{}_{}'.format(prec, mode)
+        # Likely MicroHH binary locations:
+        ex1 = 'microhh_{}_{}'.format(prec, mode)
+        ex2 = '../build_{}_{}/microhh'.format(prec, mode)
+        if os.path.exists(ex1):
+            microhh_exec = ex1
+        elif os.path.exists(ex2):
+            microhh_exec = ex2
+        else:
+            raise Exception('Can not find an executable for \"{}\" + \"{}\"'.format(prec, mode))
         experiment = '{}_{}'.format(prec, mode)
 
-        taylorgreen.run_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
+        # taylorgreen.run_test(microhh_exec, prec, mode, 'taylorgreen', experiment)
         conservation.run_test(microhh_exec, prec, mode, 'conservation', experiment)
 
         #

@@ -42,6 +42,7 @@
 #include "diff.h"
 #include "pres.h"
 #include "force.h"
+#include "particle_bin.h"
 #include "thermo.h"
 #include "radiation.h"
 #include "microphys.h"
@@ -120,37 +121,39 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
     try
     {
-        grid       = std::make_shared<Grid<TF>>     (master, *input);
-        soil_grid  = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
-        fields     = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
-        timeloop   = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
-        fft        = std::make_shared<FFT<TF>>      (master, *grid);
+        grid      = std::make_shared<Grid<TF>>     (master, *input);
+        soil_grid = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
+        fields    = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
+        timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
+        fft       = std::make_shared<FFT<TF>>      (master, *grid);
 
-        boundary   = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
+        boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
-        advec      = Advec<TF>    ::factory(master, *grid, *fields, *input);
-        diff       = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
-        pres       = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
-        thermo     = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
-        microphys  = Microphys<TF>::factory(master, *grid, *fields, *input);
-        radiation  = Radiation<TF>::factory(master, *grid, *fields, *input);
+        advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
+        diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
+        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
+        thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
+        microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
+        radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
 
-        force      = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
-        buffer     = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay      = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter    = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
-        source     = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
-        aerosol    = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
-        background = std::make_shared<Background<TF>>(master, *grid, *fields, *input);
+        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
+        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
+        aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
 
-        ib         = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+        particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
 
-        stats      = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
-        column     = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump       = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross      = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
+        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
-        budget     = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+        stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
+        column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross     = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
+
+        budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -265,6 +268,7 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
+    particle_bin->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
 
@@ -286,6 +290,7 @@ void Model<TF>::load()
     advec->create(*stats);
     diff->create(*stats, false);
 
+    thermo->create_stats(*stats);
     budget->create(*stats);
 }
 
@@ -413,6 +418,9 @@ void Model<TF>::exec()
 
                 // Add point and line sources of scalars.
                 source->exec(*timeloop);
+
+                // Gravitational settling of binned dust types.
+                particle_bin->exec(*stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -759,15 +767,16 @@ void Model<TF>::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff     ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(thermo   ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(microphys->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(radiation->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(stats    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross    ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump     ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(column   ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(advec        ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff         ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo       ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(microphys    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(radiation    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(stats        ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(particle_bin->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();
@@ -821,8 +830,8 @@ void Model<TF>::print_status()
             dnsout = std::fopen(outputname.c_str(), "a");
             std::setvbuf(dnsout, NULL, _IOLBF, 1024);
             std::fprintf(
-                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s\n",
-                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE");
+                    dnsout, "%8s %13s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+                    "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
         }
         first = false;
     }
@@ -847,8 +856,8 @@ void Model<TF>::print_status()
 
         if (master.get_mpiid() == 0)
         {
-            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E\n",
-                    iter, time, cputime, dt, cfl, dn, div, mom, tke);
+            std::fprintf(dnsout, "%8d %13.6G %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+                    iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
             std::fflush(dnsout);
         }
 
