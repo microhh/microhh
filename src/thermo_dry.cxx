@@ -752,6 +752,7 @@ void Thermo_dry<TF>::create_cross(Cross<TF>& cross)
     }
 }
 
+#ifndef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
 {
@@ -776,6 +777,7 @@ void Thermo_dry<TF>::exec_stats(Stats<TF>& stats)
     fields.release_tmp(b);
     stats.set_time_series("zi", gd.z[get_bl_depth()]);
 }
+#endif
 
 template<typename TF>
 void Thermo_dry<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime)
