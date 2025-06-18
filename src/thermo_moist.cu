@@ -1369,6 +1369,14 @@ void Thermo_moist<TF>::get_buoyancy_surf_g(
 template<typename TF>
 void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
+    using namespace Tools_g;
+    auto& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
+    const int gridj  = gd.jcells/blockj + (gd.icells%blockj > 0);
+    dim3 gridGPU_3d (gridi, gridj, gd.kmax+1);
+    dim3 blockGPU_3d(blocki, blockj, 1);
 
     if (mask_name == "ql")
     {
@@ -1382,6 +1390,45 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
         fields.release_tmp_g(ql);
         fields.release_tmp_g(qlh);
+    }
+    else if (mask_name == "qlcore")
+    {
+        auto ql = fields.get_tmp_g();
+        auto qlh = fields.get_tmp_g();
+
+        get_thermo_field_g(*ql, "ql", true);
+        get_thermo_field_g(*qlh, "ql_h", true);
+
+        stats.set_mask_thres(mask_name, *ql, *qlh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp_g(ql);
+        fields.release_tmp_g(qlh);
+
+        auto b = fields.get_tmp_g();
+        auto bh = fields.get_tmp_g();
+
+        get_thermo_field_g(*b, "b", true);
+        get_thermo_field_g(*bh, "b_h", true);
+
+        field3d_operators.calc_mean_profile_g(b->fld_mean_g, b->fld_g);
+        field3d_operators.calc_mean_profile_g(bh->fld_mean_g, bh->fld_g);
+        add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+                            &(b->fld_g[0]),
+                            &(b->fld_mean_g[0]),
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+        fields.release_tmp_g(b);
+        fields.release_tmp_g(bh);
+    }
+    else if (mask_name == "bplus" || mask_name == "bmin")
+    {
+        auto b = fields.get_tmp();
+        auto bh = fields.get_tmp();
+
+        get_thermo_field(*b, "b", true, true);
+        get_thermo_field(*bh, "b_h", true, true);
     }
     else
     {
