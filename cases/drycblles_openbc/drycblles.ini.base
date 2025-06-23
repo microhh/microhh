@@ -3,13 +3,13 @@ npx=2
 npy=4
 
 [grid]
-itot=64
-jtot=64
-ktot=64
+itot=None
+jtot=None
+ktot=None
 
-xsize=6400.
-ysize=6400.
-zsize=3200
+xsize=None
+ysize=None
+zsize=None
 
 swspatialorder=2
 
@@ -102,7 +102,7 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=1200
+endtime=None
 dt=6.
 dtmax=20.
 savetime=3600
@@ -118,7 +118,7 @@ sampletime=60
 [cross]
 swcross=1
 crosslist=u,v,w,th,s
-sampletime=60
+sampletime=None
 xy=25,100,250,500,1000,2000,3200
-xz=0
-yz=0
+xz=None
+yz=None

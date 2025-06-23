@@ -12,6 +12,9 @@ import asyncio
 import microhh_lbc_tools as mlt
 import microhh_tools as mht
 
+# Custom tools.
+from lbc_input import lbc_input
+
 pl.close('all')
 
 domain = sys.argv[1]
@@ -19,6 +22,13 @@ dtype = np.float64
 swadvec = '2'   # needed for correct # gcs.
 
 ini = mht.Read_namelist('drycblles.ini.base')
+
+
+"""
+Time.
+"""
+endtime = 900
+lbc_freq = 30
 
 
 """
@@ -108,6 +118,12 @@ nc_th[:] = th[:]
 
 nc_file.close()
 
+"""
+Update .ini
+"""
+ini['time']['endtime'] = endtime
+
+
 if domain == 'outer':
 
     xz, yz = mlt.get_cross_locations_for_lbcs(
@@ -117,26 +133,6 @@ if domain == 'outer':
             dx_nest, dy_nest,
             nghost, nbuffer)
 
-    #x0 = np.floor((xstart_nest - nghost  * dx_nest) / dx) * dx
-    #x1 = np.ceil ((xstart_nest + nbuffer * dx_nest) / dx) * dx
-    #yzw = np.arange(x0, x1+1e-3, dx)
-
-    #x0 = np.floor((xend_nest - nbuffer * dx_nest) / dx) * dx
-    #x1 = np.ceil ((xend_nest + nghost  * dx_nest) / dx) * dx
-    #yze = np.arange(x0, x1+1e-3, dx)
-
-    #yz = np.concatenate((yzw, yze))
-
-    #y0 = np.floor((ystart_nest - nghost  * dy_nest) / dy) * dy
-    #y1 = np.ceil ((ystart_nest + nbuffer * dy_nest) / dy) * dy
-    #xzs = np.arange(y0, y1+1e-3, dy)
-
-    #y0 = np.floor((yend_nest - nbuffer * dy_nest) / dy) * dy
-    #y1 = np.ceil ((yend_nest + nghost  * dy_nest) / dy) * dy
-    #xzn = np.arange(y0, y1+1e-3, dy)
-
-    #xz = np.concatenate((xzs, xzn))
-
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
     ini['grid']['ktot'] = ktot
@@ -145,6 +141,7 @@ if domain == 'outer':
     ini['grid']['ysize'] = ysize
     ini['grid']['zsize'] = zsize
 
+    ini['cross']['sampletime'] = lbc_freq
     ini['cross']['xz'] = list(xz)
     ini['cross']['yz'] = list(yz)
 
@@ -161,6 +158,7 @@ elif domain == 'inner':
     ini['grid']['ysize'] = ysize_nest
     ini['grid']['zsize'] = zsize
 
+    ini['cross']['sampletime'] = lbc_freq
     ini['cross']['yz'] = (xend_nest+xstart_nest)/2
     ini['cross']['xz'] = (yend_nest+ystart_nest)/2
 
@@ -170,86 +168,91 @@ elif domain == 'inner':
 ini.save('drycblles.ini', allow_overwrite=True)
 
 
-#"""
-#Create lateral boundaries
-#"""
-#class Timer:
-#    def __init__(self):
-#        self.tstart = datetime.now()
-#        self.elapsed = 0
-#
-#    def pause(self):
-#        self.elapsed += (datetime.now() - self.tstart).total_seconds()
-#
-#    def restart(self):
-#        self.tstart = datetime.now()
-#
-#    def stop(self):
-#        self.elapsed += (datetime.now() - self.tstart).total_seconds()
-#        print(f'Elapsed: {self.elapsed}')
+"""
+Create lateral boundaries
+"""
+class Timer:
+    def __init__(self):
+        self.tstart = datetime.now()
+        self.elapsed = 0
+
+    def pause(self):
+        self.elapsed += (datetime.now() - self.tstart).total_seconds()
+
+    def restart(self):
+        self.tstart = datetime.now()
+
+    def stop(self):
+        self.elapsed += (datetime.now() - self.tstart).total_seconds()
+        print(f'Elapsed: {self.elapsed}')
 
 
-#if domain == 'inner':
-#
-#    fields = ['u', 'v', 'w', 'th', 's']
-#
-#    t = Timer()
-#
-#    # Read cross-sections.
-#    xz = {}
-#    yz = {}
-#    for fld in fields:
-#        xz[fld] = xr.open_dataset(f'outer/{fld}.xz.nc', decode_times=False)
-#        yz[fld] = xr.open_dataset(f'outer/{fld}.yz.nc', decode_times=False)
-#    time = xz[list(xz.keys())[0]].time.values
-#
-#    t.pause()
-#
-#    # Define nest grid.
-#    x = np.arange(dx_nest/2, xsize_nest, dx_nest)
-#    xh = np.arange(0, xsize_nest, dx_nest)
-#    y = np.arange(dy_nest/2, ysize_nest, dy_nest)
-#    yh = np.arange(0, ysize_nest, dy_nest)
-#
-#    lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost, nbuffer, x_offset=xstart_nest, y_offset=ystart_nest)
-#
-#    t.restart()
-#
-#    for loc in ['west', 'east', 'north', 'south']:
-#        for fld in fields:
-#            # Short cuts.
-#            lbc_in = lbc[f'{fld}_{loc}']
-#            dims = lbc_in.dims
-#
-#            # Dimensions in LBC file.
-#            xloc, yloc = dims[3], dims[2]
-#
-#            # Dimensions in cross-section.
-#            xloc_in = 'xh' if 'xh' in xloc else 'x'
-#            yloc_in = 'yh' if 'yh' in yloc else 'y'
-#
-#            # Switch between yz and xz crosses.
-#            cc = yz if loc in ['west','east'] else xz
-#
-#            # Interpolate!
-#            ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]}, method='nearest')
-#
-#            # Check if interpolation was success.
-#            if np.any(np.isnan(ip[fld].values)):
-#                raise Exception('Interpolated BCs contain NaNs!')
-#
-#            lbc_in[:] = ip[fld].values
-#
-#    t.stop()
-#
-#    #lbc.to_netcdf('lbc_old.nc')
-#
-#    # Save as binary input files.
-#    for fld in fields:
-#        for loc in ['west', 'east', 'north', 'south']:
-#            lbc_in = lbc[f'{fld}_{loc}']
-#            lbc_in.values.astype(dtype).tofile('lbc_{}_{}.0000000'.format(fld, loc))
-#
+if domain == 'inner':
+
+    fields = ['u', 'v', 'w', 'th', 's']
+
+    t = Timer()
+
+    # Read cross-sections.
+    xz = {}
+    yz = {}
+    for fld in fields:
+        xz[fld] = xr.open_dataset(f'outer/{fld}.xz.nc', decode_times=False)
+        yz[fld] = xr.open_dataset(f'outer/{fld}.yz.nc', decode_times=False)
+    time = xz[list(xz.keys())[0]].time.values
+
+    t.pause()
+
+    # Define nest grid.
+    x = np.arange(dx_nest/2, xsize_nest, dx_nest)
+    xh = np.arange(0, xsize_nest, dx_nest)
+    y = np.arange(dy_nest/2, ysize_nest, dy_nest)
+    yh = np.arange(0, ysize_nest, dy_nest)
+
+    lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost, nbuffer, x_offset=xstart_nest, y_offset=ystart_nest)
+
+    t.restart()
+
+    for loc in ['west', 'east', 'north', 'south']:
+        for fld in fields:
+            # Short cuts.
+            lbc_in = lbc[f'{fld}_{loc}']
+            dims = lbc_in.dims
+
+            # Dimensions in LBC file.
+            xloc, yloc = dims[3], dims[2]
+
+            # Dimensions in cross-section.
+            xloc_in = 'xh' if 'xh' in xloc else 'x'
+            yloc_in = 'yh' if 'yh' in yloc else 'y'
+
+            # Switch between yz and xz crosses.
+            cc = yz if loc in ['west','east'] else xz
+
+            # Interpolate!
+            ip = cc[fld].interp({yloc_in: lbc[yloc], xloc_in: lbc[xloc]}, method='nearest')
+
+            # Check if interpolation was success.
+            if np.any(np.isnan(ip[fld].values)):
+                raise Exception('Interpolated BCs contain NaNs!')
+
+            lbc_in[:] = ip[fld].values
+
+    t.stop()
+
+    #lbc.to_netcdf('lbc_old.nc')
+
+    # Save as binary input files.
+    for fld in fields:
+        for loc in ['west', 'east', 'north', 'south']:
+            lbc_in = lbc[f'{fld}_{loc}']
+            lbc_in.values.astype(dtype).tofile('lbc_{}_{}.0000000'.format(fld, loc))
+
+
+
+
+
+
 #    """
 #    NEW NEW NEW!!!
 #    """
