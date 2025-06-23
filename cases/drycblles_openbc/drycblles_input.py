@@ -27,7 +27,7 @@ ini = mht.Read_namelist('drycblles.ini.base')
 """
 Time.
 """
-endtime = 900
+endtime = 3600
 lbc_freq = 10
 
 
@@ -112,7 +112,7 @@ nc_v  = nc_group_init.createVariable("v" , dtype, ("z"))
 nc_th = nc_group_init.createVariable("th", dtype, ("z"))
 
 nc_z [:] = z [:]
-nc_u [:] = u [:] + 2
+nc_u [:] = u [:] + 1
 nc_v [:] = v [:] + 1
 nc_th[:] = th[:]
 

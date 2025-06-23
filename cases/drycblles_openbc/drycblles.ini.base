@@ -17,7 +17,7 @@ swspatialorder=2
 sw_openbc=None
 
 [advec]
-swadvec=2
+swadvec=2i5
 cflmax=1.2
 
 [diff]
