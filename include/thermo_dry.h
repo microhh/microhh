@@ -60,6 +60,7 @@ class Thermo_dry : public Thermo<TF>
         void create_basestate(Input&, Netcdf_handle&, const bool);
         void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
+        void create_stats(Stats<TF>&);   // Initialization of the statistics.
 
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -122,6 +123,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&, const bool) {};
         void load(const int) {};
         void save(const int) {};
 
@@ -145,7 +147,6 @@ class Thermo_dry : public Thermo<TF>
         bool swcross_b;
         std::vector<std::string> dumplist;         // List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   // Initialization of the statistics.
         void create_column(Column<TF>&); // Initialization of the single column output.
         void create_dump(Dump<TF>&);     // Initialization of the single column output.
         void create_cross(Cross<TF>&);   // Initialization of the single column output.

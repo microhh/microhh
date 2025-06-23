@@ -522,7 +522,8 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k < kend+1)
+        // Exclude surface, is calculated below without saturation adjustment.
+        if (i < iend && j < jend && k > kstart && k < kend+1)
         {
             const TF exnh = exner(ph[k]);
             const int ijk = i + j*jj + k*kk;
@@ -540,8 +541,10 @@ namespace
             const TF exn_bot = exner(ph[kstart]);
             const int ij = i + j*jj;
             const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
             T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+            T_h[ijk_nogc] = T_sfc[ij_nogc];
         }
     }
 
@@ -584,7 +587,8 @@ namespace
             T[ijk_nogc] = ssa.t;
         }
 
-        if (i < iend && j < jend && k < kend+1)
+        // Exclude surface, is calculated below without saturation adjustment.
+        if (i < iend && j < jend && k > kstart && k < kend+1)
         {
             const TF exnh = exner(ph[k]);
             const int ijk = i + j*jj + k*kk;
@@ -602,8 +606,10 @@ namespace
             const TF exn_bot = exner(ph[kstart]);
             const int ij = i + j*jj;
             const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+            const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
             T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+            T_h[ijk_nogc] = T_sfc[ij_nogc];
         }
     }
 
@@ -650,7 +656,7 @@ namespace
                 T[ijk_out] = ssa.t;
             }
 
-            if (k < kend+1)
+            if (k > kstart && k < kend+1)
             {
                 const TF thlh = interp2(thl[ijk-ijcells], thl[ijk]);
                 const TF qth  = interp2(qt [ijk-ijcells], qt [ijk]);
@@ -659,7 +665,10 @@ namespace
             }
 
             if (k == kstart)
+            {
                 T_sfc[ij_out] = thl_bot[ij] * exner(ph[kstart]);
+                T_h[ijk_out] = T_sfc[ij_out];
+            }
         }
     }
 
@@ -810,6 +819,8 @@ void Thermo_moist<TF>::prepare_device()
     const int nmemsize = gd.kcells*sizeof(TF);
 
     // Allocate fields for Boussinesq and anelastic solver
+    cuda_safe_call(cudaMalloc(&bs.thl0_g,    nmemsize));
+    cuda_safe_call(cudaMalloc(&bs.qt0_g,     nmemsize));
     cuda_safe_call(cudaMalloc(&bs.thvref_g,  nmemsize));
     cuda_safe_call(cudaMalloc(&bs.thvrefh_g, nmemsize));
     cuda_safe_call(cudaMalloc(&bs.pref_g,    nmemsize));
@@ -820,6 +831,8 @@ void Thermo_moist<TF>::prepare_device()
     cuda_safe_call(cudaMalloc(&bs.rhorefh_g, nmemsize));
 
     // Copy fields to device
+    cuda_safe_call(cudaMemcpy(bs.thl0_g,    bs.thl0.data(),    nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.qt0_g,     bs.qt0.data(),     nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice));
@@ -833,6 +846,8 @@ void Thermo_moist<TF>::prepare_device()
 template<typename TF>
 void Thermo_moist<TF>::clear_device()
 {
+    cuda_safe_call(cudaFree(bs.thl0_g   ));
+    cuda_safe_call(cudaFree(bs.qt0_g    ));
     cuda_safe_call(cudaFree(bs.thvref_g ));
     cuda_safe_call(cudaFree(bs.thvrefh_g));
     cuda_safe_call(cudaFree(bs.pref_g   ));
@@ -847,13 +862,19 @@ void Thermo_moist<TF>::clear_device()
 template<typename TF>
 void Thermo_moist<TF>::forward_device()
 {
-    // Copy fields to device
     auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
+
+    cuda_safe_call(cudaMemcpy(bs.thl0_g,    bs.thl0.data(),    nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.qt0_g,     bs.qt0.data(),     nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.rhoref_g,  bs.rhoref.data(),  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bs.rhorefh_g, bs.rhorefh.data(), nmemsize, cudaMemcpyHostToDevice));
 }
 
 template<typename TF>
@@ -861,10 +882,17 @@ void Thermo_moist<TF>::backward_device()
 {
     auto& gd = grid.get_grid_data();
     const int nmemsize = gd.kcells*sizeof(TF);
-    cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice);
-    cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   nmemsize, cudaMemcpyHostToDevice);
-    cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice);
-    cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice);
+
+    cuda_safe_call(cudaMemcpy(bs.thl0.data(),    bs.thl0_g,    nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.qt0.data(),     bs.qt0_g,     nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.thvref.data(),  bs.thvref_g,  nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.thvrefh.data(), bs.thvrefh_g, nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.pref.data(),    bs.pref_g,    nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.prefh.data(),   bs.prefh_g,   nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.exnref.data(),  bs.exnref_g,  nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.exnrefh.data(), bs.exnrefh_g, nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.rhoref.data(),  bs.rhoref_g,  nmemsize, cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(bs.rhorefh.data(), bs.rhorefh_g, nmemsize, cudaMemcpyDeviceToHost));
 
     bs_stats = bs;
 }
@@ -910,22 +938,17 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 
         fields.release_tmp(tmp);
 
-        cudaMemcpy(bs.pref_g,    bs.pref.data(),    gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.prefh_g,   bs.prefh.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-
-        cudaMemcpy(bs.rhoref_g,  bs.rhoref.data(),  gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.rhorefh_g, bs.rhorefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        // Copy basestate back to GPU.
+        forward_device();
     }
 
     calc_buoyancy_tend_2nd_g<TF><<<gridGPU, blockGPU>>>(
-            fields.mt.at("w")->fld_g, fields.sp.at("thl")->fld_g,
-            fields.sp.at("qt")->fld_g, bs.thvrefh_g, bs.exnrefh_g, bs.prefh_g,
+            fields.mt.at("w")->fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.thvrefh_g,
+            bs.exnrefh_g,
+            bs.prefh_g,
             gd.istart, gd.jstart, gd.kstart+1,
             gd.iend,   gd.jend,   gd.kend,
             gd.icells, gd.ijcells);
@@ -933,7 +956,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
 
     cudaDeviceSynchronize();
     stats.calc_tend(*fields.mt.at("w"), tend_name);
-
 }
 
 template<typename TF>
@@ -980,11 +1002,8 @@ void Thermo_moist<TF>::get_thermo_field_g(
 
         fields.release_tmp(tmp);
 
-        // Only full level pressure and bs.exner needed for calculating buoyancy of ql
-        cudaMemcpy(bs.pref_g,   bs.pref.data(),     gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.prefh_g,  bs.prefh.data(),    gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnref_g, bs.exnref.data(),   gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
-        cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), gd.kcells*sizeof(TF), cudaMemcpyHostToDevice);
+        // Copy basestate back to GPU.
+        forward_device();
     }
 
     if (name == "b")

@@ -152,6 +152,10 @@ if(USECUDA)
   endif()
 endif()
 
+if (NOT EXISTS "${CMAKE_SOURCE_DIR}/rte-rrtmgp-cpp/src")
+    message(FATAL_ERROR "Git submodules are not initialized. Please run:\n git submodule update --init --recursive")
+endif()
+
 add_subdirectory(rte-rrtmgp-cpp/src_kernels)
 if(USECUDA)
   add_subdirectory(rte-rrtmgp-cpp/src_kernels_cuda)

@@ -40,6 +40,7 @@ def convert_to_nc(variables):
 
             try:
                 otime = int(round(starttime / 10**iotimeprec))
+
                 if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
                     if mode != 'xy':
                         continue

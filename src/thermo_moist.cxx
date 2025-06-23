@@ -840,7 +840,8 @@ namespace
                 }
         }
 
-        for (int k=kstart; k<kend+1; ++k)
+        // Exclude surface, is calculated below without saturation adjustment.
+        for (int k=kstart+1; k<kend+1; ++k)
         {
             if constexpr (!swphydro_3d)
             {
@@ -877,7 +878,7 @@ namespace
                 }
         }
 
-        // Calculate surface temperature (assuming no liquid water)
+        // Calculate surface temperature (assuming no liquid water).
         TF exn_bot;
         if constexpr (!swphydro_3d)
             exn_bot = exner(ph[kstart]);
@@ -889,11 +890,13 @@ namespace
                 const int ij = i + j*jj;
                 const int ijk = ij + kstart*kk;
                 const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+                const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
                 if constexpr (swphydro_3d)
                     exn_bot = exner(ph[ijk]);
 
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+                T_h[ijk_nogc] = T_sfc[ij_nogc];
             }
     }
 
@@ -962,7 +965,8 @@ namespace
                 }
         }
 
-        for (int k=kstart; k<kend+1; ++k)
+        // Exclude surface, is calculated below without saturation adjustment.
+        for (int k=kstart+1; k<kend+1; ++k)
         {
             if constexpr (!swphydro_3d)
             {
@@ -999,7 +1003,7 @@ namespace
                 }
         }
 
-        // Calculate surface temperature (assuming no liquid water)
+        // Calculate surface temperature (assuming no liquid water).
         TF exn_bot;
         if constexpr (!swphydro_3d)
             exn_bot = exner(ph[kstart]);
@@ -1011,11 +1015,13 @@ namespace
                 const int ij = i + j*jj;
                 const int ijk = ij + kstart*kk;
                 const int ij_nogc = (i-igc) + (j-jgc)*jj_nogc;
+                const int ijk_nogc = (i-igc) + (j-jgc)*jj_nogc + (kstart-kgc)*kk_nogc;
 
                 if constexpr (swphydro_3d)
                     exn_bot = exner(ph[ijk]);
 
                 T_sfc[ij_nogc] = thl_bot[ij] * exn_bot;
+                T_h[ijk_nogc] = T_sfc[ij_nogc];
             }
     }
 
@@ -1085,7 +1091,8 @@ namespace
             }
         }
 
-        for (int k=kstart; k<kend+1; ++k)
+        // Exclude surface, is calculated below without saturation adjustment.
+        for (int k=kstart+1; k<kend+1; ++k)
         {
             if constexpr (!swphydro_3d)
             {
@@ -1129,11 +1136,13 @@ namespace
             const int ij = i + j*icells;
             const int ijk = ij + kstart * ijcells;
             const int ij_out = n;
+            const int ijk_out = n + (kstart-kgc)*n_cols;
 
             if constexpr (swphydro_3d)
                 exn_bot = exner(ph[ijk]);
 
             T_sfc[ij_out] = thl_bot[ij] * exn_bot;
+            T_h[ijk_out] = T_sfc[ij_out];
         }
     }
 
@@ -1272,7 +1281,6 @@ namespace
                 }
         }
     }
-
     template<typename TF>
     void interpolate_fld(
             TF* const restrict fld_out,
@@ -1400,12 +1408,13 @@ template<typename TF>
 void Thermo_moist<TF>::save(const int iotime)
 {
     auto& gd = grid.get_grid_data();
-
     int nerror = 0;
 
-    if ( (master.get_mpiid() == 0) && bs.swupdatebasestate)
+    if ((master.get_mpiid() == 0) && (bs.swupdatebasestate || iotime == 0))
     {
-        // Save the base state to disk
+        // Save the base state to disk if the base state is updated,
+        // or for a cold start.
+
         FILE *pFile;
         char filename[256];
         std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
@@ -1420,8 +1429,21 @@ void Thermo_moist<TF>::save(const int iotime)
         else
             master.print_message("OK\n");
 
+        fwrite(&bs.thl0 [gd.kstart], sizeof(TF), gd.ktot, pFile);
+        fwrite(&bs.qt0  [gd.kstart], sizeof(TF), gd.ktot, pFile);
+
         fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
         fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.pref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.prefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.exnref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.exnrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.rhoref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.rhorefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
         fclose(pFile);
     }
 
@@ -1435,7 +1457,7 @@ void Thermo_moist<TF>::save(const int iotime)
         std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
         TF no_offset = 0.;
-        
+
         const int kslice = 0;
         if (field3d_io.save_xy_slice(
                 field, no_offset, tmp1->fld.data(), filename, kslice))
@@ -1465,10 +1487,13 @@ void Thermo_moist<TF>::load(const int iotime)
 
     int nerror = 0;
 
-    if ((master.get_mpiid() == 0) && bs.swupdatebasestate)
+    if ((master.get_mpiid() == 0))
     {
+        // Without update basestate, read the base state from time = 0.
+        const int iotime_bs = bs.swupdatebasestate ? iotime : 0;
+
         char filename[256];
-        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime_bs);
 
         std::printf("Loading \"%s\" ... ", filename);
 
@@ -1482,10 +1507,28 @@ void Thermo_moist<TF>::load(const int iotime)
         else
         {
             master.print_message("OK\n");
-            if (fread(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
-                ++nerror;
-            if (fread(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot + 1)
-                ++nerror;
+
+            auto read = [&](std::vector<TF>& prof, const int size)
+            {
+                if (fread(&prof[gd.kstart], sizeof(TF), size, pFile) != (unsigned)size)
+                    ++nerror;
+            };
+
+            read(bs.thl0, gd.ktot);
+            read(bs.qt0, gd.ktot);
+
+            read(bs.thvref, gd.ktot);
+            read(bs.thvrefh, gd.ktot+1);
+
+            read(bs.pref, gd.ktot);
+            read(bs.prefh, gd.ktot+1);
+
+            read(bs.exnref, gd.ktot);
+            read(bs.exnrefh, gd.ktot+1);
+
+            read(bs.rhoref, gd.ktot);
+            read(bs.rhorefh, gd.ktot+1);
+
             fclose(pFile);
         }
     }
@@ -1524,17 +1567,35 @@ void Thermo_moist<TF>::load(const int iotime)
     if (nerror)
         throw std::runtime_error("Error in loading thermo_moist basestate");
 
-    master.broadcast(&bs.thvref [gd.kstart], gd.ktot  );
-    master.broadcast(&bs.thvrefh[gd.kstart], gd.ktot+1);
+    // Broadcast to other MPI tasks.
+    master.broadcast(bs.thl0.data(), gd.kcells);
+    master.broadcast(bs.qt0.data(), gd.kcells);
+
+    master.broadcast(bs.thvref.data(), gd.kcells);
+    master.broadcast(bs.thvrefh.data(), gd.kcells);
+
+    master.broadcast(bs.pref.data(), gd.kcells);
+    master.broadcast(bs.prefh.data(), gd.kcells);
+
+    master.broadcast(bs.exnref.data(), gd.kcells);
+    master.broadcast(bs.exnrefh.data(), gd.kcells);
+
+    master.broadcast(bs.rhoref.data(), gd.kcells);
+    master.broadcast(bs.rhorefh.data(), gd.kcells);
 }
 
 template<typename TF>
-void Thermo_moist<TF>::create_basestate(Input& inputin, Netcdf_handle& input_nc, const bool overwrite_rhoref)
+void Thermo_moist<TF>::create_basestate(
+        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop, const bool overwrite_rhoref)
 {
     auto& gd = grid.get_grid_data();
 
     // Enable automated calculation of horizontally averaged fields
     fields.set_calc_mean_profs(true);
+
+    std::string timedep_dim = "time_surface";
+    tdep_pbot->create_timedep(input_nc, timedep_dim);
+    tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
@@ -1592,24 +1653,19 @@ void Thermo_moist<TF>::create(
         Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
         Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
 {
+    fields.set_calc_mean_profs(true);
     // Init the toolbox classes.
-    boundary_cyclic.init();
 
     // Process the time dependent surface pressure
     std::string timedep_dim = "time_surface";
     tdep_pbot->create_timedep(input_nc, timedep_dim);
     tdep_pbot->update_time_dependent(bs.pbot, timeloop);
 
-    // Setup 3D hydrostatic pressure.
-    if (swphydro_3d)
-        create_phydro_3d(timeloop);
-
-    // `thermo->create` is called only for warm starts. Don't overwrite the base state density.
-    const bool define_rhoref = false;
-    create_basestate(inputin, input_nc, define_rhoref);
+    // Init the toolbox classes.
+    boundary_cyclic.init();
 
     // Set up output classes
-    create_stats(stats);
+    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);

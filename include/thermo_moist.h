@@ -60,7 +60,8 @@ class Thermo_moist : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
-        void create_basestate(Input&, Netcdf_handle&, const bool);
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&, const bool);
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
@@ -155,7 +156,6 @@ class Thermo_moist : public Thermo<TF>
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.

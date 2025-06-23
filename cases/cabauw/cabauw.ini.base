@@ -22,7 +22,7 @@ swspatialorder=2
 [advec]
 swadvec=2i5
 cflmax=1.4
-fluxlimit_list=qt,qr,nr
+fluxlimit_list=None
 
 [diff]
 swdiff=smag2
@@ -31,12 +31,12 @@ dnmax=0.4
 [thermo]
 swthermo=moist
 swbasestate=anelastic
-pbot=1e5
+pbot=-1
 swupdatebasestate=1
 swtimedep_pbot=1
 
 [micro]
-swmicro=2mom_warm
+swmicro=None
 cflmax=1.2
 Nc0=200000000
 Ni0=1e5
@@ -54,7 +54,6 @@ sfc_alb_dif=0.22
 swclearskystats=1
 swfixedsza=0
 swtimedep_background=None
-#timedeplist_gas=None
 
 [aerosol]
 swaerosol=None
@@ -152,4 +151,4 @@ coordinates[x]=None
 coordinates[y]=None
 
 [limiter]
-limitlist=qt,qr,nr
+limitlist=None

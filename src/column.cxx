@@ -101,21 +101,17 @@ void Column<TF>::create(Input& inputin, Timeloop<TF>& timeloop, std::string sim_
         i = std::min(i, gd.itot-1);
         j = std::min(j, gd.jtot-1);
 
-        // Check for duplicate columns.
-        bool not_a_duplicate = true;
+        bool is_duplicate = false;
         for (auto& col : columns)
-        {
-            if (i == col.coord[0] && j == col.coord[1])
+            if (col.coord[0] == i && col.coord[1] == j)
             {
-                master.print_warning("Removing duplicate column location\n");
-                not_a_duplicate = false;
+                is_duplicate = true;
+                master.print_warning("Column #" + std::to_string(n) + " is a duplicate!");
             }
-        }
-
-        if (not_a_duplicate)
+        if (!is_duplicate)
         {
             columns.emplace_back(Column_struct{});
-            columns.back().coord={i, j};
+            columns.back().coord = {i, j};
         }
     }
 

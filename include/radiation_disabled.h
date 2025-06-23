@@ -22,6 +22,8 @@
 #define RADIATION_DISABLED_H
 
 #include <cstdio>
+#include <stdexcept>
+
 #include "master.h"
 #include "grid.h"
 #include "fields.h"

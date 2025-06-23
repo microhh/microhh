@@ -1,6 +1,9 @@
 MicroHH
 -------
+
+[![CI Status](https://github.com/microhh/microhh/actions/workflows/develop.yml/badge.svg)](https://github.com/microhh/microhh/actions/)
 [![Documentation Status](https://readthedocs.org/projects/microhh/badge/?version=latest)](https://microhh.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13923894.svg)](https://doi.org/10.5281/zenodo.13923894)
 
 MicroHH is a computational fluid dynamics code designed to simulate turbulent flows in the atmosphere using the Direct Numerical Simulation (DNS) and Large-Eddy Simulation (LES) techniques. Its can do idealized flows, but also realistic atmospheric boundary layers with all relevant processes, including moist thermodynamics, radiation, land surface processes, and microphysics. MicroHH is written in C++/CUDA and runs on both CPUs and GPUs using single or double precision floating point numbers.
 
@@ -9,8 +12,6 @@ A tutorial and documentation is available at: https://microhh.readthedocs.io/en/
 Visualizations are found in our Vimeo channel: https://vimeo.com/channels/microhh.
 
 MicroHH is described in detail in [Van Heerwaarden et al. (2017)](https://doi.org/10.5194/gmd-10-3145-2017). In case you decide to use MicroHH for your own research, the developers would appreciate to be notified and kindly request to cite their reference paper. The version described in the reference paper has been assigned a DOI via [Zenodo](https://zenodo.org).
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13923894.svg)](https://doi.org/10.5281/zenodo.13923894)
 
 
 Requirements
@@ -29,14 +30,13 @@ In order to compile MicroHH you need:
 
 Downloading the code
 --------------------
-Check out the code from GitHub using
+MicroHH includes Git submodules, so it is essential to ensure these are downloaded properly when cloning the code. Check out the code with all submodules included using:
 
     git clone --recurse-submodules https://github.com/microhh/microhh.git
 
-In case you had already checked out the repository without checking out the submodules, use:
+If you get compilation errors related to missing RTE+RRTMGP source files, you probably forgot the `--recurse-submodules` flag. You can correct that with:
 
     git submodule update --init --recursive
-
 
 Compilation of the code
 -----------------------

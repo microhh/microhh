@@ -494,6 +494,7 @@ def restart_pre(origin, timestr):
     fnames = glob.glob('../' + origin + '/*_input.nc')
     fnames += glob.glob('../' + origin + '/grid.0000000')
     fnames += glob.glob('../' + origin + '/fftwplan.0000000')
+    fnames += glob.glob('../' + origin + '/thermo_basestate.0000000')
     fnames += glob.glob('../' + origin + '/*.' + timestr)
     for file in fnames:
         shutil.copy(file, '.')
@@ -582,7 +583,7 @@ def execute(command):
         raise Exception(
             '\'{}\' returned \'{}\'.'.format(
                 command, sp.returncode))
-    
+
     return sp.returncode
 
 
@@ -909,7 +910,7 @@ class Case:
 def run_case(
         case_name, options_in, options_mpi_in,
         executable='microhh', mode='cpu',
-        case_dir='.', experiment='local'):
+        case_dir='.', experiment='local', pre={}):
 
     options = deepcopy(options_in)
 
@@ -921,7 +922,8 @@ def run_case(
             case_name,
             casedir=case_dir,
             rundir=experiment,
-            options=options)]
+            options=options,
+            pre=pre)]
 
     run_cases(
         cases,
@@ -1019,7 +1021,7 @@ def copy_or_link(src, dst, link = False):
 
 def copy_radfiles(srcdir = None, destdir = None, gpt = '128_112', link = False):
     if srcdir is None:
-        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rrtmgp-data/' 
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe()))+'/../rte-rrtmgp-cpp/rrtmgp-data/'
     if destdir is None:
         destdir = os.getcwd()
 
@@ -1038,7 +1040,7 @@ def copy_radfiles(srcdir = None, destdir = None, gpt = '128_112', link = False):
 
 def copy_aerosolfiles(srcdir = None, destdir = None, link = False):
     if srcdir is None:
-        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe())) + '/../rte-rrtmgp-cpp/data/' 
+        srcdir = os.path.dirname(inspect.getabsfile(inspect.currentframe())) + '/../rte-rrtmgp-cpp/data/'
     if destdir is None:
         destdir = os.getcwd()
 
@@ -1052,4 +1054,4 @@ def copy_lsmfiles(srcdir = None, destdir = None, link = False):
         destdir = os.getcwd()
 
     copy_or_link(os.path.join(srcdir, 'van_genuchten_parameters.nc'), destdir, link = link)
-    
+

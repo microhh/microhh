@@ -57,6 +57,7 @@ class Microphys_disabled : public Microphys<TF>
         bool has_mask(std::string) {return false;};
 
         void get_surface_rain_rate(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
         TF get_Nc0();
