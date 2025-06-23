@@ -1647,9 +1647,9 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
             cross.cross_plane(obuk.data(), no_offset, var, iotime);
         else if (var == "wl")
             cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, var, iotime);
-        else if (it == "z0m")
+        else if (var == "z0m")
             cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
-        else if (it == "z0h")
+        else if (var == "z0h")
             cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (var == "H" || var == "LE" || var == "G" || var == "S")
         {
