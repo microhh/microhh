@@ -60,7 +60,7 @@ sw_neumann_w=false
 
 slist=s,th
 sw_timedep=true
-loadfreq=60
+loadfreq=None
 
 # Lateral sponge layer.
 sw_sponge=true

@@ -18,7 +18,7 @@ from lbc_input import lbc_input
 pl.close('all')
 
 domain = sys.argv[1]
-dtype = np.float64
+dtype = np.float32
 swadvec = '2'   # needed for correct # gcs.
 
 ini = mht.Read_namelist('drycblles.ini.base')
@@ -28,7 +28,7 @@ ini = mht.Read_namelist('drycblles.ini.base')
 Time.
 """
 endtime = 900
-lbc_freq = 30
+lbc_freq = 10
 
 
 """
@@ -164,6 +164,7 @@ elif domain == 'inner':
 
     ini['pres']['sw_openbc'] = True
     ini['boundary_lateral']['sw_openbc'] = True
+    ini['boundary_lateral']['loadfreq'] = lbc_freq
 
 ini.save('drycblles.ini', allow_overwrite=True)
 
