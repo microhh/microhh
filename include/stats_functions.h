@@ -184,43 +184,36 @@ namespace Stats_functions
     {
         const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k  = blockIdx.z + kstart;
+        const int k  = blockIdx.z;
 
-        if (i < icells && j < jcells && k < kcells)
+         if (i < iend && j < jend && k < kstart)             // Set the ghost cells equal to the first model level.
         {
             const int ijk = i + j*icells + k*ijcells;
-            mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk], threshold);
-            mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
-            // Set the top value for the flux level.
-            if (k == kend)
-            {
-                mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
-                const int ijk_ref = i + j*icells + (kend-1)*ijcells;
-                mfield[ijk] -= (mfield[ijk] & flag) * is_false<TF, mode>(fld [ijk_ref], threshold);
-            }
-            // Set the ghost cells equal to the first model level.
-            if (k < kstart)
-            {
-                const int ijk_ref = i + j*icells + kstart*ijcells;
-                mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk_ref], threshold);
-                mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
-            }
-            // Set the ghost cells for the full level equal to kend-1.
-            // Set the ghost cells for the flux level equal to kend.
-            if (k > kend)
-            {
-                const int ijk_ref = i + j*icells + (kend-1)*ijcells;
-                const int ijk_refh = i + j*icells + kend*ijcells;
-                mfield[ijk] -= (mfield[ijk] & flag) * is_false<TF, mode>(fld [ijk_ref], threshold);
-                mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_refh], threshold);
-            }
-            // Set the mask for surface projected quantities
+            const int ijk_ref = i + j*icells + kstart*ijcells;
+
+            mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk_ref], threshold);
+            mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
             if (k == kstart)
             {
                 const int ij = i + j*icells;
                 mfield_bot[ij] -= (mfield_bot[ij] & flag) * is_false<TF, mode>(fld_bot[ij], threshold);
             }
         }
+        else if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            mfield[ijk] -= (mfield[ijk] & flag ) * is_false<TF, mode>(fld [ijk], threshold);
+            mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk], threshold);
+        }
+        else if (i < iend && j < jend && k < kcells)             // Set the top value for the flux level.
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            const int ijk1_ref = i + j*icells + (kend-1)*ijcells;
+            const int ijk_ref = i + j*icells + kend*ijcells;
+            mfield[ijk] -= (mfield[ijk] & flag) * is_false<TF, mode>(fld [ijk1_ref], threshold);
+            mfield[ijk] -= (mfield[ijk] & flagh) * is_false<TF, mode>(fldh[ijk_ref], threshold);
+        }
+
     }
 #endif
 

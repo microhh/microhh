@@ -174,17 +174,10 @@ TF Fields<TF>::check_momentum()
 {
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
     auto tmp1 = get_tmp_g();
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
 
-    calc_mom_2nd_g<TF><<<gridGPU, blockGPU>>>(
+    calc_mom_2nd_g<TF><<<threads.first, threads.second>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -205,18 +198,11 @@ template<typename TF>
 TF Fields<TF>::check_tke()
 {
     auto& gd = grid.get_grid_data();
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
 
     auto tmp1 = get_tmp_g();
 
-    calc_tke_2nd_g<TF><<<gridGPU, blockGPU>>>(
+    calc_tke_2nd_g<TF><<<threads.first, threads.second>>>(
         mp.at("u")->fld_g, mp.at("v")->fld_g, mp.at("w")->fld_g,
         tmp1->fld_g, gd.dz_g,
         gd.istart, gd.jstart, gd.kstart,
@@ -238,14 +224,6 @@ template<typename TF>
 TF Fields<TF>::check_mass()
 {
     auto& gd = grid.get_grid_data();
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
 
     TF mass;
 
@@ -282,14 +260,6 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     if (mask_name == "default")
         return;
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kmax-1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     // User XY masks
     if (xymasks.find(mask_name) != xymasks.end())
     {
@@ -319,7 +289,9 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     {
         // Interpolate w to full level:
         auto wf = get_tmp_g();
-        interpolate_2nd_g<<<gridGPU, blockGPU>>>(wf->fld_g.data(), mp.at("w")->fld_g.data(), gd.wloc[0] - gd.sloc[0], gd.wloc[1] - gd.sloc[1], gd.wloc[2] - gd.sloc[2], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
+        auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+
+        interpolate_2nd_g<<<threads.first, threads.second>>>(wf->fld_g.data(), mp.at("w")->fld_g.data(), gd.wloc[0] - gd.sloc[0], gd.wloc[1] - gd.sloc[1], gd.wloc[2] - gd.sloc[2], gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend, gd.icells, gd.ijcells);
         // Calculate masks
         const TF threshold = 0;
         if (mask_name == "wplus")

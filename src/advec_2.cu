@@ -263,18 +263,12 @@ template<typename TF>
 void Advec_2<TF>::exec(Stats<TF>& stats)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, gd.kmax);
-    dim3 blockGPU(blocki, blockj, 1);
 
     const TF dxi = 1./gd.dx;
     const TF dyi = 1./gd.dy;
 
-    advec_uvw_g<TF><<<gridGPU, blockGPU>>>(
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+    advec_uvw_g<TF><<<threads.first, threads.second>>>(
         fields.mt.at("u")->fld_g, fields.mt.at("v")->fld_g, fields.mt.at("w")->fld_g,
         fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
         fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, gd.dzhi_g, dxi, dyi,
@@ -284,7 +278,7 @@ void Advec_2<TF>::exec(Stats<TF>& stats)
     cuda_check_error();
 
     for (auto& it : fields.st)
-        advec_s_g<TF><<<gridGPU, blockGPU>>>(
+        advec_s_g<TF><<<threads.first, threads.second>>>(
             it.second->fld_g, fields.sp.at(it.first)->fld_g,
             fields.mp.at("u")->fld_g, fields.mp.at("v")->fld_g, fields.mp.at("w")->fld_g,
             fields.rhoref_g, fields.rhorefh_g, gd.dzi_g, dxi, dyi,

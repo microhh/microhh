@@ -102,6 +102,7 @@ class Stats
 
         void init();
         void create(const Timeloop<TF>&, std::string);
+        void prepare_device();
 
         unsigned long get_time_limit(unsigned long);
         bool get_switch() { return swstats; }
@@ -214,8 +215,8 @@ class Stats
         std::vector<std::string> masklist;
         std::vector<unsigned int> mfield;
         std::vector<unsigned int> mfield_bot;
-        cuda_vector<unsigned int> mfield_g;
-        cuda_vector<unsigned int> mfield_bot_g;
+        unsigned int * mfield_g;
+        unsigned int * mfield_bot_g;
 
         // Tendency calculations
         std::map<std::string, std::vector<std::string>> tendency_order;

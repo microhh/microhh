@@ -202,21 +202,14 @@ TF Field3d_operators<TF>::calc_mean_2d_g(const TF* const restrict fld)
     const auto& gd = grid.get_grid_data();
     const TF scalefac = 1./(gd.itot*gd.jtot);
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU(gridi, gridj);
-    dim3 blockGPU(blocki, blockj);
-
     TF mean_value = 0;
     TF* mean_value_g;
     cuda_safe_call(cudaMalloc(&mean_value_g, sizeof(TF)));
     cudaMemcpy(mean_value_g, &mean_value, sizeof(TF), cudaMemcpyHostToDevice);
 
     // Very naive reduction from imax*jmax to single value.
-    get_mean_2d<<<gridGPU, blockGPU>>>(
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax);
+    get_mean_2d<<<threads.first, threads.second>>>(
         mean_value_g, fld, scalefac,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -235,15 +228,7 @@ template<typename TF>
 TF Field3d_operators<TF>::calc_sum_2d_g(const TF* const restrict fld)
 {
     const auto& gd = grid.get_grid_data();
-    // const TF scalefac = 1./(gd.itot*gd.jtot);
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-    dim3 gridGPU(gridi, gridj);
-    dim3 blockGPU(blocki, blockj);
 
     TF sum_value = 0;
     TF* sum_value_g;
@@ -251,7 +236,9 @@ TF Field3d_operators<TF>::calc_sum_2d_g(const TF* const restrict fld)
     cudaMemcpy(sum_value_g, &sum_value, sizeof(TF), cudaMemcpyHostToDevice);
 
     // Very naive reduction from imax*jmax to single value.
-    get_mean_2d<<<gridGPU, blockGPU>>>(
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax);
+
+    get_mean_2d<<<threads.first, threads.second>>>(
         sum_value_g, fld, TF(1.),
         gd.istart, gd.iend,
         gd.jstart, gd.jend,
@@ -353,15 +340,10 @@ void Field3d_operators<TF>::calc_proj_sum_g(TF* const restrict fldxy, const TF* 
     using namespace Tools_g;
 
     const Grid_data<TF>& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.imax/blocki + (gd.imax%blocki > 0);
-    const int gridj = gd.jmax/blockj + (gd.jmax%blockj > 0);
 
-    dim3 gridGPU(gridi, gridj);
-    dim3 blockGPU(blocki, blockj);
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax);
 
-    get_projected_sum<<<gridGPU, blockGPU>>>(
+    get_projected_sum<<<threads.first, threads.second>>>(
         fldxy, fld,
         gd.istart, gd.iend,
         gd.jstart, gd.jend,

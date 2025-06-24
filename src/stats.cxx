@@ -108,10 +108,7 @@ void Stats<TF>::init()
     // Vectors which hold the amount of grid points sampled on each model level.
     mfield.resize(gd.ncells);
     mfield_bot.resize(gd.ijcells);
-    #ifdef USECUDA
-    mfield_g.resize(gd.ncells);
-    mfield_bot_g.resize(gd.ijcells);
-    #endif
+
 }
 
 template<typename TF>

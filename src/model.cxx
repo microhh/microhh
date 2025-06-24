@@ -458,14 +458,14 @@ void Model<TF>::exec()
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt))
                     {
-                        #ifdef USECUDA
-                        #pragma omp taskwait
-                        cpu_up_to_date = true;
-                        // fields   ->backward_device();
-                        // boundary ->backward_device(*thermo);
-                        // thermo   ->backward_device();
-                        // microphys->backward_device();
-                        #endif
+                        // #ifdef USECUDA
+                        // #pragma omp taskwait
+                        // cpu_up_to_date = true;
+                        // // fields   ->backward_device();
+                        // // boundary ->backward_device(*thermo);
+                        // // thermo   ->backward_device();
+                        // // microphys->backward_device();
+                        // #endif
 
                         radiation->exec_all_stats(
                                 *stats, *cross, *dump, *column,
@@ -584,10 +584,6 @@ void Model<TF>::prepare_gpu()
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
 
-    // Set the device number to the MPI id.
-    auto& md = master.get_MPI_data();
-    cudaSetDevice(md.mpiid % 4);
-
     grid     ->prepare_device();
     soil_grid->prepare_device();
 
@@ -604,6 +600,7 @@ void Model<TF>::prepare_gpu()
     microphys->prepare_device();
     radiation->prepare_device();
     column   ->prepare_device();
+    stats    ->prepare_device();
     aerosol  ->prepare_device();
 }
 
@@ -728,7 +725,7 @@ void Model<TF>::setup_stats()
         if (stats->do_tendency())
         {
             calc_masks();
-            cpu_up_to_date = false;
+            // cpu_up_to_date = false;
             stats->set_tendency(true);
         }
     }
@@ -849,7 +846,6 @@ void Model<TF>::print_status()
         end     = master.get_wall_clock_time();
         cputime = end - start;
         start   = end;
-
         boundary->set_ghost_cells_w(Boundary_w_type::Conservation_type);
         const TF div = pres->check_divergence();
         boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);

@@ -29,6 +29,8 @@
 #include "defines.h"
 #include "master.h"
 
+#include <iostream>
+
 Master::Master()
 {
     initialized = false;
@@ -81,6 +83,17 @@ void Master::start()
         throw std::runtime_error("MPI init error");
 
     print_message("Starting run on %d processes\n", md.nprocs);
+
+    #ifdef USECUDA
+    // Set the device number to the MPI id.
+    wait_all();
+    int n_gpus = 0;
+    cudaGetDeviceCount(&n_gpus);
+    cudaSetDevice(md.mpiid % n_gpus);
+    int device_id = 0;
+    cudaGetDevice(&device_id);
+    std::cout << "MPI id: " << md.mpiid << ", using GPU id: " << device_id << std::endl;
+    #endif
 }
 
 void Master::init(Input& input)

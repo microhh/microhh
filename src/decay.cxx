@@ -119,7 +119,7 @@ bool Decay<TF>::has_mask(std::string name)
     else
         return false;
 }
-
+#ifndef USECUDA
 template<typename TF>
 void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
@@ -185,7 +185,7 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         throw std::runtime_error(message);
     }
 }
-
+#endif
 
 #ifdef FLOAT_SINGLE
 template class Decay<float>;

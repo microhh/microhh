@@ -52,22 +52,34 @@ using namespace Stats_functions;
 
 
 #ifdef USECUDA
+
+
+    __global__
+    void set_to_val_uint(
+            unsigned int* slice,
+            const int icells, const int jcells, const int kcells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x ;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y ;
+        const int k = blockIdx.z ;
+
+        if (i < icells && j < jcells && k < kcells)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            slice[ijk] = 0;
+        }
+    }
+
 template<typename TF>
 void Stats<TF>::calc_stats_mean(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
 {
     auto& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
 
     unsigned int flag;
     const int* nmask;
     std::string name;
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     // Calc mean of atmospheric variables
     if (std::find(varlist.begin(), varlist.end(), varname) != varlist.end())
@@ -75,7 +87,8 @@ void Stats<TF>::calc_stats_mean(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(varname).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -103,14 +116,6 @@ void Stats<TF>::calc_stats_2d_g(
 {
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU3(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
@@ -124,7 +129,9 @@ void Stats<TF>::calc_stats_2d_g(
             {
 
                 set_flag(flag, nmask, m.second, 1);
-                apply_mask_g<<<gridGPU3, blockGPU>>>(masked->data(),  fld.data(), mfield_g, flag, gd.icells, gd.jcells, 1, gd.ijcells);
+                auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, 1);
+
+                apply_mask_g<<<threads.first, threads.second>>>(masked->data(),  fld.data(), mfield_g, flag, gd.icells, gd.jcells, 1, gd.ijcells);
                 m.second.tseries.at(varname).data = field3d_operators.calc_sum_2d_g(masked->data())/m.second.nmask_bot;
                 master.sum(&m.second.tseries.at(varname).data, 1);
                 m.second.tseries.at(varname).data += offset;
@@ -142,6 +149,23 @@ void Stats<TF>::calc_stats_2d_g(
 
 
 #ifdef USECUDA
+
+    __global__
+    void set_to_val_g(
+            unsigned int* const __restrict__ fld, const unsigned int value,
+            const int icells, const int jcells, const int kcells,
+            const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+        const int k = blockIdx.z;
+
+        if (i < icells && j < jcells && k < kcells)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] = value;
+        }
+    }
 
     template<typename TF> __global__
     void set_to_val_g(
@@ -204,21 +228,12 @@ void Stats<TF>::calc_stats_moments(
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 gridGPU2(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-    const int nblock = gd.ithread_block;
-    int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
+            cuda_check_error();
+
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     auto dev = fields.get_tmp_g();
     // // Calc moments
@@ -232,14 +247,18 @@ void Stats<TF>::calc_stats_moments(
             for (auto& m : masks)
             {
                 set_flag(flag, nmask, m.second, fld.loc[2]);
+                auto threads_1d = grid.get_dim_gpu(gd.ijcells);
+                auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
 
                 for (int k = gd.kstart; k < gd.kend+1; ++k)
                 {
                     int kk = k * gd.ijcells;
-                    add_val<<<gridi, nblock>>>(&(dev->fld_g[kk]),&(fld.fld_g[kk]), gd.ijcells, - m.second.profs.at(varname).data[k] + offset);
+                    add_val<<<threads_1d.first, threads_1d.second>>>(&(dev->fld_g[kk]),&(fld.fld_g[kk]), gd.ijcells, - m.second.profs.at(varname).data[k] + offset);
                 }
-                raise_to_pow<<<ngrid, nblock>>>(dev->fld_g.data(), gd.ncells, power);
-                apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  dev->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+                threads_1d = grid.get_dim_gpu(gd.ncells);
+                raise_to_pow<<<threads_1d.first, threads_1d.second>>>(dev->fld_g.data(), gd.ncells, power);
+
+                apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  dev->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
                 field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
                 cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
                 for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -265,19 +284,10 @@ void Stats<TF>::calc_stats_w(
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
-    const int nblock = gd.ithread_block;
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 gridGPU2(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     auto advec_flux = fields.get_tmp_g();
 
@@ -291,7 +301,8 @@ void Stats<TF>::calc_stats_w(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  advec_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  advec_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -317,18 +328,10 @@ void Stats<TF>::calc_stats_diff(
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 gridGPU2(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     auto diff_flux = fields.get_tmp_g();
 
@@ -342,7 +345,8 @@ void Stats<TF>::calc_stats_diff(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, !fld.loc[2]);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), diff_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(), diff_flux->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -371,18 +375,6 @@ void Stats<TF>::calc_stats_path(
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int ijgrid  = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
-    const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 gridGPU2(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
@@ -390,6 +382,7 @@ void Stats<TF>::calc_stats_path(
     // Calc Integrated Path
     name = varname + "_path";
 
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     auto mask_proj = fields.get_tmp_xy_g();
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
@@ -397,19 +390,23 @@ void Stats<TF>::calc_stats_path(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            set_to_val<<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells, TF(1.));
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            auto threads_ncells = grid.get_dim_gpu(gd.ncells);
+            auto threads_ijcells = grid.get_dim_gpu(gd.ncells);
+
+            set_to_val<<<threads_ncells.first, threads_ncells.second>>>(masked->fld_g.data(), gd.ncells, TF(1.));
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
             field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
-            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            sign_by_arr<TF><<<threads_ijcells.first, threads_ijcells.second>>>(mask_proj->data(), gd.ijcells);
             TF denominator = field3d_operators.calc_sum_2d_g(mask_proj->data());
 
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
             for (int k = gd.kstart; k < gd.kend+1; ++k)
             {
                 int kk = k * gd.ijcells;
-                mult_by_val<TF><<<ijgrid, blocki>>>(&masked->fld_g[kk], gd.ijcells, TF(fields.rhoref[k]*gd.dz[k]));
+                mult_by_val<TF><<<threads_ijcells.first, threads_ijcells.second>>>(&masked->fld_g[kk], gd.ijcells, TF(fields.rhoref[k]*gd.dz[k]));
             }
 
             m.second.tseries.at(name).data = field3d_operators.calc_sum_g(masked->fld_g)/denominator;
@@ -431,18 +428,6 @@ void Stats<TF>::calc_stats_cover(
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int ijgrid  = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
-    const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 gridGPU2(gridi, gridj, 1);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
@@ -450,6 +435,7 @@ void Stats<TF>::calc_stats_cover(
     // Calc Integrated Path
     name = varname + "_cover";
 
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     auto mask_proj = fields.get_tmp_xy_g();
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
@@ -457,19 +443,22 @@ void Stats<TF>::calc_stats_cover(
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            auto threads_ijcells = grid.get_dim_gpu(gd.ijcells);
+            auto threads_ncells = grid.get_dim_gpu(gd.ncells);
 
-            set_to_val<<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells, TF(1.));
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            set_to_val<<<threads_ncells.first, threads_ncells.second>>>(masked->fld_g.data(), gd.ncells, TF(1.));
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
             field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
-            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            sign_by_arr<TF><<<threads_ijcells.first, threads_ijcells.second>>>(mask_proj->data(), gd.ijcells);
             TF denominator = field3d_operators.calc_sum_2d_g(mask_proj->data());
 
-            add_val<<<ngrid, nblock>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            add_val<<<threads_ncells.first, threads_ncells.second>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  masked->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
             field3d_operators.calc_proj_sum_g(mask_proj->data(), masked->fld_g.data());
-            sign_by_arr<TF><<<ijgrid, blocki>>>(mask_proj->data(), gd.ijcells);
+            sign_by_arr<TF><<<threads_ijcells.first, threads_ijcells.second>>>(mask_proj->data(), gd.ijcells);
             TF numerator = field3d_operators.calc_sum_2d_g(mask_proj->data());
 
             m.second.tseries.at(name).data = numerator / denominator;
@@ -492,31 +481,25 @@ void Stats<TF>::calc_stats_frac(
 
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
     std::string name;
     // Calc Fraction
     name = varname + "_frac";
 
+        cuda_check_error();
     auto masked = fields.get_tmp_g();
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         for (auto& m : masks)
         {
-            add_val<<<ngrid, nblock>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
-            sign_by_arr<TF><<<ngrid, nblock>>>(masked->fld_g.data(), gd.ncells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            auto threads_ncells = grid.get_dim_gpu(gd.ncells);
+
+            add_val<<<threads_ncells.first, threads_ncells.second>>>(masked->fld_g.data(), fld.fld_g.data(), gd.ncells, offset - threshold);
+            sign_by_arr<TF><<<threads_ncells.first, threads_ncells.second>>>(masked->fld_g.data(), gd.ncells);
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -545,16 +528,6 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/blocki + (gd.ncells%blocki > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
     unsigned int flag;
     const int* nmask;
 
@@ -562,12 +535,14 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         tendency_order.at(fld.name).push_back(tend_name);
+        cuda_check_error();
         auto masked = fields.get_tmp_g();
 
         for (auto& m : masks)
         {
             set_flag(flag, nmask, m.second, fld.loc[2]);
-            apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+            auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
+            apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(),  fld.fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
             field3d_operators.calc_mean_profile_g(masked->fld_mean_g, masked->fld_g);
             cuda_safe_call(cudaMemcpy(m.second.profs.at(name).data.data(), masked->fld_mean_g.data(), gd.kcells * sizeof(TF), cudaMemcpyDeviceToHost));
             for (int k=gd.kstart; k<gd.kend+1; ++k)
@@ -586,6 +561,17 @@ void Stats<TF>::calc_tend(Field3d<TF>& fld, const std::string& tend_name)
 #endif
 
 
+
+template<typename TF>
+void Stats<TF>::prepare_device()
+{
+    auto& gd = grid.get_grid_data();
+
+    cuda_safe_call(cudaMalloc(&mfield_g, gd.ncells * sizeof(unsigned int)));
+    cuda_safe_call(cudaMalloc(&mfield_bot_g, gd.ijcells * sizeof(unsigned int)));
+    cuda_check_error();
+}
+
 #ifdef USECUDA
 template<typename TF>
 void Stats<TF>::initialize_masks()
@@ -597,12 +583,18 @@ void Stats<TF>::initialize_masks()
     for (auto& it : masks){
         flagmax += it.second.flag + it.second.flagh;
     }
-    const int nblock = gd.ithread_block;
-    int ngrid  = gd.ncells/nblock + (gd.ncells%nblock > 0);
-    set_to_val<<<ngrid, nblock>>>(mfield_g.data(), gd.ncells, flagmax);
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+    cuda_check_error();
+    // set_to_val_g<<<threads.first, threads.second>>>(mfield_g, flagmax, gd.icells, gd.jcells, gd.kcells);
+            set_to_val_uint<<<threads.first, threads.second>>>(mfield_g, gd.imax, gd.jmax, gd.kmax, gd.ijcells);
 
-    ngrid  = gd.ijcells/nblock + (gd.ijcells%nblock > 0);
-    set_to_val<<<ngrid, nblock>>>(mfield_bot_g.data(), gd.ijcells, flagmax);
+    cuda_check_error();
+
+    auto threads_ijcells = grid.get_dim_gpu(gd.ijcells);
+
+    // set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(&(mfield_g[0]), gd.ijcells, flagmax);
+                    cuda_check_error();
+
 }
 
 
@@ -612,26 +604,19 @@ void Stats<TF>::finalize_masks()
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
 
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU3(gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    boundary_cyclic.exec_g(mfield_g.data());
-    boundary_cyclic.exec_2d_g(mfield_bot_g.data());
+    boundary_cyclic.exec_g(mfield_g);
+    boundary_cyclic.exec_2d_g(mfield_bot_g);
 
     auto masked = fields.get_tmp_g();
     auto ones = fields.get_tmp_g();
     const int nmemsize = gd.kcells*sizeof(int);
 
     std::vector<TF> nmask_TF(gd.kcells);
+    auto threads = grid.get_dim_gpu(gd.ncells);
 
-    set_to_val_g<TF><<<gridGPU3, blockGPU>>>(
+    set_to_val<TF><<<threads.first, threads.second>>>(
                 ones->fld_g, TF(1.0),
-                gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+                gd.ncells);
 
     for (auto& it : masks)
     {
@@ -639,7 +624,8 @@ void Stats<TF>::finalize_masks()
         unsigned int flagh = it.second.flagh;
 
         // Mask at the full level.
-        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+
+        apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
         Grid_kernels::calc_mean_prof_kernel(
                 masked->fld_mean_g.data(),
@@ -665,7 +651,7 @@ void Stats<TF>::finalize_masks()
 
 
         // Mask at the half level.
-        apply_mask_g<<<gridGPU3, blockGPU>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flagh, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
+        apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flagh, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
         Grid_kernels::calc_mean_prof_kernel(
                 masked->fld_mean_g.data(),
                 masked->fld_g.data(),
@@ -703,14 +689,6 @@ void Stats<TF>::set_mask_thres(
         std::string mask_name, Field3d<TF>& fld, Field3d<TF>& fldh, TF threshold, Stats_mask_type mode)
 {
     auto& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-
-    dim3 gridGPU(gridi, gridj, gd.kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
 
     unsigned int flag, flagh;
     bool found_mask = false;
@@ -728,18 +706,20 @@ void Stats<TF>::set_mask_thres(
     if (!found_mask)
         throw std::runtime_error("Invalid mask name in set_mask_thres()");
 
+    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kcells);
+
     if (mode == Stats_mask_type::Plus)
-        calc_mask_thres_g<TF, Stats_mask_type::Plus><<<gridGPU, blockGPU>>>(
-                mfield_g.data(), mfield_bot_g.data(), flag, flagh,
+        calc_mask_thres_g<TF, Stats_mask_type::Plus><<<threads.first, threads.second>>>(
+                mfield_g, mfield_bot_g, flag, flagh,
                 fld.fld_g.data(), fldh.fld_g.data(), fldh.fld_bot_g.data(), threshold,
-                gd.istart, gd.jstart, gd.kstart,
+                gd.istart, gd.jstart, 0,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.jcells, gd.ijcells, gd.kcells);
     else if (mode == Stats_mask_type::Min)
-        calc_mask_thres_g<TF, Stats_mask_type::Min><<<gridGPU, blockGPU>>>(
-                mfield_g.data(), mfield_bot_g.data(), flag, flagh,
+        calc_mask_thres_g<TF, Stats_mask_type::Min><<<threads.first, threads.second>>>(
+                mfield_g, mfield_bot_g, flag, flagh,
                 fld.fld_g.data(), fldh.fld_g.data(), fldh.fld_bot_g.data(), threshold,
-                gd.istart, gd.jstart, gd.kstart,
+                gd.istart, gd.jstart, 0,
                 gd.iend,   gd.jend,   gd.kend,
                 gd.icells, gd.jcells, gd.ijcells, gd.kcells);
     else

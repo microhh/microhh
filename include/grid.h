@@ -117,6 +117,8 @@ struct Grid_data
     // GPU fields and settings
     int ithread_block; // Number of grid cells in the x-direction for GPU thread block.
     int jthread_block; // Number of grid cells in the y-direction for GPU thread block.
+    dim3 block_gpu; // Block size for GPU operations.
+    int block_gpu_1d; // Block size for GPU operations in 1D.
 
     cuda_vector<TF> x_g;
     cuda_vector<TF> y_g;
@@ -183,6 +185,10 @@ class Grid
         // GPU functions
         void prepare_device(); // Load the arrays onto the GPU
         void clear_device();   // Deallocate the arrays onto the GPU
+
+        std::pair<int, int> get_dim_gpu(int);
+        std::pair<dim3, dim3> get_dim_gpu(int, int);
+        std::pair<dim3, dim3> get_dim_gpu(int, int, int);
 
         TF* get_tmp_3d_g();
         void release_tmp_3d_g(TF*);

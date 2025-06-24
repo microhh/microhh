@@ -1371,12 +1371,6 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 {
     using namespace Tools_g;
     auto& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.icells%blockj > 0);
-    dim3 gridGPU_3d (gridi, gridj, gd.kmax+1);
-    dim3 blockGPU_3d(blocki, blockj, 1);
 
     if (mask_name == "ql")
     {
@@ -1412,24 +1406,73 @@ void Thermo_moist<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
 
         field3d_operators.calc_mean_profile_g(b->fld_mean_g, b->fld_g);
         field3d_operators.calc_mean_profile_g(bh->fld_mean_g, bh->fld_g);
-        add_profile<<<gridGPU_3d, blockGPU_3d>>>(
+        auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+
+        subtract_profile<<<threads.first, threads.second>>>(
                             &(b->fld_g[0]),
                             &(b->fld_mean_g[0]),
                             gd.istart, gd.iend,
                             gd.jstart, gd.jend,
                             gd.kstart, gd.kend,
                             gd.icells, gd.ijcells);
+        subtract_profile<<<threads.first, threads.second>>>(
+                            &(bh->fld_g[0]),
+                            &(bh->fld_mean_g[0]),
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+
+        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+
         fields.release_tmp_g(b);
         fields.release_tmp_g(bh);
     }
     else if (mask_name == "bplus" || mask_name == "bmin")
     {
-        auto b = fields.get_tmp();
-        auto bh = fields.get_tmp();
+        auto b = fields.get_tmp_g();
+        auto bh = fields.get_tmp_g();
 
-        get_thermo_field(*b, "b", true, true);
-        get_thermo_field(*bh, "b_h", true, true);
+        get_thermo_field_g(*b, "b", true);
+        get_thermo_field_g(*bh, "b_h", true);
+
+        field3d_operators.calc_mean_profile_g(b->fld_mean_g, b->fld_g);
+        field3d_operators.calc_mean_profile_g(bh->fld_mean_g, bh->fld_g);
+        auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+
+        subtract_profile<<<threads.first, threads.second>>>(
+                            &(b->fld_g[0]),
+                            &(b->fld_mean_g[0]),
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+        subtract_profile<<<threads.first, threads.second>>>(
+                            &(bh->fld_g[0]),
+                            &(bh->fld_mean_g[0]),
+                            gd.istart, gd.iend,
+                            gd.jstart, gd.jend,
+                            gd.kstart, gd.kend,
+                            gd.icells, gd.ijcells);
+
+        stats.set_mask_thres(mask_name, *b, *bh, 0., Stats_mask_type::Plus);
+
+        fields.release_tmp_g(b);
+        fields.release_tmp_g(bh);
     }
+    else if (mask_name == "humid") //qt more than 1 standard deviation above the mean
+    {
+
+    }
+    else if (mask_name == "outflow") //all columns where cloud base is above inversion height
+    {
+
+    }
+    else if (mask_name == "coldpool") // all column where lowest level thv is 1 stdv below the mean
+    {
+
+    }
+
     else
     {
         std::string message = "Moist thermodynamics can not provide mask: \"" + mask_name +"\"";
@@ -1443,18 +1486,6 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     using namespace Tools_g;
 
     auto& gd = grid.get_grid_data();
-    const int blocki = gd.ithread_block;
-    const int blockj = gd.jthread_block;
-    const int blockk = 16;
-    const int gridi  = gd.icells/blocki + (gd.icells%blocki > 0);
-    const int gridj  = gd.jcells/blockj + (gd.jcells%blockj > 0);
-    const int gridk  = gd.kcells/blockk + (gd.kcells%blockk > 0);
-    const int ijgrid = gd.ijcells/blocki + (gd.ijcells%blocki > 0);
-    const int nblock = gd.ithread_block;
-    const int ngrid  = gd.ncells/nblock + (gd.ncells%blocki > 0);
-
-
-    // bs_stats = bs;
 
     const TF no_offset = 0.;
     const TF no_threshold = 0.;
@@ -1481,21 +1512,27 @@ void Thermo_moist<TF>::exec_stats(Stats<TF>& stats)
     // Calculate the liquid water stats
     auto ql = fields.get_tmp_g();
     ql->loc = gd.sloc;
-    set_to_val<<<ngrid, nblock>>>(ql->fld_g.data(), gd.ncells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
+
+    auto threads_ncells = grid.get_dim_gpu(gd.ncells);
+    auto threads_ijcells = grid.get_dim_gpu(gd.ijcells);
+    auto threads_kcells = grid.get_dim_gpu(gd.kcells);
+
+
+    set_to_val<<<threads_ncells.first, threads_ncells.second>>>(ql->fld_g.data(), gd.ncells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
 
     get_thermo_field_g(*ql, "ql", true);
     stats.calc_stats("ql", *ql, no_offset, no_threshold);
 
-    set_to_val<<<gridk, blockk>>>(ql->fld_mean_g.data(), gd.kcells, TF(0.));
-    set_to_val<<<ngrid, nblock>>>(ql->fld_g.data(), gd.ncells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->fld_bot_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->fld_top_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->grad_bot_g.data(), gd.ijcells, TF(0.));
-    set_to_val<<<ijgrid, blocki>>>(ql->grad_top_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_kcells.first, threads_kcells.second>>>(ql->fld_mean_g.data(), gd.kcells, TF(0.));
+    set_to_val<<<threads_ncells.first, threads_ncells.second>>>(ql->fld_g.data(), gd.ncells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->fld_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->fld_top_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->flux_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->flux_top_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->grad_bot_g.data(), gd.ijcells, TF(0.));
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(ql->grad_top_g.data(), gd.ijcells, TF(0.));
 
     ql->loc = gd.wloc;
     get_thermo_field_g(*ql, "ql_h", true);

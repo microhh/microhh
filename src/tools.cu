@@ -277,12 +277,26 @@ namespace Tools_g
             fld[ijk] += profile[k];
         }
     }
-    // template<typename TF> __global__
-    // void add_profile(
-    //         TF* __restrict__ fld,
-    //         TF* __restrict__ profile)
-    // {
-    // }
+    template<typename TF> __global__
+    void subtract_profile(
+            TF* __restrict__ fld,
+            TF* const __restrict__ profile,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int icells, const int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if ((i < iend) && (j < jend) && (k < kend))
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            fld[ijk] -= profile[k];
+        }
+    }
+
 
     template<typename TF> __global__
     void raise_to_pow(TF* __restrict__ a, const int nsize, const int exponent)
@@ -456,6 +470,8 @@ template __global__ void Tools_g::add_val(double* __restrict__ a, const double* 
 template __global__ void Tools_g::add_val(float* __restrict__ a, const float* const __restrict__ fld, int nsize, float val);
 template __global__ void Tools_g::add_profile(double* __restrict__ fld, double* const  __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
 template __global__ void Tools_g::add_profile(float* __restrict__ fld, float * const __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
+template __global__ void Tools_g::subtract_profile(double* __restrict__ fld, double* const  __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
+template __global__ void Tools_g::subtract_profile(float* __restrict__ fld, float * const __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
 template __global__ void Tools_g::raise_to_pow(double* __restrict__ a, const int nsize, const int exponent);
 template __global__ void Tools_g::raise_to_pow(float* __restrict__ a, const int nsize, const int exponent);
 template  __global__ void Tools_g::interpolate_2nd_g(float* const  __restrict__ out, const float* const __restrict__ in, const int iih, const int jjh, const int kkh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk);

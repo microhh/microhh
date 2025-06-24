@@ -29,8 +29,10 @@ template<typename TF>
 void Grid<TF>::prepare_device()
 {
     // Calculate optimal size thread blocks based on grid
-    gd.ithread_block = min(256, 16 * ((gd.itot / 16) + (gd.itot % 16 > 0)));
+    gd.ithread_block = min(256, 16 * ((gd.imax / 16) + (gd.imax % 16 > 0)));
     gd.jthread_block = 256 / gd.ithread_block;
+    gd.block_gpu = dim3(gd.ithread_block, gd.jthread_block, 1);
+    gd.block_gpu_1d = 256;
 
     const int imemsize = gd.icells*sizeof(TF);
     const int jmemsize = gd.jcells*sizeof(TF);
@@ -72,6 +74,40 @@ void Grid<TF>::clear_device()
     gd.dzhi_g.free();
     gd.dzi4_g.free();
     gd.dzhi4_g.free();
+}
+
+template<typename TF>
+std::pair<int, int> Grid<TF>::get_dim_gpu(int ni)
+{
+    return std::make_pair(ni/gd.block_gpu_1d + (ni > 0), gd.block_gpu_1d);
+}
+
+template<typename TF>
+std::pair<dim3, dim3> Grid<TF>::get_dim_gpu(int ni, int nj)
+{
+    // Calculate the number of blocks in each direction
+    const int blocki = ni / gd.ithread_block + (ni%gd.ithread_block > 0);
+    const int blockj = nj / gd.jthread_block + (nj%gd.jthread_block > 0);
+
+    // Create the dim3 objects for grid and block dimensions
+    dim3 grid(blocki, blockj);
+    dim3 block(gd.ithread_block, gd.jthread_block);
+
+    return std::make_pair(grid, block);
+}
+template<typename TF>
+std::pair<dim3, dim3> Grid<TF>::get_dim_gpu(int ni, int nj, int nk)
+{
+    // Calculate the number of blocks in each direction
+    const int blocki = ni / gd.ithread_block + (ni%gd.ithread_block > 0);
+    const int blockj = nj / gd.jthread_block + (nj%gd.jthread_block > 0);
+    const int blockk = 1;
+
+    // Create the dim3 objects for grid and block dimensions
+    dim3 grid(blocki, blockj, nk);
+    dim3 block(gd.ithread_block, gd.jthread_block, blockk);
+
+    return std::make_pair(grid, block);
 }
 
 
