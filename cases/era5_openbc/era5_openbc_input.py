@@ -234,6 +234,8 @@ create_era5_input(
     bs['rhoh'],
     dom0,
     sigma_h,
+    perturb_size=4,
+    perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
     name_suffix='era5',
     output_dir=work_dir,
     ntasks=16,
