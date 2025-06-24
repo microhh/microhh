@@ -30,6 +30,10 @@ swthermo=moist
 pbot=None
 swupdatebasestate=1
 
+swphydro_3d=true
+swtimedepphydro_3d=true
+loadfreq=3600
+
 [micro]
 swmicro=0
 #swmicro=2mom_warm
@@ -107,6 +111,8 @@ swcross=1
 sampletime=60
 crosslist=u,v,w,thl,qt
 xy=10,100,500
+xz=None
+yz=None
 
 [limiter]
 limitlist=qt

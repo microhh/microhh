@@ -173,6 +173,9 @@ ini['boundary']['sbot[qt]' ] = sbot_qt
 
 ini['time']['endtime'] = (end_date - start_date).total_seconds()
 
+ini['cross']['xz'] = dom0.ysize/2
+ini['cross']['yz'] = dom0.xsize/2
+
 # Open-bounary specific settings.
 ini['pres']['sw_openbc'] = sw_openbc
 ini['boundary_lateral']['sw_openbc'] = sw_openbc
@@ -216,6 +219,7 @@ fields_era = {
     'qt': era5.qt[:,:,:,:],
 }
 
+p_era = era5.p[:,:,:,:]
 z_era = era5.z[:,:,:,:]
 time_era = era5.time_sec
 
@@ -227,6 +231,7 @@ create_era5_input(
     era5.lons.data,   # Strip off array masks.
     era5.lats.data,
     z_era,
+    p_era,
     time_era,
     gd['z'],
     gd['zsize'],
