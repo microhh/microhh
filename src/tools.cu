@@ -299,6 +299,15 @@ namespace Tools_g
 
 
     template<typename TF> __global__
+    void copy(TF* __restrict__ dest, TF* __restrict__ src, const int nsize)
+    {
+        const int n = blockIdx.x*blockDim.x + threadIdx.x;
+
+        if (n < nsize)
+            dest[n] = src[n];
+    }
+
+    template<typename TF> __global__
     void raise_to_pow(TF* __restrict__ a, const int nsize, const int exponent)
     {
         const int n = blockIdx.x*blockDim.x + threadIdx.x;
@@ -472,6 +481,8 @@ template __global__ void Tools_g::add_profile(double* __restrict__ fld, double* 
 template __global__ void Tools_g::add_profile(float* __restrict__ fld, float * const __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
 template __global__ void Tools_g::subtract_profile(double* __restrict__ fld, double* const  __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
 template __global__ void Tools_g::subtract_profile(float* __restrict__ fld, float * const __restrict__ profile, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int icells, const int ijcells);
+template __global__ void Tools_g::copy(double* __restrict__ dest, double* __restrict__ src, const int nsize);
+template __global__ void Tools_g::copy(float* __restrict__ dest, float* __restrict__ src, const int nsize);
 template __global__ void Tools_g::raise_to_pow(double* __restrict__ a, const int nsize, const int exponent);
 template __global__ void Tools_g::raise_to_pow(float* __restrict__ a, const int nsize, const int exponent);
 template  __global__ void Tools_g::interpolate_2nd_g(float* const  __restrict__ out, const float* const __restrict__ in, const int iih, const int jjh, const int kkh, const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk);

@@ -52,24 +52,6 @@ using namespace Stats_functions;
 
 
 #ifdef USECUDA
-
-
-    __global__
-    void set_to_val_uint(
-            unsigned int* slice,
-            const int icells, const int jcells, const int kcells, const int ijcells)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x ;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y ;
-        const int k = blockIdx.z ;
-
-        if (i < icells && j < jcells && k < kcells)
-        {
-            const int ijk = i + j*icells + k*ijcells;
-            slice[ijk] = 0;
-        }
-    }
-
 template<typename TF>
 void Stats<TF>::calc_stats_mean(
         const std::string& varname, const Field3d<TF>& fld, const TF offset)
@@ -296,7 +278,6 @@ void Stats<TF>::calc_stats_w(
     if (std::find(varlist.begin(), varlist.end(), name) != varlist.end())
     {
         advec.get_advec_flux(*advec_flux, fld);
-        // set_to_val<<<ngrid, nblock>>>(advec_flux->fld_g.data(), gd.ncells, 1.);
 
         for (auto& m : masks)
         {
@@ -583,17 +564,15 @@ void Stats<TF>::initialize_masks()
     for (auto& it : masks){
         flagmax += it.second.flag + it.second.flagh;
     }
-    auto threads = grid.get_dim_gpu(gd.imax, gd.jmax, gd.kmax);
+    auto threads = grid.get_dim_gpu(gd.ncells);
+    set_to_val<<<threads.first, threads.second>>>(mfield_g, gd.ncells, flagmax);
     cuda_check_error();
-    // set_to_val_g<<<threads.first, threads.second>>>(mfield_g, flagmax, gd.icells, gd.jcells, gd.kcells);
-            set_to_val_uint<<<threads.first, threads.second>>>(mfield_g, gd.imax, gd.jmax, gd.kmax, gd.ijcells);
 
-    cuda_check_error();
 
     auto threads_ijcells = grid.get_dim_gpu(gd.ijcells);
 
-    // set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(&(mfield_g[0]), gd.ijcells, flagmax);
-                    cuda_check_error();
+    set_to_val<<<threads_ijcells.first, threads_ijcells.second>>>(mfield_bot_g, gd.ijcells, flagmax);
+    cuda_check_error();
 
 }
 
@@ -612,11 +591,11 @@ void Stats<TF>::finalize_masks()
     const int nmemsize = gd.kcells*sizeof(int);
 
     std::vector<TF> nmask_TF(gd.kcells);
-    auto threads = grid.get_dim_gpu(gd.ncells);
+    auto threads1d = grid.get_dim_gpu(gd.ncells);
 
-    set_to_val<TF><<<threads.first, threads.second>>>(
-                ones->fld_g, TF(1.0),
-                gd.ncells);
+    set_to_val<TF><<<threads1d.first, threads1d.second>>>(
+                ones->fld_g, gd.ncells, TF(1.0));
+    cuda_check_error();
 
     for (auto& it : masks)
     {
@@ -625,6 +604,7 @@ void Stats<TF>::finalize_masks()
 
         // Mask at the full level.
 
+        auto threads = grid.get_dim_gpu(gd.icells, gd.jcells, gd.kcells);
         apply_mask_g<<<threads.first, threads.second>>>(masked->fld_g.data(), ones->fld_g.data(), mfield_g, flag, gd.icells, gd.jcells, gd.kcells, gd.ijcells);
 
         Grid_kernels::calc_mean_prof_kernel(

@@ -458,14 +458,14 @@ void Model<TF>::exec()
 
                     if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt))
                     {
-                        // #ifdef USECUDA
-                        // #pragma omp taskwait
-                        // cpu_up_to_date = true;
-                        // // fields   ->backward_device();
-                        // // boundary ->backward_device(*thermo);
-                        // // thermo   ->backward_device();
-                        // // microphys->backward_device();
-                        // #endif
+                        #ifdef USECUDA
+                        #pragma omp taskwait
+                        cpu_up_to_date = true;
+                        fields   ->backward_device();
+                        boundary ->backward_device(*thermo);
+                        thermo   ->backward_device();
+                        microphys->backward_device();
+                        #endif
 
                         radiation->exec_all_stats(
                                 *stats, *cross, *dump, *column,
@@ -650,26 +650,26 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
-    // if (cross->do_cross(itime))
-    // {
-    //     master.print_message("Saving cross-sections for time %f\n", time);
+    if (cross->do_cross(itime))
+    {
+        master.print_message("Saving cross-sections for time %f\n", time);
 
-    //     fields   ->exec_cross(*cross, iotime);
-    //     thermo   ->exec_cross(*cross, iotime);
-    //     microphys->exec_cross(*cross, iotime);
-    //     ib       ->exec_cross(*cross, iotime);
-    //     boundary ->exec_cross(*cross, iotime);
-    // }
+        fields   ->exec_cross(*cross, iotime);
+        thermo   ->exec_cross(*cross, iotime);
+        microphys->exec_cross(*cross, iotime);
+        ib       ->exec_cross(*cross, iotime);
+        boundary ->exec_cross(*cross, iotime);
+    }
 
-    // // Save the 3d dumps to disk.
-    // if (dump->do_dump(itime, idt))
-    // {
-    //     master.print_message("Saving field dumps for time %f\n", time);
+    // Save the 3d dumps to disk.
+    if (dump->do_dump(itime, idt))
+    {
+        master.print_message("Saving field dumps for time %f\n", time);
 
-    //     fields   ->exec_dump(*dump, iotime);
-    //     thermo   ->exec_dump(*dump, iotime);
-    //     microphys->exec_dump(*dump, iotime);
-    // }
+        fields   ->exec_dump(*dump, iotime);
+        thermo   ->exec_dump(*dump, iotime);
+        microphys->exec_dump(*dump, iotime);
+    }
 
     if (stats->do_statistics(itime))
     {
