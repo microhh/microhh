@@ -117,5 +117,15 @@ class Boundary_lateral
 
         const std::string tend_name = "lbc_sponge";
         const std::string tend_longname = "Lateral sponge layer";
+
+        // Lateral boundary output for child domain.
+        bool sw_subdomain;
+        TF xstart_sub;
+        TF xend_sub;
+        TF ystart_sub;
+        TF yend_sub;
+        int refinement_sub;
+        int n_ghost_sub;
+        int n_sponge_sub;
 };
 #endif

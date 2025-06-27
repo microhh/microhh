@@ -83,6 +83,16 @@ recycle_offset=10
 #perturb_ampl[th]=0.01
 #perturb_zmax=250
 
+[subdomain]
+sw_subdomain=true
+xstart=100
+xend=300
+ystart=300
+yend=400
+refinement_fac=3
+n_ghost=3
+n_sponge=4
+
 [fields]
 visc=1.e-5
 svisc=1.e-5

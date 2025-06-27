@@ -24,6 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
 
 #include "boundary_lateral.h"
 #include "netcdf_interface.h"
@@ -710,6 +711,13 @@ namespace
                     div -= rhoref[k+kgc] * dx * dz[k+kgc] * lbc_v[ijk_s];
             }
     }
+
+    template<typename TF>
+    bool is_equal(const TF a, const TF b)
+    {
+        const TF epsilon = std::max(TF(10) * std::numeric_limits<TF>::epsilon(), std::max(std::abs(a), std::abs(b)) * TF(10) * std::numeric_limits<TF>::epsilon());
+        return std::abs(a - b) <= epsilon;
+    }
 }
 
 
@@ -753,6 +761,23 @@ Boundary_lateral<TF>::Boundary_lateral(
             tau_recycle = inputin.get_item<TF>("boundary_lateral", "tau_recycle", "");
             recycle_offset = inputin.get_item<int>("boundary_lateral", "recycle_offset", "");
         }
+    }
+
+    // Output for sub-domain.
+    // Keep out of the `if (sw_openbc)` block; domains can have periodic
+    // boundaries, but still need to output sub-domain data.
+    sw_subdomain = inputin.get_item<bool>("subdomain", "sw_subdomain", "", false);
+
+    if (sw_subdomain)
+    {
+        xstart_sub = inputin.get_item<TF>("subdomain", "xstart", "");
+        xend_sub   = inputin.get_item<TF>("subdomain", "xend", "");
+        ystart_sub = inputin.get_item<TF>("subdomain", "ystart", "");
+        yend_sub   = inputin.get_item<TF>("subdomain", "yend", "");
+
+        refinement_sub = inputin.get_item<int>("subdomain", "refinement_fac", "");
+        n_ghost_sub = inputin.get_item<int>("subdomain", "n_ghost", "");
+        n_sponge_sub = inputin.get_item<int>("subdomain", "n_sponge", "");
     }
 }
 
@@ -1115,11 +1140,37 @@ void Boundary_lateral<TF>::create(
         Stats<TF>& stats,
         const std::string& sim_name)
 {
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    if (sw_subdomain)
+    {
+        bool error = false;
+
+        auto check_subdomain = [&](const TF value, const TF spacing, const std::string& name)
+        {
+            if (!is_equal(std::fmod(value, spacing), TF(0)))
+            {
+                error = true;
+                master.print_message(
+                    "ERROR: " + name + " must be an integer multiple of " + std::to_string(spacing) + ".");
+            }   
+        };
+
+        // Sub-domain has perfectly align with parent grid at x/y half levels.
+        check_subdomain(xstart_sub, gd.dx, "xstart_sub");
+        check_subdomain(xend_sub, gd.dx, "xend_sub");
+        check_subdomain(ystart_sub, gd.dy, "ystart_sub");
+        check_subdomain(yend_sub, gd.dy, "yend_sub");
+
+        if (error)
+            throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
+    }
+
+    // Only proceed if open boundary conditions are enabled.
     if (!sw_openbc)
         return;
 
-    auto& gd = grid.get_grid_data();
-    auto& md = master.get_MPI_data();
     TF* rhoref = fields.rhoref.data();
 
     // Domain total divergence in u and v direction.
