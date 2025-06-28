@@ -12,8 +12,7 @@ https://eurec4a.eu/mip
 - `download_era5.py`: Download ERA5 data using (LS)2D, required for RRTMGP background.
 
 2. Pre-process data.
-- `transform_cosmo_to_les.py`: Slice area out of COSMO domain, and calculate derived quantities like `thl`, `qsat(sst)`, et cetera. Outcome is written to a single NetCDF file under `cosmo_path` named `COSMO_CTRL_BC_nD_LES.nc`
-- `create_background.py`: Create time dependent mean background profiles (needed for e.g. RRTMGP), by blending COSMO (below ~20 km) and ERA5 (from ~20 km to TOA). This is somewhat costly, so do it once for the full EUREC4A period. This results in a `eurec4a_mean_profiles.nc` NetCDF file in `cosmo_path`.
+- `transform_cosmo_to_les.py`: Slice area out of COSMO domain, and calculate derived quantities like `thl`, `qsat(sst)`, et cetera. Outcome is written to a single NetCDF file under `cosmo_path` named `COSMO_CTRL_BC_nD_LES.nc`.
 
 3. Domain definitions.
 - `grid_definition.py` define the domains/nesting. The switch between the different domains is set in `global_settings.py`.

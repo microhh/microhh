@@ -29,9 +29,13 @@ from scipy import interpolate
 
 import ls2d
 
+# Make sure `microhhpy` is in the Python path.
+import microhhpy.thermo as thermo
+
 # Custom scripts from current directory.
 import helpers as hlp
-from global_settings import vgrid, cosmo_path, dtype
+from global_settings import cosmo_path, float_type
+from domain_definition import vgrid
 
 pl.close('all')
 
@@ -57,6 +61,10 @@ settings = {
     'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/'}
 
 if 'era' not in locals():
+
+    """
+    Read ERA5 with (LS)2D.
+    """
     era = ls2d.Read_era5(settings)
     era.calculate_forcings(n_av=6, method='2nd')
     
@@ -73,28 +81,32 @@ if 'era' not in locals():
     les_input = les_input.drop_vars(drop)
 
 
+if 'cosmo' not in locals():
+
+    """
+    Read pre-processed COSMO dataset.
+    """
+    cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+
+    # Location of inner 500 x 300 km2 domain.
+    lon_slice = slice(-60, -55.4)
+    lat_slice = slice(11.9, 14.6)
+
+    cosmo = cosmo.sel(rlon=lon_slice, rlat=lat_slice)
+    cosmo_m = cosmo.mean(dim=('rlat', 'rlon'))
+
+    cosmo_m['T'] = cosmo_m['thl'] * thermo.exner(cosmo_m['p'].values)
+
+    # Interpolate onto LES grid.
+    cosmo_z = cosmo_m.interp(z=z_out, kwargs={'fill_value': 'extrapolate'})
+
+
+
 """
-Read COSMO data for domain averaged profiles, and blending of COSMO and ERA for radiation.
+Blend COSMO (below ~20 km) and ERA5 (20 km -> TOA) profiles.
 """
-# Location of inner 500 x 300 km2 domain.
-lon_slice = slice(-60, -55.4)
-lat_slice = slice(11.9, 14.6)
-
-dates = pd.date_range(start, end, freq='1h')
-for t,date in enumerate(dates):
-    print(f'Parsing COSMO for {date}')
-
-    ds_2d, ds_3d = hlp.read_cosmo(date, cosmo_path, lon_slice, lat_slice)
-
-    # Average COSMO over 500x300 km2 domain.
-    p = ds_3d.P.mean(axis=(1,2))
-    u = ds_3d.U.mean(axis=(1,2))
-    v = ds_3d.V.mean(axis=(1,2))
-    T = ds_3d.T.mean(axis=(1,2))
-    thl = ds_3d.thl.mean(axis=(1,2))
-    qt = ds_3d.qt.mean(axis=(1,2))
-    ps = ds_2d.PS.mean()
-    z_cosmo = ds_3d.altitude.values
+for t, date in enumerate(cosmo.time):
+    print(f'Parsing COSMO for {date.values}')
 
     def interp(x, xp, fp):
         """
@@ -103,14 +115,6 @@ for t,date in enumerate(dates):
         (linear) extrapolating near surface.
         """
         return interpolate.interp1d(xp, fp, assume_sorted=False, fill_value='extrapolate')(x)
-
-    # Interpolate to LES grid, and overwrite mean ERA5 profiles.
-    les_input['thl'][t,:] = interp(z_out, z_cosmo, thl)
-    les_input['qt'][t,:] = interp(z_out, z_cosmo, qt)
-    les_input['u'][t,:] = interp(z_out, z_cosmo, u)
-    les_input['v'][t,:] = interp(z_out, z_cosmo, v)
-    les_input['p'][t,:] = interp(z_out, z_cosmo, p)
-    les_input['ps'][t] = ps
 
     # COSMO TOD is ~20km. Blend in ERA5 profiles between 50 < p < 100 hPa,
     # for RRTMGP background profiles temperature, h2o, and ozone.
@@ -122,9 +126,9 @@ for t,date in enumerate(dates):
     fac_lev = np.maximum(0, np.minimum(1, (les_input.p_lev[t,:] - p_low) / (p_high - p_low)))
 
     # Interpolate COSMO to LES pressure grid.
-    t_lay_cosmo = interp(les_input.p_lay[t,:], p, T)
-    t_lev_cosmo = interp(les_input.p_lev[t,:], p, T)
-    qt_lay_cosmo = interp(les_input.p_lay[t,:], p, qt)
+    t_lay_cosmo = interp(les_input.p_lay[t,:],  cosmo_m.p[t,:], cosmo_m.T[t,:])
+    t_lev_cosmo = interp(les_input.p_lev[t,:],  cosmo_m.p[t,:], cosmo_m.T[t,:])
+    qt_lay_cosmo = interp(les_input.p_lay[t,:], cosmo_m.p[t,:], cosmo_m.qt[t,:])
 
     xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
     h2o_lay_cosmo = qt_lay_cosmo / (eps - eps * qt_lay_cosmo)
@@ -143,13 +147,13 @@ for t,date in enumerate(dates):
     # TODO: aerosols Mirjam.
     # .................
 
-"""
-Save in NetCDF, as input for other scripts.
-"""
-# Cast float arrays to correct dtype.
-if dtype == np.float32:
-    for v in les_input.variables:
-        if les_input[v].dtype == np.float64:
-            les_input[v] = les_input[v].astype(dtype)
-    
-les_input.to_netcdf('eurec4a_mean_profiles.nc')
+#"""
+#Save in NetCDF, as input for other scripts.
+#"""
+## Cast float arrays to correct dtype.
+#if dtype == np.float32:
+#    for v in les_input.variables:
+#        if les_input[v].dtype == np.float64:
+#            les_input[v] = les_input[v].astype(dtype)
+#    
+#les_input.to_netcdf('eurec4a_mean_profiles.nc')
