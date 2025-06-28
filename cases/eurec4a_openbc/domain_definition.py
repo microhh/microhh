@@ -26,10 +26,10 @@ proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +ty
 if global_settings.case == 'develop':
 
     outer_dom = Domain(
-        xsize=6400,
-        ysize=3200,
-        itot=64,
-        jtot=32,
+        xsize=32000,
+        ysize=16000,
+        itot=128,
+        jtot=64,
         n_ghost=3,
         n_sponge=5,
         lon=-57.7,
@@ -38,16 +38,18 @@ if global_settings.case == 'develop':
         proj_str=proj_str,
     )
 
-    inner_dom = Domain(
-        xsize=3200,
-        ysize=1600,
-        itot=64,
-        jtot=32,
-        n_ghost=3,
-        n_sponge=5,
-        parent=outer_dom,
-        center_in_parent=True
-    )
+    inner_dom = None
+
+    #inner_dom = Domain(
+    #    xsize=3200,
+    #    ysize=1600,
+    #    itot=128,
+    #    jtot=64,
+    #    n_ghost=3,
+    #    n_sponge=5,
+    #    parent=outer_dom,
+    #    center_in_parent=True
+    #)
 
 
 if global_settings.case == '500x300':
@@ -77,4 +79,4 @@ if global_settings.case == '500x300':
     #)
 
 
-plot_domains([outer_dom], use_projection=True)
+#plot_domains([outer_dom], use_projection=True)

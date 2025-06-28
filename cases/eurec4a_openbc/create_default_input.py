@@ -186,5 +186,8 @@ ini['time']['endtime'] = time_sec[-1]
 ini['force']['fc'] = ds_time.attrs['fc']
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
 
+ini['cross']['xz'] = domain.ysize/2
+ini['cross']['yz'] = domain.xsize/2
+
 io.check_ini(ini)
 io.save_ini(ini, f'{work_path}/eurec4a.ini')
