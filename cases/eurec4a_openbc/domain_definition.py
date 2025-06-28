@@ -21,6 +21,8 @@ vgrid = hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 """
 Define horizontal grid with projection.
 """
+proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
+
 if global_settings.case == 'develop':
 
     outer_dom = Domain(
@@ -33,7 +35,7 @@ if global_settings.case == 'develop':
         lon=-57.7,
         lat=13.3,
         anchor='center',
-        proj_str='+proj=utm +zone=20 +datum=WGS84 +units=m +no_defs',
+        proj_str=proj_str,
     )
 
     inner_dom = Domain(
@@ -47,4 +49,32 @@ if global_settings.case == 'develop':
         center_in_parent=True
     )
 
-#plot_domains([outer_proj, inner_proj])
+
+if global_settings.case == '500x300':
+
+    outer_dom = Domain(
+        xsize=700_000,
+        ysize=500_000,
+        itot=2400,
+        jtot=1440,
+        n_ghost=3,
+        n_sponge=5,
+        lon=-57.7,
+        lat=13.3,
+        anchor='center',
+        proj_str=proj_str,
+    )
+
+    #inner_dom = Domain(
+    #    xsize=2400*200,
+    #    ysize=1600,
+    #    itot=64,
+    #    jtot=32,
+    #    n_ghost=3,
+    #    n_sponge=5,
+    #    parent=outer_dom,
+    #    center_in_parent=True
+    #)
+
+
+plot_domains([outer_dom], use_projection=True)
