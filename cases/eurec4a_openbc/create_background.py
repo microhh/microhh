@@ -31,22 +31,19 @@ import ls2d
 
 # Custom scripts from current directory.
 import helpers as hlp
-from grid_definition import vgrid
+from global_settings import vgrid, cosmo_path, dtype
 
 pl.close('all')
 
-cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
-dtype = np.float32
-
-# NOTE: create background for full time period!
-# This is quite an expensive operation, so don't repeat
-# this for every test, change of time period, etc.
+# NOTE: create background for full time period! This is quite an expensive operation,
+# so don't repeat this for every test, change of time period, etc.
 start = datetime(year=2020, month=2, day=1, hour=0)
 end   = datetime(year=2020, month=2, day=12, hour=0)
 ntime = int((end-start).total_seconds()/3600+1)
 
 # Interpolate COSMO straight onto desired LES grid.
 z_out = vgrid.z
+
 
 """
 Read ERA5 for background profiles radiation.
@@ -58,7 +55,6 @@ settings = {
     'end_date'    : end,
     'case_name'   : 'eurec4a_openbc',
     'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/'}
-
 
 if 'era' not in locals():
     era = ls2d.Read_era5(settings)
