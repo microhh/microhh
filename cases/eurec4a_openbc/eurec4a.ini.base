@@ -98,10 +98,10 @@ tau_sponge=30
 w_diff=0.003
 
 # Turbulence recycling
-#sw_recycle=false
-#recycle_list=None
-#tau_recycle=60
-#recycle_offset=10
+sw_recycle=true
+recycle_list=thl,qt,u,v,w
+tau_recycle=60
+recycle_offset=10
 
 [fields]
 visc=1.e-5
@@ -117,8 +117,8 @@ svisc=1.e-5
 [buffer]
 swbuffer=1
 zstart=None
-sigma=0.0025
-beta=3
+sigma=0.01
+beta=2
 
 swbuffer_3d=true
 buffer3d_list=u,v,w,thl,qt
@@ -144,7 +144,7 @@ sampletime=60
 swcross=1
 sampletime=60
 crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydroh_3d
-xy=10,100,500
+xy=10,100,500,1000,2000,4000,5000,6000,6893.331937916643
 xz=None
 yz=None
 
