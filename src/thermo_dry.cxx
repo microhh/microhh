@@ -662,11 +662,11 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
     if (stats.get_switch())
     {
         bs_stats = bs;
+
         // Add base state profiles to statistics
-        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  group_name, fields.rhoref );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", group_name, fields.rhorefh);
         stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z" , group_name, bs_stats.thref);
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh", group_name, bs_stats.thref);
+
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
             stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs_stats.pref );
