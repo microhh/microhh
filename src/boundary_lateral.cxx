@@ -1262,6 +1262,10 @@ void Boundary_lateral<TF>::set_ghost_cells(
         fclose(pFile);
     };
 
+    for (auto& rho : fields.rhoref)
+        std::cout << rho << std::endl;
+    throw 1;
+
 
     auto set_lbc_gcs_wrapper = [&](
             const std::string& fld,

@@ -2557,10 +2557,7 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
     // Add variables to the statistics
     if (stats.get_switch())
     {
-        /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
-           there the statistics are initialized before thermo->create() is called */
-        stats.add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z" , group_name, bs.rhoref );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", group_name, bs.rhorefh);
+        // Do we also want this time dependent with `swupdatebasestate`?
         stats.add_fixed_prof("thvref", "Full level basic state virtual potential temperature", "K", "z" , group_name, bs.thvref);
         stats.add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh", group_name, bs.thvrefh);
 
@@ -2568,13 +2565,15 @@ void Thermo_moist<TF>::create_stats(Stats<TF>& stats)
         {
             stats.add_prof("phydro", "Full level hydrostatic pressure", "Pa", "z" , group_name);
             stats.add_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name);
-            stats.add_prof("rho",  "Full level density", "kg m-3", "z" , group_name);
-            stats.add_prof("rhoh", "Half level density", "kg m-3", "zh", group_name);
+            stats.add_prof("rho",  "Full level thermodynamic density", "kg m-3", "z" , group_name);
+            stats.add_prof("rhoh", "Half level thermodynamic density", "kg m-3", "zh", group_name);
         }
         else
         {
             stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs.pref);
             stats.add_fixed_prof("phydroh", "Half level hydrostatic pressure", "Pa", "zh", group_name, bs.prefh);
+            stats.add_fixed_prof("rho",  "Full level thermodynamic density", "kg m-3", "z" , group_name, bs.rhoref);
+            stats.add_fixed_prof("rhoh", "Half level thermodynamic density", "kg m-3", "zh", group_name, bs.rhorefh);
         }
 
         auto thv = fields.get_tmp();
