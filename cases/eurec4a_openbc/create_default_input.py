@@ -21,6 +21,8 @@
 #
 
 import argparse
+import shutil
+import os
 
 import netCDF4 as nc4
 import xarray as xr
@@ -34,7 +36,7 @@ import microhhpy.io as io
 import microhhpy.thermo as thermo
 
 # Custom scripts from same directory.
-from global_settings import float_type, work_path, cosmo_path, start_date, end_date
+from global_settings import float_type, work_path, cosmo_path, start_date, end_date, microhh_path, gpt_veerman_path
 import helpers as hlp
 
 # Grid (horizontal/vertical) definition.
@@ -118,36 +120,89 @@ ds_time = era.get_les_input(vgrid.z)
 ds_time = ds_time.sel(lay=slice(0,135), lev=slice(0,136))
 ds_mean = ds_time.mean(dim='time')
 
-def add_var(nc_group, name, dims, values):
-    var = nc_group.createVariable(name, float_type, dims)
-    var[:] = values
+def add_nc_var(name, dims, nc, data):
+    if name not in nc.variables:
+        if dims is None:
+            var = nc.createVariable(name, np.float64)
+        else:
+            var = nc.createVariable(name, np.float64, dims)
+        var[:] = data
+
+def add_nc_dim(name, size, nc):
+    if name not in nc.dimensions:
+        nc.createDimension(name, size)
+
 
 nc_file = nc4.Dataset(f'{work_path}/eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
-nc_file.createDimension('z', vgrid.ktot)
-add_var(nc_file, 'z', ('z'), vgrid.z)
+add_nc_dim('z', vgrid.ktot, nc_file)
+add_nc_var('z', ('z'), nc_file, vgrid.z)
 
 # Initial profiles. Not really used, but needed for `init` phase. The resulting
 # initial 3D fields are overwritten by the interpolated fields from COSMO.
 nc_init = nc_file.createGroup('init')
-add_var(nc_init, 'thl', ('z'), ds_mean.thl.values)
-add_var(nc_init, 'qt', ('z'), ds_mean.qt.values)
-add_var(nc_init, 'u', ('z'), ds_mean.u.values)
-add_var(nc_init, 'v', ('z'), ds_mean.v.values)
+add_nc_var('thl', ('z'), nc_init, ds_mean.thl.values)
+add_nc_var('qt', ('z'), nc_init, ds_mean.qt.values)
+add_nc_var('u', ('z'), nc_init, ds_mean.u.values)
+add_nc_var('v', ('z'), nc_init, ds_mean.v.values)
 
 # Time dependent input. For now, spatially constant.
 nc_tdep = nc_file.createGroup('timedep')
-nc_tdep.createDimension('time_surface', time_sec.size)
-nc_tdep.createDimension('time_ls', time_sec.size)
+add_nc_dim('time_surface', time_sec.size, nc_tdep)
+add_nc_dim('time_ls', time_sec.size, nc_tdep)
 
-add_var(nc_tdep, 'time_surface', ('time_surface'), time_sec)
-add_var(nc_tdep, 'time_ls', ('time_ls'), time_sec)
+add_nc_var('time_surface', ('time_surface'), nc_tdep, time_sec)
+add_nc_var('time_ls', ('time_ls'), nc_tdep, time_sec)
 
-add_var(nc_tdep, 'p_sbot', ('time_surface'), ds_time.ps.values)
-add_var(nc_tdep, 'u_geo', ('time_ls', 'z'), ds_time.ug.values)
-add_var(nc_tdep, 'v_geo', ('time_ls', 'z'), ds_time.vg.values)
+add_nc_var('p_sbot', ('time_surface'), nc_tdep, ds_time.ps.values)
+add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, ds_time.ug.values)
+add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, ds_time.vg.values)
 
 # Radiation.
-# TODO...
+
+
+nc_rad = nc_file.createGroup('radiation')
+add_nc_dim('lay', ds_mean.sizes['lay'], nc_rad)
+add_nc_dim('lev', ds_mean.sizes['lev'], nc_rad)
+
+# Radiation variables on LES grid.
+xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
+h2o = ds_mean.qt / (eps - eps * ds_mean.qt)
+add_nc_var('h2o', ('z'), nc_init, h2o)
+add_nc_var('o3',  ('z'), nc_init, ds_mean.o3*1e-6)
+
+# RFMIP background concentrations.
+rfmip = {
+    'co2': 0.00039754696655273437,
+    'ch4': 1.8314709472656252e-06,
+    'n2o': 3.269880065917969e-07,
+    'n2': 0.781000018119812,
+    'o2': 0.20900000631809235,
+    'co': 1.199999957179898e-07,
+    'ccl4': 8.306993103027344e-11,
+    'cfc11': 2.330798645019531e-10,
+    'cfc12': 5.205809936523438e-10,
+    'hcfc22': 2.295420684814453e-10,
+    'hfc143a': 1.525278091430664e-11,
+    'hfc125': 1.5355008125305177e-11,
+    'hfc23': 2.6890436172485352e-11,
+    'hfc32': 8.336969375610351e-12,
+    'hfc134a': 8.051573181152344e-11,
+    'cf4': 8.109249114990234e-11,
+    'no2': 0.0}
+
+for group in (nc_init, nc_rad):
+    for name, value in rfmip.items():
+        add_nc_var(name, None, group, value)
+
+# Radiation variables on radiation grid/levels:
+add_nc_var('z_lay', ('lay'), nc_rad, ds_mean.z_lay)
+add_nc_var('z_lev', ('lev'), nc_rad, ds_mean.z_lev)
+add_nc_var('p_lay', ('lay'), nc_rad, ds_mean.p_lay)
+add_nc_var('p_lev', ('lev'), nc_rad, ds_mean.p_lev)
+add_nc_var('t_lay', ('lay'), nc_rad, ds_mean.t_lay)
+add_nc_var('t_lev', ('lev'), nc_rad, ds_mean.t_lev)
+add_nc_var('h2o',   ('lay'), nc_rad, ds_mean.h2o_lay)
+add_nc_var('o3',    ('lay'), nc_rad, ds_mean.o3_lay*1e-6)
 
 nc_file.close()
 
@@ -186,6 +241,7 @@ ini['grid']['zsize'] = vgrid.zsize
 
 ini['buffer']['zstart'] = zstart_buffer
 ini['time']['endtime'] = time_sec[-1]
+ini['time']['datetime_utc'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
 ini['force']['fc'] = ds_time.attrs['fc']
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
 
@@ -194,3 +250,22 @@ ini['cross']['yz'] = domain.xsize/2
 
 io.check_ini(ini)
 io.save_ini(ini, f'{work_path}/eurec4a.ini')
+
+
+"""
+Link/copy required RRTMGP lookup tables.
+"""
+rrtmgp_path = f'{microhh_path}/rte-rrtmgp-cpp/'
+rrtmgp_data_path = f'{microhh_path}/rte-rrtmgp-cpp/rrtmgp-data'
+
+to_copy = [
+        (f'{gpt_veerman_path}/rrtmgp-gas-lw-g056-cf2.nc', 'coefficients_lw.nc'),
+        (f'{gpt_veerman_path}/rrtmgp-gas-sw-g049-cf2.nc', 'coefficients_sw.nc'),
+        (f'{rrtmgp_data_path}/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc'),
+        (f'{rrtmgp_data_path}/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc'),
+        (f'{rrtmgp_path}/data/aerosol_optics.nc', 'aerosol_optics.nc')]
+
+for f in to_copy:
+    target = f'{work_path}/{f[1]}'
+    if not os.path.exists(target):
+        shutil.copy(f[0], target)

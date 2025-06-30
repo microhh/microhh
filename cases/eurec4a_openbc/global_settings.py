@@ -27,8 +27,14 @@ import helpers as hlp
 
 float_type = np.float64
 
-cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
-work_path = 'develop_case'
+# Data paths.
+syst = 'eddy'
+
+if syst == 'eddy':
+    cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
+    work_path = 'develop_case'
+    microhh_path = '/home/bart/meteo/models/microhh/'
+    gpt_veerman_path = '/home/bart/meteo/models/coefficients_veerman'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
 end_date   = datetime(year=2020, month=2, day=1, hour=12)

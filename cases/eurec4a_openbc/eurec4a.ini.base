@@ -15,6 +15,9 @@ zsize=None
 
 swspatialorder=2
 
+lat=13.3
+lon=-57.7
+
 [pres]
 sw_openbc=1
 
@@ -37,6 +40,19 @@ swtimedep_pbot=0
 swphydro_3d=true
 swtimedepphydro_3d=true
 loadfreq=3600
+
+[radiation]
+swradiation=rrtmgp
+emis_sfc=0.98
+swlongwave=1
+swshortwave=1
+dt_rad=300
+t_sfc=290
+tsi_scaling=1
+sfc_alb_dir=0.06
+sfc_alb_dif=0.06
+swclearskystats=1
+swfixedsza=0
 
 [micro]
 swmicro=2mom_warm
@@ -134,6 +150,7 @@ outputiter=0
 adaptivestep=true
 starttime=0
 rkorder=4
+datetime_utc=None
 
 [stats]
 swstats=1
