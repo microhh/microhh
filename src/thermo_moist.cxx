@@ -1664,6 +1664,9 @@ void Thermo_moist<TF>::create(
     // Init the toolbox classes.
     boundary_cyclic.init();
 
+    if (swphydro_3d)
+        create_phydro_3d(timeloop);
+
     // Set up output classes
     // create_stats(stats);
     create_column(column);
