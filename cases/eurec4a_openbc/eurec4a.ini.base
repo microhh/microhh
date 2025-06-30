@@ -120,6 +120,11 @@ zstart=None
 sigma=0.0025
 beta=3
 
+swbuffer_3d=true
+buffer3d_list=u,v,w,thl,qt
+swtimedep_buffer_3d=true
+loadfreq=3600
+
 [time]
 endtime=None
 dt=6.

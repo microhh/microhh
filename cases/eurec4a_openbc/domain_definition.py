@@ -17,6 +17,9 @@ heights = [0, 4000, 10000]
 factors = [1.01, 1.02]
 vgrid = hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 
+# Define buffer height globally; needed by multiple scripts.
+zstart_buffer = 0.75 * vgrid.zsize
+
 
 """
 Define horizontal grid with projection.

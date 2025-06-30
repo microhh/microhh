@@ -40,7 +40,7 @@ import constants
 from global_settings import float_type, work_path, cosmo_path, start_date, end_date
 
 # Grid (horizontal/vertical) definition.
-from domain_definition import vgrid, outer_dom
+from domain_definition import vgrid, outer_dom, zstart_buffer
 
 """
 Read basestate
@@ -81,6 +81,7 @@ create_era5_input(
     time_era,
     vgrid.z,
     vgrid.zsize,
+    zstart_buffer,
     rho,
     rhoh,
     outer_dom,

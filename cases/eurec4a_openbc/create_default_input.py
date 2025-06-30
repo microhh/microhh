@@ -38,7 +38,7 @@ from global_settings import float_type, work_path, cosmo_path, start_date, end_d
 import helpers as hlp
 
 # Grid (horizontal/vertical) definition.
-from domain_definition import vgrid, outer_dom, inner_dom
+from domain_definition import vgrid, outer_dom, inner_dom, zstart_buffer
 
 
 """
@@ -184,7 +184,7 @@ ini['grid']['xsize'] = domain.xsize
 ini['grid']['ysize'] = domain.ysize
 ini['grid']['zsize'] = vgrid.zsize
 
-ini['buffer']['zstart'] = 2/3 * vgrid.zsize
+ini['buffer']['zstart'] = zstart_buffer
 ini['time']['endtime'] = time_sec[-1]
 ini['force']['fc'] = ds_time.attrs['fc']
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
