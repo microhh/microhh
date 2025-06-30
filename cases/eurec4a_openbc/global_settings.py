@@ -31,6 +31,6 @@ cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
 work_path = 'develop_case'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=2, hour=0)
+end_date   = datetime(year=2020, month=2, day=1, hour=1)
 
 case = 'develop'

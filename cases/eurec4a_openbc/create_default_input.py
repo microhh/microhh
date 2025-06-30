@@ -86,17 +86,18 @@ Unit conversions (T -> thl etc.) are done in `read_cosmo()`.
 """
 print('Interpolating COSMO surface fields.')
 
-for t, date in enumerate(dates):
+ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
 
-    ds_2d, _ = hlp.read_cosmo(date, cosmo_path, lon_slice, lat_slice, read_3d=False)
+fld_s = np.empty(dim_xy, float_type)
 
-    thl_s = np.empty(dim_xy, float_type)
-    hlp.interpolate_cosmo(thl_s, ds_2d.thl_s.values, if_s, None, float_type)
-    thl_s.tofile(f'{work_path}/thl_bot_in.{time_sec[t]:07d}')
+for t, time in enumerate(time_sec):
 
-    qt_s = np.empty(dim_xy, float_type)
-    hlp.interpolate_cosmo(qt_s, ds_2d.qsat_s.values, if_s, None, float_type)
-    qt_s.tofile(f'{work_path}/qt_bot_in.{time_sec[t]:07d}')
+    hlp.interpolate_cosmo(fld_s, ds_cosmo.thl_sbot[t,:,:].values, if_s, None, float_type)
+    fld_s.tofile(f'{work_path}/thl_bot_in.{time:07d}')
+
+    hlp.interpolate_cosmo(fld_s, ds_cosmo.qt_sbot[t,:,:].values, if_s, None, float_type)
+    fld_s.tofile(f'{work_path}/qt_bot_in.{time:07d}')
 
 
 """
@@ -162,7 +163,9 @@ bs = thermo.calc_moist_basestate(
     vgrid.zsize,
     float_type)
 
-thermo.save_moist_basestate(bs, f'{work_path}/thermo_basestate_0.0000000')
+# Only save the density part for the dynamic core.
+# A `_0` is appended to the name; this way the density created by `microhh init` can be overwritten with this one.
+thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{work_path}/rhoref_0.0000000')
 
 
 """
