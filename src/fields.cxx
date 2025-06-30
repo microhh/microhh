@@ -1208,6 +1208,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         // (Turbulence) Kinetic Energy
         stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
         stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
+
+        // Base state density.
+        stats.add_fixed_prof("rhoref",  "Full level density dynamic core", "kg m-3", "z" , group_name, this->rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level density dynamic core", "kg m-3", "zh", group_name, this->rhorefh);
     }
 
     // Add time series of scalar surface values
