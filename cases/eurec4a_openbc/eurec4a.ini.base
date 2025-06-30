@@ -20,7 +20,7 @@ sw_openbc=1
 
 [advec]
 swadvec=2i5
-cflmax=1.4
+cflmax=1.3
 #fluxlimit_list=qt,qr,nr
 
 [diff]
@@ -32,7 +32,11 @@ swthermo=moist
 swbasestate=anelastic
 pbot=1e5
 swupdatebasestate=1
-swtimedep_pbot=1
+swtimedep_pbot=0
+
+swphydro_3d=true
+swtimedepphydro_3d=true
+loadfreq=3600
 
 [micro]
 swmicro=2mom_warm
@@ -134,7 +138,7 @@ sampletime=60
 [cross]
 swcross=1
 sampletime=60
-crosslist=ql_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot
+crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydroh_3d
 xy=10,100,500
 xz=None
 yz=None
