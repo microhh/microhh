@@ -19,7 +19,7 @@ lat=13.3
 lon=-57.7
 
 [pres]
-sw_openbc=1
+sw_openbc=true
 
 [advec]
 swadvec=2i5
@@ -44,29 +44,31 @@ loadfreq=3600
 [radiation]
 swradiation=rrtmgp
 emis_sfc=0.98
-swlongwave=1
-swshortwave=1
+swlongwave=true
+swshortwave=true
 dt_rad=300
 t_sfc=290
 tsi_scaling=1
 sfc_alb_dir=0.06
 sfc_alb_dif=0.06
-swclearskystats=1
-swfixedsza=0
+swclearskystats=true
+swfixedsza=false
 
 [micro]
 swmicro=2mom_warm
-swmicrobudget=0
+swmicrobudget=false
 cflmax=1.2
 Nc0=70e6
 
 [force]
-swlspres=geo
-swtimedep_geo=1
-fc=None
-
+#swlspres=geo
+#swtimedep_geo=1
+#fc=None
 swls=0
 swwls=0
+
+# Spatially varying coriolis frequency.
+swrotation_2d=true
 
 [boundary]
 swboundary=surface
@@ -116,7 +118,7 @@ w_diff=0.003
 # Turbulence recycling
 sw_recycle=true
 recycle_list=thl,qt,u,v,w
-tau_recycle=60
+tau_recycle=10
 recycle_offset=10
 
 [fields]
@@ -146,7 +148,7 @@ endtime=None
 dt=6.
 dtmax=30
 savetime=3600
-outputiter=0
+outputiter=10
 adaptivestep=true
 starttime=0
 rkorder=4
@@ -160,8 +162,8 @@ sampletime=60
 [cross]
 swcross=1
 sampletime=60
-crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydroh_3d
-xy=10,100,500,1000,2000,4000,5000,6000,6893.331937916643
+crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydro_3d
+xy=10,100,400,1000,1500,3000,5000
 xz=None
 yz=None
 

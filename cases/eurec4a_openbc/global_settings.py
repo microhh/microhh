@@ -28,15 +28,15 @@ import helpers as hlp
 float_type = np.float64
 
 # Data paths.
-#syst = 'eddy'
-syst = 'snellius'
+syst = 'eddy'
+#syst = 'snellius'
 
 if syst == 'eddy':
     cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
     work_path = 'develop_case'
     microhh_path = '/home/bart/meteo/models/microhh/'
     gpt_veerman_path = '/home/bart/meteo/models/coefficients_veerman'
-    ls2d_era5_path = ''
+    ls2d_era5_path = '/home/scratch1/bart/LS2D_ERA5'
 
 elif  syst == 'snellius':
     cosmo_path = '/gpfs/work3/0/lesmodels/eurec4a'
@@ -46,7 +46,7 @@ elif  syst == 'snellius':
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=4, hour=0)
+end_date   = datetime(year=2020, month=2, day=1, hour=12)
 
-#case = 'develop'
-case = 'test'
+case = 'develop'
+#case = 'test'

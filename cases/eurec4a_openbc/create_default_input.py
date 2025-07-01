@@ -219,12 +219,29 @@ thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{work_path}/rhoref_0.0000
 
 
 """
+Create 2D field with coriolis frequency.
+"""
+omega = 2*np.pi/86400
+fc = 2 * omega * np.sin(np.deg2rad(domain.proj.lat))
+fc.astype(float_type).tofile(f'{work_path}/fc.0000000')
+
+
+"""
 Create `eurec4a.ini` from eurec4a.ini.base`, with correct settings.
 """
 ini = io.read_ini('eurec4a.ini.base')
 
-ini['master']['npx'] = 48
-ini['master']['npy'] = 64
+# Check turbulence recycling
+imax = domain.itot / domain.npx
+jmax = domain.jtot / domain.npy
+
+if ini['boundary_lateral']['recycle_offset'] + domain.n_sponge > imax + domain.n_ghost:
+    raise Exception(f'Recycle offset x too large; max value = {imax + domain.n_ghost - domain.n_sponge}')
+if ini['boundary_lateral']['recycle_offset'] + domain.n_sponge > jmax + domain.n_ghost:
+    raise Exception(f'Recycle offset y too large; max value = {imax + domain.n_ghost - domain.n_sponge}')
+
+ini['master']['npx'] = domain.npx
+ini['master']['npy'] = domain.npy
 
 ini['grid']['itot'] = domain.itot
 ini['grid']['jtot'] = domain.jtot
@@ -237,8 +254,10 @@ ini['grid']['zsize'] = vgrid.zsize
 ini['buffer']['zstart'] = zstart_buffer
 ini['time']['endtime'] = time_sec[-1]
 ini['time']['datetime_utc'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
-ini['force']['fc'] = ds_time.attrs['fc']
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
+
+tau_fac = 10*5  # = U * fac...
+ini['boundary_lateral']['tau_sponge'] = domain.n_sponge * domain.dx / tau_fac
 
 ini['cross']['xz'] = domain.ysize/2
 ini['cross']['yz'] = domain.xsize/2

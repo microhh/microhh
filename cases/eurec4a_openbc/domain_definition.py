@@ -12,19 +12,20 @@ import helpers as hlp
 """
 Define vertical grid. This is used in several scripts, so define it globally.
 """
-#ktot = 144
-#dz0 = 20
-#heights = [0, 4000, 10000]
-#factors = [1.01, 1.02]
+ktot = 144
+dz0 = 20
+heights = [0, 4000, 10000]
+factors = [1.01, 1.02]
+vgrid =hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 #vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 
-ktot = 128
-dz0 = 20
-heights = [0, 3000, 5000, 10000]
-factors = [1.01, 1.03, 1.08]
-vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+#ktot = 128
+#dz0 = 20
+#heights = [0, 3000, 5000, 10000]
+#factors = [1.01, 1.03, 1.08]
+#vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 
-vgrid.plot()
+#vgrid.plot()
 
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
@@ -50,6 +51,9 @@ if global_settings.case == 'develop':
         proj_str=proj_str,
     )
 
+    outer_dom.npx = 2
+    outer_dom.npy = 4
+
     inner_dom = None
 
     #inner_dom = Domain(
@@ -66,11 +70,27 @@ if global_settings.case == 'develop':
 
 elif global_settings.case == 'test':
 
+    # Snellius test #1.
+    #outer_dom = Domain(
+    #    xsize=1536*150,
+    #    ysize=768*150,
+    #    itot=1536,
+    #    jtot=768,
+    #    n_ghost=3,
+    #    n_sponge=5,
+    #    lon=-57.7,
+    #    lat=13.3,
+    #    anchor='center',
+    #    proj_str=proj_str,
+    #)
+
+    # Snellius test #2.
+    # Full domain, ~200 m resolution.
     outer_dom = Domain(
-        xsize=1536*150,
-        ysize=768*150,
-        itot=1536,
-        jtot=768,
+        xsize=500_000,
+        ysize=300_000,
+        itot=2592,
+        jtot=1536,
         n_ghost=3,
         n_sponge=5,
         lon=-57.7,
@@ -81,4 +101,6 @@ elif global_settings.case == 'test':
 
     inner_dom = None
 
-#plot_domains([outer_dom], use_projection=True)
+
+
+plot_domains([outer_dom], use_projection=True)
