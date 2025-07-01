@@ -102,4 +102,39 @@ elif global_settings.case == 'test':
 
     inner_dom = None
 
-#plot_domains([outer_dom], use_projection=True)
+elif global_settings.case == 'large':
+
+    # Dummy, just for plotting.
+    ref_dom = Domain(
+        xsize=500_000,
+        ysize=300_000,
+        itot=128,
+        jtot=64,
+        n_ghost=3,
+        n_sponge=5,
+        lon=-57.7,
+        lat=13.3,
+        anchor='center',
+        proj_str=proj_str,
+    )
+
+    outer_dom = Domain(
+        xsize=1_000_000,
+        ysize=600_000,
+        itot=1920,
+        jtot=1152,
+        n_ghost=3,
+        n_sponge=5,
+        lon=-55.7,
+        lat=14.3,
+        anchor='center',
+        proj_str=proj_str,
+    )
+
+    outer_dom.npx = 48
+    outer_dom.npy = 64
+
+    inner_dom = None
+
+
+plot_domains([outer_dom, ref_dom], use_projection=True)

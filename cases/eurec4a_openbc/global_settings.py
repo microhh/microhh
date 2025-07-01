@@ -48,5 +48,6 @@ elif  syst == 'snellius':
 start_date = datetime(year=2020, month=2, day=1, hour=0)
 end_date   = datetime(year=2020, month=2, day=1, hour=4)
 
-case = 'develop'
+#case = 'develop'
 #case = 'test'
+case = 'large'
