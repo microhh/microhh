@@ -1,5 +1,7 @@
 import numpy as np
 
+import ls2d
+
 # Make sure `microhhpy` is in the Python path!
 from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 
@@ -7,15 +9,22 @@ from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 import global_settings
 import helpers as hlp
 
-
 """
 Define vertical grid. This is used in several scripts, so define it globally.
 """
-ktot = 144
+#ktot = 144
+#dz0 = 20
+#heights = [0, 4000, 10000]
+#factors = [1.01, 1.02]
+#vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+
+ktot = 128
 dz0 = 20
-heights = [0, 4000, 10000]
-factors = [1.01, 1.02]
-vgrid = hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
+heights = [0, 3000, 5000, 10000]
+factors = [1.01, 1.03, 1.08]
+vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+
+vgrid.plot()
 
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
