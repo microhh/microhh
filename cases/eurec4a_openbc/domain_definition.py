@@ -97,7 +97,9 @@ elif global_settings.case == 'test':
         proj_str=proj_str,
     )
 
-    inner_dom = None
+    outer_dom.npx = 48
+    outer_dom.npy = 96
 
+    inner_dom = None
 
 #plot_domains([outer_dom], use_projection=True)

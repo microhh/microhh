@@ -53,7 +53,7 @@ Parse COSMO data.
 cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
 cosmo = cosmo.sel(time=slice(start_date, end_date))
 
-fields_era = {
+fields_cosmo = {
     'u': cosmo.u[:,:,:,:],
     'v': cosmo.v[:,:,:,:],
     'w': cosmo.w[:,:,:,:],
@@ -62,10 +62,10 @@ fields_era = {
     'qr': cosmo.qr[:,:,:,:],
 }
 
-p_era = cosmo.p[:,:,:,:]
-z_era = np.broadcast_to(cosmo.z.values[None,:,None,None], cosmo.thl.shape)
-time_era = cosmo.time - cosmo.time[0]
-time_era = (time_era.values.astype(np.float32)/1e9).astype(np.int32)
+p_cosmo = cosmo.p[:,:,:,:]
+z_cosmo = np.broadcast_to(cosmo.z.values[None,:,None,None], cosmo.thl.shape)
+time_cosmo = cosmo.time - cosmo.time[0]
+time_cosmo = (time_cosmo.values.astype(np.float32)/1e9).astype(np.int32)
 
 # Standard dev. of Gaussian filter applied to interpolated fields (m).
 #sigma_h = 10_000
@@ -73,12 +73,12 @@ sigma_h = 0.
 
 # MicroHHpy does not sprechen Deutsch. Just pretent it's ERA5...
 create_era5_input(
-    fields_era,
+    fields_cosmo,
     cosmo.rlon.data,
     cosmo.rlat.data,
-    z_era,
-    p_era,
-    time_era,
+    z_cosmo,
+    p_cosmo,
+    time_cosmo,
     vgrid.z,
     vgrid.zsize,
     zstart_buffer,
