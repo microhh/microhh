@@ -64,13 +64,13 @@ if global_settings.case == 'develop':
     #)
 
 
-if global_settings.case == '500x300':
+elif global_settings.case == 'test':
 
     outer_dom = Domain(
-        xsize=700_000,
-        ysize=500_000,
-        itot=2400,
-        jtot=1440,
+        xsize=1536*150,
+        ysize=768*150,
+        itot=1536,
+        jtot=768,
         n_ghost=3,
         n_sponge=5,
         lon=-57.7,
@@ -79,16 +79,6 @@ if global_settings.case == '500x300':
         proj_str=proj_str,
     )
 
-    #inner_dom = Domain(
-    #    xsize=2400*200,
-    #    ysize=1600,
-    #    itot=64,
-    #    jtot=32,
-    #    n_ghost=3,
-    #    n_sponge=5,
-    #    parent=outer_dom,
-    #    center_in_parent=True
-    #)
-
+    inner_dom = None
 
 #plot_domains([outer_dom], use_projection=True)
