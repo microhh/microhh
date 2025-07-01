@@ -79,7 +79,7 @@ class Boundary_lateral
         TF w_diff;
 
         // Turbulence recycling.
-        bool sw_recycle;
+        std::map<Lbc_location, bool> sw_recycle;
         std::vector<std::string> recycle_list;
         TF tau_recycle;
         int recycle_offset;
