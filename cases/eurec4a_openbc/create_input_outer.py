@@ -90,5 +90,5 @@ create_era5_input(
     perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
     name_suffix='0',
     output_dir=work_path,
-    ntasks=16,
+    ntasks=12,
     dtype=float_type)

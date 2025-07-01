@@ -36,7 +36,7 @@ import microhhpy.io as io
 import microhhpy.thermo as thermo
 
 # Custom scripts from same directory.
-from global_settings import float_type, work_path, cosmo_path, start_date, end_date, microhh_path, gpt_veerman_path
+from global_settings import float_type, work_path, cosmo_path, start_date, end_date, microhh_path, gpt_veerman_path, ls2d_era5_path
 import helpers as hlp
 
 # Grid (horizontal/vertical) definition.
@@ -62,19 +62,16 @@ time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 """
 Read grid info, and calculate spatial interpolation factors.
 """
+ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
+
 domain = inner_dom if args.domain == 'inner' else outer_dom
 dim_xy = (domain.jtot, domain.itot)
 
-# Slice out LES domain with safe margin.
-lon_slice = slice(domain.proj_pad.lon.min()-0.5, domain.proj_pad.lon.max()+0.5)
-lat_slice = slice(domain.proj_pad.lat.min()-0.5, domain.proj_pad.lat.max()+0.5)
-
-ds_2d, _ = hlp.read_cosmo(start_date, cosmo_path, lon_slice, lat_slice, read_3d=False)
-
 # Calculate horizontal interpolation factors.
 if_s = hlp.Calc_xy_interpolation_factors(
-        ds_2d.rlon.values,
-        ds_2d.rlat.values,
+        ds_cosmo.rlon.values,
+        ds_cosmo.rlat.values,
         domain.proj.lon,
         domain.proj.lat,
         domain.itot,
@@ -88,8 +85,6 @@ Unit conversions (T -> thl etc.) are done in `read_cosmo()`.
 """
 print('Interpolating COSMO surface fields.')
 
-ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
-ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
 
 fld_s = np.empty(dim_xy, float_type)
 
@@ -111,7 +106,7 @@ settings = {
     'start_date'  : start_date,
     'end_date'    : end_date,
     'case_name'   : 'eurec4a_openbc',
-    'era5_path'   : '/home/scratch1/bart/LS2D_ERA5/'}
+    'era5_path'   : ls2d_era5_path}
 
 era = ls2d.Read_era5(settings)
 era.calculate_forcings(n_av=6, method='2nd')
@@ -228,8 +223,8 @@ Create `eurec4a.ini` from eurec4a.ini.base`, with correct settings.
 """
 ini = io.read_ini('eurec4a.ini.base')
 
-ini['master']['npx'] = 2
-ini['master']['npy'] = 4
+ini['master']['npx'] = 48
+ini['master']['npy'] = 64
 
 ini['grid']['itot'] = domain.itot
 ini['grid']['jtot'] = domain.jtot
