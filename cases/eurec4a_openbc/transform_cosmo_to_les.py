@@ -14,12 +14,10 @@ from helpers import read_cosmo
 """
 Settings
 """
-# 700x500 km domain centered around target LES domain:
-lon_slice = slice(-61, -54)
-lat_slice = slice(11, 15.6)
+lon_slice = slice(-60, -50)
+lat_slice = slice(11, 18)
 
 start = datetime(year=2020, month=2, day=1, hour=0)
-#end   = datetime(year=2020, month=2, day=1, hour=4)
 end   = datetime(year=2020, month=2, day=12, hour=0)
 dates = pd.date_range(start, end, freq='h')
 
@@ -107,4 +105,4 @@ for t,date in enumerate(dates):
     ds['qt'][t,:,:,:] = qv + ql + qi
     ds['qr'][t,:,:,:] = qr + qs
 
-ds.to_netcdf(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+ds.to_netcdf(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES_XL.nc')
