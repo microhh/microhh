@@ -46,14 +46,14 @@ from domain_definition import vgrid, outer_dom, inner_dom, zstart_buffer
 """
 Parse command line arguments.
 """
-parser = argparse.ArgumentParser(description='EUREC4A openBC MicroHH setup')
-parser.add_argument(
-        '-d', '--domain', required=True,
-        help='Name of domain ("inner" or "outer")')
-args = parser.parse_args()
-
-if args.domain not in ('inner', 'outer'):
-    raise Exception('Invalid domain choice.')
+#parser = argparse.ArgumentParser(description='EUREC4A openBC MicroHH setup')
+#parser.add_argument(
+#        '-d', '--domain', required=True,
+#        help='Name of domain ("inner" or "outer")')
+#args = parser.parse_args()
+#
+#if args.domain not in ('inner', 'outer'):
+#    raise Exception('Invalid domain choice.')
 
 dates = pd.date_range(start_date, end_date, freq='h')
 time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
@@ -65,7 +65,8 @@ Read grid info, and calculate spatial interpolation factors.
 ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
 ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
 
-domain = inner_dom if args.domain == 'inner' else outer_dom
+#domain = inner_dom if args.domain == 'inner' else outer_dom
+domain = outer_dom
 dim_xy = (domain.jtot, domain.itot)
 
 # Calculate horizontal interpolation factors.

@@ -91,5 +91,5 @@ create_era5_input(
     perturb_max_height=1000,
     name_suffix='0',
     output_dir=work_path,
-    ntasks=12,
+    ntasks=8,
     dtype=float_type)

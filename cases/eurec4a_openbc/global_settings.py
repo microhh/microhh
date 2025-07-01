@@ -28,8 +28,8 @@ import helpers as hlp
 float_type = np.float32
 
 # Data paths.
-syst = 'eddy'
-#syst = 'snellius'
+#syst = 'eddy'
+syst = 'snellius'
 
 if syst == 'eddy':
     cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
@@ -46,7 +46,7 @@ elif  syst == 'snellius':
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=1, hour=4)
+end_date   = datetime(year=2020, month=2, day=3, hour=0)
 
-case = 'develop'
-#case = 'test'
+#case = 'develop'
+case = 'test'
