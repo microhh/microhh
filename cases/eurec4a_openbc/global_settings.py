@@ -25,7 +25,7 @@ import numpy as np
 
 import helpers as hlp
 
-float_type = np.float64
+float_type = np.float32
 
 # Data paths.
 syst = 'eddy'
@@ -46,7 +46,7 @@ elif  syst == 'snellius':
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=1, hour=12)
+end_date   = datetime(year=2020, month=2, day=1, hour=4)
 
 case = 'develop'
 #case = 'test'

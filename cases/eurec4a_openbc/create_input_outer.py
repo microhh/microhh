@@ -45,7 +45,7 @@ from domain_definition import vgrid, outer_dom, zstart_buffer
 """
 Read basestate
 """
-rho, rhoh = thermo.read_basestate_density(f'{work_path}/rhoref_0.0000000')
+rho, rhoh = thermo.read_basestate_density(f'{work_path}/rhoref_0.0000000', dtype=float_type)
 
 """
 Parse COSMO data.
@@ -88,6 +88,7 @@ create_era5_input(
     sigma_h,
     perturb_size=3,
     perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
+    perturb_max_height=1000,
     name_suffix='0',
     output_dir=work_path,
     ntasks=12,

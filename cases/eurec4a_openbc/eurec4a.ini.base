@@ -116,7 +116,9 @@ tau_sponge=30
 w_diff=0.003
 
 # Turbulence recycling
-sw_recycle=true
+sw_recycle=false
+sw_recycle[east]=true
+sw_recycle[north]=true
 recycle_list=thl,qt,u,v,w
 tau_recycle=10
 recycle_offset=10
@@ -163,7 +165,7 @@ sampletime=60
 swcross=1
 sampletime=60
 crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydro_3d
-xy=10,100,400,1000,1500,3000,5000
+xy=10,100,400,1000,1500,3000,5000,6893.331937916643
 xz=None
 yz=None
 

@@ -25,8 +25,6 @@ vgrid =hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 #factors = [1.01, 1.03, 1.08]
 #vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 
-#vgrid.plot()
-
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
 
@@ -102,5 +100,4 @@ elif global_settings.case == 'test':
     inner_dom = None
 
 
-
-plot_domains([outer_dom], use_projection=True)
+#plot_domains([outer_dom], use_projection=True)

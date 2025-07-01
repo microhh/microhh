@@ -153,8 +153,6 @@ add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, ds_time.ug.values)
 add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, ds_time.vg.values)
 
 # Radiation.
-
-
 nc_rad = nc_file.createGroup('radiation')
 add_nc_dim('lay', ds_mean.sizes['lay'], nc_rad)
 add_nc_dim('lev', ds_mean.sizes['lev'], nc_rad)
