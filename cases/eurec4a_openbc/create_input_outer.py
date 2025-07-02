@@ -50,7 +50,7 @@ rho, rhoh = thermo.read_basestate_density(f'{work_path}/rhoref_0.0000000', dtype
 """
 Parse COSMO data.
 """
-cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES_XL.nc')
 cosmo = cosmo.sel(time=slice(start_date, end_date))
 
 fields_cosmo = {

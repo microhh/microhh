@@ -40,7 +40,7 @@ if syst == 'eddy':
 
 elif  syst == 'snellius':
     cosmo_path = '/gpfs/work3/0/lesmodels/eurec4a'
-    work_path = '/scratch-shared/stratum2/eurec4a_test/'
+    work_path = '/scratch-shared/stratum2/eurec4a_test_xl/'
     microhh_path = '/home/stratum2/meteo/models/microhh'
     gpt_veerman_path = '/home/stratum2/meteo/models/coefficients_veerman'
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'

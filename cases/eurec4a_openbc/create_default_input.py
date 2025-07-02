@@ -62,7 +62,7 @@ time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 """
 Read grid info, and calculate spatial interpolation factors.
 """
-ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES.nc')
+ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES_XL.nc')
 ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
 
 #domain = inner_dom if args.domain == 'inner' else outer_dom

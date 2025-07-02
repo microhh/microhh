@@ -137,4 +137,4 @@ elif global_settings.case == 'large':
     inner_dom = None
 
 
-plot_domains([outer_dom, ref_dom], use_projection=True)
+#plot_domains([outer_dom, ref_dom], use_projection=True)
