@@ -14,7 +14,7 @@ from helpers import read_cosmo
 """
 Settings
 """
-lon_slice = slice(-60, -50)
+lon_slice = slice(-61, -50)
 lat_slice = slice(11, 18)
 
 start = datetime(year=2020, month=2, day=1, hour=0)

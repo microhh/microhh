@@ -28,13 +28,10 @@ vgrid =hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
 
-
-"""
-Define horizontal grid with projection.
-"""
 proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
 
-if global_settings.case == 'develop':
+
+def get_develop_domain():
 
     outer_dom = Domain(
         xsize=32000,
@@ -54,33 +51,10 @@ if global_settings.case == 'develop':
 
     inner_dom = None
 
-    #inner_dom = Domain(
-    #    xsize=3200,
-    #    ysize=1600,
-    #    itot=128,
-    #    jtot=64,
-    #    n_ghost=3,
-    #    n_sponge=5,
-    #    parent=outer_dom,
-    #    center_in_parent=True
-    #)
+    return outer_dom, inner_dom
 
 
-elif global_settings.case == 'test':
-
-    # Snellius test #1.
-    #outer_dom = Domain(
-    #    xsize=1536*150,
-    #    ysize=768*150,
-    #    itot=1536,
-    #    jtot=768,
-    #    n_ghost=3,
-    #    n_sponge=5,
-    #    lon=-57.7,
-    #    lat=13.3,
-    #    anchor='center',
-    #    proj_str=proj_str,
-    #)
+def get_test_domain():
 
     # Snellius test #2.
     # Full domain, ~200 m resolution.
@@ -102,7 +76,10 @@ elif global_settings.case == 'test':
 
     inner_dom = None
 
-elif global_settings.case == 'large':
+    return outer_dom, inner_dom
+
+
+def get_large_domain():
 
     # Dummy, just for plotting.
     ref_dom = Domain(
@@ -136,5 +113,18 @@ elif global_settings.case == 'large':
 
     inner_dom = None
 
+    plot_domains([outer_dom, ref_dom], use_projection=True)
 
-#plot_domains([outer_dom, ref_dom], use_projection=True)
+    return outer_dom, inner_dom
+
+
+"""
+Define horizontal grid with projection.
+"""
+
+if global_settings.case == 'develop':
+    outer_dom, inner_dom = get_develop_domain()
+elif global_settings.case == 'test':
+    outer_dom, inner_dom = get_test_domain()
+elif global_settings.case == 'large':
+    outer_dom, inner_dom = get_large_domain()
