@@ -89,6 +89,7 @@ create_era5_input(
     perturb_size=3,
     perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
     perturb_max_height=1000,
+    clip_at_zero=['qt', 'qr'],
     name_suffix='0',
     output_dir=work_path,
     ntasks=8,
