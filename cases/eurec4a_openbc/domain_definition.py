@@ -113,7 +113,7 @@ def get_large_domain():
 
     inner_dom = None
 
-    plot_domains([outer_dom, ref_dom], use_projection=True)
+    #plot_domains([outer_dom, ref_dom], use_projection=True)
 
     return outer_dom, inner_dom
 

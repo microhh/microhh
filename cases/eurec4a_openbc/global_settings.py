@@ -25,7 +25,7 @@ import numpy as np
 
 import helpers as hlp
 
-float_type = np.float32
+float_type = np.float64
 
 # Data paths.
 #syst = 'eddy'
@@ -47,6 +47,7 @@ elif  syst == 'snellius':
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
 end_date   = datetime(year=2020, month=2, day=3, hour=0)
+#end_date   = datetime(year=2020, month=2, day=1, hour=3)
 
 #case = 'develop'
 #case = 'test'
