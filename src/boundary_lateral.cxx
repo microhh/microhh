@@ -46,6 +46,10 @@ namespace
             return false;
     }
 
+    bool any_true(std::map<Lbc_location, bool>& map_in)
+    {
+        return std::any_of(map_in.begin(), map_in.end(), [](const auto& p) { return p.second; });
+    }
 
     // This kernel enforces a Neumann BC of 0 on w.
     template<typename TF, Lbc_location location>
@@ -753,14 +757,27 @@ Boundary_lateral<TF>::Boundary_lateral(
         }
 
         // Turbulence recycling.
-        sw_recycle = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "", false);
-        if (sw_recycle)
+        sw_recycle[Lbc_location::North] = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "north", false);
+        sw_recycle[Lbc_location::East]  = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "east", false);
+        sw_recycle[Lbc_location::South] = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "south", false);
+        sw_recycle[Lbc_location::West]  = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "west", false);
+
+        if (any_true(sw_recycle))
         {
             recycle_list = inputin.get_list<std::string>(
                 "boundary_lateral", "recycle_list", "", std::vector<std::string>());
             tau_recycle = inputin.get_item<TF>("boundary_lateral", "tau_recycle", "");
             recycle_offset = inputin.get_item<int>("boundary_lateral", "recycle_offset", "");
         }
+
+        //sw_recycle = inputin.get_item<bool>("boundary_lateral", "sw_recycle", "", false);
+        //if (sw_recycle)
+        //{
+        //    recycle_list = inputin.get_list<std::string>(
+        //        "boundary_lateral", "recycle_list", "", std::vector<std::string>());
+        //    tau_recycle = inputin.get_item<TF>("boundary_lateral", "tau_recycle", "");
+        //    recycle_offset = inputin.get_item<int>("boundary_lateral", "recycle_offset", "");
+        //}
     }
 
     // Output for sub-domain.
@@ -798,14 +815,14 @@ void Boundary_lateral<TF>::init()
     auto& md = master.get_MPI_data();
 
     // Checks!
-    if (sw_recycle)
+    if (any_true(sw_recycle))
     {
         if (!sw_sponge)
             throw std::runtime_error("Turbulence recycling only works combined with sw_sponge=1");
 
-        if (n_sponge+recycle_offset > gd.imax+gd.igc)
+        if ((sw_recycle[Lbc_location::West] || sw_recycle[Lbc_location::East])  && recycle_offset > gd.imax+gd.igc)
             throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in x-direction");
-        if (n_sponge+recycle_offset > gd.jmax+gd.jgc)
+        if ((sw_recycle[Lbc_location::North] || sw_recycle[Lbc_location::South])  && recycle_offset > gd.jmax+gd.jgc)
             throw std::runtime_error("Turbulence recycling offset too large for domain decomposition in y-direction");
     }
 
@@ -1313,7 +1330,6 @@ void Boundary_lateral<TF>::set_ghost_cells(
         fclose(pFile);
     };
 
-
     auto set_lbc_gcs_wrapper = [&](
             const std::string& fld,
             std::vector<TF>& lbc,
@@ -1554,32 +1570,32 @@ void Boundary_lateral<TF>::exec_lateral_sponge(
 
     for (auto& fld : slist)
     {
-        const bool sw_recycle = in_list<std::string>(fld, recycle_list);
+        const bool sw_recycle_fld = in_list<std::string>(fld, recycle_list);
 
         if (md.mpicoordx == 0)
         {
-            if (sw_recycle)
+            if (sw_recycle_fld && sw_recycle[Lbc_location::West])
                 sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, fld);
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::West, false>(lbc_w, fld);
         }
-        if (md.mpicoordx == md.npx-1)
+        if (md.mpicoordx == md.npx-1 && sw_recycle[Lbc_location::East])
         {
-            if (sw_recycle)
+            if (sw_recycle_fld && sw_recycle[Lbc_location::East])
                 sponge_layer_wrapper.template operator()<Lbc_location::East, true>(lbc_e, fld);
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::East, false>(lbc_e, fld);
         }
-        if (md.mpicoordy == 0)
+        if (md.mpicoordy == 0 && sw_recycle[Lbc_location::South])
         {
-            if (sw_recycle)
+            if (sw_recycle_fld && sw_recycle[Lbc_location::South])
                 sponge_layer_wrapper.template operator()<Lbc_location::South, true>(lbc_s, fld);
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::South, false>(lbc_s, fld);
         }
-        if (md.mpicoordy == md.npy-1)
+        if (md.mpicoordy == md.npy-1 && sw_recycle[Lbc_location::North])
         {
-            if (sw_recycle)
+            if (sw_recycle_fld && sw_recycle[Lbc_location::North])
                 sponge_layer_wrapper.template operator()<Lbc_location::North, true>(lbc_n, fld);
             else
                 sponge_layer_wrapper.template operator()<Lbc_location::North, false>(lbc_n, fld);

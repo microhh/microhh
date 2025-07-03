@@ -495,6 +495,7 @@ def restart_pre(origin, timestr):
     fnames += glob.glob('../' + origin + '/grid.0000000')
     fnames += glob.glob('../' + origin + '/fftwplan.0000000')
     fnames += glob.glob('../' + origin + '/thermo_basestate.0000000')
+    fnames += glob.glob('../' + origin + '/rhoref.0000000')
     fnames += glob.glob('../' + origin + '/*.' + timestr)
     for file in fnames:
         shutil.copy(file, '.')

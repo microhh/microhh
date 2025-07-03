@@ -2,12 +2,12 @@ import matplotlib.pyplot as pl
 import numpy as np
 import netCDF4 as nc
 
-import microhh_tools as mht
-import microhh_lbc_tools as mlt
+import microhhpy.io as io
+from microhhpy.openbc import create_lbc_ds, lbc_ds_to_binary
 
 TF = np.float64
 
-ini = mht.Read_namelist('drycbl.ini')
+ini = io.read_ini('drycbl.ini')
 
 dx = ini['grid']['xsize'] / ini['grid']['itot']
 dy = ini['grid']['ysize'] / ini['grid']['jtot']
@@ -16,6 +16,9 @@ dz = ini['grid']['zsize'] / ini['grid']['ktot']
 x = np.arange(dx/2, ini['grid']['xsize'], dx)
 y = np.arange(dy/2, ini['grid']['ysize'], dy)
 z = np.arange(dz/2, ini['grid']['zsize'], dz)
+
+xh = np.arange(0, ini['grid']['xsize'], dx)
+yh = np.arange(0, ini['grid']['ysize'], dy)
 zh = np.arange(0, ini['grid']['zsize'], dz)
 
 """
@@ -81,18 +84,16 @@ Lateral boundaries.
 fields = ['thl', 'qt', 'u', 'v', 'w']
 time = np.array([0])
 
-lbc_ds = mlt.get_lbc_xr_dataset(
-        fields,
-        ini['grid']['xsize'],
-        ini['grid']['ysize'],
-        ini['grid']['itot'],
-        ini['grid']['jtot'],
-        z, zh, time,
-        n_ghost=1,
-        n_sponge=1,
-        x_offset=0,
-        y_offset=0,
-        dtype=TF)
+lbc_ds = create_lbc_ds(
+    fields,
+    time,
+    x, y, z,
+    xh, yh, zh,
+    n_ghost=1,
+    n_sponge=1,
+    x_offset=0,
+    y_offset=0,
+    dtype=TF)  
 
 for edge in ['west', 'north', 'east', 'south']:
     lbc_ds[f'thl_{edge}'][:,:,:,:] = thl[None,:,None,None]
@@ -100,4 +101,4 @@ for edge in ['west', 'north', 'east', 'south']:
     lbc_ds[f'u_{edge}'  ][:,:,:,:] = u  [None,:,None,None]
     lbc_ds[f'v_{edge}'  ][:,:,:,:] = v  [None,:,None,None]
 
-mlt.write_lbcs_as_binaries(lbc_ds, dtype=TF)
+lbc_ds_to_binary(lbc_ds, path='.', dtype=TF)

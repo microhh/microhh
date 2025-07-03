@@ -117,7 +117,6 @@ class Fields
 
         void save(int);
         void load(int);
-
         void save_rhoref();
         void load_rhoref();
 

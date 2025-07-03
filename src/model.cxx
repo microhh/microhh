@@ -256,6 +256,7 @@ void Model<TF>::load()
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
     fields->load_rhoref();
+
     fields->create_stats(*stats);
     fields->create_column(*column);
 
@@ -327,8 +328,6 @@ void Model<TF>::save()
     const bool define_rhoref = true;
     thermo->create_basestate(*input, *input_nc, *timeloop, define_rhoref);
     thermo->save(timeloop->get_iotime());
-
-    // Save base state density after thermo has potentially updated it.
     fields->save_rhoref();
 
     boundary->create_cold_start(*input_nc);
