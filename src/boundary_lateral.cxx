@@ -1182,6 +1182,12 @@ void Boundary_lateral<TF>::create(
 
         if (error)
             throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
+
+        // Initialise LBCs instance.
+        const int itot_sub = static_cast<int>((xend_sub - xstart_sub) / gd.dx * refinement_sub + 0.5);
+        const int jtot_sub = static_cast<int>((yend_sub - ystart_sub) / gd.dy * refinement_sub + 0.5);
+
+        Lbcs<TF> lbcs_sub(slist, itot_sub, jtot_sub, gd.ktot, n_ghost_sub, n_sponge_sub);
     }
 
     // Only proceed if open boundary conditions are enabled.
