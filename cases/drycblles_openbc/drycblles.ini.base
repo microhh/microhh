@@ -1,6 +1,6 @@
 [master]
-npx=2
-npy=4
+npx=1
+npy=1
 
 [grid]
 itot=None
@@ -74,24 +74,15 @@ recycle_list=th
 tau_recycle=60
 recycle_offset=10
 
-# Inflow perturbations (not implemented):
-#sw_perturb=true
-#perturb_list=th,s
-#perturb_width=4
-#perturb_block=4
-#perturb_ampl[s]=0.1
-#perturb_ampl[th]=0.01
-#perturb_zmax=250
-
 [subdomain]
-sw_subdomain=true
-xstart=100
-xend=300
-ystart=300
-yend=400
-refinement_fac=3
-n_ghost=3
-n_sponge=4
+sw_subdomain=None
+xstart=-1
+xend=-1
+ystart=-1
+yend=-1
+refinement_fac=-1
+n_ghost=-1
+n_sponge-1
 
 [fields]
 visc=1.e-5
@@ -116,7 +107,7 @@ endtime=None
 dt=6.
 dtmax=20.
 savetime=3600
-outputiter=1
+outputiter=0
 adaptivestep=true
 starttime=0
 rkorder=4

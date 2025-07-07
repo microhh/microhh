@@ -18,7 +18,7 @@ from lbc_input import lbc_input
 pl.close('all')
 
 domain = sys.argv[1]
-dtype = np.float32
+dtype = np.float64
 swadvec = '2'   # needed for correct # gcs.
 
 ini = mht.Read_namelist('drycblles.ini.base')
@@ -28,19 +28,19 @@ ini = mht.Read_namelist('drycblles.ini.base')
 Time.
 """
 endtime = 3600
-lbc_freq = 10
+lbc_freq = 30
 
 
 """
 Grid & nesting settings.
 """
 # Grid settings outer domain.
-itot = 64
-jtot = 64
-ktot = 64
+itot = 32
+jtot = 32
+ktot = 32
 
-xsize = 6400
-ysize = 6400
+xsize = 3200
+ysize = 3200
 zsize = 3200
 
 dx = xsize / itot
@@ -48,41 +48,26 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Nest settings.
-refinement_fac = 3
+xstart_sub = 800
+ystart_sub = 800
 
-# Start index in parent domain.
-i0_nest = 12
-j0_nest = 16
+xend_sub = 2400
+yend_sub = 2400
 
-# Size domain in parent coordinates!
-# The nest itself has `refinement_fac` times as many grid points.
-itot_nest = 48
-jtot_nest = 32
+xsize_sub = xend_sub - xstart_sub
+ysize_sub = yend_sub - ystart_sub
+
+refinement_fac = 2
+
+itot_sub = int(xsize_sub / dx * refinement_fac + 0.5)
+jtot_sub = int(ysize_sub / dy * refinement_fac + 0.5)
+
+dx_sub = dx / refinement_fac
+dy_sub = dy / refinement_fac
 
 # Number of lateral buffer/sponge points.
-nbuffer = 5
-
-# Number of ghost cells.
-if ini['advec']['swadvec'] == 2:
-    nghost = 1
-elif ini['advec']['swadvec'] == '2i4':
-    nghost = 2
-elif ini['advec']['swadvec'] == '2i5':
-    nghost = 3
-else:
-    raise Exception('Unknown advec scheme.')
-
-xstart_nest = i0_nest * dx
-ystart_nest = j0_nest * dy
-
-xend_nest = xstart_nest + itot_nest * dx
-yend_nest = ystart_nest + jtot_nest * dy
-
-xsize_nest = xend_nest - xstart_nest
-ysize_nest = yend_nest - ystart_nest
-
-dx_nest = xsize_nest / (itot_nest * refinement_fac)
-dy_nest = ysize_nest / (jtot_nest * refinement_fac)
+n_sponge = 5
+n_ghost = 3
 
 
 """
@@ -93,7 +78,7 @@ dthetadz = 0.003
 z  = np.arange(0.5*dz, zsize, dz)
 zh = np.arange(0, zsize, dz)
 
-u  = np.zeros(np.size(z))
+u  = np.zeros(np.size(z)) + 1
 v  = np.zeros(np.size(z))
 th = 300. + dthetadz * z
 
@@ -113,10 +98,11 @@ nc_th = nc_group_init.createVariable("th", dtype, ("z"))
 
 nc_z [:] = z [:]
 nc_u [:] = u [:] + 1
-nc_v [:] = v [:] + 1
+nc_v [:] = v [:] 
 nc_th[:] = th[:]
 
 nc_file.close()
+
 
 """
 Update .ini
@@ -127,11 +113,11 @@ ini['time']['endtime'] = endtime
 if domain == 'outer':
 
     xz, yz = mlt.get_cross_locations_for_lbcs(
-            xstart_nest, ystart_nest,
-            xend_nest, yend_nest,
+            xstart_sub, ystart_sub,
+            xend_sub, yend_sub,
             dx, dy,
-            dx_nest, dy_nest,
-            nghost, nbuffer)
+            dx_sub, dy_sub,
+            n_ghost, n_sponge)
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
@@ -148,23 +134,35 @@ if domain == 'outer':
     ini['pres']['sw_openbc'] = False
     ini['boundary_lateral']['sw_openbc'] = False
 
+    ini['subdomain']['sw_subdomain'] = True
+    ini['subdomain']['xstart'] = xstart_sub
+    ini['subdomain']['xend'] = xend_sub
+    ini['subdomain']['ystart'] = ystart_sub
+    ini['subdomain']['yend'] = yend_sub
+    ini['subdomain']['refinement_fac'] = refinement_fac
+    ini['subdomain']['n_ghost'] = n_ghost
+    ini['subdomain']['n_sponge'] = n_sponge
+    ini['subdomain']['savetime'] = lbc_freq
+
 elif domain == 'inner':
 
-    ini['grid']['itot'] = itot_nest * refinement_fac
-    ini['grid']['jtot'] = jtot_nest * refinement_fac
+    ini['grid']['itot'] = itot_sub
+    ini['grid']['jtot'] = jtot_sub
     ini['grid']['ktot'] = ktot
 
-    ini['grid']['xsize'] = xsize_nest
-    ini['grid']['ysize'] = ysize_nest
+    ini['grid']['xsize'] = xsize_sub
+    ini['grid']['ysize'] = ysize_sub
     ini['grid']['zsize'] = zsize
 
     ini['cross']['sampletime'] = lbc_freq
-    ini['cross']['yz'] = (xend_nest+xstart_nest)/2
-    ini['cross']['xz'] = (yend_nest+ystart_nest)/2
+    ini['cross']['yz'] = (xend_sub + xstart_sub)/2
+    ini['cross']['xz'] = (yend_sub + ystart_sub)/2
 
     ini['pres']['sw_openbc'] = True
     ini['boundary_lateral']['sw_openbc'] = True
     ini['boundary_lateral']['loadfreq'] = lbc_freq
+
+    ini['subdomain']['sw_subdomain'] = False
 
 ini.save('drycblles.ini', allow_overwrite=True)
 
@@ -205,12 +203,12 @@ if domain == 'inner':
     t.pause()
 
     # Define nest grid.
-    x = np.arange(dx_nest/2, xsize_nest, dx_nest)
-    xh = np.arange(0, xsize_nest, dx_nest)
-    y = np.arange(dy_nest/2, ysize_nest, dy_nest)
-    yh = np.arange(0, ysize_nest, dy_nest)
+    x = np.arange(dx_sub/2, xsize_sub, dx_sub)
+    xh = np.arange(0, xsize_sub, dx_sub)
+    y = np.arange(dy_sub/2, ysize_sub, dy_sub)
+    yh = np.arange(0, ysize_sub, dy_sub)
 
-    lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost, nbuffer, x_offset=xstart_nest, y_offset=ystart_nest)
+    lbc = lbc_input(fields, x, y, z, xh, yh, zh, time, n_ghost, n_sponge, x_offset=xstart_sub, y_offset=ystart_sub)
 
     t.restart()
 
@@ -248,298 +246,3 @@ if domain == 'inner':
         for loc in ['west', 'east', 'north', 'south']:
             lbc_in = lbc[f'{fld}_{loc}']
             lbc_in.values.astype(dtype).tofile('lbc_{}_{}.0000000'.format(fld, loc))
-
-
-
-
-
-
-#    """
-#    NEW NEW NEW!!!
-#    """
-#    lbc_new = lbc_input(fields, x, y, z, xh, yh, zh, time, nghost, nbuffer, x_offset=xstart_nest, y_offset=ystart_nest)
-#
-#    grid = mht.Read_grid(
-#            itot, jtot, ktot, filename='outer/grid.0000000')
-#
-#    def run_async(f):
-#        """
-#        Decorator to run processes asynchronous with `asyncio`.
-#        """
-#        def wrapped(*args, **kwargs):
-#            return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
-#        return wrapped
-#
-#
-#    @run_async
-#    def read_and_interp(arr_out, var, edge, loc, t, time, index, nn_i, nn_j, itot, jtot, ktot, parent_dir, dtype):
-#        """
-#        Read cross-section directly from binary, and interpolate to LBC location.
-#        """
-#
-#        if edge in ('west', 'east'):
-#            data = np.zeros((ktot, jtot, index.size), dtype)
-#            for i,ii in enumerate(index):
-#                raw = np.fromfile(f'{parent_dir}/{var}.yz.{loc}.{ii:05d}.{time:07d}', dtype=dtype)
-#                data[:,:,i] = raw.reshape((ktot, jtot))
-#
-#        else:
-#            data = np.zeros((ktot, index.size, itot), dtype)
-#            for j,jj in enumerate(index):
-#                raw = np.fromfile(f'{parent_dir}/{var}.xz.{loc}.{jj:05d}.{time:07d}', dtype=dtype)
-#                data[:,j,:] = raw.reshape((ktot, itot))
-#
-#        _interpolate(
-#                arr_out[t,:,:,:],
-#                data,
-#                nn_i,
-#                nn_j)
-#
-#
-#    @jit(nopython=True, fastmath=True, nogil=True, parallel=True)
-#    def _interpolate(arr_out, arr_in, nn_i, nn_j):
-#        """
-#        Fast NN interpolation using Numba.
-#        """
-#
-#        itot = nn_i.size
-#        jtot = nn_j.size
-#        ktot = arr_out.shape[0]
-#
-#        for k in prange(ktot):
-#            for j in prange(jtot):
-#                for i in prange(itot):
-#                    arr_out[k, j, i] = arr_in[k, nn_j[j], nn_i[i]]
-#
-#
-#    class LBC_interpolation:
-#        def __init__(self, lbc_ds, var, parent_dir, dims_x, dims_y, dims_z, t0, t1, dt, dtype):
-#            """
-#            Help class to interpolate LBCs directly from binary cross-section files.
-#            """
-#
-#            self.lbc_ds = lbc_ds
-#            self.var = var
-#            self.parent_dir = parent_dir
-#
-#            self.dims_x = dims_x
-#            self.dims_y = dims_y
-#
-#            if var == 'w':
-#                self.dims_z = dims_z[:-1]
-#            else:
-#                self.dims_z = dims_z
-#
-#            self.itot = self.dims_x.size
-#            self.jtot = self.dims_y.size
-#            self.ktot = self.dims_z.size
-#
-#            self.t0 = t0
-#            self.t1 = t1
-#            self.dt = dt
-#
-#            self.dtype = dtype
-#
-#            # NN indexes:
-#            self.nn_i = {}
-#            self.nn_j = {}
-#
-#            # Locations of cross-slices.
-#            self.index = {}
-#
-#            # Data buffer for single time step.
-#            self.data = {}
-#
-#            self.edges = ('west', 'east', 'south', 'north')
-#
-#            # Location indicator in cross-section file name:
-#            if var == 'u':
-#                self.loc = '100'
-#            elif var == 'v':
-#                self.loc = '010'
-#            elif var == 'w':
-#                self.loc = '001'
-#            else:
-#                self.loc = '000'
-#
-#            for edge in self.edges:
-#                var_name = f'{var}_{edge}'
-#
-#                dim_name_x = lbc_ds[var_name].dims[3]
-#                dim_name_y = lbc_ds[var_name].dims[2]
-#
-#                dim_size_x = lbc_ds[var_name].shape[3]
-#                dim_size_y = lbc_ds[var_name].shape[2]
-#
-#                # Switch between west or east, or south or north.
-#                which = 'lower' if edge in ('west', 'south') else 'upper'
-#
-#                if edge in ('west', 'east'):
-#                    cross_glob = f'{parent_dir}/{var}.yz.{self.loc}.*.{t0:07d}'
-#                    i_cross, x_cross = self._get_index_and_dims(cross_glob, dims_x, which)
-#
-#                    self.nn_i[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_x].values, x_cross)
-#                    self.nn_j[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_y].values, dims_y)
-#
-#                    self.index[edge] = i_cross
-#                    self.data[edge] = np.zeros((ktot, jtot, i_cross.size), dtype)
-#
-#                else:
-#                    cross_glob = f'{parent_dir}/{var}.xz.{self.loc}.*.{t0:07d}'
-#                    j_cross, y_cross = self._get_index_and_dims(cross_glob, dims_y, which)
-#
-#                    self.nn_i[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_x].values, dims_x)
-#                    self.nn_j[edge] = self._get_NN_indexes(lbc_ds[var_name][dim_name_y].values, y_cross)
-#
-#                    self.index[edge] = j_cross
-#                    self.data[edge] = np.zeros((ktot, j_cross.size, itot), dtype)
-#
-#            # Interpolate!
-#            self.interpolate()
-#
-#
-#        def interpolate(self):
-#            """
-#            Interpolate all edges and time steps.
-#            """
-#
-#            #for t,time in enumerate(range(self.t0, self.t1+1, self.dt)):
-#            #    for edge in self.edges:
-#
-#            #        # Read new cross-slices directly from binaries:
-#            #        data = self.read_cross(edge, time)
-#
-#            #        # Interpolate to LBC locations:
-#            #        self._interpolate(
-#            #                self.lbc_ds[f'{self.var}_{edge}'].values,
-#            #                self.data[edge],
-#            #                self.nn_i[edge],
-#            #                self.nn_j[edge],
-#            #                t)
-#
-#            calls = []
-#            for t,time in enumerate(range(self.t0, self.t1+1, self.dt)):
-#                for edge in self.edges:
-#
-#                    calls.append(
-#                        read_and_interp(
-#                                self.lbc_ds[f'{self.var}_{edge}'].values,
-#                                self.var, edge, self.loc,
-#                                t, time,
-#                                self.index[edge],
-#                                self.nn_i[edge], self.nn_j[edge],
-#                                self.itot, self.jtot, self.ktot,
-#                                self.parent_dir, self.dtype))
-#
-#            loop = asyncio.get_event_loop()
-#            looper = asyncio.gather(*calls)
-#            results = loop.run_until_complete(looper)
-#
-#
-#        @staticmethod
-#        @jit(nopython=True, fastmath=True, nogil=True, parallel=True)
-#        def _interpolate(arr_out, arr_in, nn_i, nn_j, t):
-#            """
-#            Fast NN interpolation using Numba.
-#            """
-#
-#            itot = nn_i.size
-#            jtot = nn_j.size
-#            ktot = arr_out.shape[1]
-#
-#            for k in prange(ktot):
-#                for j in prange(jtot):
-#                    for i in prange(itot):
-#                        arr_out[t,k,j,i] = arr_in[k, nn_j[j], nn_i[i]]
-#
-#
-#        def read_cross(self, edge, time):
-#            """
-#            Read cross-sections from binaries for single time step.
-#            """
-#
-#            if edge in ('west', 'east'):
-#                for i,ii in enumerate(self.index[edge]):
-#                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.yz.{self.loc}.{ii:05d}.{time:07d}', dtype=self.dtype)
-#                    self.data[edge][:, :, i] = raw.reshape((self.ktot, self.jtot))
-#
-#            else:
-#                for j,jj in enumerate(self.index[edge]):
-#                    raw = np.fromfile(f'{self.parent_dir}/{self.var}.xz.{self.loc}.{jj:05d}.{time:07d}', dtype=self.dtype)
-#                    self.data[edge][:, j, :] = raw.reshape((self.ktot, self.itot))
-#
-#
-#
-#
-#
-#        def _get_index_and_dims(self, cross_search, dims_in, which):
-#            """
-#            Get indexes (-) and coordinates (m) of available cross-section planes.
-#            For a `xz` cross, get the y indexes/coordinates, and
-#            for a `yz` cross, get the x indexes/coordinates.
-#            """
-#
-#            crosses = glob.glob(cross_search)
-#            crosses.sort()
-#
-#            if len(crosses) == 0:
-#                raise Exception('Failed to find any crosses!')
-#
-#            # Get indices (-) of cross planes.
-#            index = np.array([int(f.split('.')[-2]) for f in crosses])
-#
-#            # Select west/south (`lower`) or east/north (`upper`) part.
-#            split = int(np.where((index[1:] - index[:-1]) > 1)[0]) + 1
-#
-#            if which == 'lower':
-#                index = index[:split]
-#            else:
-#                index = index[split:]
-#
-#            # Get coordinates (m) of cross planes.
-#            dims = dims_in[index]
-#
-#            return index, dims
-#
-#
-#        def _get_NN_indexes(self, dim_out, dim_in):
-#            """
-#            Get nearest neighbour index of coordinates `dim_out` in `dim_in`
-#            """
-#
-#            index_out = np.zeros(dim_out.size, np.uint16)
-#
-#            # Allow NN interpolations to be half dx or dy out of bounds.
-#            margin = (dim_in[1] - dim_in[0]) / 2.
-#
-#            # Find NN indexes.
-#            for i in range(index_out.size):
-#                if dim_out[i] < (dim_in[0] - margin) or dim_out[i] > (dim_out[-1] + margin):
-#                    raise Exception('NN index out of bounds!')
-#
-#                index_out[i] = np.argmin(np.abs(dim_out[i] - dim_in))
-#
-#            return index_out
-#
-#
-#
-#    t0 = 0
-#    t1 = 1200
-#    dt = 60
-#
-#    t = Timer()
-#
-#    lbc_u = LBC_interpolation(lbc_new, 'u',  'outer/', grid.dim['xh'], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
-#    lbc_v = LBC_interpolation(lbc_new, 'v',  'outer/', grid.dim['x' ], grid.dim['yh'], grid.dim['z' ], t0, t1, dt, dtype)
-#    lbc_w = LBC_interpolation(lbc_new, 'w',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['zh'], t0, t1, dt, dtype)
-#    lbc_s = LBC_interpolation(lbc_new, 'th', 'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
-#    lbc_s = LBC_interpolation(lbc_new, 's',  'outer/', grid.dim['x' ], grid.dim['y' ], grid.dim['z' ], t0, t1, dt, dtype)
-#
-#    t.stop()
-#
-#    # Check old vs new method.
-#    print('Diffs old vs new:')
-#    for v in ['u', 'v', 'w', 'th', 's']:
-#        for edge in ['west', 'east', 'south', 'north']:
-#            print(v, edge, float(np.abs(lbc_new[f'{v}_{edge}'] - lbc[f'{v}_{edge}']).max()))
-
