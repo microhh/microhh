@@ -178,6 +178,8 @@ class Boundary_lateral
         void set_ghost_cells(Timeloop<TF>&);
         void exec_lateral_sponge(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
+        unsigned long get_time_limit(unsigned long);
+        void save_lbcs(Timeloop<TF>&);
 
     private:
         Master& master;
@@ -255,6 +257,7 @@ class Boundary_lateral
         int refinement_sub;
         int n_ghost_sub;
         int n_sponge_sub;
+        unsigned int savetime_sub;
 
         Lbcs<TF> lbcs_sub;
 };

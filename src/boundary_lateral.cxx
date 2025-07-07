@@ -34,6 +34,7 @@
 #include "master.h"
 #include "timeloop.h"
 #include "stats.h"
+#include "constants.h"
 
 namespace
 {
@@ -795,6 +796,7 @@ Boundary_lateral<TF>::Boundary_lateral(
         refinement_sub = inputin.get_item<int>("subdomain", "refinement_fac", "");
         n_ghost_sub = inputin.get_item<int>("subdomain", "n_ghost", "");
         n_sponge_sub = inputin.get_item<int>("subdomain", "n_sponge", "");
+        savetime_sub = inputin.get_item<int>("subdomain", "savetime", "");
     }
 }
 
@@ -1310,6 +1312,27 @@ void Boundary_lateral<TF>::create(
 }
 
 
+template<typename TF>
+unsigned long Boundary_lateral<TF>::get_time_limit(unsigned long itime)
+{
+    unsigned long idtlim = Constants::ulhuge;
+
+    if (sw_openbc && sw_timedep)
+    {
+        const unsigned long ifreq = convert_to_itime(loadfreq);
+        idtlim = std::min(idtlim, ifreq - itime % ifreq);
+    }
+
+    if (sw_subdomain)
+    {
+        const unsigned long ifreq = convert_to_itime(savetime_sub);
+        idtlim = std::min(idtlim, ifreq - itime % ifreq);
+    }
+
+    return idtlim;
+}
+
+
 template <typename TF>
 void Boundary_lateral<TF>::set_ghost_cells(
         Timeloop<TF>& timeloop)
@@ -1780,6 +1803,17 @@ void Boundary_lateral<TF>::read_xy_slice(
         master.print_message("OK\n");
 
     fields.release_tmp(tmp);
+}
+
+
+template <typename TF>
+void Boundary_lateral<TF>::save_lbcs(
+        Timeloop<TF>& timeloop)
+{
+    if (!sw_subdomain || timeloop.in_substep())
+        return;
+
+    // TODO
 }
 
 #ifdef FLOAT_SINGLE

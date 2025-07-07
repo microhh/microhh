@@ -506,6 +506,9 @@ void Model<TF>::exec()
                 limiter->exec(timeloop->get_sub_time_step(), *stats);
                 check("limiter");
 
+                // Save lateral boundaries for child.
+                lbc->save_lbcs(*timeloop);
+
                 // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
                     stats->calc_tend(*it.second, "total");
@@ -846,7 +849,8 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(particle_bin->get_time_limit());
+    timeloop->set_time_step_limit(lbc          ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(particle_bin ->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();
