@@ -244,5 +244,6 @@ if domain == 'inner':
     # Save as binary input files.
     for fld in fields:
         for loc in ['west', 'east', 'north', 'south']:
-            lbc_in = lbc[f'{fld}_{loc}']
-            lbc_in.values.astype(dtype).tofile('lbc_{}_{}.0000000'.format(fld, loc))
+            for t, time in enumerate(lbc.time):
+                lbc_in = lbc[f'{fld}_{loc}'][t]
+                lbc_in.values.astype(dtype).tofile(f'lbc_{fld}_{loc}.{int(time):07d}')

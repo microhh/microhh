@@ -649,7 +649,6 @@ namespace
             const TF* const restrict dz,
             const TF dy,
             const int nsponge,
-            const int t,
             const int ngc, const int kgc,
             const int jstart, const int jend,
             const int ktot,
@@ -686,7 +685,6 @@ namespace
             const TF* const restrict dz,
             const TF dx,
             const int nsponge,
-            const int t,
             const int ngc, const int kgc,
             const int istart, const int iend,
             const int ktot,
@@ -891,36 +889,40 @@ void Boundary_lateral<TF>::read_lbc(
         Lbc_map<TF>& lbc_e_in,
         Lbc_map<TF>& lbc_s_in,
         Lbc_map<TF>& lbc_n_in,
-        const int time_index)
+        const int iotime)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
-    auto dump_vector = [&](
-            std::vector<TF>& fld,
-            const std::string& name)
-    {
-        std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
+    //auto dump_vector = [&](
+    //        std::vector<TF>& fld,
+    //        const std::string& name)
+    //{
+    //    std::string name_out = name + "." + std::to_string(md.mpicoordx) + "." + std::to_string(md.mpicoordy) + ".bin";
 
-        FILE *pFile;
-        pFile = fopen(name_out.c_str(), "wb");
+    //    FILE *pFile;
+    //    pFile = fopen(name_out.c_str(), "wb");
 
-        if (pFile == NULL)
-            throw std::runtime_error("Opening raw dump field failed.");
+    //    if (pFile == NULL)
+    //        throw std::runtime_error("Opening raw dump field failed.");
 
-        fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
-        fclose(pFile);
-    };
+    //    fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
+    //    fclose(pFile);
+    //};
 
 
     auto read_binary = [&](
             std::vector<TF>& vec,
-            const std::string file_name,
-            const unsigned long size,
-            const unsigned long time_index)
+            const std::string name,
+            const unsigned long size)
     {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+
+        master.print_message("Loading \"%s\" ... ", filename);
+
         FILE *pFile;
-        pFile = fopen(file_name.c_str(), "rb");
+        pFile = fopen(filename, "rb");
 
         bool success = true;
         if (pFile == NULL)
@@ -929,15 +931,19 @@ void Boundary_lateral<TF>::read_lbc(
         if (success)
         {
             // Jump to offset & read requested chunk.
-            const size_t offset = time_index * size * sizeof(TF);
-            fseek(pFile, offset, SEEK_SET);
+            //const size_t offset = time_index * size * sizeof(TF);
+            //fseek(pFile, offset, SEEK_SET);
 
             if (fread(vec.data(), sizeof(TF), size, pFile) != (unsigned)size)
                 success = false;
         }
 
-        if (!success)
+        if (success)
+            master.print_message("OK\n");
+        else
         {
+            master.print_message("FAILED\n");
+
             #ifdef USEMPI
             std::cout << "SINGLE PROCESS EXCEPTION: reading binary failed." << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
@@ -1025,7 +1031,7 @@ void Boundary_lateral<TF>::read_lbc(
         if (md.mpicoordx == 0)
         {
             if (md.mpicoordy == 0)
-                read_binary(lbc_w_full, "lbc_" + name + "_west.0000000", ncells_w, time_index);
+                read_binary(lbc_w_full, "lbc_" + name + "_west", ncells_w);
             master.broadcast_y(lbc_w_full.data(), ncells_w, 0);
 
             copy_boundary(
@@ -1044,7 +1050,6 @@ void Boundary_lateral<TF>::read_lbc(
                         gd.dz.data(),
                         gd.dy,
                         n_sponge,
-                        time_index,
                         gd.igc, gd.kgc,
                         gd.jgc, gd.jtot+gd.jgc,
                         gd.ktot, gd.jtot+(2*gd.jgc));
@@ -1053,7 +1058,7 @@ void Boundary_lateral<TF>::read_lbc(
         if (md.mpicoordx == md.npx-1)
         {
             if (md.mpicoordy == md.npy-1)
-                read_binary(lbc_e_full, "lbc_" + name + "_east.0000000", ncells_e, time_index);
+                read_binary(lbc_e_full, "lbc_" + name + "_east", ncells_e);
             master.broadcast_y(lbc_e_full.data(), ncells_e, md.npy-1);
 
             copy_boundary(
@@ -1072,7 +1077,6 @@ void Boundary_lateral<TF>::read_lbc(
                         gd.dz.data(),
                         gd.dy,
                         n_sponge,
-                        time_index,
                         gd.igc, gd.kgc,
                         gd.jgc, gd.jtot+gd.jgc,
                         gd.ktot, gd.jtot+(2*gd.jgc));
@@ -1081,7 +1085,7 @@ void Boundary_lateral<TF>::read_lbc(
         if (md.mpicoordy == 0)
 	    {
             if (md.mpicoordx == md.npx-1)
-                read_binary(lbc_s_full, "lbc_" + name + "_south.0000000", ncells_s, time_index);
+                read_binary(lbc_s_full, "lbc_" + name + "_south", ncells_s);
             master.broadcast_x(lbc_s_full.data(), ncells_s, md.npx-1);
 
             copy_boundary(
@@ -1099,7 +1103,6 @@ void Boundary_lateral<TF>::read_lbc(
                         gd.dz.data(),
                         gd.dx,
                         n_sponge,
-                        time_index,
                         gd.jgc, gd.kgc,
                         gd.igc, gd.itot+gd.igc,
                         gd.ktot, gd.itot+(2*gd.igc));
@@ -1108,7 +1111,7 @@ void Boundary_lateral<TF>::read_lbc(
         if (md.mpicoordy == md.npy-1)
 	    {
             if (md.mpicoordx == 0)
-                read_binary(lbc_n_full, "lbc_" + name + "_north.0000000", ncells_n, time_index);
+                read_binary(lbc_n_full, "lbc_" + name + "_north", ncells_n);
             master.broadcast_x(lbc_n_full.data(), ncells_n, 0);
 
             copy_boundary(
@@ -1126,7 +1129,6 @@ void Boundary_lateral<TF>::read_lbc(
                         gd.dz.data(),
                         gd.dx,
                         n_sponge,
-                        time_index,
                         gd.jgc, gd.kgc,
                         gd.igc, gd.itot+gd.igc,
                         gd.ktot, gd.itot+(2*gd.igc));
@@ -1220,8 +1222,8 @@ void Boundary_lateral<TF>::create(
         // Read LBC data directly into `lbc_{w/e/n/s}`.
         TF div_u = 0;
         TF div_v = 0;
-        const int time_index = 0;
-        read_lbc(div_u, div_v, lbc_w, lbc_e, lbc_s, lbc_n, time_index);
+        const int iotime = 0;
+        read_lbc(div_u, div_v, lbc_w, lbc_e, lbc_s, lbc_n, iotime);
 
         if (sw_wtop_2d)
             read_xy_slice(w_top_2d, "w_top", 0);
@@ -1263,8 +1265,8 @@ void Boundary_lateral<TF>::create(
         TF div_u_next = 0;
         TF div_v_next = 0;
 
-        read_lbc(div_u_prev, div_v_prev, lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev, prev_index);
-        read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+        read_lbc(div_u_prev, div_v_prev, lbc_w_prev, lbc_e_prev, lbc_s_prev, lbc_n_prev, prev_iotime);
+        read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_iotime);
 
         if (sw_wtop_2d)
         {
@@ -1697,7 +1699,7 @@ void Boundary_lateral<TF>::update_time_dependent(
 
             TF div_u_next = 0;
             TF div_v_next = 0;
-            read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_index);
+            read_lbc(div_u_next, div_v_next, lbc_w_next, lbc_e_next, lbc_s_next, lbc_n_next, next_iotime);
 
             // Read in or calculate new `w_top`.
             if (sw_wtop_2d)
