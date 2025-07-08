@@ -793,7 +793,7 @@ Boundary_lateral<TF>::Boundary_lateral(
         ystart_sub = inputin.get_item<TF>("subdomain", "ystart", "");
         yend_sub   = inputin.get_item<TF>("subdomain", "yend", "");
 
-        refinement_sub = inputin.get_item<int>("subdomain", "refinement_fac", "");
+        grid_ratio_sub = inputin.get_item<int>("subdomain", "grid_ratio", "");
         n_ghost_sub = inputin.get_item<int>("subdomain", "n_ghost", "");
         n_sponge_sub = inputin.get_item<int>("subdomain", "n_sponge", "");
         savetime_sub = inputin.get_item<int>("subdomain", "savetime", "");
@@ -1186,10 +1186,15 @@ void Boundary_lateral<TF>::create(
             throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
 
         // Initialise LBCs instance.
-        const int itot_sub = static_cast<int>((xend_sub - xstart_sub) / gd.dx * refinement_sub + 0.5);
-        const int jtot_sub = static_cast<int>((yend_sub - ystart_sub) / gd.dy * refinement_sub + 0.5);
+        const int itot_sub = static_cast<int>((xend_sub - xstart_sub) / gd.dx * grid_ratio_sub + 0.5);
+        const int jtot_sub = static_cast<int>((yend_sub - ystart_sub) / gd.dy * grid_ratio_sub + 0.5);
 
-        Lbcs<TF> lbcs_sub(slist, itot_sub, jtot_sub, gd.ktot, n_ghost_sub, n_sponge_sub);
+        // For sub-domain, always save LBCs for all scalars.
+        std::vector<std::string> slist_sub;
+        for (auto& [name, field] : fields.sp)
+            slist_sub.push_back(name);
+
+        lbcs_sub = Lbcs<TF>(slist_sub, itot_sub, jtot_sub, gd.ktot, n_ghost_sub, n_sponge_sub);
     }
 
     // Only proceed if open boundary conditions are enabled.
@@ -1806,14 +1811,127 @@ void Boundary_lateral<TF>::read_xy_slice(
 }
 
 
+namespace
+{
+    template <typename TF>
+    void fetch_lbcs_scalar(
+        TF* const restrict lbc,
+        const TF* const restrict fld,
+        const int istart_g,
+        const int jstart_g,
+        const int istart_s,
+        const int jstart_s,
+        const int kstart_s,
+        const int iend_s,
+        const int jend_s,
+        const int kend_s,
+        const int jstride_g,
+        const int kstride_g,
+        const int jstride_lbc,
+        const int kstride_lbc,
+        const int n_ghost,
+        const int n_sponge,
+        const int grid_ratio,
+        const int kgc)
+    {
+        for (int k=kstart_s; k<kend_s; ++k)
+            for (int j=jstart_s; j<jend_s; ++j)
+            {
+                const int j_lbc = j + n_ghost;
+                const int j_g = jstart_g + int(j / grid_ratio + 0.5);
+
+                for (int i=istart_s; i<iend_s; ++i)
+                {
+                    const int i_lbc = i + n_ghost;
+                    const int i_g = istart_g + int(i / grid_ratio + 0.5);
+
+                    const int ijk_lbc = i_lbc + j_lbc * jstride_lbc + (k-kgc) * kstride_lbc;
+                    const int ijk_g = i_g + j_g * jstride_g + k * kstride_g;
+
+                    lbc[ijk_lbc] = fld[ijk_g];
+                }
+            }
+    }
+}
+
+
+
 template <typename TF>
 void Boundary_lateral<TF>::save_lbcs(
         Timeloop<TF>& timeloop)
 {
-    if (!sw_subdomain || timeloop.in_substep())
+    if (!sw_subdomain || timeloop.in_substep() || timeloop.get_itime() % convert_to_itime(savetime_sub) != 0)
         return;
 
-    // TODO
+    std::string msg = "Saving sub-domain LBCs for time " + std::to_string(timeloop.get_time()) + " ...";
+    master.print_message(msg);
+
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    auto save_binary = [&](
+            std::vector<TF>& fld,
+            const std::string& name,
+            const int time)
+    {
+        char filename[256];
+        std::sprintf(filename, "%s.%07d", name.c_str(), time);
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        FILE *pFile;
+        pFile = fopen(filename, "wb");
+
+        if (pFile == NULL)
+            master.print_message("FAILED\n");
+        else
+            master.print_message("OK\n");
+
+        fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
+        fclose(pFile);
+    };
+
+    // Start/end indices of sub-domain in global domain (not accounting for MPI).
+    const int istart_g = static_cast<int>(xstart_sub / gd.dx + 0.5) + gd.igc;
+    const int jstart_g = static_cast<int>(ystart_sub / gd.dy + 0.5) + gd.jgc;
+
+    const int istart_ns = -n_ghost_sub;
+    const int iend_ns = lbcs_sub.itot + n_ghost_sub;
+
+    const int jstart_ns = -n_ghost_sub;
+    const int jend_ns = n_sponge_sub;
+
+    for (auto& it : fields.sp)
+    {
+        auto& lbc = lbcs_sub.lbc_n.at(it.first);
+
+        fetch_lbcs_scalar(
+            lbc.vec.data(),
+            it.second->fld.data(),
+            istart_g, 
+            jstart_g,
+            istart_ns,
+            jstart_ns,
+            gd.kstart,
+            iend_ns,
+            jend_ns,
+            gd.kend,
+            gd.icells,
+            gd.ijcells,
+            lbc.jstride,
+            lbc.kstride,
+            n_ghost_sub,
+            n_sponge_sub,
+            grid_ratio_sub,
+            gd.kgc);
+
+        // Save LBCs to disk.
+        std::string name = "lbc_" + it.first + "_north";
+
+        save_binary(
+            lbc.vec,
+            name,
+            timeloop.get_iotime());
+    }
 }
 
 #ifdef FLOAT_SINGLE

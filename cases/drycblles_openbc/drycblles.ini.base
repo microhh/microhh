@@ -80,7 +80,7 @@ xstart=-1
 xend=-1
 ystart=-1
 yend=-1
-refinement_fac=-1
+grid_ratio=-1
 n_ghost=-1
 n_sponge-1
 

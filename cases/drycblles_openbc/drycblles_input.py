@@ -27,7 +27,7 @@ ini = mht.Read_namelist('drycblles.ini.base')
 """
 Time.
 """
-endtime = 3600
+endtime = 300
 lbc_freq = 30
 
 
@@ -57,13 +57,13 @@ yend_sub = 2400
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
 
-refinement_fac = 2
+grid_ratio = 2
 
-itot_sub = int(xsize_sub / dx * refinement_fac + 0.5)
-jtot_sub = int(ysize_sub / dy * refinement_fac + 0.5)
+itot_sub = int(xsize_sub / dx * grid_ratio + 0.5)
+jtot_sub = int(ysize_sub / dy * grid_ratio + 0.5)
 
-dx_sub = dx / refinement_fac
-dy_sub = dy / refinement_fac
+dx_sub = dx / grid_ratio
+dy_sub = dy / grid_ratio
 
 # Number of lateral buffer/sponge points.
 n_sponge = 5
@@ -139,7 +139,7 @@ if domain == 'outer':
     ini['subdomain']['xend'] = xend_sub
     ini['subdomain']['ystart'] = ystart_sub
     ini['subdomain']['yend'] = yend_sub
-    ini['subdomain']['refinement_fac'] = refinement_fac
+    ini['subdomain']['grid_ratio'] = grid_ratio
     ini['subdomain']['n_ghost'] = n_ghost
     ini['subdomain']['n_sponge'] = n_sponge
     ini['subdomain']['savetime'] = lbc_freq

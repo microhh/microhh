@@ -15,4 +15,4 @@ python drycblles_input.py inner
 ./microhh run drycblles
 python cross_to_nc.py -n 6
 mv *.nc inner/
-mv *00* outer/
+mv *00* inner/

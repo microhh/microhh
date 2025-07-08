@@ -59,27 +59,27 @@ class Lbc
 
             size = dim_x * dim_y * dim_z;
 
-            x_stride = 1;
-            y_stride = dim_x;
-            z_stride = dim_x * dim_y;
+            istride = 1;
+            jstride = dim_x;
+            kstride = dim_x * dim_y;
 
-            data = std::vector<TF>(size, TF(0));
+            vec = std::vector<TF>(size, TF(0));
         }
 
         int dim_x, dim_y, dim_z;
         int size;
-        int x_stride, y_stride, z_stride;
+        int istride, jstride, kstride;
 
-        std::vector<TF> data;
+        std::vector<TF> vec;
 
         TF& operator()(const int i, const int j, const int k)
         {
-            return data[i * x_stride + j * y_stride + k * z_stride];
+            return vec[i*istride + j*jstride + k*kstride];
         }
 
         const TF& operator()(const int i, const int j, const int k) const
         {
-            return data[i * x_stride + j * y_stride + k * z_stride];
+            return vec[i*istride + j*jstride + k*kstride];
         }
 };
 
@@ -125,28 +125,28 @@ class Lbcs
             dim_zh = ktot;
 
             // Momentum fields.
-            lbc_w["u"] = Lbc<TF>(dim_xhgw, dim_y,   dim_z);
-            lbc_e["u"] = Lbc<TF>(dim_xhge, dim_y,   dim_z);
-            lbc_s["u"] = Lbc<TF>(dim_xh,   dim_ygs, dim_z);
-            lbc_n["u"] = Lbc<TF>(dim_xh,   dim_ygn, dim_z);
+            lbc_w.emplace("u", Lbc<TF>(dim_xhgw, dim_y,   dim_z));
+            lbc_e.emplace("u", Lbc<TF>(dim_xhge, dim_y,   dim_z));
+            lbc_s.emplace("u", Lbc<TF>(dim_xh,   dim_ygs, dim_z));
+            lbc_n.emplace("u", Lbc<TF>(dim_xh,   dim_ygn, dim_z));
 
-            lbc_w["v"] = Lbc<TF>(dim_xgw, dim_yh,   dim_z);
-            lbc_e["v"] = Lbc<TF>(dim_xge, dim_yh,   dim_z);
-            lbc_s["v"] = Lbc<TF>(dim_x,   dim_yhgs, dim_z);
-            lbc_n["v"] = Lbc<TF>(dim_x,   dim_yhgn, dim_z);
+            lbc_w.emplace("v", Lbc<TF>(dim_xgw, dim_yh,   dim_z));
+            lbc_e.emplace("v", Lbc<TF>(dim_xge, dim_yh,   dim_z));
+            lbc_s.emplace("v", Lbc<TF>(dim_x,   dim_yhgs, dim_z));
+            lbc_n.emplace("v", Lbc<TF>(dim_x,   dim_yhgn, dim_z));
 
-            lbc_w["w"] = Lbc<TF>(dim_xgw, dim_y,   dim_zh);
-            lbc_e["w"] = Lbc<TF>(dim_xge, dim_y,   dim_zh);
-            lbc_s["w"] = Lbc<TF>(dim_x,   dim_ygs, dim_zh);
-            lbc_n["w"] = Lbc<TF>(dim_x,   dim_ygn, dim_zh);
+            lbc_w.emplace("w", Lbc<TF>(dim_xgw, dim_y,   dim_zh));
+            lbc_e.emplace("w", Lbc<TF>(dim_xge, dim_y,   dim_zh));
+            lbc_s.emplace("w", Lbc<TF>(dim_x,   dim_ygs, dim_zh));
+            lbc_n.emplace("w", Lbc<TF>(dim_x,   dim_ygn, dim_zh));
 
             // Scalar fields.
             for (const auto& scalar : scalar_list)
             {
-                lbc_w[scalar] = Lbc<TF>(dim_xgw, dim_y,   dim_z);
-                lbc_e[scalar] = Lbc<TF>(dim_xge, dim_y,   dim_z);
-                lbc_s[scalar] = Lbc<TF>(dim_x,   dim_ygs, dim_z);
-                lbc_n[scalar] = Lbc<TF>(dim_x,   dim_ygn, dim_z);
+                lbc_w.emplace(scalar, Lbc<TF>(dim_xgw, dim_y,   dim_z));
+                lbc_e.emplace(scalar, Lbc<TF>(dim_xge, dim_y,   dim_z));
+                lbc_s.emplace(scalar, Lbc<TF>(dim_x,   dim_ygs, dim_z));
+                lbc_n.emplace(scalar, Lbc<TF>(dim_x,   dim_ygn, dim_z));
             }
         }
 
@@ -254,7 +254,7 @@ class Boundary_lateral
         TF ystart_sub;
         TF yend_sub;
 
-        int refinement_sub;
+        int grid_ratio_sub;
         int n_ghost_sub;
         int n_sponge_sub;
         unsigned int savetime_sub;
