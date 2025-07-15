@@ -48,8 +48,8 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Nest settings.
-xstart_sub = 800
-ystart_sub = 800
+xstart_sub = 400
+ystart_sub = 400
 
 xend_sub = 2400
 yend_sub = 2400

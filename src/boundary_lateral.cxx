@@ -1200,6 +1200,28 @@ void Boundary_lateral<TF>::create(
 
         dx_sub = xsize_sub / itot_sub;
         dy_sub = ysize_sub / jtot_sub;
+
+        // Coordinates of LBCs at different grid locations.
+        auto x_s_south = blk::arange(xstart_sub - (n_ghost_sub - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
+        auto y_s_south = blk::arange(ystart_sub - (n_ghost_sub - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
+
+        auto x_s_north = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
+        auto y_s_north = blk::arange(yend_sub   - (n_sponge_sub - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
+
+        auto x_s_west = blk::arange(xstart_sub - (n_ghost_sub - 0.5) * dx_sub, xstart_sub + n_sponge * dx_sub, dx_sub);
+        auto y_s_west = blk::arange(ystart_sub - (n_ghost_sub - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
+
+        auto x_s_east = blk::arange(xend_sub   - (n_sponge_sub - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
+        auto y_s_east = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
+
+        Lbc_edge<TF> lbc_s_south = Lbc_edge<TF>(
+            x_s_south,
+            y_s_south,
+            gd.x,
+            gd.y,
+            gd,
+            md,
+            gd.ktot);
     }
 
     // Only proceed if open boundary conditions are enabled.
