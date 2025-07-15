@@ -67,7 +67,7 @@ dy_sub = dy / grid_ratio
 
 # Number of lateral buffer/sponge points.
 n_sponge = 5
-n_ghost = 3
+n_ghost = 1
 
 
 """

@@ -27,6 +27,8 @@
 #include <cmath>
 
 #include "boundary_lateral.h"
+#include "boundary_lateral_kernels.h"
+
 #include "netcdf_interface.h"
 #include "grid.h"
 #include "fields.h"
@@ -35,6 +37,8 @@
 #include "timeloop.h"
 #include "stats.h"
 #include "constants.h"
+
+namespace blk = boundary_lateral_kernels;
 
 namespace
 {
@@ -1175,7 +1179,7 @@ void Boundary_lateral<TF>::create(
                 error = true;
                 master.print_message(
                     "ERROR: " + name + " must be an integer multiple of " + std::to_string(spacing) + ".");
-            }   
+            }
         };
 
         // Sub-domain has perfectly align with parent grid at x/y half levels.
@@ -1188,15 +1192,14 @@ void Boundary_lateral<TF>::create(
             throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
 
         // Initialise LBCs instance.
-        const int itot_sub = static_cast<int>((xend_sub - xstart_sub) / gd.dx * grid_ratio_sub + 0.5);
-        const int jtot_sub = static_cast<int>((yend_sub - ystart_sub) / gd.dy * grid_ratio_sub + 0.5);
+        xsize_sub = xend_sub - xstart_sub;
+        ysize_sub = yend_sub - ystart_sub;
 
-        // For sub-domain, always save LBCs for all scalars.
-        std::vector<std::string> slist_sub;
-        for (auto& [name, field] : fields.sp)
-            slist_sub.push_back(name);
+        itot_sub = static_cast<int>(xsize_sub / gd.dx * grid_ratio_sub + 0.5);
+        jtot_sub = static_cast<int>(ysize_sub / gd.dy * grid_ratio_sub + 0.5);
 
-        lbcs_sub = Lbcs<TF>(slist_sub, itot_sub, jtot_sub, gd.ktot, n_ghost_sub, n_sponge_sub);
+        dx_sub = xsize_sub / itot_sub;
+        dy_sub = ysize_sub / jtot_sub;
     }
 
     // Only proceed if open boundary conditions are enabled.
@@ -1819,17 +1822,17 @@ namespace
     void fetch_lbcs_scalar(
         TF* const restrict lbc,
         const TF* const restrict fld,
-        const int istart_g,
-        const int jstart_g,
-        const int istart_s,
+        const int iref_g,       // Base index in global domain
+        const int jref_g,
+        const int istart_s,     // Start index in sub-domain
         const int jstart_s,
         const int kstart_s,
-        const int iend_s,
+        const int iend_s,       // End index in sub-domain
         const int jend_s,
         const int kend_s,
-        const int jstride_g,
+        const int jstride_g,    // Stride in global domain
         const int kstride_g,
-        const int jstride_lbc,
+        const int jstride_lbc,  // Stride in lbc field.
         const int kstride_lbc,
         const int n_ghost,
         const int n_sponge,
@@ -1840,12 +1843,14 @@ namespace
             for (int j=jstart_s; j<jend_s; ++j)
             {
                 const int j_lbc = j + n_ghost;
-                const int j_g = jstart_g + int(j / grid_ratio + 0.5);
+                const int j_g = jref_g + int(std::floor(TF(j) / grid_ratio));     // NN-index
 
                 for (int i=istart_s; i<iend_s; ++i)
                 {
                     const int i_lbc = i + n_ghost;
-                    const int i_g = istart_g + int(i / grid_ratio + 0.5);
+                    const int i_g = iref_g + int(std::floor(TF(i) / grid_ratio));    // NN-index
+
+                    //std::cout << "i=" << i << " i_lbc=" << i_lbc << " ig=" << i_g << std::endl;
 
                     const int ijk_lbc = i_lbc + j_lbc * jstride_lbc + (k-kgc) * kstride_lbc;
                     const int ijk_g = i_g + j_g * jstride_g + k * kstride_g;
@@ -1891,49 +1896,6 @@ void Boundary_lateral<TF>::save_lbcs(
         fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
         fclose(pFile);
     };
-
-    // Start/end indices of sub-domain in global domain (not accounting for MPI).
-    const int istart_g = static_cast<int>(xstart_sub / gd.dx + 0.5) + gd.igc;
-    const int jstart_g = static_cast<int>(ystart_sub / gd.dy + 0.5) + gd.jgc;
-
-    const int istart_ns = -n_ghost_sub;
-    const int iend_ns = lbcs_sub.itot + n_ghost_sub;
-
-    const int jstart_ns = -n_ghost_sub;
-    const int jend_ns = n_sponge_sub;
-
-    for (auto& it : fields.sp)
-    {
-        auto& lbc = lbcs_sub.lbc_n.at(it.first);
-
-        fetch_lbcs_scalar(
-            lbc.vec.data(),
-            it.second->fld.data(),
-            istart_g, 
-            jstart_g,
-            istart_ns,
-            jstart_ns,
-            gd.kstart,
-            iend_ns,
-            jend_ns,
-            gd.kend,
-            gd.icells,
-            gd.ijcells,
-            lbc.jstride,
-            lbc.kstride,
-            n_ghost_sub,
-            n_sponge_sub,
-            grid_ratio_sub,
-            gd.kgc);
-
-        // Save LBCs to disk.
-        std::string name = "lbc_" + it.first + "_north";
-
-        save_binary(
-            lbc.vec,
-            name,
-            timeloop.get_iotime());
-    }
 }
 
 #ifdef FLOAT_SINGLE
