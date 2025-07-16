@@ -100,11 +100,11 @@ namespace boundary_lateral_kernels
 
 
     template<typename TF>
-    void find_nn_indexes(
-        std::vector<int>& nn_index,
+    std::vector<int> get_nn_indexes(
         const std::vector<TF>& x_target,
         const std::vector<TF>& x_all)
     {
+        std::vector<int> nn_index(x_target.size());
         int nearest_index;
 
         for (int i=0; i<nn_index.size(); ++i)
@@ -129,7 +129,39 @@ namespace boundary_lateral_kernels
 
             nn_index[i] = nearest_index;
         }
-    }
-}
 
+        return nn_index;
+    }
+
+
+    template<typename TF>
+    void nn_interpolate(
+        TF* const restrict fld_out,
+        const TF* const restrict fld_in,
+        const int* const restrict nn_i,
+        const int* const restrict nn_j,
+        const int isize,
+        const int jsize,
+        const int ksize,
+        const int kgc,
+        const int istride_out,
+        const int jstride_out,
+        const int kstride_out,
+        const int istride_in,
+        const int jstride_in,
+        const int kstride_in)
+    {
+        for (int k=0; k<ksize; ++k)
+            for (int j=0; j<jsize; ++j)
+                for (int i=0; i<isize; ++i)
+                {
+                    const int ijk_in = nn_i[i]*istride_in + nn_j[j]*jstride_in + (k+kgc)*kstride_in;
+                    const int ijk_out = i*istride_in + j*jstride_in + k*kstride_in;
+
+                    fld_out[ijk_out] = fld_in[ijk_in];
+                }
+    }
+
+
+}
 #endif

@@ -77,7 +77,7 @@ class Lbc_edge
 
             // Check if this MPI process contains data.
             if (blk::intersects_mpi_subdomain(x_in, y_in, xstart_block, xend_block, ystart_block, yend_block))
-                has_data = true;
+                this->has_data = true;
             else
                 return;
 
@@ -85,6 +85,7 @@ class Lbc_edge
             this->i_range = blk::get_start_end_indexes(x_in, xstart_block, xend_block);
             this->j_range = blk::get_start_end_indexes(y_in, ystart_block, yend_block);
 
+            // Slice out local coordinates, for finding NN indexes below.
             const std::vector<TF> x_in_s(x_in.begin() + this->i_range.first, x_in.begin() + this->i_range.second);
             const std::vector<TF> y_in_s(y_in.begin() + this->j_range.first, y_in.begin() + this->j_range.second);
 
@@ -96,14 +97,12 @@ class Lbc_edge
             this->jstride = itot_s;
             this->kstride = itot_s * jtot_s;
 
-            // Allocate arrays.
-            this->nn_i.resize(itot_s);
-            this->nn_j.resize(jtot_s);
+            // Allocate array(s).
             this->vec.resize(itot_s * jtot_s * ktot);
 
             // Find nearest-neighbour indexes.
-            blk::find_nn_indexes<TF>(nn_i, x_in_s, x);
-            blk::find_nn_indexes<TF>(nn_j, y_in_s, y);
+            this->nn_i = blk::get_nn_indexes<TF>(x_in_s, x);
+            this->nn_j = blk::get_nn_indexes<TF>(y_in_s, y);
         }
 
         // Not all MPI tasks have data.
@@ -139,91 +138,6 @@ class Lbc_edge
 };
 
 
-/*
- * Class that holds all the lateral boundary conditions.
- * Wrapped in a class, since we can have multiple instances of this class (parent domain, (multiple?) child(s), etc.).
-*/
-//template<typename TF>
-//class Lbcs
-//{
-//    public:
-//        Lbcs() {}
-//
-//        Lbcs(
-//                const std::vector<std::string>& scalar_list,
-//                const int itot,
-//                const int jtot,
-//                const int ktot,
-//                const int n_ghost,
-//                const int n_sponge)
-//        {
-//            this->itot = itot;
-//            this->jtot = jtot;
-//            this->ktot = ktot;
-//
-//            this->n_ghost = n_ghost;
-//            this->n_sponge = n_sponge;
-//            n_lbc = n_ghost + n_sponge;
-//
-//            // Dimensions of all possible LBCs.
-//            dim_x = itot + 2*n_ghost;
-//            dim_xgw = itot + 2*n_ghost;
-//            dim_xge = n_lbc;
-//            dim_xhgw = n_lbc + 1;
-//            dim_xhge = n_lbc;
-//
-//            dim_y = jtot + 2*n_ghost;
-//            dim_yh = jtot + 2*n_ghost;
-//            dim_ygs = n_lbc;
-//            dim_ygn = n_lbc;
-//            dim_yhgs = n_lbc + 1;
-//            dim_yhgn = n_lbc;
-//
-//            dim_z = ktot;
-//            dim_zh = ktot;
-//
-//            // Momentum fields.
-//            lbc_w.emplace("u", Lbc_edge<TF>(dim_xhgw, dim_y,   dim_z));
-//            lbc_e.emplace("u", Lbc_edge<TF>(dim_xhge, dim_y,   dim_z));
-//            lbc_s.emplace("u", Lbc_edge<TF>(dim_xh,   dim_ygs, dim_z));
-//            lbc_n.emplace("u", Lbc_edge<TF>(dim_xh,   dim_ygn, dim_z));
-//
-//            lbc_w.emplace("v", Lbc_edge<TF>(dim_xgw, dim_yh,   dim_z));
-//            lbc_e.emplace("v", Lbc_edge<TF>(dim_xge, dim_yh,   dim_z));
-//            lbc_s.emplace("v", Lbc_edge<TF>(dim_x,   dim_yhgs, dim_z));
-//            lbc_n.emplace("v", Lbc_edge<TF>(dim_x,   dim_yhgn, dim_z));
-//
-//            lbc_w.emplace("w", Lbc_edge<TF>(dim_xgw, dim_y,   dim_zh));
-//            lbc_e.emplace("w", Lbc_edge<TF>(dim_xge, dim_y,   dim_zh));
-//            lbc_s.emplace("w", Lbc_edge<TF>(dim_x,   dim_ygs, dim_zh));
-//            lbc_n.emplace("w", Lbc_edge<TF>(dim_x,   dim_ygn, dim_zh));
-//
-//            // Scalar fields.
-//            for (const auto& scalar : scalar_list)
-//            {
-//                lbc_w.emplace(scalar, Lbc_edge<TF>(dim_xgw, dim_y,   dim_z));
-//                lbc_e.emplace(scalar, Lbc_edge<TF>(dim_xge, dim_y,   dim_z));
-//                lbc_s.emplace(scalar, Lbc_edge<TF>(dim_x,   dim_ygs, dim_z));
-//                lbc_n.emplace(scalar, Lbc_edge<TF>(dim_x,   dim_ygn, dim_z));
-//            }
-//        }
-//
-//        // `Lbc` instances at all domain edges.
-//        std::map<std::string, Lbc_edge<TF>> lbc_n;
-//        std::map<std::string, Lbc_edge<TF>> lbc_e;
-//        std::map<std::string, Lbc_edge<TF>> lbc_s;
-//        std::map<std::string, Lbc_edge<TF>> lbc_w;
-//
-//        int itot, jtot, ktot;
-//        int n_ghost, n_sponge, n_lbc;
-//
-//        // Dimension sizes.
-//        int dim_x, dim_xh, dim_xgw, dim_xge, dim_xhgw, dim_xhge;
-//        int dim_y, dim_yh, dim_ygs, dim_ygn, dim_yhgs, dim_yhgn;
-//        int dim_z, dim_zh;
-//};
-
-
 template<typename TF>
 class Boundary_lateral
 {
@@ -233,6 +147,7 @@ class Boundary_lateral
 
         void init();
         void create(Input&, Timeloop<TF>&, Stats<TF>&, const std::string&);
+        void create_subdomain();
         void set_ghost_cells(Timeloop<TF>&);
         void exec_lateral_sponge(Stats<TF>&);
         void update_time_dependent(Timeloop<TF>&, const bool pres_fix=false);
@@ -319,6 +234,10 @@ class Boundary_lateral
         int n_sponge_sub;
         unsigned int savetime_sub;
 
-        //Lbcs<TF> lbcs_sub;
+        std::map<std::string, Lbc_edge<TF>> lbc_sub_w;
+        std::map<std::string, Lbc_edge<TF>> lbc_sub_e;
+        std::map<std::string, Lbc_edge<TF>> lbc_sub_s;
+        std::map<std::string, Lbc_edge<TF>> lbc_sub_n;
+
 };
 #endif

@@ -51,8 +51,8 @@ dz = zsize / ktot
 xstart_sub = 400
 ystart_sub = 400
 
-xend_sub = 2400
-yend_sub = 2400
+xend_sub = 800
+yend_sub = 800
 
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub

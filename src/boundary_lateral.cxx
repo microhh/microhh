@@ -1168,61 +1168,9 @@ void Boundary_lateral<TF>::create(
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
 
+    // Keep this above the sw_openbc check; periodic domain can have subdomain.
     if (sw_subdomain)
-    {
-        bool error = false;
-
-        auto check_subdomain = [&](const TF value, const TF spacing, const std::string& name)
-        {
-            if (!is_equal(std::fmod(value, spacing), TF(0)))
-            {
-                error = true;
-                master.print_message(
-                    "ERROR: " + name + " must be an integer multiple of " + std::to_string(spacing) + ".");
-            }
-        };
-
-        // Sub-domain has perfectly align with parent grid at x/y half levels.
-        check_subdomain(xstart_sub, gd.dx, "xstart_sub");
-        check_subdomain(xend_sub, gd.dx, "xend_sub");
-        check_subdomain(ystart_sub, gd.dy, "ystart_sub");
-        check_subdomain(yend_sub, gd.dy, "yend_sub");
-
-        if (error)
-            throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
-
-        // Initialise LBCs instance.
-        xsize_sub = xend_sub - xstart_sub;
-        ysize_sub = yend_sub - ystart_sub;
-
-        itot_sub = static_cast<int>(xsize_sub / gd.dx * grid_ratio_sub + 0.5);
-        jtot_sub = static_cast<int>(ysize_sub / gd.dy * grid_ratio_sub + 0.5);
-
-        dx_sub = xsize_sub / itot_sub;
-        dy_sub = ysize_sub / jtot_sub;
-
-        // Coordinates of LBCs at different grid locations.
-        auto x_s_south = blk::arange(xstart_sub - (n_ghost_sub - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
-        auto y_s_south = blk::arange(ystart_sub - (n_ghost_sub - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
-
-        auto x_s_north = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
-        auto y_s_north = blk::arange(yend_sub   - (n_sponge_sub - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
-
-        auto x_s_west = blk::arange(xstart_sub - (n_ghost_sub - 0.5) * dx_sub, xstart_sub + n_sponge * dx_sub, dx_sub);
-        auto y_s_west = blk::arange(ystart_sub - (n_ghost_sub - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
-
-        auto x_s_east = blk::arange(xend_sub   - (n_sponge_sub - 0.5) * dx_sub, xend_sub + n_ghost_sub * dx_sub, dx_sub);
-        auto y_s_east = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, yend_sub + n_ghost_sub * dy_sub, dy_sub);
-
-        Lbc_edge<TF> lbc_s_south = Lbc_edge<TF>(
-            x_s_south,
-            y_s_south,
-            gd.x,
-            gd.y,
-            gd,
-            md,
-            gd.ktot);
-    }
+        create_subdomain();
 
     // Only proceed if open boundary conditions are enabled.
     if (!sw_openbc)
@@ -1319,19 +1267,6 @@ void Boundary_lateral<TF>::create(
         }
     }
 
-
-    //if (sw_perturb)
-    //{
-    //    const TF perturb_zmax = inputin.get_item<TF>("boundary", "perturb_zmax", "");
-
-    //    for (int k=gd.kstart; k<gd.kend; ++k)
-    //        if (gd.z[k] < perturb_zmax && gd.z[k+1] >= perturb_zmax)
-    //        {
-    //            perturb_kend = k+1;
-    //            break;
-    //        }
-    //}
-
     if (sw_sponge)
     {
         stats.add_tendency(*fields.mt.at("u"), "z", tend_name, tend_longname);
@@ -1341,6 +1276,84 @@ void Boundary_lateral<TF>::create(
         for (auto& fld : slist)
             stats.add_tendency(*fields.at.at(fld), "zh", tend_name, tend_longname);
     }
+}
+
+
+template <typename TF>
+void Boundary_lateral<TF>::create_subdomain()
+{
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
+    bool error = false;
+
+    auto check_subdomain = [&](const TF value, const TF spacing, const std::string& name)
+    {
+        if (!is_equal(std::fmod(value, spacing), TF(0)))
+        {
+            error = true;
+            master.print_message(
+                "ERROR: " + name + " must be an integer multiple of " + std::to_string(spacing) + ".");
+        }
+    };
+
+    // Sub-domain has perfectly align with parent grid at x/y half levels.
+    check_subdomain(xstart_sub, gd.dx, "xstart_sub");
+    check_subdomain(xend_sub, gd.dx, "xend_sub");
+    check_subdomain(ystart_sub, gd.dy, "ystart_sub");
+    check_subdomain(yend_sub, gd.dy, "yend_sub");
+
+    if (error)
+        throw std::runtime_error("Sub-domain boundaries not aligned with parent grid.");
+
+    // Initialise LBCs instance.
+    xsize_sub = xend_sub - xstart_sub;
+    ysize_sub = yend_sub - ystart_sub;
+
+    itot_sub = static_cast<int>(xsize_sub / gd.dx * grid_ratio_sub + 0.5);
+    jtot_sub = static_cast<int>(ysize_sub / gd.dy * grid_ratio_sub + 0.5);
+
+    dx_sub = xsize_sub / itot_sub;
+    dy_sub = ysize_sub / jtot_sub;
+
+    // Coordinates of LBCs at different grid locations.
+    // Full levels x/y.
+    std::vector<TF> x_ns = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
+    std::vector<TF> x_w  = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xstart_sub + n_sponge_sub * dx_sub, dx_sub);
+    std::vector<TF> x_e  = blk::arange(xend_sub   - (n_sponge_sub - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
+
+    std::vector<TF> y_ew = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
+    std::vector<TF> y_n  = blk::arange(yend_sub   - (n_sponge_sub - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
+    std::vector<TF> y_s  = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
+
+    // Half level `x` for `u`.
+    std::vector<TF> xh_ns = blk::arange(xstart_sub - n_ghost_sub  * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
+    std::vector<TF> xh_w  = blk::arange(xstart_sub - n_ghost_sub  * dx_sub, xstart_sub + n_sponge_sub * dx_sub + 1, dx_sub);
+    std::vector<TF> xh_e  = blk::arange(xend_sub   - n_sponge_sub * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
+
+    // Half level `y` for `v`.
+    std::vector<TF> yh_ew = blk::arange(ystart_sub - n_ghost_sub  * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
+    std::vector<TF> yh_n  = blk::arange(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
+    std::vector<TF> yh_s  = blk::arange(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + 1, dy_sub);
+
+    auto setup_edge = [&](
+        const std::vector<TF>& x_lbc,
+        const std::vector<TF>& y_lbc,
+        const std::vector<TF>& x,
+        const std::vector<TF>& y)
+    {
+        return Lbc_edge<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
+    };
+
+    for (auto& fld : slist)
+    {
+        lbc_sub_w.emplace(fld, setup_edge(x_w,  y_ew, gd.x, gd.y));
+        lbc_sub_e.emplace(fld, setup_edge(x_e,  y_ew, gd.x, gd.y));
+        lbc_sub_s.emplace(fld, setup_edge(x_ns, y_s,  gd.x, gd.y));
+        lbc_sub_n.emplace(fld, setup_edge(x_ns, y_n,  gd.x, gd.y));
+    }
+
+
 }
 
 
