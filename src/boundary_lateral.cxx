@@ -1345,6 +1345,7 @@ void Boundary_lateral<TF>::create_subdomain()
         return Lbc_edge<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
     };
 
+    // Scalars.
     for (auto& fld : fields.sp)
     {
         lbc_sub_w.emplace(fld.first, setup_edge(x_w,  y_ew, gd.x, gd.y));
@@ -1352,6 +1353,22 @@ void Boundary_lateral<TF>::create_subdomain()
         lbc_sub_s.emplace(fld.first, setup_edge(x_ns, y_s,  gd.x, gd.y));
         lbc_sub_n.emplace(fld.first, setup_edge(x_ns, y_n,  gd.x, gd.y));
     }
+
+    // Velocity components.
+    lbc_sub_w.emplace("u", setup_edge(xh_w,  y_ew, gd.xh, gd.y));
+    lbc_sub_e.emplace("u", setup_edge(xh_e,  y_ew, gd.xh, gd.y));
+    lbc_sub_s.emplace("u", setup_edge(xh_ns, y_s,  gd.xh, gd.y));
+    lbc_sub_n.emplace("u", setup_edge(xh_ns, y_n,  gd.xh, gd.y));
+
+    lbc_sub_w.emplace("v", setup_edge(x_w,  yh_ew, gd.x, gd.yh));
+    lbc_sub_e.emplace("v", setup_edge(x_e,  yh_ew, gd.x, gd.yh));
+    lbc_sub_s.emplace("v", setup_edge(x_ns, yh_s,  gd.x, gd.yh));
+    lbc_sub_n.emplace("v", setup_edge(x_ns, yh_n,  gd.x, gd.yh));
+
+    lbc_sub_w.emplace("w", setup_edge(x_w,  y_ew, gd.x, gd.y));
+    lbc_sub_e.emplace("w", setup_edge(x_e,  y_ew, gd.x, gd.y));
+    lbc_sub_s.emplace("w", setup_edge(x_ns, y_s,  gd.x, gd.y));
+    lbc_sub_n.emplace("w", setup_edge(x_ns, y_n,  gd.x, gd.y));
 }
 
 
@@ -1909,8 +1926,8 @@ void Boundary_lateral<TF>::save_lbcs(
         save_binary(lbc.fld, name_out, timeloop.get_iotime());
     };
 
-    // Save scalar BCs for all fields.
-    for (auto& fld : fields.sp)
+    // Save all prognostic fields.
+    for (auto& fld : fields.ap)
     {
         process_lbc(lbc_sub_w.at(fld.first), fld.second->fld, fld.first, "west");
         process_lbc(lbc_sub_e.at(fld.first), fld.second->fld, fld.first, "east");
