@@ -1913,8 +1913,8 @@ void Boundary_lateral<TF>::save_lbcs(
     for (auto& fld : fields.sp)
     {
         process_lbc(lbc_sub_w.at(fld.first), fld.second->fld, fld.first, "west");
-        process_lbc(lbc_sub_e.at(fld.first), fld.second->fld, fld.first, "south");
-        process_lbc(lbc_sub_s.at(fld.first), fld.second->fld, fld.first, "east");
+        process_lbc(lbc_sub_e.at(fld.first), fld.second->fld, fld.first, "east");
+        process_lbc(lbc_sub_s.at(fld.first), fld.second->fld, fld.first, "south");
         process_lbc(lbc_sub_n.at(fld.first), fld.second->fld, fld.first, "north");
     }
 }
