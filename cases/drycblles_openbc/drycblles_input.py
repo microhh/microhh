@@ -12,9 +12,6 @@ import asyncio
 import microhh_lbc_tools as mlt
 import microhh_tools as mht
 
-# Custom tools.
-from lbc_input import lbc_input
-
 pl.close('all')
 
 domain = sys.argv[1]
@@ -27,7 +24,7 @@ ini = mht.Read_namelist('drycblles.ini.base')
 """
 Time.
 """
-endtime = 300
+endtime = 3600
 lbc_freq = 30
 
 
@@ -35,9 +32,9 @@ lbc_freq = 30
 Grid & nesting settings.
 """
 # Grid settings outer domain.
-itot = 32
-jtot = 32
-ktot = 32
+itot = 64
+jtot = 64
+ktot = 64
 
 xsize = 3200
 ysize = 3200
@@ -57,7 +54,7 @@ yend_sub = 2400
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
 
-grid_ratio = 2
+grid_ratio = 3
 
 itot_sub = int(xsize_sub / dx * grid_ratio + 0.5)
 jtot_sub = int(ysize_sub / dy * grid_ratio + 0.5)
@@ -67,7 +64,7 @@ dy_sub = dy / grid_ratio
 
 # Number of lateral buffer/sponge points.
 n_sponge = 5
-n_ghost = 1
+n_ghost = 3
 
 
 """
@@ -78,7 +75,7 @@ dthetadz = 0.003
 z  = np.arange(0.5*dz, zsize, dz)
 zh = np.arange(0, zsize, dz)
 
-u  = np.zeros(np.size(z)) + 1
+u  = np.zeros(np.size(z)) # + 1
 v  = np.zeros(np.size(z))
 th = 300. + dthetadz * z
 

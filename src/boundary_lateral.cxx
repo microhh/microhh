@@ -930,7 +930,7 @@ void Boundary_lateral<TF>::read_lbc(
         char filename[256];
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
 
-        master.print_message("Loading \"%s\" ... ", filename);
+        //master.print_message("Loading \"%s\" ... ", filename);
 
         FILE *pFile;
         pFile = fopen(filename, "rb");
@@ -949,9 +949,10 @@ void Boundary_lateral<TF>::read_lbc(
                 success = false;
         }
 
-        if (success)
-            master.print_message("OK\n");
-        else
+        //if (success)
+        //    master.print_message("OK\n");
+        //else
+        if (!success)
         {
             master.print_message("FAILED\n");
 
@@ -1978,17 +1979,17 @@ void Boundary_lateral<TF>::save_lbcs(
         // Setup filename with time.
         std::string base_name = "lbc_" + name + "_" + loc;
         std::string file_name = timeloop.get_io_filename(base_name);
-        master.print_message("Saving \"%s\" ... ", file_name.c_str());
+        //master.print_message("Saving \"%s\" ... ", file_name.c_str());
 
         const int err = save_binary(lbc, file_name);
 
         if (err > 0)
         {
-            master.print_message("FAILED\n");
+            //master.print_message("FAILED\n");
             throw std::runtime_error("Error saving LBCs.");
         }
-        else
-            master.print_message("OK\n");
+        //else
+        //    master.print_message("OK\n");
     };
 
     // Save all prognostic fields.
