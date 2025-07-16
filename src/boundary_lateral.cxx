@@ -1345,15 +1345,13 @@ void Boundary_lateral<TF>::create_subdomain()
         return Lbc_edge<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
     };
 
-    for (auto& fld : slist)
+    for (auto& fld : fields.sp)
     {
-        lbc_sub_w.emplace(fld, setup_edge(x_w,  y_ew, gd.x, gd.y));
-        lbc_sub_e.emplace(fld, setup_edge(x_e,  y_ew, gd.x, gd.y));
-        lbc_sub_s.emplace(fld, setup_edge(x_ns, y_s,  gd.x, gd.y));
-        lbc_sub_n.emplace(fld, setup_edge(x_ns, y_n,  gd.x, gd.y));
+        lbc_sub_w.emplace(fld.first, setup_edge(x_w,  y_ew, gd.x, gd.y));
+        lbc_sub_e.emplace(fld.first, setup_edge(x_e,  y_ew, gd.x, gd.y));
+        lbc_sub_s.emplace(fld.first, setup_edge(x_ns, y_s,  gd.x, gd.y));
+        lbc_sub_n.emplace(fld.first, setup_edge(x_ns, y_n,  gd.x, gd.y));
     }
-
-
 }
 
 
@@ -1851,53 +1849,6 @@ void Boundary_lateral<TF>::read_xy_slice(
 }
 
 
-namespace
-{
-    template <typename TF>
-    void fetch_lbcs_scalar(
-        TF* const restrict lbc,
-        const TF* const restrict fld,
-        const int iref_g,       // Base index in global domain
-        const int jref_g,
-        const int istart_s,     // Start index in sub-domain
-        const int jstart_s,
-        const int kstart_s,
-        const int iend_s,       // End index in sub-domain
-        const int jend_s,
-        const int kend_s,
-        const int jstride_g,    // Stride in global domain
-        const int kstride_g,
-        const int jstride_lbc,  // Stride in lbc field.
-        const int kstride_lbc,
-        const int n_ghost,
-        const int n_sponge,
-        const int grid_ratio,
-        const int kgc)
-    {
-        for (int k=kstart_s; k<kend_s; ++k)
-            for (int j=jstart_s; j<jend_s; ++j)
-            {
-                const int j_lbc = j + n_ghost;
-                const int j_g = jref_g + int(std::floor(TF(j) / grid_ratio));     // NN-index
-
-                for (int i=istart_s; i<iend_s; ++i)
-                {
-                    const int i_lbc = i + n_ghost;
-                    const int i_g = iref_g + int(std::floor(TF(i) / grid_ratio));    // NN-index
-
-                    //std::cout << "i=" << i << " i_lbc=" << i_lbc << " ig=" << i_g << std::endl;
-
-                    const int ijk_lbc = i_lbc + j_lbc * jstride_lbc + (k-kgc) * kstride_lbc;
-                    const int ijk_g = i_g + j_g * jstride_g + k * kstride_g;
-
-                    lbc[ijk_lbc] = fld[ijk_g];
-                }
-            }
-    }
-}
-
-
-
 template <typename TF>
 void Boundary_lateral<TF>::save_lbcs(
         Timeloop<TF>& timeloop)
@@ -1931,6 +1882,41 @@ void Boundary_lateral<TF>::save_lbcs(
         fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
         fclose(pFile);
     };
+
+    auto process_lbc = [&](
+        Lbc_edge<TF>& lbc,
+        std::vector<TF>& fld,
+        const std::string& name,
+        const std::string& loc)
+    {
+        blk::nn_interpolate(
+            lbc.fld.data(),
+            fld.data(),
+            lbc.nn_i.data(),
+            lbc.nn_j.data(),
+            lbc.itot_s,
+            lbc.jtot_s,
+            gd.ktot,
+            gd.kgc,
+            lbc.istride,
+            lbc.jstride,
+            lbc.kstride,
+            gd.istride,
+            gd.jstride,
+            gd.kstride);
+
+        std::string name_out = "lbc_" + name + "_" + loc;
+        save_binary(lbc.fld, name_out, timeloop.get_iotime());
+    };
+
+    // Save scalar BCs for all fields.
+    for (auto& fld : fields.sp)
+    {
+        process_lbc(lbc_sub_w.at(fld.first), fld.second->fld, fld.first, "west");
+        process_lbc(lbc_sub_e.at(fld.first), fld.second->fld, fld.first, "south");
+        process_lbc(lbc_sub_s.at(fld.first), fld.second->fld, fld.first, "east");
+        process_lbc(lbc_sub_n.at(fld.first), fld.second->fld, fld.first, "north");
+    }
 }
 
 #ifdef FLOAT_SINGLE

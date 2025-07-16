@@ -48,11 +48,11 @@ dy = ysize / jtot
 dz = zsize / ktot
 
 # Nest settings.
-xstart_sub = 400
-ystart_sub = 400
+xstart_sub = 800
+ystart_sub = 800
 
-xend_sub = 800
-yend_sub = 800
+xend_sub = 2400
+yend_sub = 2400
 
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
@@ -246,4 +246,4 @@ if domain == 'inner':
         for loc in ['west', 'east', 'north', 'south']:
             for t, time in enumerate(lbc.time):
                 lbc_in = lbc[f'{fld}_{loc}'][t]
-                lbc_in.values.astype(dtype).tofile(f'lbc_{fld}_{loc}.{int(time):07d}')
+                lbc_in.values.astype(dtype).tofile(f'inner/lbc_{fld}_{loc}.{int(time):07d}')

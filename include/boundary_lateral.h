@@ -98,7 +98,7 @@ class Lbc_edge
             this->kstride = itot_s * jtot_s;
 
             // Allocate array(s).
-            this->vec.resize(itot_s * jtot_s * ktot);
+            this->fld.resize(itot_s * jtot_s * ktot);
 
             // Find nearest-neighbour indexes.
             this->nn_i = blk::get_nn_indexes<TF>(x_in_s, x);
@@ -120,7 +120,7 @@ class Lbc_edge
         int istride, jstride, kstride;
 
         // Data.
-        std::vector<TF> vec;
+        std::vector<TF> fld;
 
         // Nearest neighbour indices.
         std::vector<int> nn_i;
@@ -128,12 +128,12 @@ class Lbc_edge
 
         TF& operator()(const int i, const int j, const int k)
         {
-            return vec[i*istride + j*jstride + k*kstride];
+            return fld[i*istride + j*jstride + k*kstride];
         }
 
         const TF& operator()(const int i, const int j, const int k) const
         {
-            return vec[i*istride + j*jstride + k*kstride];
+            return fld[i*istride + j*jstride + k*kstride];
         }
 };
 
@@ -238,6 +238,5 @@ class Boundary_lateral
         std::map<std::string, Lbc_edge<TF>> lbc_sub_e;
         std::map<std::string, Lbc_edge<TF>> lbc_sub_s;
         std::map<std::string, Lbc_edge<TF>> lbc_sub_n;
-
 };
 #endif

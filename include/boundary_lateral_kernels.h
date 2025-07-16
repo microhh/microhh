@@ -156,7 +156,7 @@ namespace boundary_lateral_kernels
                 for (int i=0; i<isize; ++i)
                 {
                     const int ijk_in = nn_i[i]*istride_in + nn_j[j]*jstride_in + (k+kgc)*kstride_in;
-                    const int ijk_out = i*istride_in + j*jstride_in + k*kstride_in;
+                    const int ijk_out = i*istride_out + j*jstride_out + k*kstride_out;
 
                     fld_out[ijk_out] = fld_in[ijk_in];
                 }
