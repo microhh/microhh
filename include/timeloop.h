@@ -87,6 +87,7 @@ class Timeloop
         unsigned long get_idt() const { return idt; }
         unsigned long get_isavetime() const { return isavetime; }
         int get_iotime() const { return iotime; }
+        std::string get_io_filename(const std::string&);
         int get_iteration() const { return iteration; }
         int get_substep() const { return substep; }
 
@@ -96,7 +97,7 @@ class Timeloop
         double calc_day_of_year() const;
         double calc_hour_of_day() const;
         int get_year() const;
-
+        
     private:
         Master& master;
         Grid<TF>& grid;

@@ -42,6 +42,13 @@ namespace blk = boundary_lateral_kernels;
 
 namespace
 {
+    #ifdef USEMPI
+    template<typename TF> MPI_Datatype mpi_fp_type();
+    template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
+    template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
+    #endif
+
+
     template<typename TF>
     bool in_list(const TF value, const std::vector<TF>& list)
     {
@@ -1318,23 +1325,23 @@ void Boundary_lateral<TF>::create_subdomain()
 
     // Coordinates of LBCs at different grid locations.
     // Full levels x/y.
-    std::vector<TF> x_ns = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
-    std::vector<TF> x_w  = blk::arange(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xstart_sub + n_sponge_sub * dx_sub, dx_sub);
-    std::vector<TF> x_e  = blk::arange(xend_sub   - (n_sponge_sub - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
+    std::vector<TF> x_ns = blk::arange<TF>(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
+    std::vector<TF> x_w  = blk::arange<TF>(xstart_sub - (n_ghost_sub  - 0.5) * dx_sub, xstart_sub + n_sponge_sub * dx_sub, dx_sub);
+    std::vector<TF> x_e  = blk::arange<TF>(xend_sub   - (n_sponge_sub - 0.5) * dx_sub, xend_sub   + n_ghost_sub  * dx_sub, dx_sub);
 
-    std::vector<TF> y_ew = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
-    std::vector<TF> y_n  = blk::arange(yend_sub   - (n_sponge_sub - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
-    std::vector<TF> y_s  = blk::arange(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
+    std::vector<TF> y_ew = blk::arange<TF>(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
+    std::vector<TF> y_n  = blk::arange<TF>(yend_sub   - (n_sponge_sub - 0.5) * dy_sub, yend_sub   + n_ghost_sub  * dy_sub, dy_sub);
+    std::vector<TF> y_s  = blk::arange<TF>(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
 
     // Half level `x` for `u`.
-    std::vector<TF> xh_ns = blk::arange(xstart_sub - n_ghost_sub  * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
-    std::vector<TF> xh_w  = blk::arange(xstart_sub - n_ghost_sub  * dx_sub, xstart_sub + n_sponge_sub * dx_sub + 1, dx_sub);
-    std::vector<TF> xh_e  = blk::arange(xend_sub   - n_sponge_sub * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
+    std::vector<TF> xh_ns = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
+    std::vector<TF> xh_w  = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xstart_sub + n_sponge_sub * dx_sub + 1, dx_sub);
+    std::vector<TF> xh_e  = blk::arange<TF>(xend_sub   - n_sponge_sub * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
 
     // Half level `y` for `v`.
-    std::vector<TF> yh_ew = blk::arange(ystart_sub - n_ghost_sub  * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
-    std::vector<TF> yh_n  = blk::arange(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
-    std::vector<TF> yh_s  = blk::arange(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + 1, dy_sub);
+    std::vector<TF> yh_ew = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
+    std::vector<TF> yh_n  = blk::arange<TF>(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
+    std::vector<TF> yh_s  = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + 1, dy_sub);
 
     auto setup_edge = [&](
         const std::vector<TF>& x_lbc,
@@ -1880,25 +1887,71 @@ void Boundary_lateral<TF>::save_lbcs(
     auto& md = master.get_MPI_data();
 
     auto save_binary = [&](
-            std::vector<TF>& fld,
-            const std::string& name,
-            const int time)
+            Lbc_edge<TF>& lbc,
+            const std::string& filename)
     {
-        char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), time);
-        master.print_message("Saving \"%s\" ... ", filename);
+        #ifdef USEMPI
+        /* 
+        Save binary using MPI I/O hyperslabs.
+        */
+        MPI_File fh;
+        if (MPI_File_open(md.commxy, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+            return 1;
 
+        int err = 0;
+        MPI_Offset fileoff = 0;
+        char name[] = "native";
+        MPI_Datatype subarray = MPI_DATATYPE_NULL;
+
+        if (lbc.has_data)
+        {
+            int tot_size[3] = {lbc.ktot_g, lbc.jtot_g, lbc.itot_g};
+            int sub_size[3] = {lbc.ktot_s, lbc.jtot_s, lbc.itot_s};
+            int sub_start[3] = {0, lbc.j_range.first, lbc.i_range.first};
+            int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
+
+            //std::cout << "mpi_x=" << md.mpicoordx << ", mpi_y=" << md.mpicoordy;
+            //std::cout << ", total: (" << tot_size[0] << ", " << tot_size[1] << ", " << tot_size[2] << ")";
+            //std::cout << ", sub: (" << sub_size[0] << ", " << sub_size[1] << ", " << sub_size[2] << ")";
+            //std::cout << ", start: (" << sub_start[0] << ", " << sub_start[1] << ", " << sub_start[2] << ")" << std::endl;
+
+            MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
+            MPI_Type_commit(&subarray);
+
+            err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL);
+            err += MPI_File_write_all(fh, lbc.fld.data(), count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+        }
+        else
+        {
+            err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), mpi_fp_type<TF>(), name, MPI_INFO_NULL);
+            err += MPI_File_write_all(fh, nullptr, 0, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+        }
+
+        err += MPI_File_close(&fh);
+
+        if (lbc.has_data)
+            MPI_Type_free(&subarray);
+
+        return err;
+
+        #else
+        /* 
+        Save binary using simple serial I/O.
+        */
         FILE *pFile;
-        pFile = fopen(filename, "wb");
+        pFile = fopen(filename.c_str(), "wb");
 
         if (pFile == NULL)
-            master.print_message("FAILED\n");
-        else
-            master.print_message("OK\n");
+            return 1;
 
-        fwrite(fld.data(), sizeof(TF), fld.size(), pFile);
+        fwrite(lbc.fld.data(), sizeof(TF), lbc.fld.size(), pFile);
         fclose(pFile);
+
+        #endif
+
+        return 0;
     };
+
 
     auto process_lbc = [&](
         Lbc_edge<TF>& lbc,
@@ -1922,8 +1975,20 @@ void Boundary_lateral<TF>::save_lbcs(
             gd.jstride,
             gd.kstride);
 
-        std::string name_out = "lbc_" + name + "_" + loc;
-        save_binary(lbc.fld, name_out, timeloop.get_iotime());
+        // Setup filename with time.
+        std::string base_name = "lbc_" + name + "_" + loc;
+        std::string file_name = timeloop.get_io_filename(base_name);
+        master.print_message("Saving \"%s\" ... ", file_name.c_str());
+
+        const int err = save_binary(lbc, file_name);
+
+        if (err > 0)
+        {
+            master.print_message("FAILED\n");
+            throw std::runtime_error("Error saving LBCs.");
+        }
+        else
+            master.print_message("OK\n");
     };
 
     // Save all prognostic fields.

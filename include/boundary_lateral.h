@@ -63,7 +63,7 @@ class Lbc_edge
         {
             this->itot_g = x_in.size();
             this->jtot_g = y_in.size();
-            this->ktot = ktot;
+            this->ktot_g = ktot;
 
             // Bounds sub-domain on this MPI process.
             const TF xsize_block = gd.imax * gd.dx;
@@ -77,46 +77,59 @@ class Lbc_edge
 
             // Check if this MPI process contains data.
             if (blk::intersects_mpi_subdomain(x_in, y_in, xstart_block, xend_block, ystart_block, yend_block))
+            {
                 this->has_data = true;
+
+                // Find range on current MPI process.
+                this->i_range = blk::get_start_end_indexes(x_in, xstart_block, xend_block);
+                this->j_range = blk::get_start_end_indexes(y_in, ystart_block, yend_block);
+
+                // Slice out local coordinates, for finding NN indexes below.
+                const std::vector<TF> x_in_s(x_in.begin() + this->i_range.first, x_in.begin() + this->i_range.second);
+                const std::vector<TF> y_in_s(y_in.begin() + this->j_range.first, y_in.begin() + this->j_range.second);
+
+                // Accounting.
+                this->itot_s = i_range.second - i_range.first;
+                this->jtot_s = j_range.second - j_range.first;
+                this->ktot_s = this->ktot_g;
+
+                this->istride = 1;
+                this->jstride = this->itot_s;
+                this->kstride = this->itot_s * this->jtot_s;
+
+                // Find nearest-neighbour indexes.
+                this->nn_i = blk::get_nn_indexes<TF>(x_in_s, x);
+                this->nn_j = blk::get_nn_indexes<TF>(y_in_s, y);
+            }
             else
-                return;
+            {
+                this->has_data = false;
 
-            // Find range on current MPI process.
-            this->i_range = blk::get_start_end_indexes(x_in, xstart_block, xend_block);
-            this->j_range = blk::get_start_end_indexes(y_in, ystart_block, yend_block);
+                // Set sizes to zero for MPI-IO.
+                this->i_range = std::make_pair<int>(0,0);
+                this->j_range = std::make_pair<int>(0,0);
 
-            // Slice out local coordinates, for finding NN indexes below.
-            const std::vector<TF> x_in_s(x_in.begin() + this->i_range.first, x_in.begin() + this->i_range.second);
-            const std::vector<TF> y_in_s(y_in.begin() + this->j_range.first, y_in.begin() + this->j_range.second);
+                this->itot_s = 0;
+                this->jtot_s = 0;
+                this->ktot_s = 0;
+            }
 
-            // Accounting.
-            this->itot_s = i_range.second - i_range.first;
-            this->jtot_s = j_range.second - j_range.first;
-
-            this->istride = 1;
-            this->jstride = itot_s;
-            this->kstride = itot_s * jtot_s;
-
-            // Allocate array(s).
-            this->fld.resize(itot_s * jtot_s * ktot);
-
-            // Find nearest-neighbour indexes.
-            this->nn_i = blk::get_nn_indexes<TF>(x_in_s, x);
-            this->nn_j = blk::get_nn_indexes<TF>(y_in_s, y);
+            // Always resize, even if size is zero. This way we can get a valid pointer for MPI-IO.
+            this->fld.resize(itot_s * jtot_s * ktot_s);
         }
 
-        // Not all MPI tasks have data.
-        bool has_data = false;
+        // Not all tasks have data.
+        bool has_data;
 
         // Global size (not accounting for MPI).
-        int itot_g, jtot_g, ktot;
+        int itot_g, jtot_g, ktot_g;
 
         // Start/end indices in global array. Needed for MPI-IO hyperslabs.
         std::pair<int, int> i_range;
         std::pair<int, int> j_range;
 
         // Local sub-set on this MPI process.
-        int itot_s, jtot_s;
+        int itot_s, jtot_s, ktot_s;
         int istride, jstride, kstride;
 
         // Data.

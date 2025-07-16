@@ -677,6 +677,15 @@ std::pair<unsigned long, unsigned long> Timeloop<TF>::get_prev_and_next_iotime(c
 }
 
 
+template<typename TF>
+std::string Timeloop<TF>::get_io_filename(const std::string& name)
+{
+    std::ostringstream oss;
+    oss << name << "." << std::setw(7) << std::setfill('0') << get_iotime();
+    return oss.str();
+}
+
+
 #ifdef FLOAT_SINGLE
 template class Timeloop<float>;
 #else
