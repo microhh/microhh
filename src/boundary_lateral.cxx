@@ -1344,31 +1344,6 @@ void Boundary_lateral<TF>::create_subdomain()
     std::vector<TF> yh_n  = blk::arange<TF>(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,            dy_sub);
     std::vector<TF> yh_s  = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + dy_sub/2, dy_sub);
 
-    //auto print_range = [&](const std::string& name, const std::vector<TF>& vec)
-    //{
-    //    std::cout << name << ": ";
-    //    for (int i=0; i<vec.size(); i++)
-    //        std::cout << vec[i] << " ";
-    //    std::cout << std::endl;
-    //};
-
-    //print_range("x_ns", x_ns);
-    //print_range("x_w", x_w);
-    //print_range("x_e", x_e);
-
-    //print_range("y_ew", y_ew);
-    //print_range("y_n", y_n);
-    //print_range("y_s", y_s);
-
-    //print_range("xh_ns", xh_ns);
-    //print_range("xh_w", xh_w);
-    //print_range("xh_e", xh_e);
-
-    //print_range("yh_ew", xh_ns);
-    //print_range("yh_n", yh_n);
-    //print_range("yh_s", yh_s);
-
-
     auto setup_edge = [&](
         const std::vector<TF>& x_lbc,
         const std::vector<TF>& y_lbc,
@@ -1936,11 +1911,6 @@ void Boundary_lateral<TF>::save_lbcs(
             int sub_start[3] = {0, lbc.j_range.first, lbc.i_range.first};
             int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
 
-            //std::cout << "mpi_x=" << md.mpicoordx << ", mpi_y=" << md.mpicoordy;
-            //std::cout << ", total: (" << tot_size[0] << ", " << tot_size[1] << ", " << tot_size[2] << ")";
-            //std::cout << ", sub: (" << sub_size[0] << ", " << sub_size[1] << ", " << sub_size[2] << ")";
-            //std::cout << ", start: (" << sub_start[0] << ", " << sub_start[1] << ", " << sub_start[2] << ")" << std::endl;
-
             MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
             MPI_Type_commit(&subarray);
 
@@ -2002,19 +1972,13 @@ void Boundary_lateral<TF>::save_lbcs(
             gd.kstride);
 
         // Setup filename with time.
-        std::string base_name = "lbc_" + name + "_" + loc;
+        std::string base_name = "lbc_" + name + "_" + loc + "_out";
         std::string file_name = timeloop.get_io_filename(base_name);
-        //master.print_message("Saving \"%s\" ... ", file_name.c_str());
 
         const int err = save_binary(lbc, file_name);
 
         if (err > 0)
-        {
-            //master.print_message("FAILED\n");
             throw std::runtime_error("Error saving LBCs.");
-        }
-        //else
-        //    master.print_message("OK\n");
     };
 
     // Save all prognostic fields.
