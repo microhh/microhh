@@ -1335,14 +1335,39 @@ void Boundary_lateral<TF>::create_subdomain()
     std::vector<TF> y_s  = blk::arange<TF>(ystart_sub - (n_ghost_sub  - 0.5) * dy_sub, ystart_sub + n_sponge_sub * dy_sub, dy_sub);
 
     // Half level `x` for `u`.
-    std::vector<TF> xh_ns = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
-    std::vector<TF> xh_w  = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xstart_sub + n_sponge_sub * dx_sub + 1, dx_sub);
-    std::vector<TF> xh_e  = blk::arange<TF>(xend_sub   - n_sponge_sub * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,     dx_sub);
+    std::vector<TF> xh_ns = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,            dx_sub);
+    std::vector<TF> xh_w  = blk::arange<TF>(xstart_sub - n_ghost_sub  * dx_sub, xstart_sub + n_sponge_sub * dx_sub + dx_sub/2, dx_sub);
+    std::vector<TF> xh_e  = blk::arange<TF>(xend_sub   - n_sponge_sub * dx_sub, xend_sub   + n_ghost_sub  * dx_sub,            dx_sub);
 
     // Half level `y` for `v`.
-    std::vector<TF> yh_ew = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
-    std::vector<TF> yh_n  = blk::arange<TF>(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,     dy_sub);
-    std::vector<TF> yh_s  = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + 1, dy_sub);
+    std::vector<TF> yh_ew = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,            dy_sub);
+    std::vector<TF> yh_n  = blk::arange<TF>(yend_sub   - n_sponge_sub * dy_sub, yend_sub   + n_ghost_sub  * dy_sub,            dy_sub);
+    std::vector<TF> yh_s  = blk::arange<TF>(ystart_sub - n_ghost_sub  * dy_sub, ystart_sub + n_sponge_sub * dy_sub + dy_sub/2, dy_sub);
+
+    //auto print_range = [&](const std::string& name, const std::vector<TF>& vec)
+    //{
+    //    std::cout << name << ": ";
+    //    for (int i=0; i<vec.size(); i++)
+    //        std::cout << vec[i] << " ";
+    //    std::cout << std::endl;
+    //};
+
+    //print_range("x_ns", x_ns);
+    //print_range("x_w", x_w);
+    //print_range("x_e", x_e);
+
+    //print_range("y_ew", y_ew);
+    //print_range("y_n", y_n);
+    //print_range("y_s", y_s);
+
+    //print_range("xh_ns", xh_ns);
+    //print_range("xh_w", xh_w);
+    //print_range("xh_e", xh_e);
+
+    //print_range("yh_ew", xh_ns);
+    //print_range("yh_n", yh_n);
+    //print_range("yh_s", yh_s);
+
 
     auto setup_edge = [&](
         const std::vector<TF>& x_lbc,

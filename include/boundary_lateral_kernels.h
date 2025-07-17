@@ -30,30 +30,23 @@ namespace boundary_lateral_kernels
 {
     template<typename TF>
     std::vector<TF> arange(
-        const TF start,
-        const TF stop,
-        const TF step)
+            const TF start,
+            const TF stop,
+            const TF step)
     {
-        // Determine size.
-        int size;
-        if (step > 0 && start < stop)
-            size = static_cast<int>((stop - start + step - 1) / step);
-        else if (step < 0 && start > stop)
-            size = static_cast<int>((start - stop - step - 1) / (-step));
-        else
-            throw std::runtime_error("Invalid configuration for arange()!");
+        if (step <= 0)
+            throw std::runtime_error("Step needs to be positive (in this implementation..)");
 
-        // Allocate vector.
         std::vector<TF> result;
-        result.reserve(size);
 
-        // Fill vector.
-        if (step > 0)
-            for (TF value = start; value < stop; value += step)
-                result.push_back(value);
-        else
-            for (TF value = start; value > stop; value += step)
-                result.push_back(value);
+        TF value = start;
+        const TF epsilon = std::numeric_limits<TF>::epsilon() * std::abs(start + stop + step);
+
+        while (value + epsilon < stop)
+        {
+            result.push_back(value);
+            value += step;
+        }
 
         return result;
     }

@@ -64,7 +64,7 @@ loadfreq=None
 
 # Lateral sponge layer.
 sw_sponge=true
-n_sponge=5
+n_sponge=None
 tau_sponge=60
 w_diff=0.000
 

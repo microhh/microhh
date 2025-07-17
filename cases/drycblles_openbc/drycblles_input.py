@@ -1,24 +1,13 @@
-import matplotlib.pyplot as pl
-import numpy as np
 import netCDF4 as nc
-import xarray as xr
-from numba import jit, prange
+import numpy as np
 import sys
-import glob
-from datetime import datetime
-import asyncio
 
-# Avaiable in `microhh/python`:
-import microhh_lbc_tools as mlt
-import microhh_tools as mht
+import microhhpy.io as io
 
-pl.close('all')
 
+# Case settings.
 domain = sys.argv[1]
 dtype = np.float64
-swadvec = '2'   # needed for correct # gcs.
-
-ini = mht.Read_namelist('drycblles.ini.base')
 
 
 """
@@ -54,7 +43,7 @@ yend_sub = 2400
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
 
-grid_ratio = 3
+grid_ratio = 2
 
 itot_sub = int(xsize_sub / dx * grid_ratio + 0.5)
 jtot_sub = int(ysize_sub / dy * grid_ratio + 0.5)
@@ -63,7 +52,7 @@ dx_sub = dx / grid_ratio
 dy_sub = dy / grid_ratio
 
 # Number of lateral buffer/sponge points.
-n_sponge = 5
+n_sponge = 3
 n_ghost = 3
 
 
@@ -75,8 +64,8 @@ dthetadz = 0.003
 z  = np.arange(0.5*dz, zsize, dz)
 zh = np.arange(0, zsize, dz)
 
-u  = np.zeros(np.size(z)) # + 1
-v  = np.zeros(np.size(z))
+u  = np.zeros(np.size(z)) + 2
+v  = np.zeros(np.size(z)) + 1
 th = 300. + dthetadz * z
 
 
@@ -104,16 +93,11 @@ nc_file.close()
 """
 Update .ini
 """
+ini = io.read_ini('drycblles.ini.base')
+
 ini['time']['endtime'] = endtime
 
 if domain == 'outer':
-
-    xz, yz = mlt.get_cross_locations_for_lbcs(
-            xstart_sub, ystart_sub,
-            xend_sub, yend_sub,
-            dx, dy,
-            dx_sub, dy_sub,
-            n_ghost, n_sponge)
 
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
@@ -124,8 +108,8 @@ if domain == 'outer':
     ini['grid']['zsize'] = zsize
 
     ini['cross']['sampletime'] = lbc_freq
-    ini['cross']['xz'] = list(xz)
-    ini['cross']['yz'] = list(yz)
+    ini['cross']['xz'] = ysize / 2.
+    ini['cross']['yz'] = xsize / 2.
 
     ini['pres']['sw_openbc'] = False
     ini['boundary_lateral']['sw_openbc'] = False
@@ -151,13 +135,14 @@ elif domain == 'inner':
     ini['grid']['zsize'] = zsize
 
     ini['cross']['sampletime'] = lbc_freq
-    ini['cross']['yz'] = (xend_sub + xstart_sub)/2
-    ini['cross']['xz'] = (yend_sub + ystart_sub)/2
+    ini['cross']['yz'] = xsize_sub / 2.
+    ini['cross']['xz'] = ysize_sub / 2.
 
     ini['pres']['sw_openbc'] = True
     ini['boundary_lateral']['sw_openbc'] = True
     ini['boundary_lateral']['loadfreq'] = lbc_freq
+    ini['boundary_lateral']['n_sponge'] = n_sponge
 
     ini['subdomain']['sw_subdomain'] = False
 
-ini.save('drycblles.ini', allow_overwrite=True)
+io.save_ini(ini, 'drycblles.ini')
