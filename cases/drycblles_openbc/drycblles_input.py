@@ -13,7 +13,7 @@ dtype = np.float64
 """
 Time.
 """
-endtime = 3600
+endtime = 7200
 lbc_freq = 30
 
 
