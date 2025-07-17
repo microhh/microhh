@@ -23,6 +23,7 @@
 # Standard library
 from datetime import datetime
 import sys
+import argparse
 
 # Third-party.
 import netCDF4 as nc4
@@ -39,20 +40,24 @@ import microhhpy.thermo as thermo
 from microhhpy.logger import logger
 logger.setLevel('DEBUG')
 
+"""
+User input
+"""
+parser = argparse.ArgumentParser(description='Nested ERA5 input.')
+parser.add_argument('-d', '--domain', type=int, required=True, help='Domain number')
+args = parser.parse_args()
+
 
 """
 Settings
 """
-start_date = datetime(year=2020, month=2, day=5, hour=12)
-end_date   = datetime(year=2020, month=2, day=5, hour=16)
-work_dir = 'test/'
 TF = np.float64
 
-sw_openbc = True
+start_date = datetime(year=2020, month=2, day=5, hour=12)
+end_date   = datetime(year=2020, month=2, day=5, hour=13)
 
-n_ghost = 3     # Ghost cells used by MicroHH (advection dependent!)
-n_sponge = 5    # Sponge cells used at the lateral boundaries.
-
+# All domains are put in a sub-folder `work_dir/domX`.
+work_dir = 'test/'
 
 # (LS)2D settings.
 settings = {
@@ -84,20 +89,43 @@ gd = calc_vertical_grid_2nd(_g.z, _g.zsize)
 """
 Define projection used for LES coordinates (m) to real world (lat/lon) transforms.
 """
+# Outer domain, nested in ERA5.
 dom0 = Domain(
-    xsize=25_600,
-    ysize=25_600,
-    itot=64,
-    jtot=64,
+    xsize=32_000,
+    ysize=32_000,
+    itot=32,
+    jtot=32,
     n_ghost=3,
     n_sponge=5,
+    lbc_freq=3600,                  # Always 3600 for ERA5!
     lon=settings['central_lon'],
     lat=settings['central_lat'],
     anchor='center',
     proj_str='+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs +type=crs'
     )
 
-plot_domains([dom0], use_projection=True)
+# Inner domains(s), nested in parent LES domain.
+dom1 = Domain(
+    xsize = 16_000,
+    ysize = 16_000,
+    itot = 32,
+    jtot = 32,
+    n_ghost = 3,
+    n_sponge = 3,
+    lbc_freq = 60,
+    center_in_parent=True,
+    parent = dom0
+)
+
+domains = [dom0, dom1]
+for i in range(len(domains)-1):
+    domains[i].child = domains[i+1]
+
+#plot_domains([dom0, dom1], use_projection=True)
+
+domain = domains[args.domain]
+child = domain.child
+exp_dir = f'{work_dir}/dom{args.domain}/'
 
 
 """
@@ -116,7 +144,7 @@ def add_variable(name, dims, nc_group, data):
     fld = nc_group.createVariable(name, TF, dims)
     fld[:] = data
 
-nc_main = nc4.Dataset(f'{work_dir}/era5_openbc_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
+nc_main = nc4.Dataset(f'{exp_dir}/era5_openbc_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
 nc_main.createDimension('z', gd['ktot'])
 nc_init = nc_main.createGroup('init')
 
@@ -155,12 +183,12 @@ Create .ini file.
 """
 ini = io.read_ini('era5_openbc.ini.base')
 
-ini['grid']['itot'] = dom0.itot
-ini['grid']['jtot'] = dom0.jtot
+ini['grid']['itot'] = domain.itot
+ini['grid']['jtot'] = domain.jtot
 ini['grid']['ktot'] = gd['ktot']
 
-ini['grid']['xsize'] = dom0.xsize
-ini['grid']['ysize'] = dom0.ysize
+ini['grid']['xsize'] = domain.xsize
+ini['grid']['ysize'] = domain.ysize
 ini['grid']['zsize'] = gd['zsize']
 
 ini['buffer']['zstart'] = 0.75*gd['zsize']
@@ -173,20 +201,39 @@ ini['boundary']['sbot[qt]' ] = sbot_qt
 
 ini['time']['endtime'] = (end_date - start_date).total_seconds()
 
-ini['cross']['xz'] = dom0.ysize/2
-ini['cross']['yz'] = dom0.xsize/2
+ini['cross']['xz'] = domain.ysize/2
+ini['cross']['yz'] = domain.xsize/2
 
 # Open-bounary specific settings.
-ini['pres']['sw_openbc'] = sw_openbc
-ini['boundary_lateral']['sw_openbc'] = sw_openbc
-ini['boundary_lateral']['n_sponge'] = n_sponge
+ini['boundary_lateral']['n_sponge'] = domain.n_sponge
+ini['boundary_lateral']['tau_sponge'] = domain.n_sponge * domain.dx / (10 * 5)
+ini['boundary_lateral']['loadfreq'] = domain.lbc_freq
 
+# Hack; how to best define this.
+if args.domain == 0:
+    ini['boundary_lateral']['slist'] = ['thl', 'qt']
+else:
+    ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr', 'nr']
+
+# Output LBCs for child domain.
+if child is not None:
+    ini['subdomain']['sw_subdomain'] = True
+    ini['subdomain']['xstart'] = child.xstart_in_parent
+    ini['subdomain']['ystart'] = child.ystart_in_parent
+    ini['subdomain']['xend'] = child.xstart_in_parent + child.xsize 
+    ini['subdomain']['yend'] = child.ystart_in_parent + child.ysize
+    ini['subdomain']['grid_ratio'] = int(domain.dx / child.dx)
+    ini['subdomain']['n_ghost'] = child.n_ghost
+    ini['subdomain']['n_sponge'] = child.n_sponge
+    ini['subdomain']['savetime'] = child.lbc_freq
+else:
+    ini['subdomain']['sw_subdomain'] = False
 
 # Check if all values are set.
 if io.check_ini(ini):
     raise Exception('Some ini values are None!')
 
-io.save_ini(ini, f'{work_dir}/era5_openbc.ini')
+io.save_ini(ini, f'{exp_dir}/era5_openbc.ini')
 
 
 """
@@ -201,45 +248,56 @@ bs = thermo.calc_moist_basestate(
     dtype=TF)
 
 # Only save the density part for the dynamic core.
-thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{work_dir}/rhoref_era5.0000000')
+thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_dir}/rhoref_era5.0000000')
 
 
-"""
-Create initial fields and boundary conditions, tri-linearly interpolated from ERA5.
-The horizontal velocity fields are corrected to match the horizontal divergence between ERA5 and LES.
-This is needed to account for interpolation errors and differences in 3D ERA5 density and the 1D LES base state density.
-"""
-fields_era = {
-    'u': era5.u[:,:,:,:],
-    'v': era5.v[:,:,:,:],
-    'w': era5.wls[:,:,:,:],
-    'thl': era5.thl[:,:,:,:],
-    'qt': era5.qt[:,:,:,:],
-}
+if args.domain == 0:
+    """
+    Create initial fields and boundary conditions, tri-linearly interpolated from ERA5.
+    The horizontal velocity fields are corrected to match the horizontal divergence between ERA5 and LES.
+    This is needed to account for interpolation errors and differences in 3D ERA5 density and the 1D LES base state density.
+    """
+    fields_era = {
+        'u': era5.u[:,:,:,:],
+        'v': era5.v[:,:,:,:],
+        'w': era5.wls[:,:,:,:],
+        'thl': era5.thl[:,:,:,:],
+        'qt': era5.qt[:,:,:,:],
+    }
 
-p_era = era5.p[:,:,:,:]
-z_era = era5.z[:,:,:,:]
-time_era = era5.time_sec
+    p_era = era5.p[:,:,:,:]
+    z_era = era5.z[:,:,:,:]
+    time_era = era5.time_sec
 
-# Standard dev. of Gaussian filter applied to interpolated fields (m).
-sigma_h = 10_000
+    # Standard dev. of Gaussian filter applied to interpolated fields (m).
+    sigma_h = 10_000
 
-create_era5_input(
-    fields_era,
-    era5.lons.data,   # Strip off array masks.
-    era5.lats.data,
-    z_era,
-    p_era,
-    time_era,
-    gd['z'],
-    gd['zsize'],
-    bs['rho'],
-    bs['rhoh'],
-    dom0,
-    sigma_h,
-    perturb_size=4,
-    perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
-    name_suffix='era5',
-    output_dir=work_dir,
-    ntasks=16,
-    dtype=TF)
+    create_era5_input(
+        fields_era,
+        era5.lons.data,   # Strip off array masks.
+        era5.lats.data,
+        z_era,
+        p_era,
+        time_era,
+        gd['z'],
+        gd['zsize'],
+        0.75*gd['zsize'],
+        bs['rho'],
+        bs['rhoh'],
+        dom0,
+        sigma_h,
+        perturb_size=4,
+        perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
+        name_suffix='era5',
+        output_dir=exp_dir,
+        ntasks=16,
+        dtype=TF)
+
+else:
+    """
+    Copy boundary conditions from parent domain.
+    To prevent file name issues with in- and output,
+    the simulations save output with `_out` appended.
+    These need to be renamed...
+    """
+    parent_exp = f'{work_dir}/dom{args.domain-1}/'

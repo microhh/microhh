@@ -47,12 +47,12 @@ using Lbc_map = std::map<std::string, std::vector<TF>>;
 namespace blk = boundary_lateral_kernels;
 
 template<typename TF>
-class Lbc_edge
+class Bc_data
 {
     public:
-        Lbc_edge() {}
+        Bc_data() {}
 
-        Lbc_edge(
+        Bc_data(
             const std::vector<TF>& x_in,
             const std::vector<TF>& y_in,
             const std::vector<TF>& x,
@@ -234,6 +234,8 @@ class Boundary_lateral
 
         // Lateral boundary output for child domain.
         bool sw_subdomain;
+        bool sw_save_wtop;
+        bool sw_save_buffer;
 
         TF xstart_sub, xend_sub;
         TF ystart_sub, yend_sub;
@@ -245,11 +247,18 @@ class Boundary_lateral
         int grid_ratio_sub;
         int n_ghost_sub;
         int n_sponge_sub;
-        unsigned int savetime_sub;
 
-        std::map<std::string, Lbc_edge<TF>> lbc_sub_w;
-        std::map<std::string, Lbc_edge<TF>> lbc_sub_e;
-        std::map<std::string, Lbc_edge<TF>> lbc_sub_s;
-        std::map<std::string, Lbc_edge<TF>> lbc_sub_n;
+        // NOTE: savetime_sub is always used for both LBCs and w_top
+        //       These NEED to be on the same frequency.
+        //       The 3D sponge layer is optionally saved at a lower frequency.
+        unsigned int savetime_bcs;
+        unsigned int savetime_buffer;
+
+        std::map<std::string, Bc_data<TF>> lbc_sub_w;
+        std::map<std::string, Bc_data<TF>> lbc_sub_e;
+        std::map<std::string, Bc_data<TF>> lbc_sub_s;
+        std::map<std::string, Bc_data<TF>> lbc_sub_n;
+
+        Bc_data<TF> wtop_sub;
 };
 #endif

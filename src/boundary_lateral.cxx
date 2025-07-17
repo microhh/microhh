@@ -797,6 +797,9 @@ Boundary_lateral<TF>::Boundary_lateral(
 
     if (sw_subdomain)
     {
+        sw_save_wtop = inputin.get_item<bool>("subdomain", "sw_save_wtop", "", false);
+        sw_save_buffer = inputin.get_item<bool>("subdomain", "sw_save_buffer", "", false);
+
         xstart_sub = inputin.get_item<TF>("subdomain", "xstart", "");
         xend_sub   = inputin.get_item<TF>("subdomain", "xend", "");
         ystart_sub = inputin.get_item<TF>("subdomain", "ystart", "");
@@ -805,7 +808,8 @@ Boundary_lateral<TF>::Boundary_lateral(
         grid_ratio_sub = inputin.get_item<int>("subdomain", "grid_ratio", "");
         n_ghost_sub = inputin.get_item<int>("subdomain", "n_ghost", "");
         n_sponge_sub = inputin.get_item<int>("subdomain", "n_sponge", "");
-        savetime_sub = inputin.get_item<int>("subdomain", "savetime", "");
+        savetime_bcs = inputin.get_item<int>("subdomain", "savetime", "");
+
     }
 }
 
@@ -1350,7 +1354,7 @@ void Boundary_lateral<TF>::create_subdomain()
         const std::vector<TF>& x,
         const std::vector<TF>& y)
     {
-        return Lbc_edge<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
+        return Bc_data<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
     };
 
     // Scalars.
@@ -1377,6 +1381,15 @@ void Boundary_lateral<TF>::create_subdomain()
     lbc_sub_e.emplace("w", setup_edge(x_e,  y_ew, gd.x, gd.y));
     lbc_sub_s.emplace("w", setup_edge(x_ns, y_s,  gd.x, gd.y));
     lbc_sub_n.emplace("w", setup_edge(x_ns, y_n,  gd.x, gd.y));
+
+    if (sw_save_wtop)
+    {
+        // NN-interpolated `w` at domain top.
+        std::vector<TF> x = blk::arange<TF>(xstart_sub + 0.5 * dx_sub, xend_sub, dx_sub);
+        std::vector<TF> y = blk::arange<TF>(ystart_sub + 0.5 * dy_sub, yend_sub, dy_sub);
+
+        wtop_sub = Bc_data<TF>(x, y, gd.x, gd.y, gd, md, 1);
+    }
 }
 
 
@@ -1393,7 +1406,7 @@ unsigned long Boundary_lateral<TF>::get_time_limit(unsigned long itime)
 
     if (sw_subdomain)
     {
-        const unsigned long ifreq = convert_to_itime(savetime_sub);
+        const unsigned long ifreq = convert_to_itime(savetime_bcs);
         idtlim = std::min(idtlim, ifreq - itime % ifreq);
     }
 
@@ -1878,7 +1891,7 @@ template <typename TF>
 void Boundary_lateral<TF>::save_lbcs(
         Timeloop<TF>& timeloop)
 {
-    if (!sw_subdomain || timeloop.in_substep() || timeloop.get_itime() % convert_to_itime(savetime_sub) != 0)
+    if (!sw_subdomain || timeloop.in_substep() || timeloop.get_itime() % convert_to_itime(savetime_bcs) != 0)
         return;
 
     std::string msg = "Saving sub-domain LBCs for time " + std::to_string(timeloop.get_time()) + " ...";
@@ -1888,7 +1901,7 @@ void Boundary_lateral<TF>::save_lbcs(
     auto& md = master.get_MPI_data();
 
     auto save_binary = [&](
-            Lbc_edge<TF>& lbc,
+            Bc_data<TF>& lbc,
             const std::string& filename)
     {
         #ifdef USEMPI
@@ -1950,7 +1963,7 @@ void Boundary_lateral<TF>::save_lbcs(
 
 
     auto process_lbc = [&](
-        Lbc_edge<TF>& lbc,
+        Bc_data<TF>& lbc,
         std::vector<TF>& fld,
         const std::string& name,
         const std::string& loc)
@@ -1988,6 +2001,37 @@ void Boundary_lateral<TF>::save_lbcs(
         process_lbc(lbc_sub_e.at(fld.first), fld.second->fld, fld.first, "east");
         process_lbc(lbc_sub_s.at(fld.first), fld.second->fld, fld.first, "south");
         process_lbc(lbc_sub_n.at(fld.first), fld.second->fld, fld.first, "north");
+    }
+
+    if (sw_save_wtop)
+    {
+        const int kstart = gd.kend;
+        const int ktot = 1;
+
+        blk::nn_interpolate(
+            wtop_sub.fld.data(),
+            fields.ap.at("w")->fld.data(),
+            wtop_sub.nn_i.data(),
+            wtop_sub.nn_j.data(),
+            wtop_sub.itot_s,
+            wtop_sub.jtot_s,
+            ktot,
+            kstart,
+            wtop_sub.istride,
+            wtop_sub.jstride,
+            wtop_sub.kstride,
+            gd.istride,
+            gd.jstride,
+            gd.kstride);
+
+        // Setup filename with time.
+        std::string base_name = "wtop_out";
+        std::string file_name = timeloop.get_io_filename(base_name);
+
+        const int err = save_binary(wtop_sub, file_name);
+
+        if (err > 0)
+            throw std::runtime_error("Error saving LBCs.");
     }
 }
 

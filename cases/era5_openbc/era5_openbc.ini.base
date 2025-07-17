@@ -14,7 +14,7 @@ zsize=None
 swspatialorder=2
 
 [pres]
-sw_openbc=None
+sw_openbc=true
 
 [advec]
 swadvec=2i5
@@ -35,11 +35,10 @@ swtimedepphydro_3d=true
 loadfreq=3600
 
 [micro]
-swmicro=0
-#swmicro=2mom_warm
-#swmicrobudget=1
-#cflmax=1.2
-#Nc0=70e6
+swmicro=2mom_warm
+swmicrobudget=0
+cflmax=1.2
+Nc0=70e6
 
 [force]
 swlspres=geo
@@ -62,20 +61,32 @@ z0m=0.0002
 z0h=0.0002
 
 [boundary_lateral]
-sw_openbc=None
+sw_openbc=true
 sw_openbc_uv=true
 sw_openbc_w=true
 sw_neumann_w=false
 sw_wtop_2d=true
 sw_timedep=true
-slist=thl,qt
-loadfreq=3600
+slist=None
+loadfreq=None
 
 # Lateral sponge layer.
 sw_sponge=true
 n_sponge=None
-tau_sponge=60
-w_diff=0.000
+tau_sponge=None
+w_diff=0.003
+
+[subdomain]
+sw_subdomain=None
+sw_save_wtop=true
+savetime=-1
+xstart=-1
+xend=-1
+ystart=-1
+yend=-1
+grid_ratio=-1
+n_ghost=-1
+n_sponge-1
 
 [fields]
 visc=1.e-5
