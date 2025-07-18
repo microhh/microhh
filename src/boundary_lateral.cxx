@@ -2025,7 +2025,7 @@ void Boundary_lateral<TF>::save_lbcs(
             gd.kstride);
 
         // Setup filename with time.
-        std::string base_name = "wtop_out";
+        std::string base_name = "w_top_out";
         std::string file_name = timeloop.get_io_filename(base_name);
 
         const int err = save_binary(wtop_sub, file_name);

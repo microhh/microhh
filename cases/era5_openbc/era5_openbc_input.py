@@ -22,23 +22,26 @@
 
 # Standard library
 from datetime import datetime
-import sys
+from pathlib import Path
 import argparse
+import glob
 
 # Third-party.
 import netCDF4 as nc4
 import numpy as np
 import ls2d
 
-sys.path.append('/home/bart/meteo/models/microhhpy')
+# MicroHH Python package.
 from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 from microhhpy.openbc import create_era5_input
+from microhhpy.interpolate import regrid_les
 
 import microhhpy.io as io
 import microhhpy.thermo as thermo
 
 from microhhpy.logger import logger
 logger.setLevel('DEBUG')
+
 
 """
 User input
@@ -51,10 +54,10 @@ args = parser.parse_args()
 """
 Settings
 """
-TF = np.float64
+float_type = np.float64
 
 start_date = datetime(year=2020, month=2, day=5, hour=12)
-end_date   = datetime(year=2020, month=2, day=5, hour=13)
+end_date   = datetime(year=2020, month=2, day=5, hour=15)
 
 # All domains are put in a sub-folder `work_dir/domX`.
 work_dir = 'test/'
@@ -91,10 +94,10 @@ Define projection used for LES coordinates (m) to real world (lat/lon) transform
 """
 # Outer domain, nested in ERA5.
 dom0 = Domain(
-    xsize=32_000,
-    ysize=32_000,
-    itot=32,
-    jtot=32,
+    xsize=64_000,
+    ysize=64_000,
+    itot=64,
+    jtot=64,
     n_ghost=3,
     n_sponge=5,
     lbc_freq=3600,                  # Always 3600 for ERA5!
@@ -106,10 +109,10 @@ dom0 = Domain(
 
 # Inner domains(s), nested in parent LES domain.
 dom1 = Domain(
-    xsize = 16_000,
-    ysize = 16_000,
-    itot = 32,
-    jtot = 32,
+    xsize = 32_000,
+    ysize = 32_000,
+    itot = 64,
+    jtot = 64,
     n_ghost = 3,
     n_sponge = 3,
     lbc_freq = 60,
@@ -125,6 +128,7 @@ for i in range(len(domains)-1):
 
 domain = domains[args.domain]
 child = domain.child
+parent = domain.parent
 exp_dir = f'{work_dir}/dom{args.domain}/'
 
 
@@ -141,7 +145,7 @@ era5_1d = era5.get_les_input(gd['z'])
 Default vertical profile input.
 """
 def add_variable(name, dims, nc_group, data):
-    fld = nc_group.createVariable(name, TF, dims)
+    fld = nc_group.createVariable(name, float_type, dims)
     fld[:] = data
 
 nc_main = nc4.Dataset(f'{exp_dir}/era5_openbc_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
@@ -245,10 +249,10 @@ bs = thermo.calc_moist_basestate(
     ps,
     gd['z'],
     gd['zsize'],
-    dtype=TF)
+    dtype=float_type)
 
 # Only save the density part for the dynamic core.
-thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_dir}/rhoref_era5.0000000')
+thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_dir}/rhoref_overwrite.0000000')
 
 
 if args.domain == 0:
@@ -288,16 +292,68 @@ if args.domain == 0:
         sigma_h,
         perturb_size=4,
         perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
-        name_suffix='era5',
+        name_suffix='overwrite',
         output_dir=exp_dir,
         ntasks=16,
-        dtype=TF)
+        dtype=float_type)
 
 else:
     """
-    Copy boundary conditions from parent domain.
-    To prevent file name issues with in- and output,
-    the simulations save output with `_out` appended.
-    These need to be renamed...
+    Regrid initial fields, and copy boundary conditions from parent domain.
+    To prevent file name issues with in- and output, the simulations save
+    output with `_out` appended. These need to be renamed...
     """
-    parent_exp = f'{work_dir}/dom{args.domain-1}/'
+    parent_exp_dir = f'{work_dir}/dom{args.domain-1}/'
+
+    # Regrid t=0 restart files.
+    fields_3d = {
+            'u': 0, 
+            'v': 0,
+            'w': 0,
+            'thl': 0,
+            'qt': 0,
+            'qr': 0,
+            'nr': 0}
+
+    # Regrid all 2D pressure @ TOD files.
+    fields_2d = {
+            'phydro_tod': '*'}
+
+    regrid_les(
+            fields_3d,
+            fields_2d,
+            parent.xsize,
+            parent.ysize,
+            gd['z'],
+            gd['zh'],
+            parent.itot,
+            parent.jtot,
+            domain.xsize,
+            domain.ysize,
+            gd['z'],
+            gd['zh'],
+            domain.itot,
+            domain.jtot,
+            domain.xstart_in_parent,
+            domain.ystart_in_parent,
+            parent_exp_dir,
+            exp_dir,
+            float_type,
+            method='nearest',
+            name_suffix='overwrite')
+
+
+    # Link boundary conditions from parent to child domain.
+    # Only link the `_out` files, without `_out` they are LBCs used as input for the parent domain.
+    def link_files(src_pattern):
+
+        files = glob.glob(src_pattern)
+
+        for f in files:
+            src = Path(f).resolve()
+            name = src.name.replace('_out', '')
+            dst = Path(exp_dir) / name
+            dst.symlink_to(src)
+
+    link_files(f'{parent_exp_dir}/lbc_*_out.*')
+    link_files(f'{parent_exp_dir}/w_top_out.*')
