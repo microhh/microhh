@@ -256,6 +256,8 @@ ini['grid']['ysize'] = domain.ysize
 ini['grid']['zsize'] = vgrid.zsize
 
 ini['buffer']['zstart'] = zstart_buffer
+ini['buffer']['loadfreq'] = 3600 if args.domain == 'outer' else 600
+
 ini['time']['endtime'] = time_sec[-1]
 ini['time']['datetime_utc'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -271,18 +273,28 @@ else:
 
 if child is not None:
     ini['subdomain']['sw_subdomain'] = True
+
     ini['subdomain']['xstart'] = child.xstart_in_parent
     ini['subdomain']['ystart'] = child.ystart_in_parent
     ini['subdomain']['xend'] = child.xstart_in_parent + child.xsize
     ini['subdomain']['yend'] = child.ystart_in_parent + child.ysize
+
     ini['subdomain']['grid_ratio'] = int(domain.dx / child.dx)
     ini['subdomain']['n_ghost'] = child.n_ghost
     ini['subdomain']['n_sponge'] = child.n_sponge
-    ini['subdomain']['savetime'] = child.lbc_freq
+
+    ini['subdomain']['sw_save_wtop'] = True
+    ini['subdomain']['sw_save_buffer'] = True
+
+    ini['subdomain']['savetime_bcs'] = child.lbc_freq
+    ini['subdomain']['savetime_buffer'] = 600
+    ini['subdomain']['zstart_buffer'] = zstart_buffer
+
 else:
     ini['subdomain']['sw_subdomain'] = False
 
-ini['cross']['xy'] = [10, 100, 400, 1000, 1500, 3000, 5000, vgrid.zsize]        # NOTE: 10, 100 not part of MIP
+# NOTE: 10, 100 not part of MIP. 10 = needed for 10 m wind, temp, etc.
+ini['cross']['xy'] = [10, 400, 1000, 1500, 3000, 5000, vgrid.zsize]
 ini['cross']['xz'] = domain.ysize/2
 ini['cross']['yz'] = domain.xsize/2
 

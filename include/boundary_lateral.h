@@ -259,6 +259,13 @@ class Boundary_lateral
         std::map<std::string, Bc_data<TF>> lbc_sub_s;
         std::map<std::string, Bc_data<TF>> lbc_sub_n;
 
-        Bc_data<TF> wtop_sub;
+        Bc_data<TF> bc_wtop_sub;
+
+        TF zstart_buffer;
+        int buffer_kstart;
+        int buffer_kstarth;
+
+        Bc_data<TF> bc_buffer;
+        Bc_data<TF> bc_bufferh;
 };
 #endif

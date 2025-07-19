@@ -21,7 +21,7 @@ dz0 = 20
 heights = [0, 3000, 5000, 10000]
 factors = [1.01, 1.03, 1.08]
 vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
-vgrid.plot()
+#vgrid.plot()
 
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
@@ -68,7 +68,7 @@ def get_develop_domain():
     inner_dom.npx = 2
     inner_dom.npy = 4
 
-    plot_domains([outer_dom, inner_dom], use_projection=True)
+    #plot_domains([outer_dom, inner_dom], use_projection=True)
 
     return outer_dom, inner_dom
 

@@ -149,7 +149,7 @@ beta=2
 swbuffer_3d=true
 buffer3d_list=u,v,w,thl,qt
 swtimedep_buffer_3d=true
-loadfreq=3600
+loadfreq=None
 
 [time]
 endtime=None
