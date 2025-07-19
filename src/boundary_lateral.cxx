@@ -1960,8 +1960,8 @@ void Boundary_lateral<TF>::save_lbcs(
             int sub_start[3] = {0, lbc.j_range.first, lbc.i_range.first};
             int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
 
-            if (filename.find("buffer") != std::string::npos)
-                std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
+            //if (filename.find("buffer") != std::string::npos)
+            //    std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
 
             MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
             MPI_Type_commit(&subarray);
@@ -2091,20 +2091,20 @@ void Boundary_lateral<TF>::save_lbcs(
         for (auto& fld : fields.ap)
         {
             const int kstart = fld.first == "w" ? buffer_kstarth : buffer_kstart;
-            Bc_data<TF>& bc_buffer = fld.first == "w" ? bc_bufferh : bc_buffer;
+            Bc_data<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
 
             blk::nn_interpolate(
-                bc_buffer.fld.data(),
+                bc_buff.fld.data(),
                 fld.second->fld.data(),
-                bc_buffer.nn_i.data(),
-                bc_buffer.nn_j.data(),
-                bc_buffer.itot_s,
-                bc_buffer.jtot_s,
-                bc_buffer.ktot_s,
+                bc_buff.nn_i.data(),
+                bc_buff.nn_j.data(),
+                bc_buff.itot_s,
+                bc_buff.jtot_s,
+                bc_buff.ktot_s,
                 kstart,
-                bc_buffer.istride,
-                bc_buffer.jstride,
-                bc_buffer.kstride,
+                bc_buff.istride,
+                bc_buff.jstride,
+                bc_buff.kstride,
                 gd.istride,
                 gd.jstride,
                 gd.kstride);
@@ -2113,7 +2113,7 @@ void Boundary_lateral<TF>::save_lbcs(
             std::string base_name = fld.first + "_buffer_out";
             std::string file_name = timeloop.get_io_filename(base_name);
 
-            const int err = save_binary(bc_buffer, file_name);
+            const int err = save_binary(bc_buff, file_name);
 
             if (err > 0)
                 throw std::runtime_error("Error saving LBCs.");
