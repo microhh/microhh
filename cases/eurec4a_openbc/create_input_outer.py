@@ -37,15 +37,16 @@ from microhhpy.openbc import create_era5_input
 # Custom scripts from same directory.
 import helpers as hlp
 import constants
-from global_settings import float_type, work_path, cosmo_path, start_date, end_date
+from global_settings import float_type, work_path, cosmo_path, start_date, end_date, outer_dom
+from domain_definition import vgrid, zstart_buffer
 
-# Grid (horizontal/vertical) definition.
-from domain_definition import vgrid, outer_dom, zstart_buffer
+exp_path = f'{work_path}/outer'
 
 """
 Read basestate
 """
-rho, rhoh = thermo.read_basestate_density(f'{work_path}/rhoref_0.0000000', dtype=float_type)
+rho, rhoh = thermo.read_basestate_density(f'{exp_path}/rhoref_0.0000000', dtype=float_type)
+
 
 """
 Parse COSMO data.
@@ -91,6 +92,6 @@ create_era5_input(
     perturb_max_height=1000,
     clip_at_zero=['qt', 'qr'],
     name_suffix='0',
-    output_dir=work_path,
+    output_dir=exp_path,
     ntasks=8,
     dtype=float_type)

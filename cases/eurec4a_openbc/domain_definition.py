@@ -5,10 +5,6 @@ import ls2d
 # Make sure `microhhpy` is in the Python path!
 from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 
-# Help scripts from current directory.
-import global_settings
-import helpers as hlp
-
 """
 Define vertical grid. This is used in several scripts, so define it globally.
 """
@@ -34,7 +30,9 @@ proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +ty
 
 
 def get_develop_domain():
-
+    """
+    Test domain over BCO, to allow testing column stats.
+    """
     outer_dom = Domain(
         xsize=32000,
         ysize=16000,
@@ -42,8 +40,9 @@ def get_develop_domain():
         jtot=64,
         n_ghost=3,
         n_sponge=5,
-        lon=-57.7,
-        lat=13.3,
+        lbc_freq=3600,
+        lon=-59.432,
+        lat=13.165,
         anchor='center',
         proj_str=proj_str,
     )
@@ -51,7 +50,25 @@ def get_develop_domain():
     outer_dom.npx = 2
     outer_dom.npy = 4
 
-    inner_dom = None
+    inner_dom = Domain(
+        xsize=16000,
+        ysize=8000,
+        itot=128,
+        jtot=64,
+        n_ghost=3,
+        n_sponge=3,
+        lbc_freq=60,
+        parent=outer_dom,
+        xstart_in_parent=500,
+        ystart_in_parent=500
+    )
+
+    outer_dom.child = inner_dom
+
+    inner_dom.npx = 2
+    inner_dom.npy = 4
+
+    plot_domains([outer_dom, inner_dom], use_projection=True)
 
     return outer_dom, inner_dom
 
@@ -178,14 +195,12 @@ def get_production_domain_200m():
 
     outer_dom.child = inner_dom
 
-    domains = [outer_dom, inner_dom, ref_dom]
-
-    labels = []
-    labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
-    labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
-    labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
-
-    plot_domains(domains, use_projection=True, labels=labels)
+    #domains = [outer_dom, inner_dom, ref_dom]
+    #labels = []
+    #labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
+    #labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
+    #labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+    #plot_domains(domains, use_projection=True, labels=labels)
 
     return outer_dom, inner_dom
 
@@ -248,22 +263,23 @@ def get_production_domain_100m():
 
     outer_dom.child = inner_dom
 
-    domains = [outer_dom, inner_dom, ref_dom]
-
-    labels = []
-    labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
-    labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
-    labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
-
-    plot_domains(domains, use_projection=True, labels=labels)
+    #domains = [outer_dom, inner_dom, ref_dom]
+    #labels = []
+    #labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
+    #labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
+    #labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+    #plot_domains(domains, use_projection=True, labels=labels)
 
     return outer_dom, inner_dom
 
 
 if __name__ == '__main__':
+    """
+    Just for plotting vertical grid and/or domain.
+    """
 
-    #outer_dom, inner_dom = get_develop_domain()
+    outer_dom, inner_dom = get_develop_domain()
     #outer_dom, inner_dom = get_test_domain()
     #outer_dom, inner_dom = get_large_domain()
-    outer_dom, inner_dom = get_production_domain_200m()
+    #outer_dom, inner_dom = get_production_domain_200m()
     #outer_dom, inner_dom = get_production_domain_100m()

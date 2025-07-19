@@ -36,27 +36,37 @@ import microhhpy.io as io
 import microhhpy.thermo as thermo
 
 # Custom scripts from same directory.
-from global_settings import float_type, work_path, cosmo_path, start_date, end_date, microhh_path, gpt_veerman_path, ls2d_era5_path
+from global_settings import outer_dom, inner_dom, start_date, end_date, float_type
+from global_settings import work_path, cosmo_path, microhh_path, gpt_veerman_path, ls2d_era5_path
 import helpers as hlp
 
-# Grid (horizontal/vertical) definition.
-from domain_definition import vgrid, outer_dom, inner_dom, zstart_buffer
+# Vertical grid definition. Switch between domains is set in `global_settings.py`.
+from domain_definition import vgrid, zstart_buffer
 
 
 """
-Parse command line arguments.
+Parse command line arguments and switch domain definition.
 """
-#parser = argparse.ArgumentParser(description='EUREC4A openBC MicroHH setup')
-#parser.add_argument(
-#        '-d', '--domain', required=True,
-#        help='Name of domain ("inner" or "outer")')
-#args = parser.parse_args()
-#
-#if args.domain not in ('inner', 'outer'):
-#    raise Exception('Invalid domain choice.')
+parser = argparse.ArgumentParser(description='EUREC4A openBC MicroHH setup')
+parser.add_argument(
+        '-d', '--domain', required=True,
+        help='Name of domain ("inner" or "outer")')
+args = parser.parse_args()
+
+if args.domain not in ('inner', 'outer'):
+    raise Exception('Invalid domain choice.')
+
 
 dates = pd.date_range(start_date, end_date, freq='h')
 time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
+
+
+domain = inner_dom if args.domain == 'inner' else outer_dom
+child = domain.child
+parent = domain.parent
+dim_xy = (domain.jtot, domain.itot)
+
+exp_path = f'{work_path}/{args.domain}'
 
 
 """
@@ -64,10 +74,6 @@ Read grid info, and calculate spatial interpolation factors.
 """
 ds_cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES_XL.nc')
 ds_cosmo = ds_cosmo.sel(time=slice(start_date, end_date))
-
-#domain = inner_dom if args.domain == 'inner' else outer_dom
-domain = outer_dom
-dim_xy = (domain.jtot, domain.itot)
 
 # Calculate horizontal interpolation factors.
 if_s = hlp.Calc_xy_interpolation_factors(
@@ -86,16 +92,15 @@ Unit conversions (T -> thl etc.) are done in `read_cosmo()`.
 """
 print('Interpolating COSMO surface fields.')
 
-
 fld_s = np.empty(dim_xy, float_type)
 
 for t, time in enumerate(time_sec):
 
     hlp.interpolate_cosmo(fld_s, ds_cosmo.thl_sbot[t,:,:].values, if_s, None, float_type)
-    fld_s.tofile(f'{work_path}/thl_bot_in.{time:07d}')
+    fld_s.tofile(f'{exp_path}/thl_bot_in.{time:07d}')
 
     hlp.interpolate_cosmo(fld_s, ds_cosmo.qt_sbot[t,:,:].values, if_s, None, float_type)
-    fld_s.tofile(f'{work_path}/qt_bot_in.{time:07d}')
+    fld_s.tofile(f'{exp_path}/qt_bot_in.{time:07d}')
 
 
 """
@@ -129,8 +134,8 @@ def add_nc_dim(name, size, nc):
         nc.createDimension(name, size)
 
 
-nc_file = nc4.Dataset(f'{work_path}/eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
-add_nc_dim('z', vgrid.ktot, nc_file)
+nc_file = nc4.Dataset(f'{exp_path}/eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
+add_nc_dim('z', vgrid.kmax, nc_file)
 add_nc_var('z', ('z'), nc_file, vgrid.z)
 
 # Initial profiles. Not really used, but needed for `init` phase. The resulting
@@ -214,7 +219,7 @@ bs = thermo.calc_moist_basestate(
 
 # Only save the density part for the dynamic core.
 # A `_0` is appended to the name; this way the density created by `microhh init` can be overwritten with this one.
-thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{work_path}/rhoref_0.0000000')
+thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_path}/rhoref_0.0000000')
 
 
 """
@@ -222,7 +227,7 @@ Create 2D field with coriolis frequency.
 """
 omega = 2*np.pi/86400
 fc = 2 * omega * np.sin(np.deg2rad(domain.proj.lat))
-fc.astype(float_type).tofile(f'{work_path}/fc.0000000')
+fc.astype(float_type).tofile(f'{exp_path}/fc.0000000')
 
 
 """
@@ -244,7 +249,7 @@ ini['master']['npy'] = domain.npy
 
 ini['grid']['itot'] = domain.itot
 ini['grid']['jtot'] = domain.jtot
-ini['grid']['ktot'] = vgrid.ktot
+ini['grid']['ktot'] = vgrid.kmax
 
 ini['grid']['xsize'] = domain.xsize
 ini['grid']['ysize'] = domain.ysize
@@ -253,16 +258,44 @@ ini['grid']['zsize'] = vgrid.zsize
 ini['buffer']['zstart'] = zstart_buffer
 ini['time']['endtime'] = time_sec[-1]
 ini['time']['datetime_utc'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
+
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
+ini['boundary_lateral']['tau_sponge'] = domain.n_sponge * domain.dx / (10 * 5)
 
-tau_fac = 10*5  # = U * fac...
-ini['boundary_lateral']['tau_sponge'] = domain.n_sponge * domain.dx / tau_fac
+if args.domain == 'outer':
+    ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr']
+    ini['boundary_lateral']['sw_recycle[east]'] = True
+    ini['boundary_lateral']['sw_recycle[north]'] = True
+else:
+    ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr', 'nr']
 
+if child is not None:
+    ini['subdomain']['sw_subdomain'] = True
+    ini['subdomain']['xstart'] = child.xstart_in_parent
+    ini['subdomain']['ystart'] = child.ystart_in_parent
+    ini['subdomain']['xend'] = child.xstart_in_parent + child.xsize
+    ini['subdomain']['yend'] = child.ystart_in_parent + child.ysize
+    ini['subdomain']['grid_ratio'] = int(domain.dx / child.dx)
+    ini['subdomain']['n_ghost'] = child.n_ghost
+    ini['subdomain']['n_sponge'] = child.n_sponge
+    ini['subdomain']['savetime'] = child.lbc_freq
+else:
+    ini['subdomain']['sw_subdomain'] = False
+
+ini['cross']['xy'] = [10, 100, 400, 1000, 1500, 3000, 5000, vgrid.zsize]        # NOTE: 10, 100 not part of MIP
 ini['cross']['xz'] = domain.ysize/2
 ini['cross']['yz'] = domain.xsize/2
 
+# Column stats for BCO.
+x,y = domain.proj.to_xy(lon=-59.432, lat=13.165)
+if x < 0 or x > domain.xsize or x < 0 or y > domain.ysize:
+    raise Exception('Error, column outside domain!')
+
+ini['column']['coordinates[x]'] = x
+ini['column']['coordinates[y]'] = y
+
 io.check_ini(ini)
-io.save_ini(ini, f'{work_path}/eurec4a.ini')
+io.save_ini(ini, f'{exp_path}/eurec4a.ini')
 
 
 """
@@ -279,6 +312,6 @@ to_copy = [
         (f'{rrtmgp_path}/data/aerosol_optics.nc', 'aerosol_optics.nc')]
 
 for f in to_copy:
-    target = f'{work_path}/{f[1]}'
+    target = f'{exp_path}/{f[1]}'
     if not os.path.exists(target):
         shutil.copy(f[0], target)

@@ -15,6 +15,8 @@ zsize=None
 
 swspatialorder=2
 
+# Lat/lon used by radiation. Spatially constant!
+# What to do with comparison radiation BCO?
 lat=13.3
 lon=-57.7
 
@@ -103,7 +105,8 @@ sw_openbc_uv=true
 sw_openbc_w=true
 sw_neumann_w=false
 
-slist=thl,qt,qr
+#slist=thl,qt,qr
+slist=None
 
 sw_timedep=true
 sw_wtop_2d=true
@@ -122,6 +125,9 @@ sw_recycle[north]=true
 recycle_list=thl,qt,u,v,w
 tau_recycle=10
 recycle_offset=10
+
+[subdomain]
+sw_subdomain=None
 
 [fields]
 visc=1.e-5
@@ -161,13 +167,19 @@ swstats=1
 sampletime=60
 #masklist=ql,qlcore
 
+[column]
+swcolumn=1
+sampletime=60
+coordinates[x]=None
+coordinates[y]=None
+
 [cross]
 swcross=1
 sampletime=60
-crosslist=ql_path,qi_path,qr_path,qt_path,thl,qt,u,v,w,z0m,z0h,rr_bot,thl_fluxbot,qt_fluxbot,phydro_3d
-xy=10,100,400,1000,1500,3000,5000,6893.331937916643
-xz=None
-yz=None
+crosslist=thl_fluxbot,qt_fluxbot,u_fluxbot,v_fluxbot,lw_flux_dn,lw_flux_up,sw_flux_dn,sw_flux_up,sw_flux_dn_clear,sw_flux_up_clear,lw_flux_dn_clear,lw_flux_up_clear,qt_path,ql_path,qi_path,qr_path,u,v,w,thl,qt,ql,qr,rr_bot
+xy=None
+#xz=None
+#yz=None
 
 [dump]
 swdump=0
