@@ -329,8 +329,8 @@ def get_half_domain_100m():
         n_ghost=3,
         n_sponge=10,
         lbc_freq=3600,
-        lon=-55.7,
-        lat=14.2,
+        lon=-57.7,
+        lat=13.3,
         anchor='center',
         proj_str=proj_str,
     )
@@ -347,8 +347,8 @@ def get_half_domain_100m():
         n_sponge=3,
         lbc_freq=60,
         parent=outer_dom,
-        xstart_in_parent=21000,
-        ystart_in_parent=25200)
+        xstart_in_parent=12000,
+        ystart_in_parent=12000)
 
     inner_dom.npx = 32
     inner_dom.npy = 48
