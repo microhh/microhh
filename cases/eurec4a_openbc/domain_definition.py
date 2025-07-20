@@ -48,7 +48,8 @@ vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * vgrid.zsize
 
-proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
+#proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
+proj_str = '+proj=tmerc +lat_0=13.3 +lon_0=-57.7 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
 
 
 def get_develop_domain():
@@ -63,8 +64,8 @@ def get_develop_domain():
         n_ghost=3,
         n_sponge=5,
         lbc_freq=3600,
-        lon=-59.432,
-        lat=13.165,
+        lon=-57.7,
+        lat=13.3,
         anchor='center',
         proj_str=proj_str,
     )
@@ -81,8 +82,8 @@ def get_develop_domain():
         n_sponge=3,
         lbc_freq=60,
         parent=outer_dom,
-        xstart_in_parent=500,
-        ystart_in_parent=500
+        xstart_in_parent=5000,
+        ystart_in_parent=5000
     )
 
     outer_dom.child = inner_dom

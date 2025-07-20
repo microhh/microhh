@@ -313,7 +313,9 @@ ini['cross']['yz'] = domain.xsize/2
 # Column stats for BCO.
 x,y = domain.proj.to_xy(lon=-59.432, lat=13.165)
 if x < 0 or x > domain.xsize or x < 0 or y > domain.ysize:
-    raise Exception('Error, column outside domain!')
+    print('Warning: BCO coordinates outside domain. Setting column to domain center')
+    x = domain.xsize / 2
+    y = domain.ysize / 2
 
 ini['column']['coordinates[x]'] = x
 ini['column']['coordinates[y]'] = y
