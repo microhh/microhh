@@ -27,6 +27,7 @@ import ls2d
 # Make sure `microhhpy` is in the Python path!
 from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 
+
 """
 Define vertical grid. This is used in several scripts, so define it globally.
 """
@@ -296,13 +297,82 @@ def get_production_domain_100m():
     return outer_dom, inner_dom
 
 
+
+def get_half_domain_100m():
+    """
+    Half domain size at full resolution.
+    """
+    # Outer: npx=  32, npy=  24 -> cores= 768 | 1632 x  960 x  128 | pts/core=261120.0
+    # Inner: npx=  32, npy=  48 -> cores=1536 | 2496 x 1440 x  128 | pts/core=299520.0 
+
+    # Dummy, just for plotting.
+    # This is the domain requested by the intercomparison.
+    ref_dom = Domain(
+        xsize=500_000,
+        ysize=300_000,
+        itot=128,
+        jtot=64,
+        n_ghost=3,
+        n_sponge=5,
+        lbc_freq=3600,
+        lon=-57.7,  # Don't change
+        lat=13.3,   # Don't change
+        anchor='center',
+        proj_str=proj_str,
+    )
+
+    outer_dom = Domain(
+        xsize=1632*300,
+        ysize=960*300,
+        itot=1632,
+        jtot=960,
+        n_ghost=3,
+        n_sponge=10,
+        lbc_freq=3600,
+        lon=-55.7,
+        lat=14.2,
+        anchor='center',
+        proj_str=proj_str,
+    )
+
+    outer_dom.npx = 32
+    outer_dom.npy = 24
+
+    inner_dom = Domain(
+        xsize=2496*100,
+        ysize=1440*100,
+        itot=2496,
+        jtot=1440,
+        n_ghost=3,
+        n_sponge=3,
+        lbc_freq=60,
+        parent=outer_dom,
+        xstart_in_parent=21000,
+        ystart_in_parent=25200)
+
+    inner_dom.npx = 32
+    inner_dom.npy = 48
+
+    outer_dom.child = inner_dom
+
+    domains = [outer_dom, inner_dom, ref_dom]
+    labels = []
+    labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
+    labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
+    labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+    plot_domains(domains, use_projection=True, labels=labels)
+
+    return outer_dom, inner_dom
+
+
 if __name__ == '__main__':
     """
     Just for plotting vertical grid and/or domain.
     """
 
-    outer_dom, inner_dom = get_develop_domain()
+    #outer_dom, inner_dom = get_develop_domain()
     #outer_dom, inner_dom = get_test_domain()
     #outer_dom, inner_dom = get_large_domain()
     #outer_dom, inner_dom = get_production_domain_200m()
     #outer_dom, inner_dom = get_production_domain_100m()
+    outer_dom, inner_dom = get_half_domain_100m()
