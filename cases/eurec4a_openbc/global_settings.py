@@ -46,8 +46,8 @@ elif  syst == 'snellius':
     gpt_veerman_path = '/home/stratum2/meteo/models/coefficients_veerman'
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
-start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=1, hour=2)
+start_date = datetime(year=2020, month=2, day=1, hour=15)
+end_date   = datetime(year=2020, month=2, day=1, hour=16)
 #end_date   = datetime(year=2020, month=2, day=1, hour=3)
 
 # Global switch between domain definitions. Used by multiple scripts.

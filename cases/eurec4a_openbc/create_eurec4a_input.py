@@ -20,8 +20,10 @@
 # along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from pathlib import Path
 import argparse
 import shutil
+import glob
 import os
 
 import netCDF4 as nc4
@@ -34,6 +36,9 @@ import ls2d
 # Make sure `microhhpy` is in the Python path
 import microhhpy.io as io
 import microhhpy.thermo as thermo
+from microhhpy.spatial import calc_vertical_grid_2nd
+from microhhpy.openbc import create_era5_input
+from microhhpy.interpolate import regrid_les
 
 # Custom scripts from same directory.
 from global_settings import outer_dom, inner_dom, start_date, end_date, float_type
@@ -67,6 +72,13 @@ parent = domain.parent
 dim_xy = (domain.jtot, domain.itot)
 
 exp_path = f'{work_path}/{args.domain}'
+
+
+"""
+Calculate exact vertical grid LES. The grid definition from
+(LS)2D is slightly different from the one in MicroHH!
+"""
+gd = calc_vertical_grid_2nd(vgrid.z, vgrid.zsize)
 
 
 """
@@ -218,8 +230,8 @@ bs = thermo.calc_moist_basestate(
     float_type)
 
 # Only save the density part for the dynamic core.
-# A `_0` is appended to the name; this way the density created by `microhh init` can be overwritten with this one.
-thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_path}/rhoref_0.0000000')
+# `_ext` is appended to the name; this way the density created by `microhh init` can be overwritten with this one.
+thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_path}/rhoref_ext.0000000')
 
 
 """
@@ -327,3 +339,115 @@ for f in to_copy:
     target = f'{exp_path}/{f[1]}'
     if not os.path.exists(target):
         shutil.copy(f[0], target)
+
+
+if args.domain == 'outer':
+    """
+    Create input from COSMO 3D files.
+    """
+
+    cosmo = xr.open_dataset(f'{cosmo_path}/COSMO_CTRL_BC_nD_LES_XL.nc')
+    cosmo = cosmo.sel(time=slice(start_date, end_date))
+
+    fields_cosmo = {
+        'u': cosmo.u[:,:,:,:],
+        'v': cosmo.v[:,:,:,:],
+        'w': cosmo.w[:,:,:,:],
+        'thl': cosmo.thl[:,:,:,:],
+        'qt': cosmo.qt[:,:,:,:],
+        'qr': cosmo.qr[:,:,:,:],
+    }
+
+    p_cosmo = cosmo.p[:,:,:,:]
+    z_cosmo = np.broadcast_to(cosmo.z.values[None,:,None,None], cosmo.thl.shape)
+    time_cosmo = cosmo.time - cosmo.time[0]
+    time_cosmo = (time_cosmo.values.astype(np.float32)/1e9).astype(np.int32)
+
+    # Standard dev. of Gaussian filter applied to interpolated fields (m).
+    #sigma_h = 10_000
+    sigma_h = 0.
+
+    # MicroHHpy does not sprechen Deutsch. Just pretent it's ERA5...
+    create_era5_input(
+        fields_cosmo,
+        cosmo.rlon.data,
+        cosmo.rlat.data,
+        z_cosmo,
+        p_cosmo,
+        time_cosmo,
+        vgrid.z,
+        vgrid.zsize,
+        zstart_buffer,
+        bs['rho'],
+        bs['rhoh'],
+        outer_dom,
+        sigma_h,
+        perturb_size=3,
+        perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
+        perturb_max_height=1000,
+        clip_at_zero=['qt', 'qr'],
+        name_suffix='ext',
+        output_dir=exp_path,
+        ntasks=8,
+        dtype=float_type)
+
+
+else:
+    """
+    Create/copy input from parent domain.
+    """
+    parent_exp_path = f'{work_path}/outer'
+
+    # Regrid t=0 restart files.
+    fields_3d = {
+            'u': 0,
+            'v': 0,
+            'w': 0,
+            'thl': 0,
+            'qt': 0,
+            'qr': 0,
+            'nr': 0}
+
+    # Regrid all 2D pressure @ TOD files.
+    fields_2d = {
+            'phydro_tod': '*'}
+
+    regrid_les(
+            fields_3d,
+            fields_2d,
+            outer_dom.xsize,
+            outer_dom.ysize,
+            gd['z'],
+            gd['zh'],
+            outer_dom.itot,
+            outer_dom.jtot,
+            inner_dom.xsize,
+            inner_dom.ysize,
+            gd['z'],
+            gd['zh'],
+            inner_dom.itot,
+            inner_dom.jtot,
+            inner_dom.xstart_in_parent,
+            inner_dom.ystart_in_parent,
+            parent_exp_path,
+            exp_path,
+            float_type,
+            method='nearest',
+            name_suffix='ext')
+
+
+    # Link boundary conditions from parent to child domain.
+    # Only link the `_out` files, without `_out` they are LBCs used as input for the parent domain.
+    def link_files(src_pattern):
+
+        files = glob.glob(src_pattern)
+
+        for f in files:
+            src = Path(f).resolve()
+            name = src.name.replace('_out', '')
+            dst = Path(exp_path) / name
+            dst.symlink_to(src)
+
+    link_files(f'{parent_exp_path}/lbc_*_out.*')
+    link_files(f'{parent_exp_path}/w_top_out.*')
+    link_files(f'{parent_exp_path}/*_buffer_out.*')
