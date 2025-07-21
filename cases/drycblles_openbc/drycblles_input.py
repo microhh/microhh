@@ -122,7 +122,7 @@ if domain == 'outer':
     ini['subdomain']['grid_ratio'] = grid_ratio
     ini['subdomain']['n_ghost'] = n_ghost
     ini['subdomain']['n_sponge'] = n_sponge
-    ini['subdomain']['savetime'] = lbc_freq
+    ini['subdomain']['savetime_bcs'] = lbc_freq
 
 elif domain == 'inner':
 

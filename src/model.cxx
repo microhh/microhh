@@ -38,6 +38,7 @@
 #include "fft.h"
 #include "boundary.h"
 #include "boundary_lateral.h"
+#include "subdomain.h"
 #include "immersed_boundary.h"
 #include "advec.h"
 #include "diff.h"
@@ -145,6 +146,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
         background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
         lbc       = std::make_shared<Boundary_lateral<TF>>(master, *grid, *fields, *input);
+        subdomain = std::make_shared<Subdomain<TF>>(master, *grid, *fields, *input);
 
         particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
 
@@ -271,6 +273,7 @@ void Model<TF>::load()
     boundary->set_values();
 
     lbc->create(*input, *timeloop, *stats, sim_name);
+    subdomain->create();
 
     ib->create();
     buffer->create(*input, *input_nc, *stats, *timeloop);
@@ -508,6 +511,7 @@ void Model<TF>::exec()
 
                 // Save lateral boundaries for child.
                 lbc->save_lbcs(*timeloop);
+                subdomain->save_bcs(*timeloop);
 
                 // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
@@ -850,6 +854,7 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(lbc          ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(subdomain    ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(particle_bin ->get_time_limit());
 
     // Set the time step.

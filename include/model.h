@@ -39,6 +39,7 @@ template<typename> class Timeloop;
 template<typename> class FFT;
 template<typename> class Boundary;
 template<typename> class Boundary_lateral;
+template<typename> class Subdomain;
 template<typename> class Immersed_boundary;
 template<typename> class Buffer;
 template<typename> class Advec;
@@ -93,6 +94,7 @@ class Model
 
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Boundary_lateral<TF>> lbc;
+        std::shared_ptr<Subdomain<TF>> subdomain;
         std::shared_ptr<Immersed_boundary<TF>> ib;
         std::shared_ptr<Buffer<TF>> buffer;
         std::shared_ptr<Advec<TF>> advec;
