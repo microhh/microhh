@@ -313,7 +313,7 @@ void Subdomain<TF>::save_bcs(
     if (timeloop.get_itime() % convert_to_itime(savetime_bcs) == 0)
     {
         // Save boundary conditions (lateral + top).
-        std::string msg = "Saving sub-domain LBCs for time " + std::to_string(timeloop.get_time()) + " ...";
+        std::string msg = "Saving subdomain LBCs for time " + std::to_string(timeloop.get_time()) + " ...";
         master.print_message(msg);
 
         auto process_lbc = [&](
@@ -339,7 +339,7 @@ void Subdomain<TF>::save_bcs(
                 gd.kstride);
 
             // Setup filename with time.
-            std::string base_name = "lbc_" + name + "_" + loc + "_out2";
+            std::string base_name = "lbc_" + name + "_" + loc + "_out";
             std::string file_name = timeloop.get_io_filename(base_name);
 
             const int err = save_binary(lbc, file_name);
@@ -379,7 +379,7 @@ void Subdomain<TF>::save_bcs(
                 gd.kstride);
 
             // Setup filename with time.
-            std::string base_name = "w_top_out2";
+            std::string base_name = "w_top_out";
             std::string file_name = timeloop.get_io_filename(base_name);
 
             const int err = save_binary(bc_wtop, file_name);
@@ -389,7 +389,6 @@ void Subdomain<TF>::save_bcs(
         }
 
     }
-
 
     if (sw_save_buffer && timeloop.get_itime() % convert_to_itime(savetime_buffer) == 0)
     {
@@ -419,7 +418,7 @@ void Subdomain<TF>::save_bcs(
                 gd.kstride);
 
             // Setup filename with time.
-            std::string base_name = fld.first + "_buffer_out2";
+            std::string base_name = fld.first + "_buffer_out";
             std::string file_name = timeloop.get_io_filename(base_name);
 
             const int err = save_binary(bc_buff, file_name);

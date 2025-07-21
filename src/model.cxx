@@ -509,8 +509,7 @@ void Model<TF>::exec()
                 limiter->exec(timeloop->get_sub_time_step(), *stats);
                 check("limiter");
 
-                // Save lateral boundaries for child.
-                lbc->save_lbcs(*timeloop);
+                // Save boundary conditions for child domain.
                 subdomain->save_bcs(*timeloop);
 
                 // Calculate the total tendency statistics, if necessary
