@@ -912,8 +912,6 @@ void Boundary_lateral<TF>::read_lbc(
         char filename[256];
         std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
 
-        //master.print_message("Loading \"%s\" ... ", filename);
-
         FILE *pFile;
         pFile = fopen(filename, "rb");
 
@@ -931,15 +929,10 @@ void Boundary_lateral<TF>::read_lbc(
                 success = false;
         }
 
-        //if (success)
-        //    master.print_message("OK\n");
-        //else
         if (!success)
         {
-            master.print_message("FAILED\n");
-
             #ifdef USEMPI
-            std::cout << "SINGLE PROCESS EXCEPTION: reading binary failed." << std::endl;
+            std::cout << "SINGLE PROCESS EXCEPTION: reading binary " << filename << " failed." << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
             #else
             throw std::runtime_error("ERROR: reading binary failed");
@@ -1751,6 +1744,7 @@ void Boundary_lateral<TF>::read_xy_slice(
 
     fields.release_tmp(tmp);
 }
+
 
 #ifdef FLOAT_SINGLE
 template class Boundary_lateral<float>;
