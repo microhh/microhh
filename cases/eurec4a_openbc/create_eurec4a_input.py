@@ -273,6 +273,7 @@ ini['buffer']['loadfreq'] = 3600 if args.domain == 'outer' else 600
 ini['time']['endtime'] = time_sec[-1]
 ini['time']['datetime_utc'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
 
+ini['boundary_lateral']['loadfreq'] = domain.lbc_freq
 ini['boundary_lateral']['n_sponge'] = domain.n_sponge
 ini['boundary_lateral']['tau_sponge'] = domain.n_sponge * domain.dx / (10 * 5)
 

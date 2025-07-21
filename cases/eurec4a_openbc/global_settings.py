@@ -29,8 +29,8 @@ import domain_definition as dd
 float_type = np.float64
 
 # Data paths.
-syst = 'eddy'
-#syst = 'snellius'
+#syst = 'eddy'
+syst = 'snellius'
 
 if syst == 'eddy':
     cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/'
@@ -41,14 +41,14 @@ if syst == 'eddy':
 
 elif  syst == 'snellius':
     cosmo_path = '/gpfs/work3/0/lesmodels/eurec4a'
-    work_path = '/scratch-shared/stratum2/eurec4a_test_xl/'
+    work_path = '/scratch-shared/stratum2/eurec4a_half'
     microhh_path = '/home/stratum2/meteo/models/microhh'
     gpt_veerman_path = '/home/stratum2/meteo/models/coefficients_veerman'
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
-start_date = datetime(year=2020, month=2, day=1, hour=15)
-end_date   = datetime(year=2020, month=2, day=1, hour=16)
-#end_date   = datetime(year=2020, month=2, day=1, hour=3)
+start_date = datetime(year=2020, month=2, day=1, hour=0)
+end_date   = datetime(year=2020, month=2, day=3, hour=0)
 
 # Global switch between domain definitions. Used by multiple scripts.
-outer_dom, inner_dom = dd.get_develop_domain()
+#outer_dom, inner_dom = dd.get_develop_domain()
+outer_dom, inner_dom = dd.get_half_domain_100m()

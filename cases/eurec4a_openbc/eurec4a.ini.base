@@ -110,7 +110,7 @@ slist=None
 
 sw_timedep=true
 sw_wtop_2d=true
-loadfreq=3600
+loadfreq=None
 
 # Lateral sponge & diffusion layer:
 sw_sponge=True
