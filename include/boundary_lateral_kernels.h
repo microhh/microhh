@@ -155,9 +155,11 @@ namespace boundary_lateral_kernels
                 }
     }
 
-
-
-
-
+    template<typename TF>
+    bool is_equal(const TF a, const TF b)
+    {
+        const TF epsilon = std::max(TF(10) * std::numeric_limits<TF>::epsilon(), std::max(std::abs(a), std::abs(b)) * TF(10) * std::numeric_limits<TF>::epsilon());
+        return std::abs(a - b) <= epsilon;
+    }
 }
 #endif
