@@ -57,7 +57,7 @@ Settings
 float_type = np.float64
 
 start_date = datetime(year=2020, month=2, day=5, hour=12)
-end_date   = datetime(year=2020, month=2, day=5, hour=15)
+end_date   = datetime(year=2020, month=2, day=5, hour=13)
 
 # All domains are put in a sub-folder `work_dir/domX`.
 work_dir = 'test/'
@@ -87,6 +87,8 @@ NOTE: vertical grid definition in (LS)2D is not identical to MicroHH's grid.
 """
 _g = ls2d.grid.Grid_linear_stretched(kmax=128, dz0=20, alpha=0.01)
 gd = calc_vertical_grid_2nd(_g.z, _g.zsize)
+
+zstart_buffer = 0.75 * gd['zsize']
 
 
 """
@@ -195,7 +197,7 @@ ini['grid']['xsize'] = domain.xsize
 ini['grid']['ysize'] = domain.ysize
 ini['grid']['zsize'] = gd['zsize']
 
-ini['buffer']['zstart'] = 0.75*gd['zsize']
+ini['buffer']['zstart'] = zstart_buffer
 ini['thermo']['pbot'] = ps
 
 ini['boundary']['stop[thl]'] = stop_thl
@@ -216,8 +218,10 @@ ini['boundary_lateral']['loadfreq'] = domain.lbc_freq
 # Hack; how to best define this.
 if args.domain == 0:
     ini['boundary_lateral']['slist'] = ['thl', 'qt']
+    ini['buffer']['loadfreq'] = 3600
 else:
     ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr', 'nr']
+    ini['buffer']['loadfreq'] = 600
 
 # Output LBCs for child domain.
 if child is not None:
@@ -226,12 +230,20 @@ if child is not None:
     ini['subdomain']['ystart'] = child.ystart_in_parent
     ini['subdomain']['xend'] = child.xstart_in_parent + child.xsize 
     ini['subdomain']['yend'] = child.ystart_in_parent + child.ysize
-    ini['subdomain']['grid_ratio'] = int(domain.dx / child.dx)
+    ini['subdomain']['grid_ratio_ij'] = int(domain.dx / child.dx)
+    ini['subdomain']['grid_ratio_k'] = 1
     ini['subdomain']['n_ghost'] = child.n_ghost
     ini['subdomain']['n_sponge'] = child.n_sponge
-    ini['subdomain']['savetime'] = child.lbc_freq
+    ini['subdomain']['savetime_bcs'] = child.lbc_freq
+    ini['subdomain']['sw_save_wtop'] = True
+    ini['subdomain']['sw_save_buffer'] = True
+    ini['subdomain']['savetime_buffer'] = 600
+    ini['subdomain']['zstart_buffer'] = zstart_buffer
+
 else:
     ini['subdomain']['sw_subdomain'] = False
+    ini['subdomain']['sw_save_wtop'] = False
+    ini['subdomain']['sw_save_buffer'] = False
 
 # Check if all values are set.
 if io.check_ini(ini):
@@ -357,3 +369,4 @@ else:
 
     link_files(f'{parent_exp_dir}/lbc_*_out.*')
     link_files(f'{parent_exp_dir}/w_top_out.*')
+    link_files(f'{parent_exp_dir}/*_buffer_out.*')

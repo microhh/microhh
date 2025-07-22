@@ -85,15 +85,20 @@ w_diff=0.003
 
 [subdomain]
 sw_subdomain=None
-sw_save_wtop=true
-savetime=-1
+sw_save_wtop=None
+sw_save_buffer=None
 xstart=-1
 xend=-1
 ystart=-1
 yend=-1
-grid_ratio=-1
+grid_ratio_ij=-1
+grid_ratio_k=-1
 n_ghost=-1
 n_sponge-1
+savetime_bcs=-1
+savetime_buffer=-1
+zstart_buffer=-1
+
 
 [fields]
 visc=1.e-5
@@ -109,6 +114,11 @@ swbuffer=1
 zstart=None
 sigma=0.00223
 beta=2.
+
+swbuffer_3d=true
+buffer3d_list=u,v,w,thl,qt
+swtimedep_buffer_3d=true
+loadfreq=None
 
 [time]
 endtime=None
