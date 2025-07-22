@@ -31,8 +31,10 @@
 #include "fields.h"
 #include "input.h"
 #include "constants.h"
+#include "nn_interpolator_kernels.h"
 
-namespace blk = boundary_lateral_kernels;
+namespace nnk = NN_interpolator_kernels;
+
 
 namespace
 {
@@ -41,6 +43,14 @@ namespace
     template<> MPI_Datatype mpi_fp_type<double>() { return MPI_DOUBLE; }
     template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
     #endif
+
+
+    template<typename TF>
+    bool is_equal(const TF a, const TF b)
+    {
+        const TF epsilon = std::max(TF(10) * std::numeric_limits<TF>::epsilon(), std::max(std::abs(a), std::abs(b)) * TF(10) * std::numeric_limits<TF>::epsilon());
+        return std::abs(a - b) <= epsilon;
+    }
 }
 
 
@@ -101,7 +111,7 @@ void Subdomain<TF>::create()
 
     auto check_subdomain = [&](const TF value, const TF spacing, const std::string& name)
     {
-        if (!blk::is_equal(std::fmod(value, spacing), TF(0)))
+        if (!is_equal(std::fmod(value, spacing), TF(0)))
         {
             error = true;
             master.print_message(
@@ -130,23 +140,23 @@ void Subdomain<TF>::create()
 
     // Coordinates of LBCs at different grid locations.
     // Full levels x/y.
-    std::vector<TF> x_ns = blk::arange<TF>(xstart - (n_ghost  - 0.5) * dx, xend   + n_ghost  * dx, dx);
-    std::vector<TF> x_w  = blk::arange<TF>(xstart - (n_ghost  - 0.5) * dx, xstart + n_sponge * dx, dx);
-    std::vector<TF> x_e  = blk::arange<TF>(xend   - (n_sponge - 0.5) * dx, xend   + n_ghost  * dx, dx);
+    std::vector<TF> x_ns = nnk::arange<TF>(xstart - (n_ghost  - 0.5) * dx, xend   + n_ghost  * dx, dx);
+    std::vector<TF> x_w  = nnk::arange<TF>(xstart - (n_ghost  - 0.5) * dx, xstart + n_sponge * dx, dx);
+    std::vector<TF> x_e  = nnk::arange<TF>(xend   - (n_sponge - 0.5) * dx, xend   + n_ghost  * dx, dx);
 
-    std::vector<TF> y_ew = blk::arange<TF>(ystart - (n_ghost  - 0.5) * dy, yend   + n_ghost  * dy, dy);
-    std::vector<TF> y_n  = blk::arange<TF>(yend   - (n_sponge - 0.5) * dy, yend   + n_ghost  * dy, dy);
-    std::vector<TF> y_s  = blk::arange<TF>(ystart - (n_ghost  - 0.5) * dy, ystart + n_sponge * dy, dy);
+    std::vector<TF> y_ew = nnk::arange<TF>(ystart - (n_ghost  - 0.5) * dy, yend   + n_ghost  * dy, dy);
+    std::vector<TF> y_n  = nnk::arange<TF>(yend   - (n_sponge - 0.5) * dy, yend   + n_ghost  * dy, dy);
+    std::vector<TF> y_s  = nnk::arange<TF>(ystart - (n_ghost  - 0.5) * dy, ystart + n_sponge * dy, dy);
 
     // Half level `x` for `u`.
-    std::vector<TF> xh_ns = blk::arange<TF>(xstart - n_ghost  * dx, xend   + n_ghost  * dx,        dx);
-    std::vector<TF> xh_w  = blk::arange<TF>(xstart - n_ghost  * dx, xstart + n_sponge * dx + dx/2, dx);
-    std::vector<TF> xh_e  = blk::arange<TF>(xend   - n_sponge * dx, xend   + n_ghost  * dx,        dx);
+    std::vector<TF> xh_ns = nnk::arange<TF>(xstart - n_ghost  * dx, xend   + n_ghost  * dx,        dx);
+    std::vector<TF> xh_w  = nnk::arange<TF>(xstart - n_ghost  * dx, xstart + n_sponge * dx + dx/2, dx);
+    std::vector<TF> xh_e  = nnk::arange<TF>(xend   - n_sponge * dx, xend   + n_ghost  * dx,        dx);
 
     // Half level `y` for `v`.
-    std::vector<TF> yh_ew = blk::arange<TF>(ystart - n_ghost  * dy, yend   + n_ghost  * dy,        dy);
-    std::vector<TF> yh_n  = blk::arange<TF>(yend   - n_sponge * dy, yend   + n_ghost  * dy,        dy);
-    std::vector<TF> yh_s  = blk::arange<TF>(ystart - n_ghost  * dy, ystart + n_sponge * dy + dy/2, dy);
+    std::vector<TF> yh_ew = nnk::arange<TF>(ystart - n_ghost  * dy, yend   + n_ghost  * dy,        dy);
+    std::vector<TF> yh_n  = nnk::arange<TF>(yend   - n_sponge * dy, yend   + n_ghost  * dy,        dy);
+    std::vector<TF> yh_s  = nnk::arange<TF>(ystart - n_ghost  * dy, ystart + n_sponge * dy + dy/2, dy);
 
     // Vertical coordinates are more tricky; by refining the grid, we cut each full level confined by
     // `zh[k] -> zh[k+1]` into `grid_ratio_k` equal layers, and next calculate the full level heights
@@ -200,7 +210,7 @@ void Subdomain<TF>::create()
         const int kstart = gd.kgc;
         const int ktot = gd.ktot;
 
-        return NN_data<TF>(x_lbc, y_lbc, z_lbc, x, y, z, gd, md);
+        return NN_interpolator<TF>(x_lbc, y_lbc, z_lbc, x, y, z, gd, md);
     };
 
     // Scalars.
@@ -231,11 +241,11 @@ void Subdomain<TF>::create()
     if (sw_save_wtop)
     {
         // NN-interpolated `w` at domain top.
-        std::vector<TF> x_bc = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
-        std::vector<TF> y_bc = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
+        std::vector<TF> x_bc = nnk::arange<TF>(xstart + 0.5 * dx, xend, dx);
+        std::vector<TF> y_bc = nnk::arange<TF>(ystart + 0.5 * dy, yend, dy);
         std::vector<TF> zh_bc = {gd.zh[gd.kend]};
 
-        bc_wtop = NN_data<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
+        bc_wtop = NN_interpolator<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
     }
 
     if (sw_save_buffer)
@@ -250,14 +260,14 @@ void Subdomain<TF>::create()
         const int kstart  = std::distance(z.begin(), it);
         const int kstarth = std::distance(zh.begin(), ith);
 
-        std::vector<TF> x_bc = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
-        std::vector<TF> y_bc = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
+        std::vector<TF> x_bc = nnk::arange<TF>(xstart + 0.5 * dx, xend, dx);
+        std::vector<TF> y_bc = nnk::arange<TF>(ystart + 0.5 * dy, yend, dy);
 
         std::vector<TF> z_bc(z.begin() + kstart, z.end());
         std::vector<TF> zh_bc(zh.begin() + kstarth, zh.end());
 
-        bc_buffer  = NN_data<TF>(x_bc, y_bc, z_bc,  gd.x, gd.y, gd.z, gd, md);
-        bc_bufferh = NN_data<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
+        bc_buffer  = NN_interpolator<TF>(x_bc, y_bc, z_bc,  gd.x, gd.y, gd.z, gd, md);
+        bc_bufferh = NN_interpolator<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
     }
 }
 
@@ -294,7 +304,7 @@ void Subdomain<TF>::save_bcs(
     auto& md = master.get_MPI_data();
 
     auto save_binary = [&](
-            NN_data<TF>& lbc,
+            NN_interpolator<TF>& lbc,
             const std::string& filename)
     {
         #ifdef USEMPI
@@ -365,12 +375,12 @@ void Subdomain<TF>::save_bcs(
         master.print_message(msg);
 
         auto process_lbc = [&](
-            NN_data<TF>& lbc,
+            NN_interpolator<TF>& lbc,
             std::vector<TF>& fld,
             const std::string& name,
             const std::string& loc)
         {
-            blk::nn_interpolate(
+            nnk::nn_interpolate(
                 lbc.fld.data(),
                 fld.data(),
                 lbc.nn_i.data(),
@@ -410,7 +420,7 @@ void Subdomain<TF>::save_bcs(
             const int kstart = gd.kend;
             const int ktot = 1;
 
-            blk::nn_interpolate(
+            nnk::nn_interpolate(
                 bc_wtop.fld.data(),
                 fields.ap.at("w")->fld.data(),
                 bc_wtop.nn_i.data(),
@@ -447,9 +457,9 @@ void Subdomain<TF>::save_bcs(
         for (auto& fld : fields.ap)
         {
             // Switch between full and half levels.
-            NN_data<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
+            NN_interpolator<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
 
-            blk::nn_interpolate(
+            nnk::nn_interpolate(
                 bc_buff.fld.data(),
                 fld.second->fld.data(),
                 bc_buff.nn_i.data(),

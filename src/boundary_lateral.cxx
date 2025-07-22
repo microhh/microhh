@@ -27,8 +27,6 @@
 #include <cmath>
 
 #include "boundary_lateral.h"
-#include "boundary_lateral_kernels.h"
-
 #include "netcdf_interface.h"
 #include "grid.h"
 #include "fields.h"
@@ -37,8 +35,6 @@
 #include "timeloop.h"
 #include "stats.h"
 #include "constants.h"
-
-namespace blk = boundary_lateral_kernels;
 
 namespace
 {

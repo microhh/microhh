@@ -26,7 +26,7 @@
 #include <vector>
 
 
-namespace boundary_lateral_kernels
+namespace NN_interpolator_kernels
 {
     template<typename TF>
     std::vector<TF> arange(
@@ -153,14 +153,6 @@ namespace boundary_lateral_kernels
 
                     fld_out[ijk_out] = fld_in[ijk_in];
                 }
-    }
-
-
-    template<typename TF>
-    bool is_equal(const TF a, const TF b)
-    {
-        const TF epsilon = std::max(TF(10) * std::numeric_limits<TF>::epsilon(), std::max(std::abs(a), std::abs(b)) * TF(10) * std::numeric_limits<TF>::epsilon());
-        return std::abs(a - b) <= epsilon;
     }
 }
 #endif

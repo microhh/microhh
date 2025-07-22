@@ -29,7 +29,6 @@
 
 #include "master.h"
 #include "grid.h"
-#include "boundary_lateral_kernels.h"
 
 class Master;
 class Input;
