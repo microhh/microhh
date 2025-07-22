@@ -74,6 +74,10 @@ Subdomain<TF>::Subdomain(
             savetime_buffer = inputin.get_item<int>("subdomain", "savetime_buffer", "");
             zstart_buffer = inputin.get_item<TF>("subdomain", "zstart_buffer", "");
         }
+
+        // Checks.
+        if (grid_ratio_ij < 1 || grid_ratio_k < 1)
+            throw std::runtime_error("Grid refinement ratios should be equal to or larger than 1.");
     }
 }
 
@@ -144,56 +148,96 @@ void Subdomain<TF>::create()
     std::vector<TF> yh_n  = blk::arange<TF>(yend   - n_sponge * dy, yend   + n_ghost  * dy,        dy);
     std::vector<TF> yh_s  = blk::arange<TF>(ystart - n_ghost  * dy, ystart + n_sponge * dy + dy/2, dy);
 
+    // Vertical coordinates are more tricky; by refining the grid, we cut each full level confined by
+    // `zh[k] -> zh[k+1]` into `grid_ratio_k` equal layers, and next calculate the full level heights
+    // that satisfy our grid definition `z[k] = 0.5 * (zh[k-1] + zh[k])`. For strongly stretched grids,
+    // this results in strange locations for `z`...
+    std::vector<TF> z;
+    std::vector<TF> zh;
+
+    if (grid_ratio_k > 1)
+    {
+        const int ktot_n = grid_ratio_k * gd.ktot;
+
+        // Define new grid location (without ghost cells).
+        z.resize(ktot_n);
+        std::vector<TF> zh_tmp(ktot_n+1);
+
+        // Calculate new half level heights.
+        for (int k=0; k<gd.ktot; ++k)
+        {
+            const int kk = k + gd.kgc;
+            const TF dz = gd.dz[kk] / grid_ratio_k;
+
+            for (int s=0; s<grid_ratio_k; ++s)
+                zh_tmp[k * grid_ratio_k + s] = gd.zh[kk] + s * dz;
+        }
+
+        // Reconstruct new full level heights.
+        z[0] = TF(0.5) * (zh_tmp[0] + zh_tmp[1]);
+        for (int k=1; k<ktot_n; ++k)
+            z[k] = TF(2) * zh_tmp[k] - z[k-1];
+
+        // Remove top layer from `zh`: it should not be included in the 3D `w` files.
+        zh = std::vector<TF>(zh_tmp.begin(), zh_tmp.begin() + ktot_n);
+    }
+    else
+    {
+        z  = std::vector<TF>(gd.z.begin()  + gd.kstart, gd.z.begin()  + gd.kend);
+        zh = std::vector<TF>(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend);
+    }
+
+
     auto setup_edge = [&](
         const std::vector<TF>& x_lbc,
         const std::vector<TF>& y_lbc,
+        const std::vector<TF>& z_lbc,
         const std::vector<TF>& x,
-        const std::vector<TF>& y)
+        const std::vector<TF>& y,
+        const std::vector<TF>& z)
     {
         // Save all height levels.
         const int kstart = gd.kgc;
         const int ktot = gd.ktot;
 
-        return NN_data<TF>(x_lbc, y_lbc, x, y, kstart, ktot, grid_ratio_k, gd, md);
+        return NN_data<TF>(x_lbc, y_lbc, z_lbc, x, y, z, gd, md);
     };
 
     // Scalars.
     for (auto& fld : fields.sp)
     {
-        lbc_w.emplace(fld.first, setup_edge(x_w,  y_ew, gd.x, gd.y));
-        lbc_e.emplace(fld.first, setup_edge(x_e,  y_ew, gd.x, gd.y));
-        lbc_s.emplace(fld.first, setup_edge(x_ns, y_s,  gd.x, gd.y));
-        lbc_n.emplace(fld.first, setup_edge(x_ns, y_n,  gd.x, gd.y));
+        lbc_w.emplace(fld.first, setup_edge(x_w,  y_ew, z, gd.x, gd.y, gd.z));
+        lbc_e.emplace(fld.first, setup_edge(x_e,  y_ew, z, gd.x, gd.y, gd.z));
+        lbc_s.emplace(fld.first, setup_edge(x_ns, y_s,  z, gd.x, gd.y, gd.z));
+        lbc_n.emplace(fld.first, setup_edge(x_ns, y_n,  z, gd.x, gd.y, gd.z));
     }
 
     // Velocity components.
-    lbc_w.emplace("u", setup_edge(xh_w,  y_ew, gd.xh, gd.y));
-    lbc_e.emplace("u", setup_edge(xh_e,  y_ew, gd.xh, gd.y));
-    lbc_s.emplace("u", setup_edge(xh_ns, y_s,  gd.xh, gd.y));
-    lbc_n.emplace("u", setup_edge(xh_ns, y_n,  gd.xh, gd.y));
+    lbc_w.emplace("u", setup_edge(xh_w,  y_ew, z, gd.xh, gd.y, gd.z));
+    lbc_e.emplace("u", setup_edge(xh_e,  y_ew, z, gd.xh, gd.y, gd.z));
+    lbc_s.emplace("u", setup_edge(xh_ns, y_s,  z, gd.xh, gd.y, gd.z));
+    lbc_n.emplace("u", setup_edge(xh_ns, y_n,  z, gd.xh, gd.y, gd.z));
 
-    lbc_w.emplace("v", setup_edge(x_w,  yh_ew, gd.x, gd.yh));
-    lbc_e.emplace("v", setup_edge(x_e,  yh_ew, gd.x, gd.yh));
-    lbc_s.emplace("v", setup_edge(x_ns, yh_s,  gd.x, gd.yh));
-    lbc_n.emplace("v", setup_edge(x_ns, yh_n,  gd.x, gd.yh));
+    lbc_w.emplace("v", setup_edge(x_w,  yh_ew, z, gd.x, gd.yh, gd.z));
+    lbc_e.emplace("v", setup_edge(x_e,  yh_ew, z, gd.x, gd.yh, gd.z));
+    lbc_s.emplace("v", setup_edge(x_ns, yh_s,  z, gd.x, gd.yh, gd.z));
+    lbc_n.emplace("v", setup_edge(x_ns, yh_n,  z, gd.x, gd.yh, gd.z));
 
-    lbc_w.emplace("w", setup_edge(x_w,  y_ew, gd.x, gd.y));
-    lbc_e.emplace("w", setup_edge(x_e,  y_ew, gd.x, gd.y));
-    lbc_s.emplace("w", setup_edge(x_ns, y_s,  gd.x, gd.y));
-    lbc_n.emplace("w", setup_edge(x_ns, y_n,  gd.x, gd.y));
+    lbc_w.emplace("w", setup_edge(x_w,  y_ew, zh, gd.x, gd.y, gd.zh));
+    lbc_e.emplace("w", setup_edge(x_e,  y_ew, zh, gd.x, gd.y, gd.zh));
+    lbc_s.emplace("w", setup_edge(x_ns, y_s,  zh, gd.x, gd.y, gd.zh));
+    lbc_n.emplace("w", setup_edge(x_ns, y_n,  zh, gd.x, gd.y, gd.zh));
 
-    if (sw_save_wtop)
-    {
-        const int kstart = gd.kend;
-        const int ktot = 1;
-        const int grid_ratio = 1;   // Dummy.
+    //if (sw_save_wtop)
+    //{
+    //    std::vector<TF> z_tod = 
 
-        // NN-interpolated `w` at domain top.
-        std::vector<TF> x = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
-        std::vector<TF> y = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
+    //    // NN-interpolated `w` at domain top.
+    //    std::vector<TF> x = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
+    //    std::vector<TF> y = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
 
-        bc_wtop = NN_data<TF>(x, y, gd.x, gd.y, kstart, ktot, grid_ratio, gd, md);
-    }
+    //    bc_wtop = NN_data<TF>(x, y, gd.x, gd.y, kstart, ktot, grid_ratio, gd, md);
+    //}
 
     //if (sw_save_buffer)
     //{
