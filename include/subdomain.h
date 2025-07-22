@@ -80,18 +80,18 @@ class Subdomain
         unsigned int savetime_bcs;
         unsigned int savetime_buffer;
 
-        std::map<std::string, NN_interpolator<TF>> lbc_w;
-        std::map<std::string, NN_interpolator<TF>> lbc_e;
-        std::map<std::string, NN_interpolator<TF>> lbc_s;
-        std::map<std::string, NN_interpolator<TF>> lbc_n;
+        std::map<std::string, std::unique_ptr<NN_interpolator<TF>>> lbc_w;
+        std::map<std::string, std::unique_ptr<NN_interpolator<TF>>> lbc_e;
+        std::map<std::string, std::unique_ptr<NN_interpolator<TF>>> lbc_s;
+        std::map<std::string, std::unique_ptr<NN_interpolator<TF>>> lbc_n;
 
-        NN_interpolator<TF> bc_wtop;
+        std::unique_ptr<NN_interpolator<TF>> bc_wtop;
 
         TF zstart_buffer;
         int buffer_kstart;
         int buffer_kstarth;
 
-        NN_interpolator<TF> bc_buffer;
-        NN_interpolator<TF> bc_bufferh;
+        std::unique_ptr<NN_interpolator<TF>> bc_buffer;
+        std::unique_ptr<NN_interpolator<TF>> bc_bufferh;
 };
 #endif

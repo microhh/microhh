@@ -23,6 +23,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 #include "subdomain.h"
 
@@ -210,12 +211,13 @@ void Subdomain<TF>::create()
         const int kstart = gd.kgc;
         const int ktot = gd.ktot;
 
-        return NN_interpolator<TF>(x_lbc, y_lbc, z_lbc, x, y, z, gd, md);
+        return std::make_unique<NN_interpolator<TF>>(x_lbc, y_lbc, z_lbc, x, y, z, master, grid);
     };
 
     // Scalars.
     for (auto& fld : fields.sp)
     {
+        lbc_w.emplace(fld.first, setup_edge(x_w,  y_ew, z, gd.x, gd.y, gd.z));
         lbc_w.emplace(fld.first, setup_edge(x_w,  y_ew, z, gd.x, gd.y, gd.z));
         lbc_e.emplace(fld.first, setup_edge(x_e,  y_ew, z, gd.x, gd.y, gd.z));
         lbc_s.emplace(fld.first, setup_edge(x_ns, y_s,  z, gd.x, gd.y, gd.z));
@@ -245,7 +247,7 @@ void Subdomain<TF>::create()
         std::vector<TF> y_bc = nnk::arange<TF>(ystart + 0.5 * dy, yend, dy);
         std::vector<TF> zh_bc = {gd.zh[gd.kend]};
 
-        bc_wtop = NN_interpolator<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
+        bc_wtop = std::make_unique<NN_interpolator<TF>>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, master, grid);
     }
 
     if (sw_save_buffer)
@@ -266,8 +268,8 @@ void Subdomain<TF>::create()
         std::vector<TF> z_bc(z.begin() + kstart, z.end());
         std::vector<TF> zh_bc(zh.begin() + kstarth, zh.end());
 
-        bc_buffer  = NN_interpolator<TF>(x_bc, y_bc, z_bc,  gd.x, gd.y, gd.z, gd, md);
-        bc_bufferh = NN_interpolator<TF>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, gd, md);
+        bc_buffer  = std::make_unique<NN_interpolator<TF>>(x_bc, y_bc, z_bc,  gd.x, gd.y, gd.z,  master, grid);
+        bc_bufferh = std::make_unique<NN_interpolator<TF>>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, master, grid);
     }
 }
 
@@ -409,10 +411,10 @@ void Subdomain<TF>::save_bcs(
         // Save all prognostic fields.
         for (auto& fld : fields.ap)
         {
-            process_lbc(lbc_w.at(fld.first), fld.second->fld, fld.first, "west");
-            process_lbc(lbc_e.at(fld.first), fld.second->fld, fld.first, "east");
-            process_lbc(lbc_s.at(fld.first), fld.second->fld, fld.first, "south");
-            process_lbc(lbc_n.at(fld.first), fld.second->fld, fld.first, "north");
+            process_lbc(*lbc_w.at(fld.first), fld.second->fld, fld.first, "west");
+            process_lbc(*lbc_e.at(fld.first), fld.second->fld, fld.first, "east");
+            process_lbc(*lbc_s.at(fld.first), fld.second->fld, fld.first, "south");
+            process_lbc(*lbc_n.at(fld.first), fld.second->fld, fld.first, "north");
         }
 
         if (sw_save_wtop)
@@ -421,17 +423,17 @@ void Subdomain<TF>::save_bcs(
             const int ktot = 1;
 
             nnk::nn_interpolate(
-                bc_wtop.fld.data(),
+                bc_wtop->fld.data(),
                 fields.ap.at("w")->fld.data(),
-                bc_wtop.nn_i.data(),
-                bc_wtop.nn_j.data(),
-                bc_wtop.nn_k.data(),
-                bc_wtop.itot_s,
-                bc_wtop.jtot_s,
-                bc_wtop.ktot_s,
-                bc_wtop.istride,
-                bc_wtop.jstride,
-                bc_wtop.kstride,
+                bc_wtop->nn_i.data(),
+                bc_wtop->nn_j.data(),
+                bc_wtop->nn_k.data(),
+                bc_wtop->itot_s,
+                bc_wtop->jtot_s,
+                bc_wtop->ktot_s,
+                bc_wtop->istride,
+                bc_wtop->jstride,
+                bc_wtop->kstride,
                 gd.istride,
                 gd.jstride,
                 gd.kstride);
@@ -440,7 +442,7 @@ void Subdomain<TF>::save_bcs(
             std::string base_name = "w_top_out";
             std::string file_name = timeloop.get_io_filename(base_name);
 
-            const int err = save_binary(bc_wtop, file_name);
+            const int err = save_binary(*bc_wtop, file_name);
 
             if (err > 0)
                 throw std::runtime_error("Error saving LBCs.");
@@ -457,7 +459,7 @@ void Subdomain<TF>::save_bcs(
         for (auto& fld : fields.ap)
         {
             // Switch between full and half levels.
-            NN_interpolator<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
+            NN_interpolator<TF>& bc_buff = fld.first == "w" ? *bc_bufferh : *bc_buffer;
 
             nnk::nn_interpolate(
                 bc_buff.fld.data(),

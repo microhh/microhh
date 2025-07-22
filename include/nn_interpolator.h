@@ -24,6 +24,7 @@
 #define NN_INTERPOLATE_H
 
 #include <vector>
+#include <memory>
 
 #include "master.h"
 #include "grid.h"
@@ -36,8 +37,6 @@ template<typename TF>
 class NN_interpolator
 {
     public:
-        NN_interpolator() {}
-
         NN_interpolator(
             const std::vector<TF>& x_in,
             const std::vector<TF>& y_in,
@@ -45,8 +44,8 @@ class NN_interpolator
             const std::vector<TF>& x,
             const std::vector<TF>& y,
             const std::vector<TF>& z,
-            const Grid_data<TF>& gd,
-            const MPI_data& md);
+            Master&,
+            Grid<TF>&);
 
         // Not all tasks have data.
         bool has_data;
@@ -79,5 +78,11 @@ class NN_interpolator
         {
             return fld[i*istride + j*jstride + k*kstride];
         }
+
+        //void interpolate(const std::vector<TF>&);
+
+    private:
+        Master& master;
+        Grid<TF>& grid;
 };
 #endif

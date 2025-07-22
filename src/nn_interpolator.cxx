@@ -50,9 +50,12 @@ NN_interpolator<TF>::NN_interpolator(
     const std::vector<TF>& x,
     const std::vector<TF>& y,
     const std::vector<TF>& z,
-    const Grid_data<TF>& gd,
-    const MPI_data& md)
+    Master& masterin,
+    Grid<TF>& gridin) : master(masterin), grid(gridin)
 {
+    auto& gd = grid.get_grid_data();
+    auto& md = master.get_MPI_data();
+
     this->itot_g = x_in.size();
     this->jtot_g = y_in.size();
     this->ktot_g = z_in.size();
@@ -110,6 +113,15 @@ NN_interpolator<TF>::NN_interpolator(
     // Always resize, even if size is zero. This way we can get a valid pointer for MPI-IO.
     this->fld.resize(itot_s * jtot_s * ktot_s);
 }
+
+
+//template<typename TF>
+//void NN_interpolator<TF>::interpolate(const std::vector<TF>& fld_in)
+//{
+//
+//
+//
+//}
 
 
 #ifdef FLOAT_SINGLE
