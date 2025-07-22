@@ -133,10 +133,10 @@ namespace boundary_lateral_kernels
         const TF* const restrict fld_in,
         const int* const restrict nn_i,
         const int* const restrict nn_j,
+        const int* const restrict nn_k,
         const int isize,
         const int jsize,
         const int ksize,
-        const int kstart_in,
         const int istride_out,
         const int jstride_out,
         const int kstride_out,
@@ -148,12 +148,13 @@ namespace boundary_lateral_kernels
             for (int j=0; j<jsize; ++j)
                 for (int i=0; i<isize; ++i)
                 {
-                    const int ijk_in = nn_i[i]*istride_in + nn_j[j]*jstride_in + (k+kstart_in)*kstride_in;
+                    const int ijk_in = nn_i[i]*istride_in + nn_j[j]*jstride_in + nn_k[k]*kstride_in;
                     const int ijk_out = i*istride_out + j*jstride_out + k*kstride_out;
 
                     fld_out[ijk_out] = fld_in[ijk_in];
                 }
     }
+
 
     template<typename TF>
     bool is_equal(const TF a, const TF b)

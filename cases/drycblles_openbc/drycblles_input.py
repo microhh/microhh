@@ -43,13 +43,16 @@ yend_sub = 2400
 xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
 
-grid_ratio = 2
+grid_ratio_ij = 2
+grid_ratio_k = 2
 
-itot_sub = int(xsize_sub / dx * grid_ratio + 0.5)
-jtot_sub = int(ysize_sub / dy * grid_ratio + 0.5)
+itot_sub = int(xsize_sub / dx * grid_ratio_ij + 0.5)
+jtot_sub = int(ysize_sub / dy * grid_ratio_ij + 0.5)
+ktot_sub = ktot * grid_ratio_k
 
-dx_sub = dx / grid_ratio
-dy_sub = dy / grid_ratio
+dx_sub = dx / grid_ratio_ij
+dy_sub = dy / grid_ratio_ij
+dz_sub = dy / grid_ratio_k
 
 # Number of lateral buffer/sponge points.
 n_sponge = 3
@@ -61,11 +64,13 @@ Define initial fields/profiles.
 """
 dthetadz = 0.003
 
-z  = np.arange(0.5*dz, zsize, dz)
-zh = np.arange(0, zsize, dz)
+if domain == 'outer':
+    z  = np.arange(0.5*dz, zsize, dz)
+else:
+    z  = np.arange(0.5*dz_sub, zsize, dz_sub)
 
-u  = np.zeros(np.size(z)) + 2
-v  = np.zeros(np.size(z)) + 1
+u  = np.zeros(z.size) + 2
+v  = np.zeros(z.size) + 1
 th = 300. + dthetadz * z
 
 
@@ -74,7 +79,7 @@ Write case_input.nc
 """
 nc_file = nc.Dataset("drycblles_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
-nc_file.createDimension("z", ktot)
+nc_file.createDimension("z", z.size)
 nc_z  = nc_file.createVariable("z" , dtype, ("z"))
 
 nc_group_init = nc_file.createGroup("init");
@@ -119,7 +124,8 @@ if domain == 'outer':
     ini['subdomain']['xend'] = xend_sub
     ini['subdomain']['ystart'] = ystart_sub
     ini['subdomain']['yend'] = yend_sub
-    ini['subdomain']['grid_ratio'] = grid_ratio
+    ini['subdomain']['grid_ratio_ij'] = grid_ratio_ij
+    ini['subdomain']['grid_ratio_k'] = grid_ratio_k
     ini['subdomain']['n_ghost'] = n_ghost
     ini['subdomain']['n_sponge'] = n_sponge
     ini['subdomain']['savetime_bcs'] = lbc_freq
@@ -128,7 +134,7 @@ elif domain == 'inner':
 
     ini['grid']['itot'] = itot_sub
     ini['grid']['jtot'] = jtot_sub
-    ini['grid']['ktot'] = ktot
+    ini['grid']['ktot'] = ktot_sub
 
     ini['grid']['xsize'] = xsize_sub
     ini['grid']['ysize'] = ysize_sub

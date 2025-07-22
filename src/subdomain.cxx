@@ -61,7 +61,9 @@ Subdomain<TF>::Subdomain(
         ystart = inputin.get_item<TF>("subdomain", "ystart", "");
         yend   = inputin.get_item<TF>("subdomain", "yend", "");
 
-        grid_ratio = inputin.get_item<int>("subdomain", "grid_ratio", "");
+        grid_ratio_ij = inputin.get_item<int>("subdomain", "grid_ratio_ij", "");
+        grid_ratio_k = inputin.get_item<int>("subdomain", "grid_ratio_k", "", 1);
+
         n_ghost = inputin.get_item<int>("subdomain", "n_ghost", "");
         n_sponge = inputin.get_item<int>("subdomain", "n_sponge", "");
 
@@ -116,8 +118,8 @@ void Subdomain<TF>::create()
     xsize = xend - xstart;
     ysize = yend - ystart;
 
-    itot = static_cast<int>(xsize / gd.dx * grid_ratio + 0.5);
-    jtot = static_cast<int>(ysize / gd.dy * grid_ratio + 0.5);
+    itot = static_cast<int>(xsize / gd.dx * grid_ratio_ij + 0.5);
+    jtot = static_cast<int>(ysize / gd.dy * grid_ratio_ij + 0.5);
 
     dx = xsize / itot;
     dy = ysize / jtot;
@@ -148,7 +150,11 @@ void Subdomain<TF>::create()
         const std::vector<TF>& x,
         const std::vector<TF>& y)
     {
-        return NN_data<TF>(x_lbc, y_lbc, x, y, gd, md, gd.ktot);
+        // Save all height levels.
+        const int kstart = gd.kgc;
+        const int ktot = gd.ktot;
+
+        return NN_data<TF>(x_lbc, y_lbc, x, y, kstart, ktot, grid_ratio_k, gd, md);
     };
 
     // Scalars.
@@ -178,39 +184,43 @@ void Subdomain<TF>::create()
 
     if (sw_save_wtop)
     {
+        const int kstart = gd.kend;
+        const int ktot = 1;
+        const int grid_ratio = 1;   // Dummy.
+
         // NN-interpolated `w` at domain top.
         std::vector<TF> x = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
         std::vector<TF> y = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
 
-        bc_wtop = NN_data<TF>(x, y, gd.x, gd.y, gd, md, 1);
+        bc_wtop = NN_data<TF>(x, y, gd.x, gd.y, kstart, ktot, grid_ratio, gd, md);
     }
 
-    if (sw_save_buffer)
-    {
-        // Find start indexes of buffer layer.
-        buffer_kstart  = gd.kstart;
-        buffer_kstarth = gd.kstart;
+    //if (sw_save_buffer)
+    //{
+    //    // Find start indexes of buffer layer.
+    //    buffer_kstart  = gd.kstart;
+    //    buffer_kstarth = gd.kstart;
 
-        for (int k=gd.kstart; k<gd.kend; ++k)
-        {
-            if (gd.z[k] < zstart_buffer)
-                ++buffer_kstart;
-            if (gd.zh[k] < zstart_buffer)
-                ++buffer_kstarth;
-        }
+    //    for (int k=gd.kstart; k<gd.kend; ++k)
+    //    {
+    //        if (gd.z[k] < zstart_buffer)
+    //            ++buffer_kstart;
+    //        if (gd.zh[k] < zstart_buffer)
+    //            ++buffer_kstarth;
+    //    }
 
-        if (buffer_kstarth == gd.kend)
-            throw std::runtime_error("Output buffer subdomain is too close to the model top.");
+    //    if (buffer_kstarth == gd.kend)
+    //        throw std::runtime_error("Output buffer subdomain is too close to the model top.");
 
-        std::vector<TF> x = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
-        std::vector<TF> y = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
+    //    std::vector<TF> x = blk::arange<TF>(xstart + 0.5 * dx, xend, dx);
+    //    std::vector<TF> y = blk::arange<TF>(ystart + 0.5 * dy, yend, dy);
 
-        const int ksize = gd.kend - buffer_kstart;
-        const int ksizeh = gd.kend - buffer_kstarth;
+    //    const int ksize = gd.kend - buffer_kstart;
+    //    const int ksizeh = gd.kend - buffer_kstarth;
 
-        bc_buffer  = NN_data<TF>(x, y, gd.x, gd.y, gd, md, ksize);
-        bc_bufferh = NN_data<TF>(x, y, gd.x, gd.y, gd, md, ksizeh);
-    }
+    //    bc_buffer  = NN_data<TF>(x, y, gd.x, gd.y, gd, md, ksize);
+    //    bc_bufferh = NN_data<TF>(x, y, gd.x, gd.y, gd, md, ksizeh);
+    //}
 }
 
 
@@ -270,7 +280,7 @@ void Subdomain<TF>::save_bcs(
             int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
 
             //if (filename.find("buffer") != std::string::npos)
-            //    std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
+            //std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
 
             MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
             MPI_Type_commit(&subarray);
@@ -327,10 +337,10 @@ void Subdomain<TF>::save_bcs(
                 fld.data(),
                 lbc.nn_i.data(),
                 lbc.nn_j.data(),
+                lbc.nn_k.data(),
                 lbc.itot_s,
                 lbc.jtot_s,
-                gd.ktot,
-                gd.kgc,
+                lbc.ktot_s,
                 lbc.istride,
                 lbc.jstride,
                 lbc.kstride,
@@ -357,76 +367,76 @@ void Subdomain<TF>::save_bcs(
             process_lbc(lbc_n.at(fld.first), fld.second->fld, fld.first, "north");
         }
 
-        if (sw_save_wtop)
-        {
-            const int kstart = gd.kend;
-            const int ktot = 1;
+        //if (sw_save_wtop)
+        //{
+        //    const int kstart = gd.kend;
+        //    const int ktot = 1;
 
-            blk::nn_interpolate(
-                bc_wtop.fld.data(),
-                fields.ap.at("w")->fld.data(),
-                bc_wtop.nn_i.data(),
-                bc_wtop.nn_j.data(),
-                bc_wtop.itot_s,
-                bc_wtop.jtot_s,
-                ktot,
-                kstart,
-                bc_wtop.istride,
-                bc_wtop.jstride,
-                bc_wtop.kstride,
-                gd.istride,
-                gd.jstride,
-                gd.kstride);
+        //    blk::nn_interpolate(
+        //        bc_wtop.fld.data(),
+        //        fields.ap.at("w")->fld.data(),
+        //        bc_wtop.nn_i.data(),
+        //        bc_wtop.nn_j.data(),
+        //        bc_wtop.itot_s,
+        //        bc_wtop.jtot_s,
+        //        ktot,
+        //        kstart,
+        //        bc_wtop.istride,
+        //        bc_wtop.jstride,
+        //        bc_wtop.kstride,
+        //        gd.istride,
+        //        gd.jstride,
+        //        gd.kstride);
 
-            // Setup filename with time.
-            std::string base_name = "w_top_out";
-            std::string file_name = timeloop.get_io_filename(base_name);
+        //    // Setup filename with time.
+        //    std::string base_name = "w_top_out";
+        //    std::string file_name = timeloop.get_io_filename(base_name);
 
-            const int err = save_binary(bc_wtop, file_name);
+        //    const int err = save_binary(bc_wtop, file_name);
 
-            if (err > 0)
-                throw std::runtime_error("Error saving LBCs.");
-        }
+        //    if (err > 0)
+        //        throw std::runtime_error("Error saving LBCs.");
+        //}
 
     }
 
-    if (sw_save_buffer && timeloop.get_itime() % convert_to_itime(savetime_buffer) == 0)
-    {
-        // Save buffer layer.
-        std::string msg = "Saving sub-domain buffer for time " + std::to_string(timeloop.get_time()) + " ...";
-        master.print_message(msg);
+    //if (sw_save_buffer && timeloop.get_itime() % convert_to_itime(savetime_buffer) == 0)
+    //{
+    //    // Save buffer layer.
+    //    std::string msg = "Saving sub-domain buffer for time " + std::to_string(timeloop.get_time()) + " ...";
+    //    master.print_message(msg);
 
-        for (auto& fld : fields.ap)
-        {
-            const int kstart = fld.first == "w" ? buffer_kstarth : buffer_kstart;
-            NN_data<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
+    //    for (auto& fld : fields.ap)
+    //    {
+    //        const int kstart = fld.first == "w" ? buffer_kstarth : buffer_kstart;
+    //        NN_data<TF>& bc_buff = fld.first == "w" ? bc_bufferh : bc_buffer;
 
-            blk::nn_interpolate(
-                bc_buff.fld.data(),
-                fld.second->fld.data(),
-                bc_buff.nn_i.data(),
-                bc_buff.nn_j.data(),
-                bc_buff.itot_s,
-                bc_buff.jtot_s,
-                bc_buff.ktot_s,
-                kstart,
-                bc_buff.istride,
-                bc_buff.jstride,
-                bc_buff.kstride,
-                gd.istride,
-                gd.jstride,
-                gd.kstride);
+    //        blk::nn_interpolate(
+    //            bc_buff.fld.data(),
+    //            fld.second->fld.data(),
+    //            bc_buff.nn_i.data(),
+    //            bc_buff.nn_j.data(),
+    //            bc_buff.itot_s,
+    //            bc_buff.jtot_s,
+    //            bc_buff.ktot_s,
+    //            kstart,
+    //            bc_buff.istride,
+    //            bc_buff.jstride,
+    //            bc_buff.kstride,
+    //            gd.istride,
+    //            gd.jstride,
+    //            gd.kstride);
 
-            // Setup filename with time.
-            std::string base_name = fld.first + "_buffer_out";
-            std::string file_name = timeloop.get_io_filename(base_name);
+    //        // Setup filename with time.
+    //        std::string base_name = fld.first + "_buffer_out";
+    //        std::string file_name = timeloop.get_io_filename(base_name);
 
-            const int err = save_binary(bc_buff, file_name);
+    //        const int err = save_binary(bc_buff, file_name);
 
-            if (err > 0)
-                throw std::runtime_error("Error saving LBCs.");
-        }
-    }
+    //        if (err > 0)
+    //            throw std::runtime_error("Error saving LBCs.");
+    //    }
+    //}
 }
 
 #ifdef FLOAT_SINGLE

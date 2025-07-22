@@ -52,13 +52,15 @@ class NN_data
             const std::vector<TF>& y_in,
             const std::vector<TF>& x,
             const std::vector<TF>& y,
+            const int kstart,
+            const int ktot,
+            const int grid_ratio_k,
             const Grid_data<TF>& gd,
-            const MPI_data& md,
-            const int ktot)
+            const MPI_data& md)
         {
             this->itot_g = x_in.size();
             this->jtot_g = y_in.size();
-            this->ktot_g = ktot;
+            this->ktot_g = ktot * grid_ratio_k;
 
             // Bounds sub-domain on this MPI process.
             const TF xsize_block = gd.imax * gd.dx;
@@ -95,6 +97,11 @@ class NN_data
                 // Find nearest-neighbour indexes.
                 this->nn_i = blk::get_nn_indexes<TF>(x_in_s, x);
                 this->nn_j = blk::get_nn_indexes<TF>(y_in_s, y);
+
+                // Vertical is easier, since nest always starts at surface.
+                this->nn_k.resize(this->ktot_s);
+                for (int k=0; k<this->ktot_s; ++k)
+                    this->nn_k[k] = static_cast<int>(k / TF(grid_ratio_k)) + kstart;
             }
             else
             {
@@ -134,6 +141,7 @@ class NN_data
         // Nearest neighbour indices.
         std::vector<int> nn_i;
         std::vector<int> nn_j;
+        std::vector<int> nn_k;
 
         TF& operator()(const int i, const int j, const int k)
         {
@@ -175,7 +183,9 @@ class Subdomain
 
         int itot, jtot;
 
-        int grid_ratio;
+        int grid_ratio_ij;
+        int grid_ratio_k;
+
         int n_ghost;
         int n_sponge;
 
