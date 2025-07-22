@@ -130,6 +130,13 @@ if domain == 'outer':
     ini['subdomain']['n_sponge'] = n_sponge
     ini['subdomain']['savetime_bcs'] = lbc_freq
 
+    # Hack/tmp
+    ini['subdomain']['sw_save_wtop'] = True
+    ini['subdomain']['sw_save_buffer'] = True
+    ini['subdomain']['savetime_buffer'] = 120
+    ini['subdomain']['zstart_buffer'] = 0.75 * zsize
+
+
 elif domain == 'inner':
 
     ini['grid']['itot'] = itot_sub
