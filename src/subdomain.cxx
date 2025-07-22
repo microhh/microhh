@@ -382,21 +382,7 @@ void Subdomain<TF>::save_bcs(
             const std::string& name,
             const std::string& loc)
         {
-            nnk::nn_interpolate(
-                lbc.fld.data(),
-                fld.data(),
-                lbc.nn_i.data(),
-                lbc.nn_j.data(),
-                lbc.nn_k.data(),
-                lbc.itot_s,
-                lbc.jtot_s,
-                lbc.ktot_s,
-                lbc.istride,
-                lbc.jstride,
-                lbc.kstride,
-                gd.istride,
-                gd.jstride,
-                gd.kstride);
+            lbc.interpolate(fld);
 
             // Setup filename with time.
             std::string base_name = "lbc_" + name + "_" + loc + "_out";
@@ -422,21 +408,7 @@ void Subdomain<TF>::save_bcs(
             const int kstart = gd.kend;
             const int ktot = 1;
 
-            nnk::nn_interpolate(
-                bc_wtop->fld.data(),
-                fields.ap.at("w")->fld.data(),
-                bc_wtop->nn_i.data(),
-                bc_wtop->nn_j.data(),
-                bc_wtop->nn_k.data(),
-                bc_wtop->itot_s,
-                bc_wtop->jtot_s,
-                bc_wtop->ktot_s,
-                bc_wtop->istride,
-                bc_wtop->jstride,
-                bc_wtop->kstride,
-                gd.istride,
-                gd.jstride,
-                gd.kstride);
+            bc_wtop->interpolate(fields.ap.at("w")->fld);
 
             // Setup filename with time.
             std::string base_name = "w_top_out";
@@ -447,7 +419,6 @@ void Subdomain<TF>::save_bcs(
             if (err > 0)
                 throw std::runtime_error("Error saving LBCs.");
         }
-
     }
 
     if (sw_save_buffer && timeloop.get_itime() % convert_to_itime(savetime_buffer) == 0)
@@ -460,22 +431,7 @@ void Subdomain<TF>::save_bcs(
         {
             // Switch between full and half levels.
             NN_interpolator<TF>& bc_buff = fld.first == "w" ? *bc_bufferh : *bc_buffer;
-
-            nnk::nn_interpolate(
-                bc_buff.fld.data(),
-                fld.second->fld.data(),
-                bc_buff.nn_i.data(),
-                bc_buff.nn_j.data(),
-                bc_buff.nn_k.data(),
-                bc_buff.itot_s,
-                bc_buff.jtot_s,
-                bc_buff.ktot_s,
-                bc_buff.istride,
-                bc_buff.jstride,
-                bc_buff.kstride,
-                gd.istride,
-                gd.jstride,
-                gd.kstride);
+            bc_buff.interpolate(fld.second->fld);
 
             // Setup filename with time.
             std::string base_name = fld.first + "_buffer_out";

@@ -79,7 +79,7 @@ class NN_interpolator
             return fld[i*istride + j*jstride + k*kstride];
         }
 
-        //void interpolate(const std::vector<TF>&);
+        void interpolate(const std::vector<TF>&);
 
     private:
         Master& master;

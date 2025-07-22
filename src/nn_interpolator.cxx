@@ -115,13 +115,27 @@ NN_interpolator<TF>::NN_interpolator(
 }
 
 
-//template<typename TF>
-//void NN_interpolator<TF>::interpolate(const std::vector<TF>& fld_in)
-//{
-//
-//
-//
-//}
+template<typename TF>
+void NN_interpolator<TF>::interpolate(const std::vector<TF>& fld_in)
+{
+    auto& gd = grid.get_grid_data();
+
+    nnk::nn_interpolate(
+        this->fld.data(),
+        fld_in.data(),
+        this->nn_i.data(),
+        this->nn_j.data(),
+        this->nn_k.data(),
+        this->itot_s,
+        this->jtot_s,
+        this->ktot_s,
+        this->istride,
+        this->jstride,
+        this->kstride,
+        gd.istride,
+        gd.jstride,
+        gd.kstride);
+}
 
 
 #ifdef FLOAT_SINGLE
