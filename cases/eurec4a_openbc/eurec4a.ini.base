@@ -156,7 +156,7 @@ endtime=None
 dt=6.
 dtmax=30
 savetime=21600
-outputiter=1
+outputiter=10
 adaptivestep=true
 starttime=0
 rkorder=4
@@ -169,7 +169,7 @@ sampletime=300
 
 [column]
 swcolumn=1
-sampletime=60
+sampletime=300
 coordinates[x]=None
 coordinates[y]=None
 

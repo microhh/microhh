@@ -314,8 +314,8 @@ void Subdomain<TF>::save_bcs(
         bool bypass_mpiio = true;
 
         // Benchmark I/O:
-        Timer t;
-        t.start();
+        //Timer t;
+        //t.start();
 
         #ifdef USEMPI
         if (bypass_mpiio)
@@ -440,10 +440,10 @@ void Subdomain<TF>::save_bcs(
 
         #endif
 
-        const TF elapsed = t.stop();
-        const TF size_gb = lbc.itot_g * lbc.jtot_g * lbc.ktot_g * sizeof(TF) / 1e9;
-        const TF tp = size_gb / elapsed;
-        master.print_message("Saving %s (%f GB): %f GB/s in %f sec.\n", filename.c_str(), size_gb, tp, elapsed);
+        //const TF elapsed = t.stop();
+        //const TF size_gb = lbc.itot_g * lbc.jtot_g * lbc.ktot_g * sizeof(TF) / 1e9;
+        //const TF tp = size_gb / elapsed;
+        //master.print_message("Saving %s (%f GB): %f GB/s in %f sec.\n", filename.c_str(), size_gb, tp, elapsed);
 
         return err;
     };
