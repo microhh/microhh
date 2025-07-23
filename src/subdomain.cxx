@@ -310,49 +310,121 @@ void Subdomain<TF>::save_bcs(
             NN_interpolator<TF>& lbc,
             const std::string& filename)
     {
+        int err = 0;
+        bool bypass_mpiio = true;
+
+        // Benchmark I/O:
         Timer t;
         t.start();
 
         #ifdef USEMPI
-        /*
-        Save binary using MPI I/O hyperslabs.
-        */
-        MPI_File fh;
-        if (MPI_File_open(md.commxy, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-            return 1;
-
-        int err = 0;
-        MPI_Offset fileoff = 0;
-        char name[] = "native";
-        MPI_Datatype subarray = MPI_DATATYPE_NULL;
-
-        if (lbc.has_data)
+        if (bypass_mpiio)
         {
-            int tot_size[3] = {lbc.ktot_g, lbc.jtot_g, lbc.itot_g};
-            int sub_size[3] = {lbc.ktot_s, lbc.jtot_s, lbc.itot_s};
-            int sub_start[3] = {0, lbc.j_range.first, lbc.i_range.first};
-            int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
+            /*
+            Gather manually to single rank and save with serial I/O.
+            */
+            int root = 0;
 
-            //if (filename.find("buffer") != std::string::npos)
-            //std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
+            std::vector<int> all_ktot_s(md.nprocs);
+            std::vector<int> all_jtot_s(md.nprocs);
+            std::vector<int> all_itot_s(md.nprocs);
 
-            MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
-            MPI_Type_commit(&subarray);
+            std::vector<int> all_k_start(md.nprocs);
+            std::vector<int> all_j_start(md.nprocs);
+            std::vector<int> all_i_start(md.nprocs);
 
-            err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL);
-            err += MPI_File_write_all(fh, lbc.fld.data(), count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+            MPI_Allgather(&lbc.ktot_s, 1, MPI_INT, all_ktot_s.data(), 1, MPI_INT, md.commxy);
+            MPI_Allgather(&lbc.jtot_s, 1, MPI_INT, all_jtot_s.data(), 1, MPI_INT, md.commxy);
+            MPI_Allgather(&lbc.itot_s, 1, MPI_INT, all_itot_s.data(), 1, MPI_INT, md.commxy);
+
+            const int k_start = 0;
+            const int j_start = lbc.j_range.first;
+            const int i_start = lbc.i_range.first;
+
+            MPI_Allgather(&k_start, 1, MPI_INT, all_k_start.data(), 1, MPI_INT, md.commxy);
+            MPI_Allgather(&j_start, 1, MPI_INT, all_j_start.data(), 1, MPI_INT, md.commxy);
+            MPI_Allgather(&i_start, 1, MPI_INT, all_i_start.data(), 1, MPI_INT, md.commxy);
+
+            if (md.mpiid == root)
+            {
+                std::vector<TF> fld_glob(lbc.ktot_g * lbc.jtot_g * lbc.itot_g, 0.0);
+
+                for (int rank = 0; rank < md.nprocs; ++rank)
+                {
+                    const int count = all_ktot_s[rank] * all_jtot_s[rank] * all_itot_s[rank];
+
+                    if (count > 0)
+                    {
+                        int tot_size[3]  = {lbc.ktot_g, lbc.jtot_g, lbc.itot_g};
+                        int sub_size[3]  = {all_ktot_s[rank], all_jtot_s[rank], all_itot_s[rank]};
+                        int sub_start[3] = {all_k_start[rank], all_j_start[rank], all_i_start[rank]};
+
+                        MPI_Datatype subarray;
+                        MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
+                        MPI_Type_commit(&subarray);
+
+                        if (rank == root)
+                            MPI_Sendrecv(lbc.fld.data(), count, mpi_fp_type<TF>(), root, 0, fld_glob.data(), 1, subarray, root, 0, md.commxy, MPI_STATUS_IGNORE);
+                        else
+                            MPI_Recv(fld_glob.data(), 1, subarray, rank, 0, md.commxy, MPI_STATUS_IGNORE);
+
+                        MPI_Type_free(&subarray);
+                    }
+                }
+
+                FILE *pFile = fopen(filename.c_str(), "wb");
+                if (!pFile)
+                    return 1;
+                fwrite(fld_glob.data(), sizeof(TF), fld_glob.size(), pFile);
+                fclose(pFile);
+
+            }
+            else if (lbc.has_data)
+            {
+                int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
+                MPI_Send(lbc.fld.data(), count, mpi_fp_type<TF>(), root, 0, md.commxy);
+            }
         }
         else
         {
-            err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), mpi_fp_type<TF>(), name, MPI_INFO_NULL);
-            err += MPI_File_write_all(fh, nullptr, 0, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+            /*
+            Save binary using MPI I/O hyperslabs.
+            */
+            MPI_File fh;
+            if (MPI_File_open(md.commxy, filename.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+                return 1;
+
+            MPI_Offset fileoff = 0;
+            char name[] = "native";
+            MPI_Datatype subarray = MPI_DATATYPE_NULL;
+
+            if (lbc.has_data)
+            {
+                int tot_size[3] = {lbc.ktot_g, lbc.jtot_g, lbc.itot_g};
+                int sub_size[3] = {lbc.ktot_s, lbc.jtot_s, lbc.itot_s};
+                int sub_start[3] = {0, lbc.j_range.first, lbc.i_range.first};
+                int count = lbc.ktot_s * lbc.jtot_s * lbc.itot_s;
+
+                //if (filename.find("buffer") != std::string::npos)
+                //std::cout << filename << " | mpi=(" << md.mpicoordx << "," << md.mpicoordy << "), tot=(" << tot_size[0] << "," << tot_size[1] << "," << tot_size[2] << "), sub=" << sub_size[0] << "," << sub_size[1] << "," << sub_size[2] << "), start=" << sub_start[0] << "," << sub_start[1] << "," << sub_start[2] << std::endl;
+
+                MPI_Type_create_subarray(3, tot_size, sub_size, sub_start, MPI_ORDER_C, mpi_fp_type<TF>(), &subarray);
+                MPI_Type_commit(&subarray);
+
+                err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), subarray, name, MPI_INFO_NULL);
+                err += MPI_File_write_all(fh, lbc.fld.data(), count, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+            }
+            else
+            {
+                err += MPI_File_set_view(fh, fileoff, mpi_fp_type<TF>(), mpi_fp_type<TF>(), name, MPI_INFO_NULL);
+                err += MPI_File_write_all(fh, nullptr, 0, mpi_fp_type<TF>(), MPI_STATUS_IGNORE);
+            }
+
+            err += MPI_File_close(&fh);
+
+            if (lbc.has_data)
+                MPI_Type_free(&subarray);
         }
-
-        err += MPI_File_close(&fh);
-
-        if (lbc.has_data)
-            MPI_Type_free(&subarray);
-
         #else
         /*
         Save binary using simple serial I/O.
