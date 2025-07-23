@@ -431,3 +431,14 @@ def block_perturb_fld(fld, block_size, amplitude):
                             if k < ktot and j<jtot and i<itot:
                                 fld[k,j,i] += random_val
 
+def expand_rho(rho, rhoh, ratio):
+    """
+    Expand basestate density:
+    rho = [1,2,3] -> [1,1,2,2,3,3] (ratio=2)
+    rhoh = [1,2,3] -> [1,1,2,2,3] (ratio=2)
+    """
+    rho_out = np.repeat(rho, ratio)
+    rhoh_out = np.repeat(rhoh[:-1], ratio)
+    rhoh_out = np.append(rhoh_out, rhoh[-1])
+
+    return rho_out, rhoh_out

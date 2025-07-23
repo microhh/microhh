@@ -245,7 +245,7 @@ void Subdomain<TF>::create()
         // NN-interpolated `w` at domain top.
         std::vector<TF> x_bc = nnk::arange<TF>(xstart + 0.5 * dx, xend, dx);
         std::vector<TF> y_bc = nnk::arange<TF>(ystart + 0.5 * dy, yend, dy);
-        std::vector<TF> zh_bc = {gd.zh[gd.kend]};
+        std::vector<TF> zh_bc = {gd.zsize};
 
         bc_wtop = std::make_unique<NN_interpolator<TF>>(x_bc, y_bc, zh_bc, gd.x, gd.y, gd.zh, master, grid);
     }
@@ -405,9 +405,6 @@ void Subdomain<TF>::save_bcs(
 
         if (sw_save_wtop)
         {
-            const int kstart = gd.kend;
-            const int ktot = 1;
-
             bc_wtop->interpolate(fields.ap.at("w")->fld);
 
             // Setup filename with time.
@@ -417,7 +414,7 @@ void Subdomain<TF>::save_bcs(
             const int err = save_binary(*bc_wtop, file_name);
 
             if (err > 0)
-                throw std::runtime_error("Error saving LBCs.");
+                throw std::runtime_error("Error saving w_top.");
         }
     }
 

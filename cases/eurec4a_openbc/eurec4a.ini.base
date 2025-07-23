@@ -124,7 +124,7 @@ sw_recycle[east]=true
 sw_recycle[north]=true
 recycle_list=thl,qt,u,v,w
 tau_recycle=10
-recycle_offset=10
+recycle_offset=5
 
 [subdomain]
 sw_subdomain=None
@@ -156,7 +156,7 @@ endtime=None
 dt=6.
 dtmax=30
 savetime=3600
-outputiter=10
+outputiter=0
 adaptivestep=true
 starttime=0
 rkorder=4

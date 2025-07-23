@@ -25,7 +25,7 @@ import numpy as np
 import ls2d
 
 # Make sure `microhhpy` is in the Python path!
-from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
+from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd, refine_grid_for_nesting
 
 
 """
@@ -35,19 +35,54 @@ Define vertical grid. This is used in several scripts, so define it globally.
 #dz0 = 20
 #heights = [0, 4000, 10000]
 #factors = [1.01, 1.02]
-##vgrid =hlp.Grid_stretched_manual(ktot, dz0, heights, factors)
 #vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 #vgrid.plot()
 
-ktot = 128
-dz0 = 20
-heights = [0, 3000, 5000, 10000]
-factors = [1.01, 1.03, 1.08]
-vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+#ktot = 128
+#dz0 = 20
+#heights = [0, 3000, 5000, 10000]
+#factors = [1.01, 1.03, 1.08]
+#vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 #vgrid.plot()
 
+# Define low-resolution vertical grid, and use grid refinement
+# to calculate the high-resolution grid.
+# This step is necessary to ensure that the half level heights match.
+ktot = 72
+dz0 = 40
+heights = [0, 4000, 10000]
+factors = [1.02, 1.04]
+vgrid_out = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+
+# Convert (LS)2D grid to MicroHH compatible grid.
+gd_outer = calc_vertical_grid_2nd(vgrid_out.z, vgrid_out.zsize)
+z,zh = refine_grid_for_nesting(gd_outer['z'], gd_outer['zh'], ratio=2)
+gd_inner = calc_vertical_grid_2nd(z, zh[-1])
+#gd_inner = gd_outer
+
 # Define buffer height globally; needed by multiple scripts.
-zstart_buffer = 0.75 * vgrid.zsize
+zstart_buffer = 0.75 * gd_outer['zsize']
+
+
+#import matplotlib.pyplot as plt
+#plt.close('all')
+#
+#plt.figure()
+#ax=plt.subplot(121)
+#plt.plot(np.ones(gd_out['ktot']+1), gd_out['zh'], 'r_')
+#plt.plot(np.ones(gd_out['ktot']), gd_out['z'], 'r+')
+#
+#plt.plot(np.ones(gd_in['ktot']+1)+1, gd_in['zh'], 'b_')
+#plt.plot(np.ones(gd_in['ktot'])+1, gd_in['z'], 'b+')
+#ax.set_yticks(gd_out['zh'])
+#plt.grid()
+#plt.ylim(0, 200)
+#plt.xlim(0, 3)
+#
+#plt.subplot(122)
+#plt.plot(gd_out['dz'], gd_out['z'], 'rx')
+#plt.plot(gd_in['dz'], gd_in['z'], 'rx')
+
 
 #proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
 proj_str = '+proj=tmerc +lat_0=13.3 +lon_0=-57.7 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
@@ -83,8 +118,8 @@ def get_develop_domain():
         n_sponge=3,
         lbc_freq=60,
         parent=outer_dom,
-        xstart_in_parent=5000,
-        ystart_in_parent=5000
+        xstart_in_parent=2000,
+        ystart_in_parent=2000
     )
 
     outer_dom.child = inner_dom
@@ -370,9 +405,9 @@ if __name__ == '__main__':
     Just for plotting vertical grid and/or domain.
     """
 
-    #outer_dom, inner_dom = get_develop_domain()
+    outer_dom, inner_dom = get_develop_domain()
     #outer_dom, inner_dom = get_test_domain()
     #outer_dom, inner_dom = get_large_domain()
     #outer_dom, inner_dom = get_production_domain_200m()
     #outer_dom, inner_dom = get_production_domain_100m()
-    outer_dom, inner_dom = get_half_domain_100m()
+    #outer_dom, inner_dom = get_half_domain_100m()

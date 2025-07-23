@@ -46,7 +46,7 @@ from global_settings import work_path, cosmo_path, microhh_path, gpt_veerman_pat
 import helpers as hlp
 
 # Vertical grid definition. Switch between domains is set in `global_settings.py`.
-from domain_definition import vgrid, zstart_buffer
+from domain_definition import gd_outer, gd_inner, zstart_buffer
 
 
 """
@@ -61,24 +61,32 @@ args = parser.parse_args()
 if args.domain not in ('inner', 'outer'):
     raise Exception('Invalid domain choice.')
 
-
 dates = pd.date_range(start_date, end_date, freq='h')
 time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 
 
+"""
+Domain switches.
+"""
 domain = inner_dom if args.domain == 'inner' else outer_dom
+gd = gd_inner if args.domain == 'inner' else gd_outer
+
 child = domain.child
 parent = domain.parent
 dim_xy = (domain.jtot, domain.itot)
 
 exp_path = f'{work_path}/{args.domain}'
 
+# Define grid ratio parent : child.
+grid_ratio_k = gd_inner['ktot'] / gd_outer['ktot']
+if not grid_ratio_k.is_integer():
+    raise Exception('Vertical grid ratio is not an integer!')
+grid_ratio_k = int(grid_ratio_k)
 
-"""
-Calculate exact vertical grid LES. The grid definition from
-(LS)2D is slightly different from the one in MicroHH!
-"""
-gd = calc_vertical_grid_2nd(vgrid.z, vgrid.zsize)
+grid_ratio_ij = outer_dom.dx / inner_dom.dx
+if not grid_ratio_ij.is_integer():
+    raise Exception('Vertical grid ratio is not an integer!')
+grid_ratio_ij = int(grid_ratio_ij)
 
 
 """
@@ -129,9 +137,18 @@ settings = {
 era = ls2d.Read_era5(settings)
 era.calculate_forcings(n_av=6, method='2nd')
 
-ds_time = era.get_les_input(vgrid.z)
-ds_time = ds_time.sel(lay=slice(0,135), lev=slice(0,136))
-ds_mean = ds_time.mean(dim='time')
+# Interpolate to both outer and inner vertical grid.
+ds_outer_time = era.get_les_input(gd_outer['z'])
+ds_outer_time = ds_outer_time.sel(lay=slice(0,135), lev=slice(0,136))
+ds_outer_mean = ds_outer_time.mean(dim='time')
+
+ds_inner_time = era.get_les_input(gd_inner['z'])
+ds_inner_time = ds_inner_time.sel(lay=slice(0,135), lev=slice(0,136))
+ds_inner_mean = ds_inner_time.mean(dim='time')
+
+ds_time = ds_inner_time if args.domain == 'inner' else ds_outer_time
+ds_mean = ds_inner_mean if args.domain == 'inner' else ds_outer_mean
+
 
 def add_nc_var(name, dims, nc, data):
     if name not in nc.variables:
@@ -147,8 +164,8 @@ def add_nc_dim(name, size, nc):
 
 
 nc_file = nc4.Dataset(f'{exp_path}/eurec4a_input.nc', mode='w', datamodel='NETCDF4', clobber=True)
-add_nc_dim('z', vgrid.kmax, nc_file)
-add_nc_var('z', ('z'), nc_file, vgrid.z)
+add_nc_dim('z', gd['ktot'], nc_file)
+add_nc_var('z', ('z'), nc_file, gd['z'])
 
 # Initial profiles. Not really used, but needed for `init` phase. The resulting
 # initial 3D fields are overwritten by the interpolated fields from COSMO.
@@ -221,17 +238,25 @@ nc_file.close()
 """
 Create basestate.
 """
+# Always define basestate using outer vertical grid.
+# Expand for inner grid (yes, this is UGLY).
 bs = thermo.calc_moist_basestate(
-    ds_mean.thl.values,
-    ds_mean.qt.values,
-    float(ds_mean.ps),
-    vgrid.z,
-    vgrid.zsize,
+    ds_outer_mean.thl.values,
+    ds_outer_mean.qt.values,
+    float(ds_outer_mean.ps),
+    gd_outer['z'],
+    gd_outer['zsize'],
     float_type)
+
+rho = bs['rho']
+rhoh = bs['rhoh']
+
+if args.domain == 'inner' and grid_ratio_k > 1:
+    rho, rhoh = hlp.expand_rho(rho, rhoh, grid_ratio_k)
 
 # Only save the density part for the dynamic core.
 # `_ext` is appended to the name; this way the density created by `microhh init` can be overwritten with this one.
-thermo.save_basestate_density(bs['rho'], bs['rhoh'], f'{exp_path}/rhoref_ext.0000000')
+thermo.save_basestate_density(rho, rhoh, f'{exp_path}/rhoref_ext.0000000')
 
 
 """
@@ -261,11 +286,11 @@ ini['master']['npy'] = domain.npy
 
 ini['grid']['itot'] = domain.itot
 ini['grid']['jtot'] = domain.jtot
-ini['grid']['ktot'] = vgrid.kmax
+ini['grid']['ktot'] = gd['ktot']
 
 ini['grid']['xsize'] = domain.xsize
 ini['grid']['ysize'] = domain.ysize
-ini['grid']['zsize'] = vgrid.zsize
+ini['grid']['zsize'] = gd['zsize']
 
 ini['buffer']['zstart'] = zstart_buffer
 ini['buffer']['loadfreq'] = 3600 if args.domain == 'outer' else 600
@@ -285,6 +310,7 @@ else:
     ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr', 'nr']
 
 if child is not None:
+
     ini['subdomain']['sw_subdomain'] = True
 
     ini['subdomain']['xstart'] = child.xstart_in_parent
@@ -292,7 +318,8 @@ if child is not None:
     ini['subdomain']['xend'] = child.xstart_in_parent + child.xsize
     ini['subdomain']['yend'] = child.ystart_in_parent + child.ysize
 
-    ini['subdomain']['grid_ratio'] = int(domain.dx / child.dx)
+    ini['subdomain']['grid_ratio_ij'] = grid_ratio_ij
+    ini['subdomain']['grid_ratio_k'] = grid_ratio_k
     ini['subdomain']['n_ghost'] = child.n_ghost
     ini['subdomain']['n_sponge'] = child.n_sponge
 
@@ -307,7 +334,7 @@ else:
     ini['subdomain']['sw_subdomain'] = False
 
 # NOTE: 10, 100 not part of MIP. 10 = needed for 10 m wind, temp, etc.
-ini['cross']['xy'] = [10, 400, 1000, 1500, 3000, 5000, vgrid.zsize]
+ini['cross']['xy'] = [10, 400, 1000, 1500, 3000, 5000, gd['zsize']]
 ini['cross']['xz'] = domain.ysize/2
 ini['cross']['yz'] = domain.xsize/2
 
@@ -367,8 +394,7 @@ if args.domain == 'outer':
     time_cosmo = (time_cosmo.values.astype(np.float32)/1e9).astype(np.int32)
 
     # Standard dev. of Gaussian filter applied to interpolated fields (m).
-    #sigma_h = 10_000
-    sigma_h = 0.
+    sigma_h = 1_000
 
     # MicroHHpy does not sprechen Deutsch. Just pretent it's ERA5...
     create_era5_input(
@@ -378,8 +404,8 @@ if args.domain == 'outer':
         z_cosmo,
         p_cosmo,
         time_cosmo,
-        vgrid.z,
-        vgrid.zsize,
+        gd['z'],
+        gd['zsize'],
         zstart_buffer,
         bs['rho'],
         bs['rhoh'],
@@ -420,14 +446,14 @@ else:
             fields_2d,
             outer_dom.xsize,
             outer_dom.ysize,
-            gd['z'],
-            gd['zh'],
+            gd_outer['z'],
+            gd_outer['zh'],
             outer_dom.itot,
             outer_dom.jtot,
             inner_dom.xsize,
             inner_dom.ysize,
-            gd['z'],
-            gd['zh'],
+            gd_inner['z'],
+            gd_inner['zh'],
             inner_dom.itot,
             inner_dom.jtot,
             inner_dom.xstart_in_parent,
@@ -435,7 +461,7 @@ else:
             parent_exp_path,
             exp_path,
             float_type,
-            method='nearest',
+            #method='nearest',
             name_suffix='ext')
 
 

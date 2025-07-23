@@ -96,6 +96,48 @@ NN_interpolator<TF>::NN_interpolator(
         this->nn_i = nnk::get_nn_indexes<TF>(x_in_s, x);
         this->nn_j = nnk::get_nn_indexes<TF>(y_in_s, y);
         this->nn_k = nnk::get_nn_indexes<TF>(z_in,   z);
+
+        //std::cout << "i: range=" << i_range.first << ":" << i_range.second << std::endl;
+
+        //std::cout << "x: ";
+        //for (auto& x : x_in)
+        //    std::cout << x << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "nn_i: ";
+        //for (auto& i : nn_i)
+        //    std::cout << i << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "j: range=" << j_range.first << ":" << j_range.second << std::endl;
+
+        //std::cout << "y: ";
+        //for (auto& y : y_in)
+        //    std::cout << y << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "nn_j: ";
+        //for (auto& j : nn_j)
+        //    std::cout << j << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "k:" << std::endl;
+
+        //std::cout << "z: ";
+        //for (auto& z : z_in)
+        //    std::cout << z << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "nn_k: ";
+        //for (auto& k : nn_k)
+        //    std::cout << k << ", ";
+        //std::cout << std::endl;
+
+        //std::cout << "z:" << std::endl;
+        //for (int k=0; k<z.size(); ++k)
+        //    std::cout << k << ": " << z[k] << std::endl;
+
+        //throw 1;
     }
     else
     {
