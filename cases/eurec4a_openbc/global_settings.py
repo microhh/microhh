@@ -47,8 +47,8 @@ elif  syst == 'snellius':
     ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5'
 
 start_date = datetime(year=2020, month=2, day=1, hour=0)
-#end_date   = datetime(year=2020, month=2, day=1, hour=1)
-end_date   = datetime(year=2020, month=2, day=3, hour=0)
+end_date   = datetime(year=2020, month=2, day=1, hour=1)
+#end_date   = datetime(year=2020, month=2, day=3, hour=0)
 
 # Global switch between domain definitions. Used by multiple scripts.
 #outer_dom, inner_dom = dd.get_develop_domain()

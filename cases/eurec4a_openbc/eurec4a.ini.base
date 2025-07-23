@@ -60,7 +60,7 @@ swfixedsza=false
 swmicro=2mom_warm
 swmicrobudget=false
 cflmax=1.2
-Nc0=70e6
+Nc0=100e6
 
 [force]
 #swlspres=geo
@@ -155,8 +155,8 @@ loadfreq=None
 endtime=None
 dt=6.
 dtmax=30
-savetime=3600
-outputiter=0
+savetime=21600
+outputiter=1
 adaptivestep=true
 starttime=0
 rkorder=4
@@ -164,7 +164,7 @@ datetime_utc=None
 
 [stats]
 swstats=1
-sampletime=60
+sampletime=300
 #masklist=ql,qlcore
 
 [column]
@@ -175,7 +175,7 @@ coordinates[y]=None
 
 [cross]
 swcross=1
-sampletime=60
+sampletime=300
 crosslist=thl_fluxbot,qt_fluxbot,u_fluxbot,v_fluxbot,lw_flux_dn,lw_flux_up,sw_flux_dn,sw_flux_up,sw_flux_dn_clear,sw_flux_up_clear,lw_flux_dn_clear,lw_flux_up_clear,qt_path,ql_path,qi_path,qr_path,u,v,w,thl,qt,ql,qr,rr_bot
 xy=None
 #xz=None
