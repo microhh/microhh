@@ -33,6 +33,7 @@
 #include "input.h"
 #include "constants.h"
 #include "nn_interpolator_kernels.h"
+#include "timer.h"
 
 namespace nnk = NN_interpolator_kernels;
 
@@ -309,6 +310,9 @@ void Subdomain<TF>::save_bcs(
             NN_interpolator<TF>& lbc,
             const std::string& filename)
     {
+        Timer t;
+        t.start();
+
         #ifdef USEMPI
         /*
         Save binary using MPI I/O hyperslabs.
@@ -349,8 +353,6 @@ void Subdomain<TF>::save_bcs(
         if (lbc.has_data)
             MPI_Type_free(&subarray);
 
-        return err;
-
         #else
         /*
         Save binary using simple serial I/O.
@@ -366,7 +368,12 @@ void Subdomain<TF>::save_bcs(
 
         #endif
 
-        return 0;
+        const TF elapsed = t.stop();
+        const TF size_gb = lbc.itot_g * lbc.jtot_g * lbc.ktot_g * sizeof(TF) / 1e9;
+        const TF tp = size_gb / elapsed;
+        master.print_message("Saving %s (%f GB): %f GB/s in %f sec.\n", filename.c_str(), size_gb, tp, elapsed);
+
+        return err;
     };
 
 
