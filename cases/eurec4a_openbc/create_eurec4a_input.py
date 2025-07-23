@@ -306,8 +306,10 @@ if args.domain == 'outer':
     ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr']
     ini['boundary_lateral']['sw_recycle[east]'] = True
     ini['boundary_lateral']['sw_recycle[north]'] = True
+    ini['radiation']['dt_rad'] = 300
 else:
     ini['boundary_lateral']['slist'] = ['thl', 'qt', 'qr', 'nr']
+    ini['radiation']['dt_rad'] = 60
 
 if child is not None:
 
