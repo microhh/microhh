@@ -31,57 +31,46 @@ from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd, refi
 """
 Define vertical grid. This is used in several scripts, so define it globally.
 """
-#ktot = 144
-#dz0 = 20
-#heights = [0, 4000, 10000]
-#factors = [1.01, 1.02]
-#vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+"""
+ktot = 144
+dz0 = 20
+heights = [0, 4000, 10000]
+factors = [1.01, 1.02]
+vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+vgrid.plot()
+"""
+
+ktot = 128
+dz0 = 20
+heights = [0, 3000, 5000, 10000]
+factors = [1.01, 1.03, 1.1]
+vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
 #vgrid.plot()
 
-#ktot = 128
-#dz0 = 20
-#heights = [0, 3000, 5000, 10000]
-#factors = [1.01, 1.03, 1.08]
-#vgrid = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
-#vgrid.plot()
+gd_outer = calc_vertical_grid_2nd(vgrid.z, vgrid.zsize)
+gd_inner = gd_outer
 
+
+"""
 # Define low-resolution vertical grid, and use grid refinement
 # to calculate the high-resolution grid.
 # This step is necessary to ensure that the half level heights match.
-ktot = 72
+ktot = 64
 dz0 = 40
-heights = [0, 4000, 10000]
-factors = [1.02, 1.04]
+heights = [0, 3000, 5000, 10000]
+factors = [1.02, 1.05, 1.1]
 vgrid_out = ls2d.grid.Grid_stretched_manual(ktot, dz0, heights, factors)
+#vgrid_out.plot()
 
 # Convert (LS)2D grid to MicroHH compatible grid.
 gd_outer = calc_vertical_grid_2nd(vgrid_out.z, vgrid_out.zsize)
 z,zh = refine_grid_for_nesting(gd_outer['z'], gd_outer['zh'], ratio=2)
 gd_inner = calc_vertical_grid_2nd(z, zh[-1])
 #gd_inner = gd_outer
+"""
 
 # Define buffer height globally; needed by multiple scripts.
 zstart_buffer = 0.75 * gd_outer['zsize']
-
-
-#import matplotlib.pyplot as plt
-#plt.close('all')
-#
-#plt.figure()
-#ax=plt.subplot(121)
-#plt.plot(np.ones(gd_out['ktot']+1), gd_out['zh'], 'r_')
-#plt.plot(np.ones(gd_out['ktot']), gd_out['z'], 'r+')
-#
-#plt.plot(np.ones(gd_in['ktot']+1)+1, gd_in['zh'], 'b_')
-#plt.plot(np.ones(gd_in['ktot'])+1, gd_in['z'], 'b+')
-#ax.set_yticks(gd_out['zh'])
-#plt.grid()
-#plt.ylim(0, 200)
-#plt.xlim(0, 3)
-#
-#plt.subplot(122)
-#plt.plot(gd_out['dz'], gd_out['z'], 'rx')
-#plt.plot(gd_in['dz'], gd_in['z'], 'rx')
 
 
 #proj_str = '+proj=utm +zone=20 +ellps=WGS84 +towgs84=0,0,0 +units=m +no_defs +type=crs'
@@ -115,7 +104,7 @@ def get_develop_domain():
         itot=128,
         jtot=64,
         n_ghost=3,
-        n_sponge=3,
+        n_sponge=0,
         lbc_freq=60,
         parent=outer_dom,
         xstart_in_parent=2000,
@@ -132,139 +121,7 @@ def get_develop_domain():
     return outer_dom, inner_dom
 
 
-def get_test_domain():
-
-    # Snellius test #2.
-    # Full domain, ~200 m resolution.
-    outer_dom = Domain(
-        xsize=500_000,
-        ysize=300_000,
-        itot=2592,
-        jtot=1536,
-        n_ghost=3,
-        n_sponge=5,
-        lon=-57.7,
-        lat=13.3,
-        anchor='center',
-        proj_str=proj_str,
-    )
-
-    outer_dom.npx = 48
-    outer_dom.npy = 96
-
-    inner_dom = None
-
-    return outer_dom, inner_dom
-
-
-def get_large_domain():
-
-    # Dummy, just for plotting.
-    ref_dom = Domain(
-        xsize=500_000,
-        ysize=300_000,
-        itot=128,
-        jtot=64,
-        n_ghost=3,
-        n_sponge=5,
-        lon=-57.7,
-        lat=13.3,
-        anchor='center',
-        proj_str=proj_str,
-    )
-
-    outer_dom = Domain(
-        xsize=1_000_000,
-        ysize=600_000,
-        itot=1920,
-        jtot=1152,
-        n_ghost=3,
-        n_sponge=5,
-        lon=-55.7,
-        lat=14.3,
-        anchor='center',
-        proj_str=proj_str,
-    )
-
-    outer_dom.npx = 48
-    outer_dom.npy = 64
-
-    inner_dom = None
-
-    #plot_domains([outer_dom, ref_dom], use_projection=True)
-
-    return outer_dom, inner_dom
-
-
-def get_production_domain_200m():
-    """
-    First test nested run; 600 m outer + 200 m inner.
-    """
-
-    # npx=  32, npy=  48 -> cores=1536 | 1728 x  960 x  128 | pts/core=138240.0
-    # npx=  64, npy=  48 -> cores=3072 | 2688 x 1728 x  128 | pts/core=193536.0
-
-    # Dummy, just for plotting.
-    # This is the domain requested by the intercomparison.
-    ref_dom = Domain(
-        xsize=500_000,
-        ysize=300_000,
-        itot=128,
-        jtot=64,
-        n_ghost=3,
-        n_sponge=5,
-        lbc_freq=3600,
-        lon=-57.7,
-        lat=13.3,
-        anchor='center',
-        proj_str=proj_str,
-    )
-
-    outer_dom = Domain(
-        xsize=1728*600,
-        ysize=960*600,
-        itot=1728,
-        jtot=960,
-        n_ghost=3,
-        n_sponge=6,
-        lbc_freq=3600,
-        lon=-55.5,
-        lat=14.2,
-        anchor='center',
-        proj_str=proj_str,
-    )
-
-    outer_dom.npx = 32
-    outer_dom.npy = 48
-
-    inner_dom = Domain(
-        xsize=2688*200,
-        ysize=1728*200,
-        itot=2688,
-        jtot=1728,
-        n_ghost=3,
-        n_sponge=3,
-        lbc_freq=60,
-        parent=outer_dom,
-        xstart_in_parent=25200,
-        ystart_in_parent=25200)
-
-    inner_dom.npx = 64
-    inner_dom.npy = 48
-
-    outer_dom.child = inner_dom
-
-    #domains = [outer_dom, inner_dom, ref_dom]
-    #labels = []
-    #labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
-    #labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
-    #labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
-    #plot_domains(domains, use_projection=True, labels=labels)
-
-    return outer_dom, inner_dom
-
-
-def get_production_domain_100m():
+def get_full_domain_100m():
     """
     First test nested run; 300 m outer + 100 m inner.
     """
@@ -332,13 +189,17 @@ def get_production_domain_100m():
     return outer_dom, inner_dom
 
 
+def get_quarter_domain_100m():
+    """
+    Half domain size (in x+y, so quarter area) at full resolution.
+    """
+    # Outer:
+    # npx=  32, npy=  24 -> cores= 768 | 1632 x  960 x  128 | pts/core=261120.0
+    # or:
+    # npx=  32, npy=  48 -> cores=1536 | 1632 x  960 x  128 | pts/core=130560.0
 
-def get_half_domain_100m():
-    """
-    Half domain size at full resolution.
-    """
-    # Outer: npx=  32, npy=  24 -> cores= 768 | 1632 x  960 x  128 | pts/core=261120.0
-    # Inner: npx=  32, npy=  48 -> cores=1536 | 2496 x 1440 x  128 | pts/core=299520.0 
+    # Inner:
+    # npx=  32, npy=  48 -> cores=1536 | 2784 x 1632 x  128 | pts/core=378624.0
 
     # Dummy, just for plotting.
     # This is the domain requested by the intercomparison.
@@ -371,15 +232,15 @@ def get_half_domain_100m():
     )
 
     outer_dom.npx = 32
-    outer_dom.npy = 24
+    outer_dom.npy = 48
 
     inner_dom = Domain(
-        xsize=2496*100,
-        ysize=1440*100,
-        itot=2496,
-        jtot=1440,
+        xsize=2784*100,
+        ysize=1632*100,
+        itot=2784,
+        jtot=1632,
         n_ghost=3,
-        n_sponge=3,
+        n_sponge=0,
         lbc_freq=60,
         parent=outer_dom,
         xstart_in_parent=12000,
@@ -390,12 +251,12 @@ def get_half_domain_100m():
 
     outer_dom.child = inner_dom
 
-    #domains = [outer_dom, inner_dom, ref_dom]
-    #labels = []
-    #labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
-    #labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
-    #labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
-    #plot_domains(domains, use_projection=True, labels=labels)
+    domains = [outer_dom, inner_dom, ref_dom]
+    labels = []
+    labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
+    labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
+    labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+    plot_domains(domains, use_projection=True, labels=labels)
 
     return outer_dom, inner_dom
 
@@ -405,9 +266,6 @@ if __name__ == '__main__':
     Just for plotting vertical grid and/or domain.
     """
 
-    outer_dom, inner_dom = get_develop_domain()
-    #outer_dom, inner_dom = get_test_domain()
-    #outer_dom, inner_dom = get_large_domain()
-    #outer_dom, inner_dom = get_production_domain_200m()
-    #outer_dom, inner_dom = get_production_domain_100m()
-    #outer_dom, inner_dom = get_half_domain_100m()
+    #outer_dom, inner_dom = get_develop_domain()
+    #outer_dom, inner_dom = get_full_domain_100m()
+    outer_dom, inner_dom = get_quarter_domain_100m()
