@@ -126,8 +126,15 @@ def get_full_domain_100m():
     First test nested run; 300 m outer + 100 m inner.
     """
 
+    # Outer:
     # npx=  64, npy=  48 -> cores=3072 | 3264 x 1920 x  128 | pts/core=261120.0
-    # npx=  64, npy=  96 -> cores=6144 | 5760 x 3456 x  128 | pts/core=414720.0
+    # or:
+    # npx=  64, npy=  96 -> cores=6144 | 3264 x 1920 x  128 | pts/core=130560.0
+
+    # Inner:
+    # npx=  64, npy=  96 -> cores=6144 | 5568 x 3264 x  128 | pts/core=378624.0
+
+    proj_str = '+proj=tmerc +lat_0=13.3 +lon_0=-57.7 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
 
     # Dummy, just for plotting.
     # This is the domain requested by the intercomparison.
@@ -151,28 +158,28 @@ def get_full_domain_100m():
         itot=3264,
         jtot=1920,
         n_ghost=3,
-        n_sponge=6,
+        n_sponge=10,
         lbc_freq=3600,
         lon=-55.7,
-        lat=14.2,
+        lat=14.3,
         anchor='center',
         proj_str=proj_str,
     )
 
     outer_dom.npx = 64
-    outer_dom.npy = 48
+    outer_dom.npy = 96
 
     inner_dom = Domain(
-        xsize=5760*100,
-        ysize=3456*100,
-        itot=5760,
-        jtot=3456,
+        xsize=5568*100,
+        ysize=3264*100,
+        itot=5568,
+        jtot=3264,
         n_ghost=3,
-        n_sponge=3,
+        n_sponge=0,
         lbc_freq=60,
         parent=outer_dom,
-        xstart_in_parent=21000,
-        ystart_in_parent=25200)
+        xstart_in_parent=15000,
+        ystart_in_parent=18000)
 
     inner_dom.npx = 64
     inner_dom.npy = 96
@@ -267,5 +274,5 @@ if __name__ == '__main__':
     """
 
     #outer_dom, inner_dom = get_develop_domain()
-    #outer_dom, inner_dom = get_full_domain_100m()
-    outer_dom, inner_dom = get_quarter_domain_100m()
+    outer_dom, inner_dom = get_full_domain_100m()
+    #outer_dom, inner_dom = get_quarter_domain_100m()
