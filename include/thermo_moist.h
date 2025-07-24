@@ -142,6 +142,7 @@ class Thermo_moist : public Thermo<TF>
         bool swcross_qlqi;
         bool swcross_qsat;
         bool swcross_qlqithv;
+        bool swcross_cape;
 
         // 3D hydrostatic pressure, calculated from 2D pressure @ TOD.
         bool swphydro_3d;

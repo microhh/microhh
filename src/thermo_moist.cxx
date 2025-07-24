@@ -1297,10 +1297,12 @@ namespace
     template<typename TF, bool swphydro_3d>
     void calc_cape(
             TF* const restrict cape,
+            TF* const restrict zi,
             const TF* const restrict thl,
             const TF* const restrict qt,
             const TF* const restrict p,
             const TF* const restrict dz,
+            const TF* const restrict zh,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart, const int kend,
@@ -1324,7 +1326,10 @@ namespace
                 const int ij = i + j*jstride;
 
                 cape[ij] = TF(0);
+                zi[ij] = TF(0);
+
                 bool above_lfc = false;
+                bool is_stable = false;
 
                 for (int k=kstart; k<kend; k++)
                 {
@@ -1342,14 +1347,22 @@ namespace
 
                     const TF b_p = Constants::grav<TF> * (thv_p - thv_e) / thv_e;
 
+                    if (k == kstart and b_p < 0)
+                        is_stable = true;
+
                     if (b_p > 0.)
                     {
                         above_lfc = true;
                         cape[ij] += b_p * dz[k];
                     }
 
-                    if (above_lfc > 0 and b_p < 0)
+                    if (above_lfc and b_p < 0)
+                    {
+                        if (!is_stable)
+                            zi[ij] = zh[k];
+
                         break;
+                    }
                 }
             }
     }
@@ -2731,6 +2744,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         swcross_qlqi = false;
         swcross_qsat = false;
         swcross_qlqithv = false;
+        swcross_cape = false;
 
         // Vectors with allowed cross variables for buoyancy and liquid water.
         const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
@@ -2738,8 +2752,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
         const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
-        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa", "cape", "p_bot"};
+        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa", "p_bot"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
+        const std::vector<std::string> allowed_crossvars_cape = {"cape", "zi"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
         std::vector<std::string> qlvars = cross.get_enabled_variables(allowed_crossvars_ql);
@@ -2748,6 +2763,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         std::vector<std::string> qsatvars = cross.get_enabled_variables(allowed_crossvars_qsat);
         std::vector<std::string> miscvars = cross.get_enabled_variables(allowed_crossvars_misc);
         std::vector<std::string> qlqithvvars = cross.get_enabled_variables(allowed_crossvars_qlqithv);
+        std::vector<std::string> capevars = cross.get_enabled_variables(allowed_crossvars_cape);
 
         if (bvars.size() > 0)
             swcross_b  = true;
@@ -2767,6 +2783,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         if (qlqithvvars.size() > 0)
             swcross_qlqithv = true;
 
+        if (capevars.size() > 0)
+            swcross_cape = true;
+
         // Merge into one vector
         crosslist = bvars;
         crosslist.insert(crosslist.end(), qlvars.begin(), qlvars.end());
@@ -2775,6 +2794,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         crosslist.insert(crosslist.end(), qsatvars.begin(), qsatvars.end());
         crosslist.insert(crosslist.end(), miscvars.begin(), miscvars.end());
         crosslist.insert(crosslist.end(), qlqithvvars.begin(), qlqithvvars.end());
+        crosslist.insert(crosslist.end(), capevars.begin(), capevars.end());
     }
 }
 
@@ -3078,6 +3098,38 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_path(output->fld.data(), "qsat_path", iotime);
     }
 
+    if (swcross_cape)
+    {
+        auto cape_wrapper = [&]<bool swphydro_3d>(std::vector<TF>& p)
+        {
+            calc_cape<TF, swphydro_3d>(
+                output->fld_bot.data(),     // CAPE.
+                output->fld_top.data(),     // mixed-layer depth.
+                fields.ap.at("thl")->fld.data(),
+                fields.ap.at("qt")->fld.data(),
+                p.data(),
+                gd.dz.data(),
+                gd.zh.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.jstride, gd.kstride);
+        };
+
+        if (swphydro_3d)
+            cape_wrapper.template operator()<true>(fields.sd.at("phydro_3d")->fld);
+        else
+            cape_wrapper.template operator()<false>(bs.prefh);
+
+        for (auto& it : crosslist)
+        {
+            if (it == "cape")
+                cross.cross_plane(output->fld_bot.data(), no_offset, "cape", iotime);
+            else if (it == "zi")
+                cross.cross_plane(output->fld_top.data(), no_offset, "zi", iotime);
+        }
+    }
+
     for (auto& it : crosslist)
     {
         if (it == "w500hpa")
@@ -3088,30 +3140,6 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                     gd.icells, gd.ijcells);
 
             cross.cross_plane(output->fld_bot.data(), no_offset, "w500hpa", iotime);
-        }
-
-        if (it == "cape")
-        {
-            auto cape_wrapper = [&]<bool swphydro_3d>(std::vector<TF>& p)
-            {
-                calc_cape<TF, swphydro_3d>(
-                    output->fld_bot.data(),
-                    fields.ap.at("thl")->fld.data(),
-                    fields.ap.at("qt")->fld.data(),
-                    p.data(),
-                    gd.dz.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.jstride, gd.kstride);
-            };
-
-            if (swphydro_3d)
-                cape_wrapper.template operator()<true>(fields.sd.at("phydro_3d")->fld);
-            else
-                cape_wrapper.template operator()<false>(bs.prefh);
-
-            cross.cross_plane(output->fld_bot.data(), no_offset, "cape", iotime);
         }
 
         if (it == "p_bot")
