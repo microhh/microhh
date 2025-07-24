@@ -2738,7 +2738,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
         const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
-        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa", "cape"};
+        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa", "cape", "p_bot"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
@@ -3112,6 +3112,14 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                 cape_wrapper.template operator()<false>(bs.prefh);
 
             cross.cross_plane(output->fld_bot.data(), no_offset, "cape", iotime);
+        }
+
+        if (it == "p_bot")
+        {
+            if (!swphydro_3d)
+                throw std::runtime_error("Cannot save surface cross-section p_bot with 1D pressure.");
+
+            cross.cross_plane(&(fields.sd.at("phydroh_3d")->fld.data()[gd.kstart*gd.kstride]), no_offset, "p_bot", iotime);
         }
     }
 
