@@ -134,7 +134,8 @@ def get_full_domain_100m():
     # Inner:
     # npx=  64, npy=  96 -> cores=6144 | 5568 x 3264 x  128 | pts/core=378624.0
 
-    proj_str = '+proj=tmerc +lat_0=13.3 +lon_0=-57.7 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
+    #proj_str = '+proj=tmerc +lat_0=13.3 +lon_0=-57.7 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
+    proj_str = '+proj=lcc +lat_1=12.0 +lat_2=16.5 +lat_0=14.3 +lon_0=-55.7 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs'
 
     # Dummy, just for plotting.
     # This is the domain requested by the intercomparison.
@@ -186,12 +187,12 @@ def get_full_domain_100m():
 
     outer_dom.child = inner_dom
 
-    #domains = [outer_dom, inner_dom, ref_dom]
-    #labels = []
-    #labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
-    #labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
-    #labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
-    #plot_domains(domains, use_projection=True, labels=labels)
+#    domains = [outer_dom, inner_dom, ref_dom]
+#    labels = []
+#    labels.append(rf'Outer: {outer_dom.xsize/1000} x {outer_dom.ysize/1000} km$^2$ @ $\Delta$={outer_dom.dx:.0f} m')
+#    labels.append(rf'Inner: {inner_dom.xsize/1000} x {inner_dom.ysize/1000} km$^2$ @ $\Delta$={inner_dom.dx:.0f} m')
+#    labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+#    plot_domains(domains, use_projection=True, labels=labels)
 
     return outer_dom, inner_dom
 
