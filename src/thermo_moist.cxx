@@ -1292,6 +1292,67 @@ namespace
         for (int n=0; n<ncells; ++n)
             fld_out[n] = f0 * fld_prev[n] + f1 * fld_next[n];
     }
+
+
+    template<typename TF, bool swphydro_3d>
+    void calc_cape(
+            TF* const restrict cape,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict p,
+            const TF* const restrict dz,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        /*
+        Calculate Convective Available Potential Energy (CAPE).
+
+        This implementation computes CAPE by lifting an air parcel adiabatically from the first model level,
+        using the initial values of `thl` and `qt` as conserved variables.
+
+        CAPE is defined as the vertical integral of buoyancy experienced by the parcel.
+        The calculation is restricted to the first continuous layer where buoyancy is positive:
+        from the level of free convection (LFC) to the first equilibrium level (EL).
+        */
+
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ij = i + j*jstride;
+
+                cape[ij] = TF(0);
+                bool above_lfc = false;
+
+                for (int k=kstart; k<kend; k++)
+                {
+                    const int ijk = ij + k*kstride;
+                    const int ijk0 = ij + kstart*kstride;
+
+                    const TF p_loc = swphydro_3d ? p[ijk] : p[k];
+                    const TF exn_loc = exner(p_loc);
+
+                    Struct_sat_adjust<TF> ssa_e = sat_adjust(thl[ijk], qt[ijk], p_loc, exn_loc);
+                    Struct_sat_adjust<TF> ssa_p = sat_adjust(thl[ijk0], qt[ijk0], p_loc, exn_loc);
+
+                    const TF thv_e = virtual_temperature(exn_loc, thl[ijk],  qt[ijk],  ssa_e.ql, ssa_e.qi);
+                    const TF thv_p = virtual_temperature(exn_loc, thl[ijk0], qt[ijk0], ssa_p.ql, ssa_p.qi);
+
+                    const TF b_p = Constants::grav<TF> * (thv_p - thv_e) / thv_e;
+
+                    if (b_p > 0.)
+                    {
+                        above_lfc = true;
+                        cape[ij] += b_p * dz[k];
+                    }
+
+                    if (above_lfc > 0 and b_p < 0)
+                        break;
+                }
+            }
+    }
 }
 
 
@@ -2677,7 +2738,7 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
         const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
         const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
-        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
+        const std::vector<std::string> allowed_crossvars_misc = {"w500hpa", "cape"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
 
         std::vector<std::string> bvars  = cross.get_enabled_variables(allowed_crossvars_b);
@@ -3027,6 +3088,30 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
                     gd.icells, gd.ijcells);
 
             cross.cross_plane(output->fld_bot.data(), no_offset, "w500hpa", iotime);
+        }
+
+        if (it == "cape")
+        {
+            auto cape_wrapper = [&]<bool swphydro_3d>(std::vector<TF>& p)
+            {
+                calc_cape<TF, swphydro_3d>(
+                    output->fld_bot.data(),
+                    fields.ap.at("thl")->fld.data(),
+                    fields.ap.at("qt")->fld.data(),
+                    p.data(),
+                    gd.dz.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.jstride, gd.kstride);
+            };
+
+            if (swphydro_3d)
+                cape_wrapper.template operator()<true>(fields.sd.at("phydro_3d")->fld);
+            else
+                cape_wrapper.template operator()<false>(bs.prefh);
+
+            cross.cross_plane(output->fld_bot.data(), no_offset, "cape", iotime);
         }
     }
 
