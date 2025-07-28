@@ -185,8 +185,9 @@ xy=None
 
 [dump]
 swdump=0
-sampletime=900
-dumplist=ql
+swdump_sub=None
+sampletime=300
+dumplist=u,v,w,thl,qt,ql,phydro_3d
 
 [limiter]
 limitlist=qt,qr,nr

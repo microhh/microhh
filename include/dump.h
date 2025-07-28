@@ -39,7 +39,7 @@ class Dump
         void create();
 
         unsigned long get_time_limit(unsigned long);
-        bool get_switch() { return swdump; }
+        bool get_switch() { return swdump || swdump_sub; }
         std::vector<std::string>& get_dumplist();
 
         bool do_dump(unsigned long, unsigned long);
@@ -52,9 +52,15 @@ class Dump
         Field3d_io<TF> field3d_io;
 
         std::vector<std::string> dumplist; // List with all dumps from the ini file.
+
         bool swdump;                       // Statistics on/off switch
         bool swdoubledump;                 // On/off switch for two consecutive dumps in time
         double sampletime;
         unsigned long isampletime;
+
+        // Hack for EUREC4A MIP.
+        bool swdump_sub;
+        std::vector<int> mpicoordx;
+        std::vector<int> mpicoordy;
 };
 #endif

@@ -41,11 +41,8 @@ from microhhpy.openbc import create_era5_input
 from microhhpy.interpolate import regrid_les
 
 # Custom scripts from same directory.
-from global_settings import env, domains, start_date, end_date, float_type, host_model
+from global_settings import env, domains, gd, zstart_buffer, start_date, end_date, float_type, host_model
 import helpers as hlp
-
-# Vertical grid definition. Switch between domains is set in `global_settings.py`.
-from domain_definition import gd, zstart_buffer
 
 
 """
@@ -345,6 +342,15 @@ if x < 0 or x > domain.xsize or x < 0 or y > domain.ysize:
 
 ini['column']['coordinates[x]'] = x
 ini['column']['coordinates[y]'] = y
+
+# 3D dump, local near domain center. Only for 100 m domain.
+if args.domain == 1:
+    ini['dump']['swdump_sub'] = True
+    ini['dump']['mpicoordx'] = [domain.npx//2-1, domain.npx//2]
+    ini['dump']['mpicoordy'] = [domain.npy//2-1, domain.npy//2, domain.npy//2+1]
+else:
+    ini['dump']['swdump_sub'] = False
+
 
 io.check_ini(ini)
 io.save_ini(ini, f'{domain.work_dir}/eurec4a.ini')
