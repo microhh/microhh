@@ -39,7 +39,8 @@ if syst == 'eddy':
         microhh_bin = '/home/bart/meteo/models/microhh/build_dp_cpumpi/microhh',
         gpt_veerman_path = '/home/bart/meteo/models/coefficients_veerman',
         cosmo_path = '/home/scratch2/bart/eurec4a_cosmo/',
-        ls2d_era5_path = '/home/scratch1/bart/LS2D_ERA5')
+        ls2d_era5_path = '/home/scratch1/bart/LS2D_ERA5',
+        ls2d_cams_path = '/home/scratch1/bart/LS2D_CAMS')
 
 elif  syst == 'snellius':
     env = dict(

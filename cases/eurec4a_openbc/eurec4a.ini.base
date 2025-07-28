@@ -55,6 +55,12 @@ sfc_alb_dir=0.06
 sfc_alb_dif=0.06
 swclearskystats=true
 swfixedsza=false
+swtimedep_background=1
+timedeplist_gas=o3
+
+[aerosol]
+swaerosol=true
+swtimedep=true
 
 [micro]
 swmicro=2mom_warm

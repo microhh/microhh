@@ -24,13 +24,16 @@ from pathlib import Path
 import argparse
 import shutil
 import glob
+#import sys
 import os
 
 import netCDF4 as nc4
 import xarray as xr
 import pandas as pd
 import numpy as np
+from scipy.interpolate import interp1d
 
+#sys.path.append('/home/bart/meteo/models/LS2D')
 import ls2d
 
 # Make sure `microhhpy` is in the Python path
@@ -43,6 +46,14 @@ from microhhpy.interpolate import regrid_les
 # Custom scripts from same directory.
 from global_settings import env, domains, gd, zstart_buffer, start_date, end_date, float_type, host_model
 import helpers as hlp
+
+
+def interp(x_out, x_in, y_in):
+    """
+    Linear interpolation with extrapolation using Scipy's `interp1d`.
+    """
+    f = interp1d(x_in, y_in, fill_value='extrapolate')
+    return f(x_out)
 
 
 """
@@ -66,7 +77,7 @@ child = domain.child
 
 
 """
-Read ERA5 with (LS)2D, for backgroud radiation, and/or domain initialisation.
+Read ERA5 and CAMS with (LS)2D, for backgroud radiation, and/or domain initialisation.
 """
 settings = {
     'central_lon' : -57.7,
@@ -74,23 +85,79 @@ settings = {
     'start_date'  : start_date,
     'end_date'    : end_date,
     'case_name'   : 'eurec4a_xl',
-    'era5_path'   : env["ls2d_era5_path"]}
+    'era5_path'   : env["ls2d_era5_path"],
+    'cams_path'   : env["ls2d_cams_path"],
+    }
+
+dates = pd.date_range(start_date, end_date, freq='h')
+time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 
 era = ls2d.Read_era5(settings)
 era.calculate_forcings(n_av=6, method='2nd')
 
 # Interpolate to both outer and inner vertical grid.
-ds_time = era.get_les_input(gd['z'])
-ds_time = ds_time.sel(lay=slice(0,135), lev=slice(0,136))
-ds_mean = ds_time.mean(dim='time')
+era_time = era.get_les_input(gd['z'])
+era_time = era_time.sel(lay=slice(0,135), lev=slice(0,136))
+era_mean = era_time.mean(dim='time')
+
+# Read CAMS data.
+cams_vars = {
+        'eac4_ml': [
+            'dust_aerosol_0.03-0.55um_mixing_ratio',
+            'dust_aerosol_0.55-0.9um_mixing_ratio',
+            'dust_aerosol_0.9-20um_mixing_ratio',
+            'hydrophilic_black_carbon_aerosol_mixing_ratio',
+            'hydrophilic_organic_matter_aerosol_mixing_ratio',
+            'hydrophobic_black_carbon_aerosol_mixing_ratio',
+            'hydrophobic_organic_matter_aerosol_mixing_ratio',
+            'sea_salt_aerosol_0.03-0.5um_mixing_ratio',
+            'sea_salt_aerosol_0.5-5um_mixing_ratio',
+            'sea_salt_aerosol_5-20um_mixing_ratio',
+            'specific_humidity',
+            'sulphate_aerosol_mixing_ratio',
+            'temperature'],
+        'eac4_sfc': [
+            'surface_pressure'],
+        }
+
+cams = ls2d.Read_cams(settings, cams_vars)
+cams_time = cams.get_les_input(gd['z'], 6)
+
+# Interpolate CAMS `lay` variables onto ERA5 pressures.
+tmp = cams_time.copy()
+drop_vars = ['lay']
+for name, da in tmp.data_vars.items():
+    if 'lay' in da.dims:
+        drop_vars.append(name)
+tmp = tmp.drop_vars(drop_vars)
+
+# Target pressure:
+p_lay = era_time.p_lay
+
+for name, da in cams_time.data_vars.items():
+    if 'lay' in da.dims:
+        out = np.zeros_like(p_lay)
+        for t in range(out.shape[0]):
+            out[t,:] = interp(p_lay[t], cams_time.p_lay[t,:], da[t,:])
+        tmp[name] = (('time', 'lay'), out)
+
+# Copy back to original name.
+cams_time = tmp
+
+# Limit aerosols to >= eps.
+# CAMS sometimes has small negative values (-1e-16), which causes RRTMGP to fail.
+eps = 1e-16
+for i in range(1, 12):
+    cams_time[f'aermr{i:02d}'] = np.maximum(cams_time[f'aermr{i:02d}'], eps)
+    cams_time[f'aermr{i:02d}_lay'] = np.maximum(cams_time[f'aermr{i:02d}_lay'], eps)
+
+cams_mean = cams_time.mean(dim='time')
 
 
 """
 Process hourly surface COSMO/ERA fields: SST (thl_bot) and qsat(SST) (qt_bot).
 Unit conversions for COSMO (T -> thl etc.) are done in `read_cosmo()`.
 """
-dates = pd.date_range(start_date, end_date, freq='h')
-time_sec = np.array((dates-dates[0]).total_seconds()).astype(np.int32)
 
 fld_s = np.empty((domain.jtot, domain.itot), float_type)
 tmp_s = np.empty((domain.jtot, domain.itot), float_type)
@@ -172,10 +239,10 @@ add_nc_var('z', ('z'), nc_file, gd['z'])
 # Initial profiles. Not really used, but needed for `init` phase. The resulting
 # initial 3D fields are overwritten by the interpolated fields from COSMO.
 nc_init = nc_file.createGroup('init')
-add_nc_var('thl', ('z'), nc_init, ds_mean.thl.values)
-add_nc_var('qt', ('z'), nc_init, ds_mean.qt.values)
-add_nc_var('u', ('z'), nc_init, ds_mean.u.values)
-add_nc_var('v', ('z'), nc_init, ds_mean.v.values)
+add_nc_var('thl', ('z'), nc_init, era_mean.thl.values)
+add_nc_var('qt', ('z'), nc_init, era_mean.qt.values)
+add_nc_var('u', ('z'), nc_init, era_mean.u.values)
+add_nc_var('v', ('z'), nc_init, era_mean.v.values)
 
 # Time dependent input. For now, spatially constant.
 nc_tdep = nc_file.createGroup('timedep')
@@ -185,20 +252,20 @@ add_nc_dim('time_ls', time_sec.size, nc_tdep)
 add_nc_var('time_surface', ('time_surface'), nc_tdep, time_sec)
 add_nc_var('time_ls', ('time_ls'), nc_tdep, time_sec)
 
-add_nc_var('p_sbot', ('time_surface'), nc_tdep, ds_time.ps.values)
-add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, ds_time.ug.values)
-add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, ds_time.vg.values)
+add_nc_var('p_sbot', ('time_surface'), nc_tdep, era_time.ps.values)
+add_nc_var('u_geo', ('time_ls', 'z'), nc_tdep, era_time.ug.values)
+add_nc_var('v_geo', ('time_ls', 'z'), nc_tdep, era_time.vg.values)
 
 # Radiation.
 nc_rad = nc_file.createGroup('radiation')
-add_nc_dim('lay', ds_mean.sizes['lay'], nc_rad)
-add_nc_dim('lev', ds_mean.sizes['lev'], nc_rad)
+add_nc_dim('lay', era_mean.sizes['lay'], nc_rad)
+add_nc_dim('lev', era_mean.sizes['lev'], nc_rad)
 
 # Radiation variables on LES grid.
 xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
-h2o = ds_mean.qt / (eps - eps * ds_mean.qt)
+h2o = era_mean.qt / (eps - eps * era_mean.qt)
 add_nc_var('h2o', ('z'), nc_init, h2o)
-add_nc_var('o3',  ('z'), nc_init, ds_mean.o3*1e-6)
+add_nc_var('o3',  ('z'), nc_init, era_mean.o3*1e-6)
 
 # RFMIP background concentrations.
 rfmip = {
@@ -225,14 +292,79 @@ for group in (nc_init, nc_rad):
         add_nc_var(name, None, group, value)
 
 # Radiation variables on radiation grid/levels:
-add_nc_var('z_lay', ('lay'), nc_rad, ds_mean.z_lay)
-add_nc_var('z_lev', ('lev'), nc_rad, ds_mean.z_lev)
-add_nc_var('p_lay', ('lay'), nc_rad, ds_mean.p_lay)
-add_nc_var('p_lev', ('lev'), nc_rad, ds_mean.p_lev)
-add_nc_var('t_lay', ('lay'), nc_rad, ds_mean.t_lay)
-add_nc_var('t_lev', ('lev'), nc_rad, ds_mean.t_lev)
-add_nc_var('h2o',   ('lay'), nc_rad, ds_mean.h2o_lay)
-add_nc_var('o3',    ('lay'), nc_rad, ds_mean.o3_lay*1e-6)
+add_nc_var('z_lay', ('lay'), nc_rad, era_mean.z_lay)
+add_nc_var('z_lev', ('lev'), nc_rad, era_mean.z_lev)
+add_nc_var('p_lay', ('lay'), nc_rad, era_mean.p_lay)
+add_nc_var('p_lev', ('lev'), nc_rad, era_mean.p_lev)
+add_nc_var('t_lay', ('lay'), nc_rad, era_mean.t_lay)
+add_nc_var('t_lev', ('lev'), nc_rad, era_mean.t_lev)
+add_nc_var('h2o',   ('lay'), nc_rad, era_mean.h2o_lay)
+add_nc_var('o3',    ('lay'), nc_rad, era_mean.o3_lay*1e-6)
+
+add_nc_var('aermr01', ('z'), nc_init, cams_mean.aermr01)
+add_nc_var('aermr02', ('z'), nc_init, cams_mean.aermr02)
+add_nc_var('aermr03', ('z'), nc_init, cams_mean.aermr03)
+add_nc_var('aermr04', ('z'), nc_init, cams_mean.aermr04)
+add_nc_var('aermr05', ('z'), nc_init, cams_mean.aermr05)
+add_nc_var('aermr06', ('z'), nc_init, cams_mean.aermr06)
+add_nc_var('aermr07', ('z'), nc_init, cams_mean.aermr07)
+add_nc_var('aermr08', ('z'), nc_init, cams_mean.aermr08)
+add_nc_var('aermr09', ('z'), nc_init, cams_mean.aermr09)
+add_nc_var('aermr10', ('z'), nc_init, cams_mean.aermr10)
+add_nc_var('aermr11', ('z'), nc_init, cams_mean.aermr11)
+
+add_nc_var('aermr01', ('lay'), nc_rad, cams_mean.aermr01_lay)
+add_nc_var('aermr02', ('lay'), nc_rad, cams_mean.aermr02_lay)
+add_nc_var('aermr03', ('lay'), nc_rad, cams_mean.aermr03_lay)
+add_nc_var('aermr04', ('lay'), nc_rad, cams_mean.aermr04_lay)
+add_nc_var('aermr05', ('lay'), nc_rad, cams_mean.aermr05_lay)
+add_nc_var('aermr06', ('lay'), nc_rad, cams_mean.aermr06_lay)
+add_nc_var('aermr07', ('lay'), nc_rad, cams_mean.aermr07_lay)
+add_nc_var('aermr08', ('lay'), nc_rad, cams_mean.aermr08_lay)
+add_nc_var('aermr09', ('lay'), nc_rad, cams_mean.aermr09_lay)
+add_nc_var('aermr10', ('lay'), nc_rad, cams_mean.aermr10_lay)
+add_nc_var('aermr11', ('lay'), nc_rad, cams_mean.aermr11_lay)
+
+# Time dep background radiation and aerosols.
+add_nc_dim('time_rad', time_sec.size, nc_tdep)
+add_nc_dim('lay', era_mean.z_lay.size, nc_tdep)
+add_nc_dim('lev', era_mean.z_lev.size, nc_tdep)
+
+add_nc_var('time_rad', ('time_rad'), nc_tdep, time_sec)
+
+add_nc_var('z_lay',  ('time_rad', 'lay'), nc_tdep, era_time.z_lay[:,:])
+add_nc_var('z_lev',  ('time_rad', 'lev'), nc_tdep, era_time.z_lev[:,:])
+add_nc_var('p_lay',  ('time_rad', 'lay'), nc_tdep, era_time.p_lay[:,:])
+add_nc_var('p_lev',  ('time_rad', 'lev'), nc_tdep, era_time.p_lev[:,:])
+add_nc_var('t_lay',  ('time_rad', 'lay'), nc_tdep, era_time.t_lay[:,:])
+add_nc_var('t_lev',  ('time_rad', 'lev'), nc_tdep, era_time.t_lev[:,:])
+add_nc_var('o3_bg',  ('time_rad', 'lay'), nc_tdep, era_time.o3_lay[:,:]*1e-6)
+add_nc_var('o3',     ('time_rad', 'z'  ), nc_tdep, era_time.o3[:,:]*1e-6)
+add_nc_var('h2o_bg', ('time_rad', 'lay'), nc_tdep, era_time.h2o_lay[:,:])
+
+add_nc_var('aermr01',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr01[:,:])
+add_nc_var('aermr02',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr02[:,:])
+add_nc_var('aermr03',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr03[:,:])
+add_nc_var('aermr04',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr04[:,:])
+add_nc_var('aermr05',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr05[:,:])
+add_nc_var('aermr06',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr06[:,:])
+add_nc_var('aermr07',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr07[:,:])
+add_nc_var('aermr08',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr08[:,:])
+add_nc_var('aermr09',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr09[:,:])
+add_nc_var('aermr10',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr10[:,:])
+add_nc_var('aermr11',  ('time_rad', 'z'),   nc_tdep, cams_time.aermr11[:,:])
+
+add_nc_var('aermr01_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr01_lay[:,:])
+add_nc_var('aermr02_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr02_lay[:,:])
+add_nc_var('aermr03_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr03_lay[:,:])
+add_nc_var('aermr04_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr04_lay[:,:])
+add_nc_var('aermr05_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr05_lay[:,:])
+add_nc_var('aermr06_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr06_lay[:,:])
+add_nc_var('aermr07_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr07_lay[:,:])
+add_nc_var('aermr08_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr08_lay[:,:])
+add_nc_var('aermr09_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr09_lay[:,:])
+add_nc_var('aermr10_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr10_lay[:,:])
+add_nc_var('aermr11_bg', ('time_rad', 'lay'), nc_tdep, cams_time.aermr11_lay[:,:])
 
 nc_file.close()
 
@@ -241,9 +373,9 @@ nc_file.close()
 Create basestate.
 """
 bs = thermo.calc_moist_basestate(
-    ds_mean.thl.values,
-    ds_mean.qt.values,
-    float(ds_mean.ps),
+    era_mean.thl.values,
+    era_mean.qt.values,
+    float(era_mean.ps),
     gd['z'],
     gd['zsize'],
     float_type)
