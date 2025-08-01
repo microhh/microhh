@@ -576,7 +576,7 @@ if parent is None:
         clip_at_zero=['qt', 'qr'],
         name_suffix='ext',
         output_dir=domain.work_dir,
-        ntasks=8,
+        ntasks=4,
         dtype=float_type)
 
 
@@ -622,18 +622,47 @@ else:
 
 
     # Link boundary conditions from parent to child domain.
+    # Symlinks can be created before parent simulation is finished,
+    # but the parent domain must stay ahead of child domain
+    # to ensure boundary condition files are available when needed.
+    buffer_fields = ['u', 'v', 'w', 'thl', 'qt']
+    lbc_fields = ['u', 'v', 'w', 'thl', 'qt', 'qr', 'nr']
+
+    buffer_freq = 600
+
+    for field in buffer_fields:
+        for time in range(0, time_sec[-1], buffer_freq):
+            src = Path(f'{parent.work_dir}/{field}_buffer_out.{time:07d}').resolve()
+            dst = Path(f'{domain.work_dir}/{field}_buffer.{time:07d}').resolve()
+            os.symlink(src, dst)
+            
+    for field in lbc_fields:
+        for edge in ('west', 'north', 'east', 'south'):
+            for time in range(0, time_sec[-1], domain.lbc_freq):
+                src = Path(f'{parent.work_dir}/lbc_{field}_{edge}_out.{time:07d}').resolve()
+                dst = Path(f'{domain.work_dir}/lbc_{field}_{edge}.{time:07d}').resolve()
+                os.symlink(src, dst)
+
+    for time in range(0, time_sec[-1], domain.lbc_freq):
+        src = Path(f'{parent.work_dir}/w_top_out.{time:07d}').resolve()
+        dst = Path(f'{domain.work_dir}/w_top.{time:07d}').resolve()
+        os.symlink(src, dst)
+
+
+
+    # Link boundary conditions from parent to child domain.
     # Only link the `_out` files, without `_out` they are LBCs used as input for the parent domain.
-    def link_files(src_pattern):
-        print(f'Linking files {src_pattern} to {domain.work_dir}.')
+    #def link_files(src_pattern):
+    #    print(f'Linking files {src_pattern} to {domain.work_dir}.')
 
-        files = glob.glob(src_pattern)
+    #    files = glob.glob(src_pattern)
 
-        for f in files:
-            src = Path(f).resolve()
-            name = src.name.replace('_out', '')
-            dst = Path(domain.work_dir) / name
-            dst.symlink_to(src)
+    #    for f in files:
+    #        src = Path(f).resolve()
+    #        name = src.name.replace('_out', '')
+    #        dst = Path(domain.work_dir) / name
+    #        dst.symlink_to(src)
 
-    link_files(f'{parent.work_dir}/lbc_*_out.*')
-    link_files(f'{parent.work_dir}/w_top_out.*')
-    link_files(f'{parent.work_dir}/*_buffer_out.*')
+    #link_files(f'{parent.work_dir}/lbc_*_out.*')
+    #link_files(f'{parent.work_dir}/w_top_out.*')
+    #link_files(f'{parent.work_dir}/*_buffer_out.*')

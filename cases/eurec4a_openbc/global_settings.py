@@ -29,8 +29,8 @@ from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
 float_type = np.float64
 
 # Data paths.
-syst = 'eddy'
-#syst = 'snellius'
+#syst = 'eddy'
+syst = 'snellius'
 
 if syst == 'eddy':
     env = dict(
@@ -44,23 +44,23 @@ if syst == 'eddy':
 
 elif  syst == 'snellius':
     env = dict(
-        work_path = '/gpfs/work2/0/nwo21036/bart/eurec4a_half2',
+        work_path = '/gpfs/work2/0/nwo21036/bart/eurec4a_full',
         microhh_path = '/home/stratum2/meteo/models/microhh',
         microhh_bin = '/home/stratum2/meteo/models/microhh/build_dp_cpumpi',
         gpt_veerman_path = '/home/stratum2/meteo/models/coefficients_veerman',
         cosmo_path = '/gpfs/work3/0/lesmodels/eurec4a',
-        ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5')
+        ls2d_era5_path = '/gpfs/work3/0/lesmodels/ls2d_era5',
+        ls2d_cams_path = '/gpfs/work3/0/lesmodels/ls2d_cams')
 
-host_model = 'ERA5'   # COSMO or ERA5
+host_model = 'COSMO'   # COSMO or ERA5
 
 
 """
 Define simulation period.
 COSMO has data from 2020-02-01 00:00:00 to 2020-02-12 00:00:00.
 """
-start_date = datetime(year=2020, month=2, day=1, hour=0)
-end_date   = datetime(year=2020, month=2, day=1, hour=1)
-#end_date   = datetime(year=2020, month=2, day=3, hour=0)
+start_date = datetime(year=2020, month=2, day=1,  hour=0)
+end_date   = datetime(year=2020, month=2, day=12, hour=0)
 
 
 """
@@ -248,8 +248,6 @@ def get_full_domain_100m(plot=False):
     # Inner:
     # npx=  64, npy=  96 -> cores=6144 | 5568 x 3264 x  128 | pts/core=378624.0
 
-    fac = 1
-
     # Dummy, just for plotting.
     # This is the domain requested by the intercomparison.
     ref_dom = Domain(
@@ -266,8 +264,8 @@ def get_full_domain_100m(plot=False):
     dom0 = Domain(
         xsize=3264*300,
         ysize=1920*300,
-        itot=3264//fac,
-        jtot=1920//fac,
+        itot=3264,
+        jtot=1920,
         n_ghost=3,
         n_sponge=10,
         lbc_freq=3600,
@@ -284,8 +282,8 @@ def get_full_domain_100m(plot=False):
     dom1 = Domain(
         xsize=5568*100,
         ysize=3264*100,
-        itot=5568//fac,
-        jtot=3264//fac,
+        itot=5568,
+        jtot=3264,
         n_ghost=3,
         n_sponge=0,
         lbc_freq=60,
@@ -337,6 +335,6 @@ def get_full_domain_100m(plot=False):
 
 
 # Global switch between domain definitions. Used by multiple scripts.
-domains = get_develop_domain(plot=False)
+#domains = get_develop_domain(plot=False)
 #domains = get_quarter_domain_100m()
-#domains = get_full_domain_100m(plot=True)
+domains = get_full_domain_100m(plot=False)
