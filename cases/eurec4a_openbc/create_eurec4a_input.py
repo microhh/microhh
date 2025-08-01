@@ -462,8 +462,8 @@ else:
 
 # NOTE: 10, 100 not part of MIP. 10 = needed for 10 m wind, temp, etc.
 ini['cross']['xy'] = [10, 400, 1000, 1500, 3000, 5000, gd['zsize']]
-ini['cross']['xz'] = domain.ysize / 2
-ini['cross']['yz'] = domain.xsize / 2
+#ini['cross']['xz'] = domain.ysize / 2
+#ini['cross']['yz'] = domain.xsize / 2
 
 # Column stats for BCO.
 x,y = domain.proj.to_xy(lon=-59.432, lat=13.165)
