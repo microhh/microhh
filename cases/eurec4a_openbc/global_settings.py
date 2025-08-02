@@ -235,7 +235,7 @@ def get_quarter_domain_100m(plot=False):
     return dom0, dom1, None
 
 
-def get_full_domain_100m(plot=False):
+def get_full_domain_300_100(plot=False):
     """
     First test nested run; 300 m outer + 100 m inner.
     """
@@ -334,7 +334,107 @@ def get_full_domain_100m(plot=False):
     return dom0, dom1, None
 
 
+
+def get_full_domain_400_100(plot=False):
+    """
+    400 m outer + 100 m inner.
+    """
+
+    # Outer:
+    # npx=  64, npy=  48 -> cores=3072 | 3264 x 1920 x  128 | pts/core=261120.0
+    # or:
+    # npx=  64, npy=  96 -> cores=6144 | 3264 x 1920 x  128 | pts/core=130560.0
+
+    # Inner:
+    # npx=  64, npy=  96 -> cores=6144 | 5568 x 3264 x  128 | pts/core=378624.0
+
+    # Dummy, just for plotting.
+    # This is the domain requested by the intercomparison.
+    ref_dom = Domain(
+        xsize=500_000,
+        ysize=300_000,
+        itot=128,
+        jtot=64,
+        lon=-57.7,  # Don't change
+        lat=13.3,   # Don't change
+        anchor='center',
+        proj_str=proj_str
+    )
+
+    dom0 = Domain(
+        xsize=2496*400,
+        ysize=1536*400,
+        itot=2496,
+        jtot=1536,
+        n_ghost=3,
+        n_sponge=10,
+        lbc_freq=3600,
+        lon=-55.6,
+        lat=14.55,
+        anchor='center',
+        proj_str=proj_str,
+        work_dir=f'{env["work_path"]}/dom0'
+    )
+
+    dom0.npx = 64
+    dom0.npy = 96
+
+    dom1 = Domain(
+        xsize=5568*100,
+        ysize=3264*100,
+        itot=5568,
+        jtot=3264,
+        n_ghost=3,
+        n_sponge=0,
+        lbc_freq=60,
+        parent=dom0,
+        xstart_in_parent=16800,
+        ystart_in_parent=15200,
+        work_dir=f'{env["work_path"]}/dom1'
+    )
+
+    dom1.npx = 64
+    dom1.npy = 96
+
+    d33 = 100 / 3.
+
+    dom2 = Domain(
+        xsize=1536*d33,
+        ysize=768*d33,
+        itot=1536,
+        jtot=768,
+        n_ghost=3,
+        n_sponge=0,
+        lbc_freq=60,
+        parent=dom1,
+        xstart_in_parent=59600,
+        ystart_in_parent=132400,
+        work_dir=f'{env["work_path"]}/dom2'
+    )
+
+    dom2.npx = 64
+    dom2.npy = 96
+
+    dom0.child = dom1
+    dom1.child = dom2
+
+    if plot:
+        import matplotlib.pyplot as plt
+        import cartopy.crs as ccrs
+
+        domains = [dom0, dom1, dom2, ref_dom]
+        labels = []
+        labels.append(rf'Outer: {dom0.xsize/1000} x {dom0.ysize/1000} km$^2$ @ $\Delta$={dom0.dx:.0f} m')
+        labels.append(rf'Inner: {dom1.xsize/1000} x {dom1.ysize/1000} km$^2$ @ $\Delta$={dom1.dx:.0f} m')
+        labels.append(rf'HR: {dom2.xsize/1000} x {dom2.ysize/1000} km$^2$ @ $\Delta$={dom2.dx:.0f} m')
+        labels.append(rf'MIP-ref: {ref_dom.xsize/1000} x {ref_dom.ysize/1000} km$^2$')
+        plot_domains(domains, use_projection=True, labels=labels)
+        plt.scatter(-59.432, 13.165, marker='+', transform=ccrs.PlateCarree())
+
+    return dom0, dom1, dom2
+
+
 # Global switch between domain definitions. Used by multiple scripts.
 #domains = get_develop_domain(plot=False)
 #domains = get_quarter_domain_100m()
-domains = get_full_domain_100m(plot=False)
+domains = get_full_domain_400_100(plot=False)

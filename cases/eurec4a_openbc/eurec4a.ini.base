@@ -163,7 +163,7 @@ loadfreq=None
 endtime=None
 dt=6.
 dtmax=30
-savetime=21600
+savetime=10800
 outputiter=10
 adaptivestep=true
 starttime=0
@@ -186,8 +186,6 @@ swcross=1
 sampletime=300
 crosslist=thl_fluxbot,qt_fluxbot,u_fluxbot,v_fluxbot,thl_bot,lw_flux_dn,lw_flux_up,sw_flux_dn,sw_flux_up,sw_flux_dn_clear,sw_flux_up_clear,lw_flux_dn_clear,lw_flux_up_clear,qt_path,ql_path,qi_path,qr_path,u,v,w,thl,qt,ql,qr,rr_bot,cape,zi,p_bot,rh
 xy=None
-#xz=None
-#yz=None
 
 [dump]
 swdump=0
