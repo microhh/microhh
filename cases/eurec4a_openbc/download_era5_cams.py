@@ -21,7 +21,9 @@
 #
 
 from datetime import datetime
+import sys
 
+sys.path.append('/home/bart/meteo/models/LS2D')
 import ls2d
 
 settings = {

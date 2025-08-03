@@ -399,21 +399,21 @@ def get_full_domain_400_100(plot=False):
     d33 = 100 / 3.
 
     dom2 = Domain(
-        xsize=1536*d33,
-        ysize=768*d33,
-        itot=1536,
-        jtot=768,
+        xsize=2304*d33,
+        ysize=1344*d33,
+        itot=2304,
+        jtot=1344,
         n_ghost=3,
         n_sponge=0,
         lbc_freq=60,
         parent=dom1,
-        xstart_in_parent=59600,
-        ystart_in_parent=132400,
+        xstart_in_parent=58000,
+        ystart_in_parent=123000,
         work_dir=f'{env["work_path"]}/dom2'
     )
 
     dom2.npx = 64
-    dom2.npy = 96
+    dom2.npy = 48
 
     dom0.child = dom1
     dom1.child = dom2
