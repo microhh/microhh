@@ -177,7 +177,7 @@ sampletime=300
 
 [column]
 swcolumn=1
-sampletime=60
+sampletime=None
 coordinates[x]=None
 coordinates[y]=None
 

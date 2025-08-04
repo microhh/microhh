@@ -461,9 +461,7 @@ else:
     ini['subdomain']['sw_subdomain'] = False
 
 # NOTE: 10, 100 not part of MIP. 10 = needed for 10 m wind, temp, etc.
-ini['cross']['xy'] = [10, 400, 1000, 1500, 3000, 5000, gd['zsize']]
-#ini['cross']['xz'] = domain.ysize / 2
-#ini['cross']['yz'] = domain.xsize / 2
+ini['cross']['xy'] = [5, 400, 1000, 1500, 3000, 5000, gd['zsize']]
 
 # Column stats for BCO.
 x,y = domain.proj.to_xy(lon=-59.432, lat=13.165)
@@ -474,6 +472,11 @@ if x < 0 or x > domain.xsize or x < 0 or y > domain.ysize:
 
 ini['column']['coordinates[x]'] = x
 ini['column']['coordinates[y]'] = y
+
+if parent is None:
+    ini['column']['sampletime'] = 60
+else:
+    ini['column']['sampletime'] = 10
 
 # 3D dump, local near domain center. Only for 100 m domain.
 if args.domain == 1:
@@ -532,7 +535,7 @@ if parent is None:
         p_ls = cosmo.p[:,:,:,:]
         z_ls = np.broadcast_to(cosmo.z.values[None,:,None,None], cosmo.thl.shape)
         time_ls = cosmo.time - cosmo.time[0]
-        time_ls = (time_ls.values.astype(np.float32)/1e9).astype(np.int32)
+        time_ls = np.round(time_ls.values.astype(np.float64)/1e9).astype(np.int32)
 
     elif host_model == 'ERA5':
 

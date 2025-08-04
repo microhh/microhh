@@ -390,11 +390,11 @@ def get_full_domain_400_100(plot=False):
         parent=dom0,
         xstart_in_parent=16800,
         ystart_in_parent=15200,
-        work_dir=f'{env["work_path"]}/dom1'
+        work_dir=f'{env["work_path"]}/dom11'
     )
 
     dom1.npx = 64
-    dom1.npy = 96
+    dom1.npy = 192
 
     d33 = 100 / 3.
 
