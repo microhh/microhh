@@ -394,7 +394,7 @@ def get_full_domain_400_100(plot=False):
     )
 
     dom1.npx = 64
-    dom1.npy = 192
+    dom1.npy = 96
 
     d33 = 100 / 3.
 
