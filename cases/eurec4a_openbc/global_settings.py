@@ -92,6 +92,19 @@ zstart_buffer = 0.75 * gd['zsize']
 proj_str = '+proj=lcc +lat_1=12.0 +lat_2=16.5 +lat_0=14.3 +lon_0=-55.7 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs'
 
 
+# Requested output domain MIP:
+ref_domain = Domain(
+    xsize=500_000,
+    ysize=300_000,
+    itot=128,
+    jtot=64,
+    lon=-57.7,  # Don't change
+    lat=13.3,   # Don't change
+    anchor='center',
+    proj_str=proj_str
+)
+
+
 def get_develop_domain(plot=False):
     """
     Test domain over BCO, to allow testing column stats.
@@ -434,7 +447,22 @@ def get_full_domain_400_100(plot=False):
     return dom0, dom1, dom2
 
 
-# Global switch between domain definitions. Used by multiple scripts.
-#domains = get_develop_domain(plot=False)
-#domains = get_quarter_domain_100m()
-domains = get_full_domain_400_100(plot=False)
+def get_domain(name):
+    plot = False
+    if name == 'develop':
+        return get_develop_domain(plot=plot)
+    elif name == 'quarter_100m':
+        return get_quarter_domain_100m(plot=plot)
+    elif name == 'full_300_100':
+        return get_full_domain_300_100(plot=plot)
+    elif name == 'full_400_100':
+        return get_full_domain_400_100(plot=plot)
+
+
+if __name__ == '__main__':
+    """
+    Just for testing/plotting.
+    """
+    domains = get_develop_domain(plot=False)
+    #domains = get_quarter_domain_100m()
+    #domains = get_full_domain_400_100(plot=False)

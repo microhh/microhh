@@ -44,9 +44,8 @@ from microhhpy.openbc import create_era5_input
 from microhhpy.interpolate import regrid_les
 
 # Custom scripts from same directory.
-from global_settings import env, domains, gd, zstart_buffer, start_date, end_date, float_type, host_model
+from global_settings import env, get_domain, gd, zstart_buffer, start_date, end_date, float_type, host_model
 import helpers as hlp
-
 
 def interp(x_out, x_in, y_in):
     """
@@ -57,11 +56,18 @@ def interp(x_out, x_in, y_in):
 
 
 """
+Domain definition.
+"""
+domains = get_domain('full_400_100')
+
+
+"""
 Parse command line arguments and switch domain definition.
 """
 parser = argparse.ArgumentParser(description='EUREC4A openBC MicroHH setup')
 parser.add_argument('-d', '--domain', required=True, type=int, help='Domain number (0,1,N)')
 args = parser.parse_args()
+
 
 if args.domain > len(domains)-1:
     raise Exception('Domain number out of range.')
@@ -99,6 +105,7 @@ era.calculate_forcings(n_av=6, method='2nd')
 era_time = era.get_les_input(gd['z'])
 era_time = era_time.sel(lay=slice(0,135), lev=slice(0,136))
 era_mean = era_time.mean(dim='time')
+
 
 # Read CAMS data.
 cams_vars = {
