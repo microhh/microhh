@@ -111,10 +111,10 @@ def get_develop_domain(plot=False):
     """
 
     dom0 = Domain(
-        xsize=32000,
-        ysize=16000,
-        itot=128,
-        jtot=64,
+        xsize=64*400,
+        ysize=32*400,
+        itot=64,
+        jtot=32,
         n_ghost=3,
         n_sponge=5,
         lbc_freq=3600,
@@ -129,16 +129,16 @@ def get_develop_domain(plot=False):
     dom0.npy = 4
 
     dom1 = Domain(
-        xsize=16000,
-        ysize=8000,
-        itot=128,
-        jtot=64,
+        xsize=64*200,
+        ysize=32*200,
+        itot=64,
+        jtot=32,
         n_ghost=3,
         n_sponge=0,
         lbc_freq=60,
         parent=dom0,
-        xstart_in_parent=2000,
-        ystart_in_parent=2000,
+        xstart_in_parent=800,
+        ystart_in_parent=800,
         work_dir=f'{env["work_path"]}/dom1'
     )
 
@@ -146,16 +146,16 @@ def get_develop_domain(plot=False):
     dom1.npy = 4
 
     dom2 = Domain(
-        xsize=8000,
-        ysize=4000,
-        itot=128,
-        jtot=64,
+        xsize=64*100,
+        ysize=32*100,
+        itot=64,
+        jtot=32,
         n_ghost=3,
         n_sponge=0,
         lbc_freq=60,
         parent=dom1,
-        xstart_in_parent=1000,
-        ystart_in_parent=1000,
+        xstart_in_parent=400,
+        ystart_in_parent=400,
         work_dir=f'{env["work_path"]}/dom2'
     )
 

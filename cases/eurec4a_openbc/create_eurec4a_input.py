@@ -59,6 +59,7 @@ def interp(x_out, x_in, y_in):
 Domain definition.
 """
 domains = get_domain('full_400_100')
+#domains = get_domain('develop')
 
 
 """
@@ -487,10 +488,12 @@ else:
 
 # 3D dump, local near domain center. Only for 100 m domain.
 if args.domain == 1:
+    ini['dump']['swdump'] = True
     ini['dump']['swdump_sub'] = True
     ini['dump']['mpicoordx'] = [domain.npx//2-1, domain.npx//2]
     ini['dump']['mpicoordy'] = [domain.npy//2-1, domain.npy//2, domain.npy//2+1]
 else:
+    ini['dump']['swdump'] = False
     ini['dump']['swdump_sub'] = False
 
 
