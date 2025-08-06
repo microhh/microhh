@@ -45,6 +45,7 @@ if syst == 'eddy':
 elif  syst == 'snellius':
     env = dict(
         work_path = '/gpfs/work2/0/nwo21036/bart/eurec4a_full',
+        work_path2 = '/scratch-shared/stratum2/eurec4a_full',
         microhh_path = '/home/stratum2/meteo/models/microhh',
         microhh_bin = '/home/stratum2/meteo/models/microhh/build_dp_cpumpi',
         gpt_veerman_path = '/home/stratum2/meteo/models/coefficients_veerman',
@@ -403,7 +404,7 @@ def get_full_domain_400_100(plot=False):
         parent=dom0,
         xstart_in_parent=16800,
         ystart_in_parent=15200,
-        work_dir=f'{env["work_path"]}/dom11'
+        work_dir=f'{env["work_path"]}/dom1'
     )
 
     dom1.npx = 64
@@ -422,7 +423,7 @@ def get_full_domain_400_100(plot=False):
         parent=dom1,
         xstart_in_parent=58000,
         ystart_in_parent=123000,
-        work_dir=f'{env["work_path"]}/dom2'
+        work_dir=f'{env["work_path2"]}/dom2'
     )
 
     dom2.npx = 64
