@@ -634,7 +634,7 @@ else:
             name_suffix='ext')
 
 
-    if args.domain == 1
+    if args.domain == 1:
         # Link boundary conditions from parent to child domain.
         # Symlinks can be created before parent simulation is finished,
         # but the parent domain must stay ahead of child domain
