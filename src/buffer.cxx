@@ -545,7 +545,7 @@ template <typename TF>
 void Buffer<TF>::update_time_dependent(
         Timeloop<TF>& timeloop)
 {
-    if (!swtimedep_buffer_3d)
+    if (!(swbuffer_3d && swtimedep_buffer_3d))
         return;
 
     const Grid_data<TF>& gd = grid.get_grid_data();
