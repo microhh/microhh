@@ -512,6 +512,10 @@ TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restr
     TF div = 0.;
     TF divmax = 0.;
 
+    int imax = -1;
+    int jmax = -1;
+    int kmax = -1;
+
     for (int k=gd.kstart; k<gd.kend; ++k)
         for (int j=gd.jstart; j<gd.jend; ++j)
             #pragma ivdep
@@ -522,10 +526,19 @@ TF Pres_2<TF>::calc_divergence(const TF* const restrict u, const TF* const restr
                 div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi)
                     + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
 
-                divmax = std::max(divmax, std::abs(div));
+                if (std::abs(div) > divmax)
+                {
+                    divmax = std::abs(div);
+                    imax = i;
+                    jmax = j;
+                    kmax = k;
+                }
             }
 
     master.max(&divmax, 1);
+
+    // Debug...
+    //std::cout << "Max div = " << divmax << " @ i,j,k = " << imax << "," << jmax << "," << kmax << std::endl;
 
     return divmax;
 }
