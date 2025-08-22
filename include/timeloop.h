@@ -90,6 +90,7 @@ class Timeloop
         std::string get_io_filename(const std::string&);
         int get_iteration() const { return iteration; }
         int get_substep() const { return substep; }
+        int get_rkorder() const { return rkorder; }
 
         // Functions for UTC time support.
         bool has_utc_time() const { return flag_utc_time; }

@@ -1593,7 +1593,9 @@ void Boundary_lateral<TF>::update_time_dependent(
     // CvH: this is an UGLY hack, because it only works for RK4.
     // We need to know from the time whether we are in the last iter.
     // Also, it will fail miserably if we perturb the velocities at the walls
-    if (pres_fix && timeloop.get_substep() == 4)
+    const int rkorder = timeloop.get_rkorder();
+    const int last_substep = rkorder == 4 ? 4 : 2;
+    if (pres_fix && timeloop.get_substep() == last_substep)
     {
         time += timeloop.get_dt();
         itime += timeloop.get_idt();
