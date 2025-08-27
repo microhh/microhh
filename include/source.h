@@ -59,6 +59,7 @@ class Source
 
         bool swsource;
         std::vector<bool> sw_vmr;
+        bool sw_input_nc;
 
         TF x0;
         TF y0;

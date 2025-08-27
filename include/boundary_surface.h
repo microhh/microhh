@@ -44,6 +44,10 @@ class Boundary_surface : public Boundary<TF>
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
+        const std::vector<TF>& get_lai()  const { throw std::runtime_error("Function get_lai() not implemented"); }
+        const std::vector<int>& get_water_mask() const { throw std::runtime_error("Function get_water_mask() not implemented"); }
+        const std::vector<TF>& get_c_veg() const { throw std::runtime_error("Function get_c_veg() not implemented"); }
+        const Tile_map<TF>& get_tiles() const { throw std::runtime_error("Function get_tiles() not implemented");  }
 
         void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);

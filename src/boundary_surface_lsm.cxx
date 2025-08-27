@@ -1026,7 +1026,6 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Si
         inputin.flag_as_used("boundary", "swtimedep", "");
         inputin.flag_as_used("boundary", "timedeplist", "");
     }
-
 }
 
 template<typename TF>
@@ -1415,7 +1414,14 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "H", "LE", "G", "S", "z0m", "z0h"};
+        const std::vector<std::string> allowed_crossvars = {
+            "ustar", "obuk", "wl",
+            "H", "LE", "G", "S",
+            "z0m", "z0h"
+            "fraction_wet", "fraction_soil", "fraction_veg",
+            "rs_veg", "rs_soil",
+            "ra_veg", "ra_soil", "ra_wet"
+            "ustar_wet","ustar_soil", "ustar_veg" };
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1638,24 +1644,50 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
 
     auto tmp = fields.get_tmp();
     TF no_offset = 0.;
+    
+    for (auto& it : cross_list)
 
     for (auto& var : cross_list)
+    
+    for (auto& name : cross_list)
     {
-        if (var == "ustar")
-            cross.cross_plane(ustar.data(), no_offset, var, iotime);
-        else if (var == "obuk")
-            cross.cross_plane(obuk.data(), no_offset, var, iotime);
-        else if (var == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, var, iotime);
-        else if (var == "z0m")
+        if (name == "ustar")
+            cross.cross_plane(ustar.data(), no_offset, name, iotime);
+        else if (name == "obuk")
+            cross.cross_plane(obuk.data(), no_offset, name, iotime);
+        else if (name == "wl")
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, name, iotime);
+        else if (name == "z0m")
             cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
-        else if (var == "z0h")
+        else if (name == "z0h")
             cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
         else if (var == "H" || var == "LE" || var == "G" || var == "S")
         {
             get_tiled_mean(tmp->fld_bot, var, TF(1));
-            cross.cross_plane(tmp->fld_bot.data(), no_offset, var, iotime);
+            cross.cross_plane(tmp->fld_bot.data(), no_offset, name, iotime);
         }
+        else if (name == "fraction_wet")
+            cross.cross_plane(tiles.at("wet").fraction.data(), no_offset, name , iotime);
+        else if (name == "fraction_soil")
+            cross.cross_plane(tiles.at("soil").fraction.data(), no_offset, name , iotime);
+        else if (name == "fraction_veg")
+            cross.cross_plane(tiles.at("veg").fraction.data(), no_offset, name, iotime);
+        else if (name == "rs_veg")
+            cross.cross_plane(tiles.at("veg").rs.data(), no_offset, name, iotime);
+        else if (name == "rs_soil")
+            cross.cross_plane(tiles.at("soil").rs.data(), no_offset, name, iotime);
+        else if (name == "ustar_soil")
+            cross.cross_plane(tiles.at("soil").ustar.data(), no_offset, name, iotime);
+        else if (name == "ustar_wet")
+            cross.cross_plane(tiles.at("wet").ustar.data(), no_offset, name, iotime);
+        else if (name == "ustar_veg")
+            cross.cross_plane(tiles.at("veg").ustar.data(), no_offset, name, iotime);
+        else if (name == "ra_soil")
+            cross.cross_plane(tiles.at("soil").ra.data(), no_offset, name, iotime);
+        else if (name == "ra_wet")
+            cross.cross_plane(tiles.at("wet").ra.data(), no_offset, name, iotime);
+        else if (name == "ra_veg")
+            cross.cross_plane(tiles.at("veg").ra.data(), no_offset, name, iotime);
     }
 
     fields.release_tmp(tmp);
