@@ -240,6 +240,10 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         // Option for (non-time dependent) profiles for vertical distribution emissions.
         sw_emission_profile = input.get_item<bool>("source", "sw_profile", "", false);
 
+        // Switch between input in mass or volume ratio.
+        // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
+        sw_vmr = input.get_list<bool>("source", "swvmr", "");
+
         if (sw_emission_profile && !sw_input_nc)
         {
             // Find number of unique input profiles.
