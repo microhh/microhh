@@ -1645,10 +1645,6 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
     auto tmp = fields.get_tmp();
     TF no_offset = 0.;
     
-    for (auto& it : cross_list)
-
-    for (auto& var : cross_list)
-    
     for (auto& name : cross_list)
     {
         if (name == "ustar")
@@ -1661,9 +1657,9 @@ void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime
             cross.cross_plane(z0m.data(), no_offset, "z0m", iotime);
         else if (name == "z0h")
             cross.cross_plane(z0h.data(), no_offset, "z0h", iotime);
-        else if (var == "H" || var == "LE" || var == "G" || var == "S")
+        else if (name == "H" || name == "LE" || name == "G" || name == "S")
         {
-            get_tiled_mean(tmp->fld_bot, var, TF(1));
+            get_tiled_mean(tmp->fld_bot, name, TF(1));
             cross.cross_plane(tmp->fld_bot.data(), no_offset, name, iotime);
         }
         else if (name == "fraction_wet")
