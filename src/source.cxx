@@ -206,6 +206,7 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         // Option to get source input from NetCDF file.
         sw_input_nc = input.get_item<bool>("source", "swinputnc", "", false);
 
+        sourcelist = input.get_list<std::string>("source", "sourcelist", "");
         source_x0 = input.get_list<TF>("source", "source_x0", "");
         source_y0 = input.get_list<TF>("source", "source_y0", "");
         source_z0 = input.get_list<TF>("source", "source_z0", "");
