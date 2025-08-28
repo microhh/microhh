@@ -1417,7 +1417,7 @@ void Boundary_surface_lsm<TF>::create_stats(
         const std::vector<std::string> allowed_crossvars = {
             "ustar", "obuk", "wl",
             "H", "LE", "G", "S",
-            "z0m", "z0h"
+            "z0m", "z0h",
             "fraction_wet", "fraction_soil", "fraction_veg",
             "rs_veg", "rs_soil",
             "ra_veg", "ra_soil", "ra_wet"
