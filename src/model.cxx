@@ -43,6 +43,7 @@
 #include "pres.h"
 #include "force.h"
 #include "particle_bin.h"
+#include "particle_lagrangian.h"
 #include "thermo.h"
 #include "radiation.h"
 #include "microphys.h"
@@ -144,7 +145,8 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
         background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
 
-        particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
+        particle_bin  = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
+        particle_lagr = std::make_shared<Particle_lagrangian<TF>>(master, *grid, *fields, *input);
 
         ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
 
@@ -270,7 +272,10 @@ void Model<TF>::load()
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
     source->create(*input, *input_nc);
+
     particle_bin->create(*timeloop);
+    particle_lagr->create(*timeloop);
+
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
 
@@ -424,6 +429,9 @@ void Model<TF>::exec()
 
                 // Gravitational settling of binned dust types.
                 particle_bin->exec(*stats);
+
+                // Lagrangian particles.
+                particle_lagr->exec(*stats);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -779,7 +787,8 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(particle_bin->get_time_limit());
+    timeloop->set_time_step_limit(particle_bin ->get_time_limit());
+    timeloop->set_time_step_limit(particle_lagr->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();
