@@ -63,6 +63,7 @@ class Timeloop
         Interpolation_factors<TF> get_interpolation_factors(const std::vector<double>&);
 
         void exec();
+        void exec(std::vector<TF>&, std::vector<TF>&);
 
         double check();
 

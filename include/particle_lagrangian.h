@@ -30,6 +30,8 @@ template<typename> class Fields;
 template<typename> class Stats;
 template<typename> class Timeloop;
 
+enum class Grid_location { Location_u, Location_v, Location_w };
+
 template<typename TF>
 class Particle_lagrangian
 {
@@ -37,15 +39,51 @@ class Particle_lagrangian
         Particle_lagrangian(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Particle_lagrangian();
 
-        void exec(Stats<TF>&);
+        void exec();                     // Update particle velocity/tendency.
+        void integrate(Timeloop<TF>&);   // Integrate particle locations.
+
         void create(Timeloop<TF>&);
+
+        // Load/save restart files.
+        void load(const std::string&, const int);
+        void save(const std::string&, const int);
+
         unsigned long get_time_limit();
+
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        bool sw_particle;
-};
+        bool sw_particle;       // Lagrangian particle on/off.
+        int n_particles;        // Global number of particles.
+
+        // Particle property arrays are oversized by a factor `buffer_margin`.
+        // This reduces the amount of time that the arrays have to be resized
+        // when particles move between cores.
+        const TF buffer_margin = 1.2;
+
+        // Particle properties.
+        std::vector<int> uid;
+
+        // Location.
+        std::vector<TF> xp;
+        std::vector<TF> yp;
+        std::vector<TF> zp;
+
+        // Tendency.
+        std::vector<TF> xpt;
+        std::vector<TF> ypt;
+        std::vector<TF> zpt;
+
+        // Interpolation indexes and factors. Re-used for different locations on grid (u, v, w, ..).
+        std::vector<int> il;
+        std::vector<int> jl;
+        std::vector<int> kl;
+
+        std::vector<TF> fx;
+        std::vector<TF> fy;
+        std::vector<TF> fz;
+    };
 #endif

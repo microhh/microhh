@@ -20,6 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -31,6 +33,129 @@
 
 namespace
 {
+    template<typename T>
+    void smart_resize(
+            std::vector<T>& v,
+            const int new_size,
+            const double margin)
+    {
+        const int size     = v.size();      // Used elements.
+        const int capacity = v.capacity();  // Reserved size.
+
+        if (new_size * margin < capacity)
+        {
+            // Too large! Decrease capacity.
+            const int new_capacity = int(new_size * margin);
+            std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
+            v.reserve(new_capacity);
+        }
+        else if (new_size > capacity)
+        {
+            // Too small! Increase capacity.
+            const int new_capacity = int(new_size * margin);
+            v.reserve(new_capacity);
+        }
+
+        v.resize(new_size);
+    }
+
+
+    template<typename TF>
+    void calc_interpolation_factors_h(
+        int* const restrict index,
+        TF* const restrict factor,
+        const TF* const restrict xp,
+        const TF x0,
+        const TF dxi,
+        const int n_particles)
+    {
+        // For each particle, find index left of value, and calculate interpolation factor.
+        // Equidistant grid in the horizontal, so index can be found directly.
+
+        for (int i=0; i<n_particles; ++i)
+        {
+            const TF fi = (xp[i] - x0) * dxi;
+            index[i] = static_cast<int>(fi);
+            factor[i] = fi - index[i];
+        }
+    }
+
+
+    template<typename TF>
+    void calc_interpolation_factors_v(
+        int* const restrict index,
+        TF* const restrict factor,
+        const TF* const restrict zp,
+        const TF* const restrict z,
+        const TF* const restrict dzi,
+        const bool is_half_level,
+        const int n_particles,
+        const int kcells)
+    {
+        // For each particle, find index left of value, and calculate interpolation factor.
+        // Non-equidistant grid in the vertical, so requires search using `std::upper_bound`.
+
+        // This is slightly annoying...
+        // For half levels, the spacing from zh[k] to zh[k+1] = dz[k]
+        // For full levels, the spacing from z[k] to z[k+1] = dzh[k+1]
+        const int dk = is_half_level ? 0 : 1;
+
+        for (int i=0; i<n_particles; ++i)
+        {
+            // Use `upper_bound`; our `zh[0]` and `zh[1]` are both zero!
+            const TF* it = std::upper_bound(z, z+kcells, zp[i]);
+            const int k0 = static_cast<int>(it - z) - 1;
+
+            index[i] = k0;
+            factor[i] = (zp[i] - z[k0]) * dzi[k0+dk];
+        }
+    }
+
+
+    template<typename TF>
+    void diagnose_tendency(
+        TF* const restrict tend,
+        const TF* const restrict vel,
+        const int* const restrict il,
+        const int* const restrict jl,
+        const int* const restrict kl,
+        const TF* const restrict fx,
+        const TF* const restrict fy,
+        const TF* const restrict fz,
+        const int n_particles,
+        const int jstride,
+        const int kstride)
+    {
+        // Diagnose tendency by tri-linear interpolation of Eulerian velocity to particle location.
+        const int ii = 1;
+        const int jj = jstride;
+        const int kk = kstride;
+
+        for (int n=0; n<n_particles; ++n)
+        {
+            const int ijk = il[n] + jl[n]*jstride + kl[n]*kstride;
+
+            const TF fx1 = fx[n];
+            const TF fy1 = fy[n];
+            const TF fz1 = fz[n];
+
+            const TF fx0 = TF(1) - fx1;
+            const TF fy0 = TF(1) - fy1;
+            const TF fz0 = TF(1) - fz1;
+
+            const TF vel_p =
+                fx0 * fy0 * fz0 * vel[ijk               ] +
+                fx1 * fy0 * fz0 * vel[ijk + ii          ] +
+                fx0 * fy1 * fz0 * vel[ijk + jj          ] +
+                fx0 * fy0 * fz1 * vel[ijk + kk          ] +
+                fx1 * fy1 * fz0 * vel[ijk + ii + jj     ] +
+                fx1 * fy0 * fz1 * vel[ijk + ii + kk     ] +
+                fx0 * fy1 * fz1 * vel[ijk + jj + kk     ] +
+                fx1 * fy1 * fz1 * vel[ijk + ii + jj + kk];
+
+            tend[n] += vel_p;
+        }
+    }
 }
 
 
@@ -39,12 +164,97 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
     master(masterin), grid(gridin), fields(fieldsin)
 {
     sw_particle = inputin.get_item<bool>("particle_lagrangian", "sw_particle", "", false);
+
+    if (sw_particle)
+    {
+        n_particles = inputin.get_item<int>("particle_lagrangian", "n_particles", "");
+    }
 }
 
 
 template<typename TF>
 Particle_lagrangian<TF>::~Particle_lagrangian()
 {
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime)
+{
+    if (!sw_particle)
+        return;
+
+    auto& md = master.get_MPI_data();
+
+    // MPI tasks 0 reads and distributes data.
+    if (md.mpiid == 0)
+    {
+        // Short-cuts.
+        const size_t np = n_particles;
+
+        std::vector<int> uid_in(np);
+        std::vector<TF> x_in(np);
+        std::vector<TF> y_in(np);
+        std::vector<TF> z_in(np);
+
+        char file_name[256];
+        std::sprintf(file_name, "%s_particles.%07d", sim_name.c_str(), iotime);
+        FILE* file = fopen(file_name, "rb");
+
+        // Check file opening and reading.
+        bool success = (file != nullptr);
+
+        if (success)
+        {
+            if (fread(uid_in.data(), sizeof(int), np, file) != np) success = false;
+            if (fread(x_in.data(),   sizeof(TF),  np, file) != np) success = false;
+            if (fread(y_in.data(),   sizeof(TF),  np, file) != np) success = false;
+            if (fread(z_in.data(),   sizeof(TF),  np, file) != np) success = false;
+        }
+
+        if (!success)
+        {
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: reading binary " << file_name << " failed." << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error("ERROR: reading binary failed");
+            #endif
+        }
+
+        fclose(file);
+
+        // TODO: redistribute to other MPI tasks..
+        uid = uid_in;
+        xp = x_in;
+        yp = y_in;
+        zp = z_in;
+
+        // Where to do this? Depends on the amount of particles on each core.
+        // Usually, we read settings, allocate arrays, and then read data.
+        //          This follows the opposite pattern...
+        xpt.resize(n_particles);
+        ypt.resize(n_particles);
+        zpt.resize(n_particles);
+
+        il.resize(n_particles);
+        jl.resize(n_particles);
+        kl.resize(n_particles);
+
+        fx.resize(n_particles);
+        fy.resize(n_particles);
+        fz.resize(n_particles);
+    }
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::save(const std::string& sim_name, const int iotime)
+{
+    if (!sw_particle)
+        return;
+
+    // TODO, no restarts for now!
 }
 
 
@@ -59,17 +269,72 @@ void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop)
 template<typename TF>
 unsigned long Particle_lagrangian<TF>::get_time_limit()
 {
-    if (!sw_particle)
-        return Constants::ulhuge;
+    return Constants::ulhuge;
 }
 
 
 #ifndef USECUDA
 template<typename TF>
-void Particle_lagrangian<TF>::exec(Stats<TF>& stats)
+void Particle_lagrangian<TF>::exec()
+{
+    // Calculate particle tendencies by tri-linear interpolation of Eulerian velocity fields to particle locations.
+
+    if (!sw_particle)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    auto interpolate = [&](
+        std::vector<TF>& tend,
+        const std::vector<TF>& fld,
+        const std::array<int,3>& loc)
+    {
+        const TF x0 = loc[0] == 0 ? gd.x[0] : gd.xh[0];
+        const TF y0 = loc[1] == 0 ? gd.y[0] : gd.yh[0];
+        const std::vector<TF>& z = (loc[2] == 0) ? gd.z : gd.zh;
+        const std::vector<TF>& dzi = (loc[2] == 0) ? gd.dzhi : gd.dzi;
+
+        calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
+        calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
+        calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
+
+        diagnose_tendency(
+            tend.data(),
+            fld.data(),
+            il.data(),
+            jl.data(),
+            kl.data(),
+            fx.data(),
+            fy.data(),
+            fz.data(),
+            n_particles,
+            gd.jstride,
+            gd.kstride);
+    };
+
+    interpolate(xpt, fields.mp.at("u")->fld, {1,0,0});
+    interpolate(ypt, fields.mp.at("v")->fld, {0,1,0});
+    interpolate(zpt, fields.mp.at("w")->fld, {0,0,1});
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 {
     if (!sw_particle)
         return;
+
+    timeloop.exec(xp, xpt);
+    timeloop.exec(yp, ypt);
+    timeloop.exec(zp, zpt);
+
+    // Quick hack: bounce particles from domain bottom/top.
+    for (int n=0; n>n_particles; ++n)
+        if (zp[n] < 0) zp[n] = -zp[n];
+
+    // I/O :-D
+    for (int n=0; n<n_particles; ++n)
+        std::cout << "x=" << xp[n] << ", y=" << yp[n] << ", z=" << zp[n] << std::endl;
 }
 #endif
 

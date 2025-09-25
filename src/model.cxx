@@ -274,7 +274,8 @@ void Model<TF>::load()
     source->create(*input, *input_nc);
 
     particle_bin->create(*timeloop);
-    particle_lagr->create(*timeloop);
+    particle_lagr->create(*timeloop);   // Does not do anything at the moment..
+    particle_lagr->load(sim_name, timeloop->get_iotime());
 
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
@@ -431,7 +432,7 @@ void Model<TF>::exec()
                 particle_bin->exec(*stats);
 
                 // Lagrangian particles.
-                particle_lagr->exec(*stats);
+                particle_lagr->exec();
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -509,6 +510,7 @@ void Model<TF>::exec()
                 if (sim_mode == Sim_mode::Run)
                 {
                     // Integrate in time.
+                    particle_lagr->integrate(*timeloop);
                     timeloop->exec();
 
                     // Increase the time with the time step.

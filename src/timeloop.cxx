@@ -248,9 +248,15 @@ void Timeloop<TF>::set_time_step()
 namespace
 {
     template<typename TF>
-    void rk3(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
-             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int jj, const int kk, const int ncells)
+    void rk3(
+        TF* restrict const a,
+        TF* restrict const at,
+        const int substep,
+        const TF dt,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jj, const int kk, const int ncells)
     {
         constexpr TF cA [] = {0., -5./9., -153./128.};
         constexpr TF cB [] = {1./3., 15./16., 8./15.};
@@ -286,9 +292,43 @@ namespace
     }
 
     template<typename TF>
-    void rk4(TF* restrict const a, TF* restrict const at, const int substep, const TF dt,
-             const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
-             const int jj, const int kk, const int ncells)
+    void rk3(
+        TF* restrict const a,
+        TF* restrict const at,
+        const int substep,
+        const TF dt,
+        const int ncells)
+    {
+        constexpr TF cA [] = {0., -5./9., -153./128.};
+        constexpr TF cB [] = {1./3., 15./16., 8./15.};
+
+        for (int n=0; n<ncells; ++n)
+            a[n] += cB[substep]*dt*at[n];
+
+        const int substepn = (substep+1) % 3;
+
+        if (substepn == 0)
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] = TF(0.);
+        }
+        else
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] *= cA[substepn];
+        }
+    }
+
+    template<typename TF>
+    void rk4(
+        TF* restrict const a,
+        TF* restrict const at,
+        const int substep,
+        const TF dt,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jj, const int kk, const int ncells)
     {
         constexpr TF cA [] = {
             0.,
@@ -331,6 +371,45 @@ namespace
                         const int ijk = i + j*jj + k*kk;
                         at[ijk] = cA[substepn]*at[ijk];
                     }
+        }
+    }
+
+    template<typename TF>
+    void rk4(
+        TF* restrict const a,
+        TF* restrict const at,
+        const int substep,
+        const TF dt,
+        const int ncells)
+    {
+        constexpr TF cA [] = {
+            0.,
+            - 567301805773./1357537059087.,
+            -2404267990393./2016746695238.,
+            -3550918686646./2091501179385.,
+            -1275806237668./ 842570457699.};
+
+        constexpr TF cB [] = {
+            1432997174477./ 9575080441755.,
+            5161836677717./13612068292357.,
+            1720146321549./ 2090206949498.,
+            3134564353537./ 4481467310338.,
+            2277821191437./14882151754819.};
+
+        for (int n=0; n<ncells; ++n)
+            a[n] = a[n] + cB[substep]*dt*at[n];
+
+        const int substepn = (substep+1) % 5;
+
+        if (substepn == 0)
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] = TF(0.);
+        }
+        else
+        {
+            for (int n=0; n<ncells; ++n)
+                at[n] = cA[substepn]*at[n];
         }
     }
 
@@ -410,7 +489,18 @@ void Timeloop<TF>::exec()
         substep = (substep+1) % 5;
     }
 }
+
+template<typename TF>
+void Timeloop<TF>::exec(std::vector<TF>& field, std::vector<TF>& tend)
+{
+    if (rkorder == 3)
+        rk3<TF>(field.data(), tend.data(), substep, dt, field.size());
+
+    if (rkorder == 4)
+        rk4<TF>(field.data(), tend.data(), substep, dt, field.size());
+}
 #endif
+
 
 template<typename TF>
 double Timeloop<TF>::get_sub_time_step() const
