@@ -500,6 +500,8 @@ void Model<TF>::exec()
                         column   ->exec(iter, time, itime);
                     }
 
+                    if (particle_lagr->do_dump(itime))
+                        particle_lagr->dump(iotime);
                 }
 
                 // Exit the simulation when the runtime has been hit.
@@ -789,8 +791,8 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(particle_lagr->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(particle_bin ->get_time_limit());
-    timeloop->set_time_step_limit(particle_lagr->get_time_limit());
 
     // Set the time step.
     timeloop->set_time_step();

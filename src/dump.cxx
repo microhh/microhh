@@ -110,6 +110,7 @@ bool Dump<TF>::do_dump(unsigned long itime, unsigned long idt)
     // Check if dump is enabled.
     if (!swdump)
         return false;
+
     // Check if current time step is dump time.
     if (itime % isampletime != 0)
     {

@@ -48,8 +48,11 @@ class Particle_lagrangian
         void load(const std::string&, const int);
         void save(const std::string&, const int);
 
-        unsigned long get_time_limit();
+        // Dump particles.
+        bool do_dump(const unsigned long);
+        void dump(const int);
 
+        unsigned long get_time_limit(const unsigned long);
 
     private:
         Master& master;
@@ -58,6 +61,10 @@ class Particle_lagrangian
 
         bool sw_particle;       // Lagrangian particle on/off.
         int n_particles;        // Global number of particles.
+
+        // Raw dump of all particles.
+        bool sw_dump;
+        unsigned long isampletime_dump;
 
         // Particle property arrays are oversized by a factor `buffer_margin`.
         // This reduces the amount of time that the arrays have to be resized

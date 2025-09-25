@@ -168,6 +168,14 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
     if (sw_particle)
     {
         n_particles = inputin.get_item<int>("particle_lagrangian", "n_particles", "");
+
+        // Raw dump of all particles.
+        sw_dump = inputin.get_item<bool>("particle_lagrangian", "sw_dump", "", false);
+        if (sw_dump)
+        {
+            const int sampletime = inputin.get_item<int>("particle_lagrangian", "sampletime_dump", "");
+            isampletime_dump = convert_to_itime(sampletime);
+        }
     }
 }
 
@@ -267,9 +275,12 @@ void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop)
 
 
 template<typename TF>
-unsigned long Particle_lagrangian<TF>::get_time_limit()
+unsigned long Particle_lagrangian<TF>::get_time_limit(const unsigned long itime)
 {
-    return Constants::ulhuge;
+    if (!sw_dump)
+        return Constants::ulhuge;
+
+    return isampletime_dump - itime % isampletime_dump;
 }
 
 
@@ -324,6 +335,9 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     if (!sw_particle)
         return;
 
+    auto& gd = grid.get_grid_data();
+
+    // Integrate particle location with RK3/4 scheme.
     timeloop.exec(xp, xpt);
     timeloop.exec(yp, ypt);
     timeloop.exec(zp, zpt);
@@ -332,11 +346,59 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     for (int n=0; n>n_particles; ++n)
         if (zp[n] < 0) zp[n] = -zp[n];
 
-    // I/O :-D
-    for (int n=0; n<n_particles; ++n)
-        std::cout << "x=" << xp[n] << ", y=" << yp[n] << ", z=" << zp[n] << std::endl;
+    // More quick hack: cyclic boundaries.
+    for (int n=0; n>n_particles; ++n)
+    {
+        if (xp[n] >= gd.xsize)
+            xp[n] -= gd.xsize;
+
+        if (yp[n] >= gd.ysize)
+            yp[n] -= gd.ysize;
+    }
 }
 #endif
+
+template<typename TF>
+bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)
+{
+    if (!sw_dump || itime % isampletime_dump != 0)
+        return false;
+
+    return true;
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::dump(const int iotime)
+{
+    master.print_message("Saving raw particle dump\n");
+
+    char file_name[256];
+    std::sprintf(file_name, "particles.%07d", iotime);
+    FILE* file = fopen(file_name, "wbx");
+
+    // Check file opening and reading.
+    bool success = (file != nullptr);
+
+    if (success)
+    {
+        fwrite(xp.data(), sizeof(TF), n_particles, file);
+        fwrite(yp.data(), sizeof(TF), n_particles, file);
+        fwrite(zp.data(), sizeof(TF), n_particles, file);
+    }
+
+    if (!success)
+    {
+        #ifdef USEMPI
+        std::cout << "SINGLE PROCESS EXCEPTION: saving particle dump " << file_name << " failed." << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+        #else
+        throw std::runtime_error("ERROR: saving particle dump failed");
+        #endif
+    }
+
+    fclose(file);
+}
 
 
 #ifdef FLOAT_SINGLE
