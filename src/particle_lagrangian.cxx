@@ -113,9 +113,9 @@ namespace
 
 
     template<typename TF>
-    void diagnose_tendency(
-        TF* const restrict tend,
-        const TF* const restrict vel,
+    void diagnose_velocity(
+        TF* const restrict vel_p,
+        const TF* const restrict vel_3d,
         const int* const restrict il,
         const int* const restrict jl,
         const int* const restrict kl,
@@ -126,7 +126,7 @@ namespace
         const int jstride,
         const int kstride)
     {
-        // Diagnose tendency by tri-linear interpolation of Eulerian velocity to particle location.
+        // Diagnose particle velocity by tri-linear interpolation of Eulerian velocity field to particle location.
         const int ii = 1;
         const int jj = jstride;
         const int kk = kstride;
@@ -143,18 +143,28 @@ namespace
             const TF fy0 = TF(1) - fy1;
             const TF fz0 = TF(1) - fz1;
 
-            const TF vel_p =
-                fx0 * fy0 * fz0 * vel[ijk               ] +
-                fx1 * fy0 * fz0 * vel[ijk + ii          ] +
-                fx0 * fy1 * fz0 * vel[ijk + jj          ] +
-                fx0 * fy0 * fz1 * vel[ijk + kk          ] +
-                fx1 * fy1 * fz0 * vel[ijk + ii + jj     ] +
-                fx1 * fy0 * fz1 * vel[ijk + ii + kk     ] +
-                fx0 * fy1 * fz1 * vel[ijk + jj + kk     ] +
-                fx1 * fy1 * fz1 * vel[ijk + ii + jj + kk];
-
-            tend[n] += vel_p;
+            vel_p[n] =
+                fx0 * fy0 * fz0 * vel_3d[ijk               ] +
+                fx1 * fy0 * fz0 * vel_3d[ijk + ii          ] +
+                fx0 * fy1 * fz0 * vel_3d[ijk + jj          ] +
+                fx0 * fy0 * fz1 * vel_3d[ijk + kk          ] +
+                fx1 * fy1 * fz0 * vel_3d[ijk + ii + jj     ] +
+                fx1 * fy0 * fz1 * vel_3d[ijk + ii + kk     ] +
+                fx0 * fy1 * fz1 * vel_3d[ijk + jj + kk     ] +
+                fx1 * fy1 * fz1 * vel_3d[ijk + ii + jj + kk];
         }
+    }
+
+
+    template<typename TF>
+    void add_tendency(
+        TF* const restrict tend_p,
+        const TF* const restrict vel_p,
+        const int n_particles)
+    {
+        // Add velocity to tendency.
+        for (int n=0; n<n_particles; ++n)
+            tend_p[n] += vel_p[n];
     }
 }
 
@@ -184,6 +194,93 @@ template<typename TF>
 Particle_lagrangian<TF>::~Particle_lagrangian()
 {
 }
+
+
+#ifndef USECUDA
+template<typename TF>
+void Particle_lagrangian<TF>::exec()
+{
+    // Calculate particle tendencies by tri-linear interpolation of Eulerian velocity fields to particle locations.
+
+    if (!sw_particle)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    auto diagnose_tendency = [&](
+        std::vector<TF>& velocity,
+        std::vector<TF>& tendency,
+        const std::vector<TF>& fld_3d,
+        const std::array<int,3>& loc)
+    {
+        const TF x0 = loc[0] == 0 ? gd.x[0] : gd.xh[0];
+        const TF y0 = loc[1] == 0 ? gd.y[0] : gd.yh[0];
+        const std::vector<TF>& z = (loc[2] == 0) ? gd.z : gd.zh;
+        const std::vector<TF>& dzi = (loc[2] == 0) ? gd.dzhi : gd.dzi;
+
+        calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
+        calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
+        calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
+
+        diagnose_velocity(
+            velocity.data(),
+            fld_3d.data(),
+            il.data(),
+            jl.data(),
+            kl.data(),
+            fx.data(),
+            fy.data(),
+            fz.data(),
+            n_particles,
+            gd.jstride,
+            gd.kstride);
+
+        add_tendency(
+            tendency.data(),
+            velocity.data(),
+            n_particles);
+    };
+
+    diagnose_tendency(up, xpt, fields.mp.at("u")->fld, {1,0,0});
+    diagnose_tendency(vp, ypt, fields.mp.at("v")->fld, {0,1,0});
+    diagnose_tendency(wp, zpt, fields.mp.at("w")->fld, {0,0,1});
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
+{
+    if (!sw_particle)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    // Integrate particle location with RK3/4 scheme.
+    timeloop.exec(xp, xpt);
+    timeloop.exec(yp, ypt);
+    timeloop.exec(zp, zpt);
+
+    // Quick hack: bounce particles from domain bottom/top.
+    for (int n=0; n<n_particles; ++n)
+        if (zp[n] < 0) zp[n] = -zp[n];
+
+    // More quick hack: cyclic boundaries.
+    for (int n=0; n<n_particles; ++n)
+    {
+        if (xp[n] >= gd.xsize)
+            xp[n] -= gd.xsize;
+
+        if (xp[n] < 0)
+            xp[n] += gd.xsize;
+
+        if (yp[n] >= gd.ysize)
+            yp[n] -= gd.ysize;
+
+        if (yp[n] < 0)
+            yp[n] += gd.ysize;
+    }
+}
+#endif
 
 
 template<typename TF>
@@ -232,15 +329,16 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
 
         fclose(file);
 
-        // TODO: redistribute to other MPI tasks..
+        // No MPI; all data stays local.
         uid = uid_in;
         xp = x_in;
         yp = y_in;
         zp = z_in;
 
-        // Where to do this? Depends on the amount of particles on each core.
-        // Usually, we read settings, allocate arrays, and then read data.
-        //          This follows the opposite pattern...
+        up.resize(n_particles);
+        vp.resize(n_particles);
+        wp.resize(n_particles);
+
         xpt.resize(n_particles);
         ypt.resize(n_particles);
         zpt.resize(n_particles);
@@ -283,80 +381,6 @@ unsigned long Particle_lagrangian<TF>::get_time_limit(const unsigned long itime)
     return isampletime_dump - itime % isampletime_dump;
 }
 
-
-#ifndef USECUDA
-template<typename TF>
-void Particle_lagrangian<TF>::exec()
-{
-    // Calculate particle tendencies by tri-linear interpolation of Eulerian velocity fields to particle locations.
-
-    if (!sw_particle)
-        return;
-
-    auto& gd = grid.get_grid_data();
-
-    auto interpolate = [&](
-        std::vector<TF>& tend,
-        const std::vector<TF>& fld,
-        const std::array<int,3>& loc)
-    {
-        const TF x0 = loc[0] == 0 ? gd.x[0] : gd.xh[0];
-        const TF y0 = loc[1] == 0 ? gd.y[0] : gd.yh[0];
-        const std::vector<TF>& z = (loc[2] == 0) ? gd.z : gd.zh;
-        const std::vector<TF>& dzi = (loc[2] == 0) ? gd.dzhi : gd.dzi;
-
-        calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
-        calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
-        calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
-
-        diagnose_tendency(
-            tend.data(),
-            fld.data(),
-            il.data(),
-            jl.data(),
-            kl.data(),
-            fx.data(),
-            fy.data(),
-            fz.data(),
-            n_particles,
-            gd.jstride,
-            gd.kstride);
-    };
-
-    interpolate(xpt, fields.mp.at("u")->fld, {1,0,0});
-    interpolate(ypt, fields.mp.at("v")->fld, {0,1,0});
-    interpolate(zpt, fields.mp.at("w")->fld, {0,0,1});
-}
-
-
-template<typename TF>
-void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
-{
-    if (!sw_particle)
-        return;
-
-    auto& gd = grid.get_grid_data();
-
-    // Integrate particle location with RK3/4 scheme.
-    timeloop.exec(xp, xpt);
-    timeloop.exec(yp, ypt);
-    timeloop.exec(zp, zpt);
-
-    // Quick hack: bounce particles from domain bottom/top.
-    for (int n=0; n>n_particles; ++n)
-        if (zp[n] < 0) zp[n] = -zp[n];
-
-    // More quick hack: cyclic boundaries.
-    for (int n=0; n>n_particles; ++n)
-    {
-        if (xp[n] >= gd.xsize)
-            xp[n] -= gd.xsize;
-
-        if (yp[n] >= gd.ysize)
-            yp[n] -= gd.ysize;
-    }
-}
-#endif
 
 template<typename TF>
 bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)

@@ -79,12 +79,18 @@ class Particle_lagrangian
         std::vector<TF> yp;
         std::vector<TF> zp;
 
+        // Velocity.
+        std::vector<TF> up;
+        std::vector<TF> vp;
+        std::vector<TF> wp;
+
         // Tendency.
         std::vector<TF> xpt;
         std::vector<TF> ypt;
         std::vector<TF> zpt;
 
-        // Interpolation indexes and factors. Re-used for different locations on grid (u, v, w, ..).
+        // Interpolation indexes and factors.
+        // Re-used for different locations on grid (u, v, w, ..).
         std::vector<int> il;
         std::vector<int> jl;
         std::vector<int> kl;
