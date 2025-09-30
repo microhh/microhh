@@ -30,8 +30,12 @@ set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 set(NETCDF_LIB_C "netcdf")
 set(FFTW_LIB "fftw3")
 set(FFTWF_LIB "fftw3f")
-set(HDF5_LIB "hdf5_serial")
-set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB}) #It may be necessary to add m z curl sz if necessary
+set(HDF5_LIB_1 "hdf5_serial")
+set(HDF5_LIB_2 "hdf5_serial_hl")
+set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1}) #It may be necessary to add m z curl sz if necessary
+
+set(HDF5_INCLUDE_DIR "/usr/include/hdf5/serial")
+set(INCLUDE_DIRS ${HDF5_INCLUDE_DIR})
 
 if(USECUDA)
     set(CMAKE_CUDA_ARCHITECTURES 86)

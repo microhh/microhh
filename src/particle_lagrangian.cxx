@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+#include <iomanip>
 
 #include "master.h"
 #include "input.h"
@@ -28,6 +29,7 @@
 #include "fields.h"
 #include "timeloop.h"
 #include "constants.h"
+#include "hdf5_interface.h"
 
 #include "particle_lagrangian.h"
 
@@ -294,46 +296,28 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
     // MPI tasks 0 reads and distributes data.
     if (md.mpiid == 0)
     {
-        // Short-cuts.
-        const size_t np = n_particles;
+        std::ostringstream oss;
+        oss << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+        std::string file_name = oss.str();
+        Hdf5_file<TF> h5_file(file_name, Hdf5_mode::Read);
 
-        std::vector<int> uid_in(np);
-        std::vector<TF> x_in(np);
-        std::vector<TF> y_in(np);
-        std::vector<TF> z_in(np);
+        Hdf5_variable<TF> var_x(h5_file, "x");
+        Hdf5_variable<TF> var_y(h5_file, "y");
+        Hdf5_variable<TF> var_z(h5_file, "z");
 
-        char file_name[256];
-        std::sprintf(file_name, "%s_particles.%07d", sim_name.c_str(), iotime);
-        FILE* file = fopen(file_name, "rb");
+        auto x_all = var_x.read();
+        auto y_all = var_y.read();
+        auto z_all = var_z.read();
 
-        // Check file opening and reading.
-        bool success = (file != nullptr);
-
-        if (success)
-        {
-            if (fread(uid_in.data(), sizeof(int), np, file) != np) success = false;
-            if (fread(x_in.data(),   sizeof(TF),  np, file) != np) success = false;
-            if (fread(y_in.data(),   sizeof(TF),  np, file) != np) success = false;
-            if (fread(z_in.data(),   sizeof(TF),  np, file) != np) success = false;
-        }
-
-        if (!success)
-        {
-            #ifdef USEMPI
-            std::cout << "SINGLE PROCESS EXCEPTION: reading binary " << file_name << " failed." << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
-            #else
-            throw std::runtime_error("ERROR: reading binary failed");
-            #endif
-        }
-
-        fclose(file);
+        for (int i=0; i<x_all.size(); ++i)
+            std::cout << x_all[i] << ", " << y_all[i] << ", " << z_all[i] << std::endl;
+        throw 1;
 
         // No MPI; all data stays local.
-        uid = uid_in;
-        xp = x_in;
-        yp = y_in;
-        zp = z_in;
+        //uid = uid_in;
+        xp = x_all;
+        yp = y_all;
+        zp = z_all;
 
         up.resize(n_particles);
         vp.resize(n_particles);
