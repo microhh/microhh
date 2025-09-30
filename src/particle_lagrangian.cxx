@@ -299,25 +299,23 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
         std::ostringstream oss;
         oss << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
         std::string file_name = oss.str();
-        Hdf5_file<TF> h5_file(file_name, Hdf5_mode::Read);
+        Hdf5_file h5_file(file_name, Hdf5_mode::Read);
 
+        Hdf5_variable<int> var_uid(h5_file, "uid");
         Hdf5_variable<TF> var_x(h5_file, "x");
         Hdf5_variable<TF> var_y(h5_file, "y");
         Hdf5_variable<TF> var_z(h5_file, "z");
 
-        auto x_all = var_x.read();
-        auto y_all = var_y.read();
-        auto z_all = var_z.read();
+        auto uid_in = var_uid.read();
+        auto x_in = var_x.read();
+        auto y_in = var_y.read();
+        auto z_in = var_z.read();
 
-        for (int i=0; i<x_all.size(); ++i)
-            std::cout << x_all[i] << ", " << y_all[i] << ", " << z_all[i] << std::endl;
-        throw 1;
-
-        // No MPI; all data stays local.
-        //uid = uid_in;
-        xp = x_all;
-        yp = y_all;
-        zp = z_all;
+        // No MPI; in data stays local.
+        uid = uid_in;
+        xp = x_in;
+        yp = y_in;
+        zp = z_in;
 
         up.resize(n_particles);
         vp.resize(n_particles);

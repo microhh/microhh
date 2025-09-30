@@ -49,7 +49,6 @@ hid_t get_hdf5_type()
 
 enum class Hdf5_mode {Read, Write, Read_write};
 
-template<typename TF>
 class Hdf5_file
 {
     public:
@@ -109,15 +108,16 @@ class Hdf5_file
             return file_id;
         }
 
+        template<typename TF = double>
         void add_dimension(const std::string& name, int size)
         {
             hsize_t dim_size = (size == -1) ? 0 : size;
             hsize_t max_size = (size == -1) ? H5S_UNLIMITED : size;
-            
+
             hid_t space = H5Screate_simple(1, &dim_size, &max_size);
             if (space < 0)
                 throw std::runtime_error("Failed to create dataspace for dimension");
-            
+
             hid_t plist = H5P_DEFAULT;
             if (size == -1)
             {
@@ -125,7 +125,7 @@ class Hdf5_file
                 hsize_t chunk = 1;
                 H5Pset_chunk(plist, 1, &chunk);
             }
-            
+
             hid_t h5_type = get_hdf5_type<TF>();
             hid_t dim_id = H5Dcreate2(
                 file_id,
@@ -135,18 +135,18 @@ class Hdf5_file
                 H5P_DEFAULT,
                 plist,
                 H5P_DEFAULT);
-            
+
             if (plist != H5P_DEFAULT)
                 H5Pclose(plist);
             H5Sclose(space);
-            
+
             if (dim_id < 0)
                 throw std::runtime_error("Failed to create dimension: " + name);
-            
+
             H5DSset_scale(dim_id, name.c_str());
-            
+
             H5Dclose(dim_id);
-            
+
             dimensions[name] = size;
         }
         
@@ -193,7 +193,7 @@ class Hdf5_variable
 {
     public:
         // Open existing variable
-        Hdf5_variable(const Hdf5_file<TF>& file, const std::string& path)
+        Hdf5_variable(const Hdf5_file& file, const std::string& path)
         {
             dataset_id = H5Dopen2(file.get_id(), path.c_str(), H5P_DEFAULT);
             if (dataset_id < 0)
@@ -201,7 +201,7 @@ class Hdf5_variable
         }
         
         Hdf5_variable(
-                const Hdf5_file<TF>& file,
+                const Hdf5_file& file,
                 const std::string& path,
                 const std::vector<std::string>& dim_names)
         {
