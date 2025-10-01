@@ -296,20 +296,44 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
     // MPI tasks 0 reads and distributes data.
     if (md.mpiid == 0)
     {
-        std::ostringstream oss;
-        oss << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
-        std::string file_name = oss.str();
-        Hdf5_file h5_file(file_name, Hdf5_mode::Read);
+        std::ostringstream file_in;
+        file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+        Hdf5_file h5_file_in(file_in.str(), Hdf5_mode::Read);
 
-        Hdf5_variable<int> var_uid(h5_file, "uid");
-        Hdf5_variable<TF> var_x(h5_file, "x");
-        Hdf5_variable<TF> var_y(h5_file, "y");
-        Hdf5_variable<TF> var_z(h5_file, "z");
+        Hdf5_variable<int> var_uid(h5_file_in, "particle_id");
+        Hdf5_variable<TF> var_x(h5_file_in, "x");
+        Hdf5_variable<TF> var_y(h5_file_in, "y");
+        Hdf5_variable<TF> var_z(h5_file_in, "z");
 
         auto uid_in = var_uid.read();
         auto x_in = var_x.read();
         auto y_in = var_y.read();
         auto z_in = var_z.read();
+
+        //file_in.close();
+
+
+        // TEST TEST TEST: write back.
+        std::ostringstream file_out;
+        file_out << "particles_out." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+        Hdf5_file h5_file_out(file_out.str(), Hdf5_mode::Write);
+        h5_file_out.add_dimension("particle_id", n_particles);
+
+        Hdf5_variable<int> var_uid_out(h5_file_out, "particle_id", {"particle_id"});
+        Hdf5_variable<TF> var_x_out(h5_file_out, "x", {"particle_id"});
+        Hdf5_variable<TF> var_y_out(h5_file_out, "y", {"particle_id"});
+        Hdf5_variable<TF> var_z_out(h5_file_out, "z", {"particle_id"});
+
+        var_uid_out.insert(uid_in);
+        var_x_out.insert(x_in);
+        var_y_out.insert(y_in);
+        var_z_out.insert(z_in);
+
+        //file_out.close();
+
+        throw 1;
+
+
 
         // No MPI; in data stays local.
         uid = uid_in;

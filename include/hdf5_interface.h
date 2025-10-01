@@ -74,9 +74,9 @@ class Hdf5_file
                     test.close();
                     throw std::runtime_error("File already exists: " + filename);
                 }
-            
+
                 file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT);
-            
+
                 if (file_id < 0)
                     throw std::runtime_error("Failed to create file: " + filename);
             }
@@ -93,7 +93,7 @@ class Hdf5_file
         {
             close();
         }
-        
+
         void close()
         {
             if (file_id >= 0)
@@ -108,48 +108,11 @@ class Hdf5_file
             return file_id;
         }
 
-        template<typename TF = double>
         void add_dimension(const std::string& name, int size)
         {
-            hsize_t dim_size = (size == -1) ? 0 : size;
-            hsize_t max_size = (size == -1) ? H5S_UNLIMITED : size;
-
-            hid_t space = H5Screate_simple(1, &dim_size, &max_size);
-            if (space < 0)
-                throw std::runtime_error("Failed to create dataspace for dimension");
-
-            hid_t plist = H5P_DEFAULT;
-            if (size == -1)
-            {
-                plist = H5Pcreate(H5P_DATASET_CREATE);
-                hsize_t chunk = 1;
-                H5Pset_chunk(plist, 1, &chunk);
-            }
-
-            hid_t h5_type = get_hdf5_type<TF>();
-            hid_t dim_id = H5Dcreate2(
-                file_id,
-                name.c_str(),
-                h5_type,
-                space,
-                H5P_DEFAULT,
-                plist,
-                H5P_DEFAULT);
-
-            if (plist != H5P_DEFAULT)
-                H5Pclose(plist);
-            H5Sclose(space);
-
-            if (dim_id < 0)
-                throw std::runtime_error("Failed to create dimension: " + name);
-
-            H5DSset_scale(dim_id, name.c_str());
-
-            H5Dclose(dim_id);
-
             dimensions[name] = size;
         }
-        
+
         int get_dimension_size(const std::string& name) const
         {
             auto it = dimensions.find(name);
@@ -199,7 +162,7 @@ class Hdf5_variable
             if (dataset_id < 0)
                 throw std::runtime_error("Failed to open dataset: " + path);
         }
-        
+
         Hdf5_variable(
                 const Hdf5_file& file,
                 const std::string& path,
@@ -208,7 +171,7 @@ class Hdf5_variable
             // Get dimension sizes
             std::vector<hsize_t> h5_dims;
             std::vector<hsize_t> h5_maxdims;
-            
+
             for (const auto& dim_name : dim_names)
             {
                 int size = file.get_dimension_size(dim_name);
@@ -223,11 +186,11 @@ class Hdf5_variable
                     h5_maxdims.push_back(size);
                 }
             }
-            
+
             hid_t space = H5Screate_simple(h5_dims.size(), h5_dims.data(), h5_maxdims.data());
             if (space < 0)
                 throw std::runtime_error("Failed to create dataspace");
-            
+
             hid_t plist = H5P_DEFAULT;
             bool has_unlimited = false;
             for (const auto& dim_name : dim_names)
@@ -238,7 +201,7 @@ class Hdf5_variable
                     break;
                 }
             }
-            
+
             if (has_unlimited)
             {
                 plist = H5Pcreate(H5P_DATASET_CREATE);
@@ -246,7 +209,7 @@ class Hdf5_variable
                 if (chunk_dims[0] == 0) chunk_dims[0] = 1;
                 H5Pset_chunk(plist, chunk_dims.size(), chunk_dims.data());
             }
-            
+
             hid_t h5_type = get_hdf5_type<TF>();
             dataset_id = H5Dcreate2(
                     file.get_id(),
@@ -256,14 +219,14 @@ class Hdf5_variable
                     H5P_DEFAULT,
                     plist,
                     H5P_DEFAULT);
-            
+
             if (plist != H5P_DEFAULT)
                 H5Pclose(plist);
             H5Sclose(space);
-            
+
             if (dataset_id < 0)
                 throw std::runtime_error("Failed to create dataset: " + path);
-            
+
             for (size_t i = 0; i < dim_names.size(); i++)
             {
                 hid_t dim_id = H5Dopen2(file.get_id(), dim_names[i].c_str(), H5P_DEFAULT);
@@ -286,23 +249,23 @@ class Hdf5_variable
             hid_t space = H5Dget_space(dataset_id);
             if (space < 0)
                 throw std::runtime_error("Failed to get dataspace");
-        
+
             int ndims = H5Sget_simple_extent_ndims(space);
             std::vector<hsize_t> dims_tmp(ndims);
             H5Sget_simple_extent_dims(space, dims_tmp.data(), nullptr);
             H5Sclose(space);
-        
+
             std::vector<size_t> dims(ndims);
             for (int i = 0; i < ndims; i++)
                 dims[i] = dims_tmp[i];
-        
+
             return dims;
         }
 
         std::vector<TF> read() const
         {
             auto dims = get_dims();
-    
+
             size_t count = 1;
             for (size_t d : dims)
                 count *= d;
@@ -323,7 +286,7 @@ class Hdf5_variable
 
             return data;
         }
-        
+
         // Read hyperslab (partial dataset)
         // start: starting indices for each dimension
         // count: number of elements to read in each dimension
@@ -332,35 +295,35 @@ class Hdf5_variable
         {
             std::vector<hsize_t> h5_start(start.begin(), start.end());
             std::vector<hsize_t> h5_count(count.begin(), count.end());
-            
+
             hid_t file_space = H5Dget_space(dataset_id);
             if (file_space < 0)
                 throw std::runtime_error("Failed to get dataspace");
-            
+
             herr_t status = H5Sselect_hyperslab(
                 file_space, H5S_SELECT_SET,
                 h5_start.data(), nullptr,
                 h5_count.data(), nullptr);
-            
+
             if (status < 0)
             {
                 H5Sclose(file_space);
                 throw std::runtime_error("Failed to select hyperslab");
             }
-            
+
             hid_t mem_space = H5Screate_simple(h5_count.size(), h5_count.data(), nullptr);
             if (mem_space < 0)
             {
                 H5Sclose(file_space);
                 throw std::runtime_error("Failed to create memory dataspace");
             }
-            
+
             size_t total = 1;
             for (size_t c : count)
                 total *= c;
-            
+
             std::vector<TF> data(total);
-            
+
             hid_t h5_type = get_hdf5_type<TF>();
             status = H5Dread(
                 dataset_id,
@@ -369,17 +332,17 @@ class Hdf5_variable
                 file_space,
                 H5P_DEFAULT,
                 data.data());
-            
+
             H5Sclose(mem_space);
             H5Sclose(file_space);
-            
+
             if (status < 0)
                 throw std::runtime_error("Failed to read hyperslab");
-            
+
             return data;
         }
 
-        void write(const std::vector<TF>& data)
+        void insert(const std::vector<TF>& data)
         {
             hid_t h5_type = get_hdf5_type<TF>();
             herr_t status = H5Dwrite(
@@ -393,29 +356,29 @@ class Hdf5_variable
             if (status < 0)
                 throw std::runtime_error("Failed to write dataset");
         }
-        
+
         // Write hyperslab (partial dataset)
         // start: starting indices for each dimension
         // count: number of elements to write in each dimension
-        void write(const std::vector<size_t>& start, 
+        void insert(const std::vector<size_t>& start,
                    const std::vector<size_t>& count,
                    const std::vector<TF>& data)
         {
             // Convert to hsize_t
             std::vector<hsize_t> h5_start(start.begin(), start.end());
             std::vector<hsize_t> h5_count(count.begin(), count.end());
-            
+
             // Get the dataspace of the dataset
             hid_t file_space = H5Dget_space(dataset_id);
             if (file_space < 0)
                 throw std::runtime_error("Failed to get dataspace");
-            
+
             // Check if we need to extend the dataset (for unlimited dimensions)
             int ndims = H5Sget_simple_extent_ndims(file_space);
             std::vector<hsize_t> current_dims(ndims);
             std::vector<hsize_t> max_dims(ndims);
             H5Sget_simple_extent_dims(file_space, current_dims.data(), max_dims.data());
-            
+
             bool need_extend = false;
             std::vector<hsize_t> new_dims = current_dims;
             for (int i = 0; i < ndims; i++)
@@ -429,35 +392,35 @@ class Hdf5_variable
                     need_extend = true;
                 }
             }
-            
+
             if (need_extend)
             {
                 herr_t status = H5Dset_extent(dataset_id, new_dims.data());
                 if (status < 0)
                     throw std::runtime_error("Failed to extend dataset");
-                
+
                 H5Sclose(file_space);
                 file_space = H5Dget_space(dataset_id);
             }
-            
+
             herr_t status = H5Sselect_hyperslab(
                 file_space, H5S_SELECT_SET,
                 h5_start.data(), nullptr,
                 h5_count.data(), nullptr);
-            
+
             if (status < 0)
             {
                 H5Sclose(file_space);
                 throw std::runtime_error("Failed to select hyperslab");
             }
-            
+
             hid_t mem_space = H5Screate_simple(h5_count.size(), h5_count.data(), nullptr);
             if (mem_space < 0)
             {
                 H5Sclose(file_space);
                 throw std::runtime_error("Failed to create memory dataspace");
             }
-            
+
             hid_t h5_type = get_hdf5_type<TF>();
             status = H5Dwrite(
                 dataset_id,
@@ -466,10 +429,10 @@ class Hdf5_variable
                 file_space,
                 H5P_DEFAULT,
                 data.data());
-            
+
             H5Sclose(mem_space);
             H5Sclose(file_space);
-            
+
             if (status < 0)
                 throw std::runtime_error("Failed to write hyperslab");
         }
