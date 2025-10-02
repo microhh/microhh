@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <cmath>
 
 #include "master.h"
 #include "input.h"
@@ -29,9 +30,14 @@
 #include "fields.h"
 #include "timeloop.h"
 #include "constants.h"
+
+#include <hdf5.h>
 #include "hdf5_interface.h"
 
 #include "particle_lagrangian.h"
+#include "particle_lagrangian_kernels.h"
+
+namespace plk = Particle_lagrangian_kernels;
 
 namespace
 {
@@ -59,114 +65,6 @@ namespace
         }
 
         v.resize(new_size);
-    }
-
-
-    template<typename TF>
-    void calc_interpolation_factors_h(
-        int* const restrict index,
-        TF* const restrict factor,
-        const TF* const restrict xp,
-        const TF x0,
-        const TF dxi,
-        const int n_particles)
-    {
-        // For each particle, find index left of value, and calculate interpolation factor.
-        // Equidistant grid in the horizontal, so index can be found directly.
-
-        for (int i=0; i<n_particles; ++i)
-        {
-            const TF fi = (xp[i] - x0) * dxi;
-            index[i] = static_cast<int>(fi);
-            factor[i] = fi - index[i];
-        }
-    }
-
-
-    template<typename TF>
-    void calc_interpolation_factors_v(
-        int* const restrict index,
-        TF* const restrict factor,
-        const TF* const restrict zp,
-        const TF* const restrict z,
-        const TF* const restrict dzi,
-        const bool is_half_level,
-        const int n_particles,
-        const int kcells)
-    {
-        // For each particle, find index left of value, and calculate interpolation factor.
-        // Non-equidistant grid in the vertical, so requires search using `std::upper_bound`.
-
-        // This is slightly annoying...
-        // For half levels, the spacing from zh[k] to zh[k+1] = dz[k]
-        // For full levels, the spacing from z[k] to z[k+1] = dzh[k+1]
-        const int dk = is_half_level ? 0 : 1;
-
-        for (int i=0; i<n_particles; ++i)
-        {
-            // Use `upper_bound`; our `zh[0]` and `zh[1]` are both zero!
-            const TF* it = std::upper_bound(z, z+kcells, zp[i]);
-            const int k0 = static_cast<int>(it - z) - 1;
-
-            index[i] = k0;
-            factor[i] = (zp[i] - z[k0]) * dzi[k0+dk];
-        }
-    }
-
-
-    template<typename TF>
-    void diagnose_velocity(
-        TF* const restrict vel_p,
-        const TF* const restrict vel_3d,
-        const int* const restrict il,
-        const int* const restrict jl,
-        const int* const restrict kl,
-        const TF* const restrict fx,
-        const TF* const restrict fy,
-        const TF* const restrict fz,
-        const int n_particles,
-        const int jstride,
-        const int kstride)
-    {
-        // Diagnose particle velocity by tri-linear interpolation of Eulerian velocity field to particle location.
-        const int ii = 1;
-        const int jj = jstride;
-        const int kk = kstride;
-
-        for (int n=0; n<n_particles; ++n)
-        {
-            const int ijk = il[n] + jl[n]*jstride + kl[n]*kstride;
-
-            const TF fx1 = fx[n];
-            const TF fy1 = fy[n];
-            const TF fz1 = fz[n];
-
-            const TF fx0 = TF(1) - fx1;
-            const TF fy0 = TF(1) - fy1;
-            const TF fz0 = TF(1) - fz1;
-
-            vel_p[n] =
-                fx0 * fy0 * fz0 * vel_3d[ijk               ] +
-                fx1 * fy0 * fz0 * vel_3d[ijk + ii          ] +
-                fx0 * fy1 * fz0 * vel_3d[ijk + jj          ] +
-                fx0 * fy0 * fz1 * vel_3d[ijk + kk          ] +
-                fx1 * fy1 * fz0 * vel_3d[ijk + ii + jj     ] +
-                fx1 * fy0 * fz1 * vel_3d[ijk + ii + kk     ] +
-                fx0 * fy1 * fz1 * vel_3d[ijk + jj + kk     ] +
-                fx1 * fy1 * fz1 * vel_3d[ijk + ii + jj + kk];
-        }
-    }
-
-
-    template<typename TF>
-    void add_tendency(
-        TF* const restrict tend_p,
-        const TF* const restrict vel_p,
-        const int n_particles)
-    {
-        // Add velocity to tendency.
-        for (int n=0; n<n_particles; ++n)
-            tend_p[n] += vel_p[n];
     }
 }
 
@@ -203,7 +101,6 @@ template<typename TF>
 void Particle_lagrangian<TF>::exec()
 {
     // Calculate particle tendencies by tri-linear interpolation of Eulerian velocity fields to particle locations.
-
     if (!sw_particle)
         return;
 
@@ -220,11 +117,11 @@ void Particle_lagrangian<TF>::exec()
         const std::vector<TF>& z = (loc[2] == 0) ? gd.z : gd.zh;
         const std::vector<TF>& dzi = (loc[2] == 0) ? gd.dzhi : gd.dzi;
 
-        calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
-        calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
-        calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
+        plk::calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
+        plk::calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
+        plk::calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
 
-        diagnose_velocity(
+        plk::diagnose_velocity(
             velocity.data(),
             fld_3d.data(),
             il.data(),
@@ -237,7 +134,7 @@ void Particle_lagrangian<TF>::exec()
             gd.jstride,
             gd.kstride);
 
-        add_tendency(
+        plk::add_tendency(
             tendency.data(),
             velocity.data(),
             n_particles);
@@ -285,6 +182,92 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 #endif
 
 
+namespace
+{
+    template<typename TF>
+    void read_coordinate(
+        hid_t file_id, const char* dset_name,
+        TF* buffer,
+        hsize_t start,
+        hsize_t count)
+    {
+        // Open dataset.
+        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t filespace = H5Dget_space(dset);
+
+        // Select hyperslab.
+        H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
+
+        // Local memory layout is simple; continous 1D array of size `count`.
+        hid_t memspace = H5Screate_simple(1, &count, NULL);
+
+        // Setup collective IO where all tasks participate.
+        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+        // Read data.
+        H5Dread(dset, get_hdf5_type<TF>(), memspace, filespace, plist_id, buffer);
+
+        // Cleanup!
+        H5Pclose(plist_id);
+        H5Sclose(memspace);
+        H5Sclose(filespace);
+        H5Dclose(dset);
+    }
+
+
+    template <typename TF>
+    void read_particles_parallel(
+        const std::string& filename,
+        std::vector<TF>& x,
+        std::vector<TF>& y,
+        std::vector<TF>& z,
+        const int mpiid,
+        const int nprocs)
+    {
+        // Open file with parallel HDF5.
+        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+        hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id);
+        H5Pclose(plist_id);
+
+        // Get total number of particles.
+        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
+        hid_t dspace = H5Dget_space(dset_x);
+        hsize_t n_total;
+        H5Sget_simple_extent_dims(dspace, &n_total, NULL);
+        H5Sclose(dspace);
+
+        // Each task has `ceil(n_total / nprocs)` particles (except last task, see next code block).
+        const int np_per_task = std::ceil(TF(n_total) / nprocs);
+        hsize_t start = mpiid * np_per_task;
+        hsize_t count = np_per_task;
+
+        // Last MPI task might have less if `n_total % nprocs != 0`.
+        if (start + count > n_total)
+            count = n_total - start;
+
+        //std::cout << "n_total=" << n_total << ", n_per_task=" << np_per_task << ", mpiid=" << mpiid << ", start=" << start << ", count=" << count << std::endl;
+
+        // Resize local vectors.
+        // Use local size without buffer; these particles are only
+        // temporarely on this task and shipped elsewhwere soon.
+        x.resize(count);
+        y.resize(count);
+        z.resize(count);
+
+        // Read each coordinate with hyperslab selection
+        read_coordinate(file_id, "/x", x.data(), start, count);
+        read_coordinate(file_id, "/y", y.data(), start, count);
+        read_coordinate(file_id, "/z", z.data(), start, count);
+
+        // Cleanup!
+        H5Dclose(dset_x);
+        H5Fclose(file_id);
+    }
+}
+
+
 template<typename TF>
 void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime)
 {
@@ -293,70 +276,80 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
 
     auto& md = master.get_MPI_data();
 
+    std::ostringstream file_in;
+    file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+
+    #ifdef USEMPI
+    read_particles_parallel<TF>(file_in.str(), xp, yp, zp, md.mpiid, md.nprocs);
+    #else
+    // TODO.
     // MPI tasks 0 reads and distributes data.
-    if (md.mpiid == 0)
-    {
-        std::ostringstream file_in;
-        file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
-        Hdf5_file h5_file_in(file_in.str(), Hdf5_mode::Read);
+    //if (md.mpiid == 0)
+    //{
+    //    std::ostringstream file_in;
+    //    file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+    //    Hdf5_file h5_file_in(file_in.str(), Hdf5_mode::Read);
 
-        Hdf5_variable<int> var_uid(h5_file_in, "particle_id");
-        Hdf5_variable<TF> var_x(h5_file_in, "x");
-        Hdf5_variable<TF> var_y(h5_file_in, "y");
-        Hdf5_variable<TF> var_z(h5_file_in, "z");
+    //    Hdf5_variable<int> var_uid(h5_file_in, "particle_id");
+    //    Hdf5_variable<TF> var_x(h5_file_in, "x");
+    //    Hdf5_variable<TF> var_y(h5_file_in, "y");
+    //    Hdf5_variable<TF> var_z(h5_file_in, "z");
 
-        auto uid_in = var_uid.read();
-        auto x_in = var_x.read();
-        auto y_in = var_y.read();
-        auto z_in = var_z.read();
+    //    auto uid_in = var_uid.read();
+    //    auto x_in = var_x.read();
+    //    auto y_in = var_y.read();
+    //    auto z_in = var_z.read();
 
-        //file_in.close();
-
-
-        // TEST TEST TEST: write back.
-        std::ostringstream file_out;
-        file_out << "particles_out." << std::setfill('0') << std::setw(7) << iotime << ".h5";
-        Hdf5_file h5_file_out(file_out.str(), Hdf5_mode::Write);
-        h5_file_out.add_dimension("particle_id", n_particles);
-
-        Hdf5_variable<int> var_uid_out(h5_file_out, "particle_id", {"particle_id"});
-        Hdf5_variable<TF> var_x_out(h5_file_out, "x", {"particle_id"});
-        Hdf5_variable<TF> var_y_out(h5_file_out, "y", {"particle_id"});
-        Hdf5_variable<TF> var_z_out(h5_file_out, "z", {"particle_id"});
-
-        var_uid_out.insert(uid_in);
-        var_x_out.insert(x_in);
-        var_y_out.insert(y_in);
-        var_z_out.insert(z_in);
-
-        //file_out.close();
-
-        throw 1;
+    //    //file_in.close();
 
 
+    //    // TEST TEST TEST: write back.
+    //    std::ostringstream file_out;
+    //    file_out << "particles_out." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+    //    Hdf5_file h5_file_out(file_out.str(), Hdf5_mode::Write);
+    //    h5_file_out.add_dimension("particle_id", n_particles);
 
-        // No MPI; in data stays local.
-        uid = uid_in;
-        xp = x_in;
-        yp = y_in;
-        zp = z_in;
+    //    Hdf5_variable<int> var_uid_out(h5_file_out, "particle_id", {"particle_id"});
+    //    Hdf5_variable<TF> var_x_out(h5_file_out, "x", {"particle_id"});
+    //    Hdf5_variable<TF> var_y_out(h5_file_out, "y", {"particle_id"});
+    //    Hdf5_variable<TF> var_z_out(h5_file_out, "z", {"particle_id"});
 
-        up.resize(n_particles);
-        vp.resize(n_particles);
-        wp.resize(n_particles);
+    //    var_uid_out.insert(uid_in);
+    //    var_x_out.insert(x_in);
+    //    var_y_out.insert(y_in);
+    //    var_z_out.insert(z_in);
 
-        xpt.resize(n_particles);
-        ypt.resize(n_particles);
-        zpt.resize(n_particles);
+    //    //file_out.close();
 
-        il.resize(n_particles);
-        jl.resize(n_particles);
-        kl.resize(n_particles);
+    //    throw 1;
 
-        fx.resize(n_particles);
-        fy.resize(n_particles);
-        fz.resize(n_particles);
-    }
+
+
+    //    // No MPI; in data stays local.
+    //    uid = uid_in;
+    //    xp = x_in;
+    //    yp = y_in;
+    //    zp = z_in;
+
+    //    up.resize(n_particles);
+    //    vp.resize(n_particles);
+    //    wp.resize(n_particles);
+
+    //    xpt.resize(n_particles);
+    //    ypt.resize(n_particles);
+    //    zpt.resize(n_particles);
+
+    //    il.resize(n_particles);
+    //    jl.resize(n_particles);
+    //    kl.resize(n_particles);
+
+    //    fx.resize(n_particles);
+    //    fy.resize(n_particles);
+    //    fz.resize(n_particles);
+    //}
+    #endif
+
+    throw 1;
 }
 
 
