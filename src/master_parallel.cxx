@@ -199,6 +199,14 @@ void Master::wait_all()
     reqsn = 0;
 }
 
+int Master::calc_mpiid(const int mpicoordx, const int mpicoordy)
+{
+    int mpicoords[2] = {mpicoordy, mpicoordx};
+    int mpiid;
+    MPI_Cart_rank(md.commxy, mpicoords, &mpiid);
+    return mpiid;
+}
+
 // CvH obsolete: do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
 void Master::broadcast(char *data, int datasize, int mpiid_to_send)
 {

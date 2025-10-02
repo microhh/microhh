@@ -265,6 +265,151 @@ namespace
         H5Dclose(dset_x);
         H5Fclose(file_id);
     }
+
+
+    template<typename TF>
+    struct Particle
+    {
+        TF x, y, z;
+    };
+
+
+    template<typename T>
+    MPI_Datatype get_mpi_type()
+    {
+        if constexpr (std::is_same_v<T, float>)
+            return MPI_FLOAT;
+        else if constexpr (std::is_same_v<T, double>)
+            return MPI_DOUBLE;
+        else
+            throw std::runtime_error("Invalid float type for MPI!");
+    }
+
+
+    template<typename TF>
+    MPI_Datatype create_particle_type()
+    {
+        MPI_Datatype particle_type;
+        MPI_Type_contiguous(3, get_mpi_type<TF>(), &particle_type);
+        MPI_Type_commit(&particle_type);
+        return particle_type;
+    }
+
+
+    template<typename TF>
+    void distribute_particles(
+        std::vector<TF>& x_in,
+        std::vector<TF>& y_in,
+        std::vector<TF>& z_in,
+        std::vector<TF>& x_out,
+        std::vector<TF>& y_out,
+        std::vector<TF>& z_out,
+        const TF xsize,
+        const TF ysize,
+        Master& master)
+    {
+        // Send particles from their home MPI rank, defined as:
+        // `mpiid = ceil(n_particles / nprocs)`
+        // To the task where they belong based on the `{x,y}` location.
+        auto& md = master.get_MPI_data();
+
+        const TF xsize_sub = xsize / md.npx;
+        const TF ysize_sub = ysize / md.npy;
+
+        const int np_local = x_in.size();
+
+        // Calculate target `mpiid` for each particle
+        std::vector<int> target_rank(np_local);
+        for (int n=0; n<np_local; ++n)
+        {
+            const int mpicoordx = int(x_in[n] / xsize_sub);
+            const int mpicoordy = int(y_in[n] / ysize_sub);
+
+            target_rank[n] = master.calc_mpiid(mpicoordx, mpicoordy);
+        }
+
+        // Count particles going to each processor.
+        std::vector<int> send_counts(md.nprocs, 0);
+        for (int n=0; n<np_local; ++n)
+            send_counts[target_rank[n]] += 1;
+
+        // Exchange send counts across all tasks.
+        std::vector<int> recv_counts(md.nprocs);
+        const int size = 1;
+        MPI_Alltoall(
+            send_counts.data(),
+            size,
+            MPI_INT,
+            recv_counts.data(),
+            size,
+            MPI_INT,
+            md.commxy);
+
+        // Calculate send/receive offsets (cumulative sum send/recv counts)/
+        // If e.g. send_counts = {3,5,2,4}, then
+        //         send_offsets = {0,3,8,10}.
+        std::vector<int> send_offsets(md.nprocs, 0);
+        std::vector<int> recv_offsets(md.nprocs, 0);
+        for (int i=1; i<md.nprocs; ++i)
+        {
+            send_offsets[i] = send_offsets[i-1] + send_counts[i-1];
+            recv_offsets[i] = recv_offsets[i-1] + recv_counts[i-1];
+        }
+
+        const int total_send = send_offsets[md.nprocs-1] + send_counts[md.nprocs-1];
+        const int total_recv = recv_offsets[md.nprocs-1] + recv_counts[md.nprocs-1];
+
+        // Pack particles into vector of Particle structs. This should make it easier
+        // to add other properties like velocity or mass at a later point.
+        std::vector<Particle<TF>> particles_send(total_send);
+        std::vector<int> current_offset = send_offsets;
+
+        for (int n=0; n < np_local; ++n)
+        {
+            const int rank = target_rank[n];
+            const int pos = current_offset[rank];
+            current_offset[rank] += 1;
+
+            particles_send[pos].x = x_in[n];
+            particles_send[pos].y = y_in[n];
+            particles_send[pos].z = z_in[n];
+        }
+
+        // Allocate receive buffer.
+        std::vector<Particle<TF>> particles_recv(total_recv);
+
+        // Exchange particles.
+        MPI_Datatype particle_type = create_particle_type<TF>();
+
+        MPI_Alltoallv(
+            particles_send.data(),
+            send_counts.data(),
+            send_offsets.data(),
+            particle_type,
+            particles_recv.data(),
+            recv_counts.data(),
+            recv_offsets.data(),
+            particle_type,
+            md.commxy);
+
+        MPI_Type_free(&particle_type);
+
+        // Unpack Particle structs in local vectors.
+        x_out.resize(total_recv);
+        y_out.resize(total_recv);
+        z_out.resize(total_recv);
+
+        for (int n=0; n<total_recv; ++n)
+        {
+            x_out[n] = particles_recv[n].x;
+            y_out[n] = particles_recv[n].y;
+            z_out[n] = particles_recv[n].z;
+        }
+
+        // DEBUG.
+        for (int n=0; n<total_recv; ++n)
+            std::cout << "mpiidx/y= " << md.mpicoordx << "/" << md.mpicoordy << " has x=" << x_out[n] << ", y=" << y_out[n] << std::endl;
+    }
 }
 
 
@@ -275,12 +420,22 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
         return;
 
     auto& md = master.get_MPI_data();
+    auto& gd = grid.get_grid_data();
 
     std::ostringstream file_in;
     file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
 
     #ifdef USEMPI
-    read_particles_parallel<TF>(file_in.str(), xp, yp, zp, md.mpiid, md.nprocs);
+    std::vector<TF> xp_in;
+    std::vector<TF> yp_in;
+    std::vector<TF> zp_in;
+
+    // Read particles to their "home" task using parallel HDF5.
+    read_particles_parallel<TF>(file_in.str(), xp_in, yp_in, zp_in, md.mpiid, md.nprocs);
+
+    // Send particles from "home" task to actual location in (decomposed) domain.
+    distribute_particles(xp_in, yp_in, zp_in, xp, yp, zp, gd.xsize, gd.ysize, master);
+
     #else
     // TODO.
     // MPI tasks 0 reads and distributes data.

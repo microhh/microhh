@@ -88,6 +88,11 @@ double Master::get_wall_clock_time()
 
 // void Master::wait_all() {}
 
+int Master::calc_mpiid(const int mpicoordx, const int mpicoordy)
+{
+    return 0;
+}
+
 // All broadcasts return directly, because there is nothing to broadcast.
 void Master::broadcast(char* data, int datasize, int mpiid_to_send) {}
 void Master::broadcast(signed char* data, int datasize, int mpiid_to_send) {}
