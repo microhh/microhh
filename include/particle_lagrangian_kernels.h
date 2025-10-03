@@ -23,11 +23,12 @@
 #ifndef PARTICLE_LAGRANGIAN_KERNELS_H
 #define PARTICLE_LAGRANGIAN_KERNELS_H
 
+#include "particle_lagrangian_io.h"     // For particle struct/MPI type.
+using namespace Particle_lagrangian_io;
+
+
 namespace Particle_lagrangian_kernels
 {
-
-
-
     template<typename TF>
     void calc_interpolation_factors_h(
         int* const restrict index,
@@ -135,5 +136,209 @@ namespace Particle_lagrangian_kernels
             tend_p[n] += vel_p[n];
     }
 
+
+    template<typename TF>
+    void particle_exchange_serial(
+        std::vector<TF>& xp,
+        std::vector<TF>& yp,
+        const TF xsize,
+        const TF ysize)
+    {
+        // Periodic BCs without MPI.
+        for (int n=0; n<xp.size(); ++n)
+        {
+            // TODO: remove `if()`s for vectorization.
+            if (xp[n] >= xsize)
+                xp[n] -= xsize;
+
+            if (xp[n] < 0)
+                xp[n] += xsize;
+
+            if (yp[n] >= ysize)
+                yp[n] -= ysize;
+
+            if (yp[n] < 0)
+                yp[n] += ysize;
+        }
+    }
+
+
+    enum class Neighbor
+    {
+        SW = 0,
+        S  = 1,
+        SE = 2,
+        E  = 3,
+        NE = 4,
+        N  = 5,
+        NW = 6,
+        W  = 7
+    };
+
+
+    template<typename TF>
+    void particle_exchange_parallel(
+        std::vector<TF>& xp,
+        std::vector<TF>& yp,
+        std::vector<TF>& zp,
+        const TF xsize,
+        const TF ysize,
+        Master& master)
+    {
+        /*
+         * With the leaving particles stored, we can start changing the local vectors.
+         * Main idea: keep vectors continous by filling gaps with items from the end of the array.
+         * For example, if:
+         *     `x = [0, 1, 2, 3, .., 99]`
+         * And index `1` leaves, we can compact the vector to:
+         *     `x = [0, 99, 2, 3, .., 98].
+         * This only requires moving a single value instead of shifting the full vector.
+         * It also creates continous space at the end of the vector into which we can copy
+         * complete blocks of data coming from other tasks.
+         */
+
+        // Neighbour-neighbour + periodic boundary exchange with MPI.
+        auto& md = master.get_MPI_data();
+
+        const TF xsize_sub = xsize / md.npx;
+        const TF ysize_sub = ysize / md.npy;
+
+        // Particles are bound by `x0 >= xp > x1`.
+        const TF x0 =  md.mpicoordx    * xsize_sub;
+        const TF x1 = (md.mpicoordx+1) * xsize_sub;
+
+        const TF y0 =  md.mpicoordy    * ysize_sub;
+        const TF y1 = (md.mpicoordy+1) * ysize_sub;
+
+        // Define offsets of neighbors.
+        const int n_neighbors = 8;
+        const int neighbor_coords[8][2] = {
+            {-1, -1},  // 0: SW
+            { 0, -1},  // 1: S
+            { 1, -1},  // 2: SE
+            { 1,  0},  // 3: E
+            { 1,  1},  // 4: NE
+            { 0,  1},  // 5: N
+            {-1,  1},  // 6: NW
+            {-1,  0},  // 7: W
+        };
+
+        // Find `mpiid`'s of neighbors.
+        std::vector<int> mpiid_neighbors(n_neighbors);
+        for (int i=0; i<n_neighbors; ++i)
+        {
+            mpiid_neighbors[i] = master.get_mpiid(
+                md.mpicoordx + neighbor_coords[i][0],
+                md.mpicoordy + neighbor_coords[i][1]);
+        }
+
+        // Check which particles leave current task, and where they move to.
+        std::vector<std::vector<int>> leaving_indices(n_neighbors);
+
+        for (int n=0; n<xp.size(); ++n)
+        {
+            // First check if particle stays; probability is (probably..) much higher.
+            if (xp[n] >= x0 && xp[n] < x1 && yp[n] >= y0 && yp[n] < y1)
+                continue;
+
+            // Particle leaves; determine to which neighbor.
+            Neighbor neighbor_idx;
+
+            if (xp[n] < x0)
+            {
+                if (yp[n] < y0)
+                    neighbor_idx = Neighbor::SW;
+                else if (yp[n] >= y1)
+                    neighbor_idx = Neighbor::NW;
+                else
+                    neighbor_idx = Neighbor::W;
+            }
+            else if (xp[n] >= x1)
+            {
+                if (yp[n] < y0)
+                    neighbor_idx = Neighbor::SE;
+                else if (yp[n] >= y1)
+                    neighbor_idx = Neighbor::NE;
+                else
+                    neighbor_idx = Neighbor::E;
+            }
+            else
+            {
+                if (yp[n] < y0)
+                    neighbor_idx = Neighbor::S;
+                else if (yp[n] >= y1)
+                    neighbor_idx = Neighbor::N;
+            }
+
+            leaving_indices[int(neighbor_idx)].push_back(n);
+        }
+
+        // Pack leaving particles into send buffers.
+        std::vector<int> send_counts(n_neighbors);
+        std::vector<std::vector<Particle<TF>>> particles_to_send(n_neighbors);
+
+        for (int i=0; i<n_neighbors; ++i)
+        {
+            send_counts[i] = leaving_indices[i].size();
+            particles_to_send[i].resize(send_counts[i]);
+
+            for (int j=0; j<send_counts[i]; ++j)
+            {
+                const int idx = leaving_indices[i][j];
+                particles_to_send[i][j].x = xp[idx];
+                particles_to_send[i][j].y = yp[idx];
+                particles_to_send[i][j].z = zp[idx];
+            }
+        }
+
+        // Collect all indexes that are leaving.
+        std::vector<int> all_leaving;
+        for (int i = 0; i < n_neighbors; ++i)
+        {
+            all_leaving.insert(
+                all_leaving.end(),
+                leaving_indices[i].begin(),
+                leaving_indices[i].end());
+        }
+
+        const int total_leaving = all_leaving.size();
+        std::sort(all_leaving.begin(), all_leaving.end());
+
+        // Collect how many particles this task receives from neighbors.
+        std::vector<int> recv_counts(n_neighbors);
+        std::vector<MPI_Request> requests(2 * n_neighbors);
+
+        const int count = 1;
+        const int tag = 0;
+
+        for (int i=0; i<n_neighbors; ++i)
+        {
+            MPI_Isend(
+                &send_counts[i],
+                count,
+                MPI_INT,
+                mpiid_neighbors[i],
+                tag,
+                md.commxy,
+                &requests[2*i]);
+
+            MPI_Irecv(
+                &recv_counts[i],
+                count,
+                MPI_INT,
+                mpiid_neighbors[i],
+                tag,
+                md.commxy,
+                &requests[2*i+1]);
+        }
+
+        MPI_Waitall(2*n_neighbors, requests.data(), MPI_STATUSES_IGNORE);
+
+        int total_incoming = 0;
+        for (int i=0; i<n_neighbors; ++i)
+            total_incoming += recv_counts[i];
+
+        std::cout << md.mpicoordx << ", " << md.mpicoordy << ", leaving=" << total_leaving << ", incoming=" << total_incoming << std::endl;
+    }
 }
 #endif
