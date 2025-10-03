@@ -114,9 +114,9 @@ void Particle_lagrangian<TF>::exec()
         const std::vector<TF>& z = (loc[2] == 0) ? gd.z : gd.zh;
         const std::vector<TF>& dzi = (loc[2] == 0) ? gd.dzhi : gd.dzi;
 
-        plk::calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, n_particles);
-        plk::calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, n_particles);
-        plk::calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], n_particles, gd.kcells);
+        plk::calc_interpolation_factors_h(il.data(), fx.data(), xp.data(), x0, gd.dxi, xp.size());
+        plk::calc_interpolation_factors_h(jl.data(), fy.data(), yp.data(), y0, gd.dyi, xp.size());
+        plk::calc_interpolation_factors_v(kl.data(), fz.data(), zp.data(), z.data(), dzi.data(), loc[2], xp.size(), gd.kcells);
 
         plk::diagnose_velocity(
             velocity.data(),
@@ -127,14 +127,14 @@ void Particle_lagrangian<TF>::exec()
             fx.data(),
             fy.data(),
             fz.data(),
-            n_particles,
+            xp.size(),
             gd.jstride,
             gd.kstride);
 
         plk::add_tendency(
             tendency.data(),
             velocity.data(),
-            n_particles);
+            xp.size());
     };
 
     diagnose_tendency(up, xpt, fields.mp.at("u")->fld, {1,0,0});
@@ -158,7 +158,7 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 
     // Quick hack: bounce particles from domain bottom/top.
     // I think we need to manipulate tendencies to do this correctly...
-    for (int n=0; n<n_particles; ++n)
+    for (int n=0; n<xp.size(); ++n)
         if (zp[n] < 0) zp[n] = -zp[n];
 
     // Neighbour-neighbour exchange and cyclic boundary conditions.
