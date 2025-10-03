@@ -188,7 +188,7 @@ namespace Particle_lagrangian_io
             const int mpicoordx = int(x_in[n] / xsize_sub);
             const int mpicoordy = int(y_in[n] / ysize_sub);
 
-            target_rank[n] = master.calc_mpiid(mpicoordx, mpicoordy);
+            target_rank[n] = master.get_mpiid(mpicoordx, mpicoordy);
         }
 
         // Count particles going to each processor.

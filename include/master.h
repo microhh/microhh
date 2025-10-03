@@ -95,7 +95,7 @@ class Master
         void print_warning(const std::string&);
 
         int get_mpiid() const { return md.mpiid; }
-        int calc_mpiid(const int, const int);
+        int get_mpiid(const int, const int) const;
 
         const MPI_data& get_MPI_data() const { return md; }
 

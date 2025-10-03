@@ -88,7 +88,7 @@ double Master::get_wall_clock_time()
 
 // void Master::wait_all() {}
 
-int Master::calc_mpiid(const int mpicoordx, const int mpicoordy)
+int Master::get_mpiid(const int mpicoordx, const int mpicoordy) const
 {
     return 0;
 }

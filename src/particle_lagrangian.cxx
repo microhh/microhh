@@ -242,8 +242,6 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
     fx.resize(n_local);
     fy.resize(n_local);
     fz.resize(n_local);
-
-    throw 1;
 }
 
 

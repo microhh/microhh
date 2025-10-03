@@ -199,15 +199,22 @@ void Master::wait_all()
     reqsn = 0;
 }
 
-int Master::calc_mpiid(const int mpicoordx, const int mpicoordy)
+int Master::get_mpiid(const int mpicoordx, const int mpicoordy) const
 {
-    int mpicoords[2] = {mpicoordy, mpicoordx};
+    // Input coordinates are allowed to contain offset, e.g.:
+    //     `get_mpiid(md.mpicoordx+1, md.mpicoordy-1);`
+    // Always uses periodic boundary conditions!
+
+    int mpicoords[2] = {
+        (mpicoordy % md.npy + md.npy) % md.npy,
+        (mpicoordx % md.npx + md.npx) % md.npx};
+
     int mpiid;
     MPI_Cart_rank(md.commxy, mpicoords, &mpiid);
+
     return mpiid;
 }
 
-// CvH obsolete: do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
 void Master::broadcast(char *data, int datasize, int mpiid_to_send)
 {
     MPI_Bcast(data, datasize, MPI_CHAR, mpiid_to_send, md.commxy);
