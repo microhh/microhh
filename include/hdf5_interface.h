@@ -142,7 +142,13 @@ class Hdf5_file
             auto* names = static_cast<std::vector<std::string>*>(data);
 
             H5O_info_t obj_info;
-            H5Oget_info_by_name(loc_id, name, &obj_info, H5P_DEFAULT);
+
+            #if H5_VERSION_GE(1, 14, 0)
+                H5Oget_info_by_name3(loc_id, name, &obj_info, H5O_INFO_BASIC, H5P_DEFAULT);
+            #else
+                // Boomer workstation.
+                H5Oget_info_by_name(loc_id, name, &obj_info, H5P_DEFAULT);
+            #endif
 
             if (obj_info.type == H5O_TYPE_DATASET)
                 names->push_back(name);
