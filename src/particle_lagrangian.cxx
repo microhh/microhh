@@ -40,31 +40,7 @@ namespace plio = Particle_lagrangian_io;
 
 namespace
 {
-    template<typename T>
-    void smart_resize(
-            std::vector<T>& v,
-            const int new_size,
-            const double margin)
-    {
-        const int size     = v.size();      // Used elements.
-        const int capacity = v.capacity();  // Reserved size.
 
-        if (new_size * margin < capacity)
-        {
-            // Too large! Decrease capacity.
-            const int new_capacity = int(new_size * margin);
-            std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
-            v.reserve(new_capacity);
-        }
-        else if (new_size > capacity)
-        {
-            // Too small! Increase capacity.
-            const int new_capacity = int(new_size * margin);
-            v.reserve(new_capacity);
-        }
-
-        v.resize(new_size);
-    }
 }
 
 

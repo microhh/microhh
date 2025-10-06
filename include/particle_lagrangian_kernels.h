@@ -29,6 +29,33 @@ using namespace Particle_lagrangian_io;
 
 namespace Particle_lagrangian_kernels
 {
+    template<typename T>
+    void smart_resize(
+            std::vector<T>& v,
+            const int new_size,
+            const double margin)
+    {
+        const int size     = v.size();      // Used elements.
+        const int capacity = v.capacity();  // Reserved size.
+
+        if (new_size * margin < capacity)
+        {
+            // Too large! Decrease capacity.
+            const int new_capacity = int(new_size * margin);
+            std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
+            v.reserve(new_capacity);
+        }
+        else if (new_size > capacity)
+        {
+            // Too small! Increase capacity.
+            const int new_capacity = int(new_size * margin);
+            v.reserve(new_capacity);
+        }
+
+        v.resize(new_size);
+    }
+
+
     template<typename TF>
     void calc_interpolation_factors_h(
         int* const restrict index,
@@ -203,7 +230,7 @@ namespace Particle_lagrangian_kernels
         const TF xsize_sub = xsize / md.npx;
         const TF ysize_sub = ysize / md.npy;
 
-        // Particles are bound by `x0 >= xp > x1`.
+        // Particles are bound by `x0 >= xp > x1` and same for `y`.
         const TF x0 =  md.mpicoordx    * xsize_sub;
         const TF x1 = (md.mpicoordx+1) * xsize_sub;
 
@@ -338,7 +365,57 @@ namespace Particle_lagrangian_kernels
         for (int i=0; i<n_neighbors; ++i)
             total_incoming += recv_counts[i];
 
-        std::cout << md.mpicoordx << ", " << md.mpicoordy << ", leaving=" << total_leaving << ", incoming=" << total_incoming << std::endl;
+        // Now that we know the new size, resize() arrays. This uses some buffer to avoid re-allocating
+        // and copying the vectors on each model iteration.
+        const int new_size = xp.size() + total_incoming - total_leaving;
+
+        //std::cout << md.mpicoordx << ", " << md.mpicoordy << ", leaving=" << total_leaving << ", incoming=" << total_incoming << std::endl;
+
+        // Exchange particles with neighbors.
+        MPI_Datatype particle_type = create_particle_type<TF>();
+
+        std::vector<Particle<TF>> recv_buffer(total_incoming);
+        int recv_offset = 0;
+
+        requests.clear();
+        requests.resize(2 * n_neighbors);
+
+        for (int i=0; i<n_neighbors; ++i)
+        {
+            if (send_counts[i] > 0)
+                MPI_Isend(
+                    particles_to_send[i].data(),
+                    send_counts[i],
+                    particle_type,
+                    mpiid_neighbors[i],
+                    count,
+                    md.commxy,
+                    &requests[2*i]);
+            else
+                requests[2*i] = MPI_REQUEST_NULL;
+
+            if (recv_counts[i] > 0)
+            {
+                MPI_Irecv(
+                    &recv_buffer[recv_offset],
+                    recv_counts[i],
+                    particle_type,
+                    mpiid_neighbors[i],
+                    count,
+                    md.commxy,
+                    &requests[2*i + 1]);
+                recv_offset += recv_counts[i];
+            }
+            else
+                requests[2*i + 1] = MPI_REQUEST_NULL;
+        }
+
+        MPI_Waitall(2*n_neighbors, requests.data(), MPI_STATUSES_IGNORE);
+        MPI_Type_free(&particle_type);
+
+
+
+
     }
 }
 #endif
