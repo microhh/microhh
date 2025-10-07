@@ -141,7 +141,8 @@ namespace Particle_lagrangian_io
     struct Particle
     {
         int uid;
-        TF x, y, z;
+        TF x, y, z;     // Location.
+        TF xt, yt, zt;  // Location tendency.
     };
 
 
@@ -162,7 +163,7 @@ namespace Particle_lagrangian_io
     {
         MPI_Datatype particle_type;
 
-        int blocklengths[2] = {1, 3};
+        int blocklengths[2] = {1, 6};
         MPI_Aint displacements[2];
         MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
 

@@ -136,9 +136,15 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     timeloop.exec(zp, zpt);
 
     // Quick hack: bounce particles from domain bottom/top.
-    // I think we need to manipulate tendencies to do this correctly...
+    // TODO: I think we need to manipulate tendencies to do this correctly...
     for (int n=0; n<xp.size(); ++n)
-        if (zp[n] < 0) zp[n] = -zp[n];
+    {
+        if (zp[n] < 0)
+            zp[n] = -zp[n];
+
+        if (zp[n] > gd.zsize)
+            zp[n] = 2*gd.zsize - zp[n];
+    }
 
     // Neighbour-neighbour exchange and cyclic boundary conditions.
     #ifdef USEMPI
@@ -147,10 +153,32 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
         xp,
         yp,
         zp,
+        xpt,
+        ypt,
+        zpt,
         gd.xsize,
         gd.ysize,
         reserve_ratio,
         master);
+
+    // Resize non-communicated vectors.
+    const int new_size = xp.size();
+
+    // These need to be included in the particle exchange
+    // when the velocities become prognostic.
+    plk::adaptive_resize(up, new_size, reserve_ratio);
+    plk::adaptive_resize(vp, new_size, reserve_ratio);
+    plk::adaptive_resize(wp, new_size, reserve_ratio);
+
+    // These are always diagnostic.
+    plk::adaptive_resize(il, new_size, reserve_ratio);
+    plk::adaptive_resize(jl, new_size, reserve_ratio);
+    plk::adaptive_resize(kl, new_size, reserve_ratio);
+
+    plk::adaptive_resize(fx, new_size, reserve_ratio);
+    plk::adaptive_resize(fy, new_size, reserve_ratio);
+    plk::adaptive_resize(fz, new_size, reserve_ratio);
+
     #else
     plk::periodic_exchange_serial(
         xp,
