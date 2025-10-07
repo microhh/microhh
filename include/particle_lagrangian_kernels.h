@@ -61,6 +61,50 @@ namespace Particle_lagrangian_kernels
 
 
     template<typename TF>
+    void compact_vectors(
+        const std::vector<int>& leaving,
+        std::vector<int>& uid,
+        std::vector<TF>& xp,
+        std::vector<TF>& yp,
+        std::vector<TF>& zp)
+    {
+        // Create lookup table to check if an index is leaving.
+        // Prevents using a find operation, which is more expensive.
+        std::vector<char> is_leaving(xp.size(), 0);
+        for (int idx : leaving)
+            is_leaving[idx] = 1;
+
+        int last_idx = xp.size()-1;
+
+        // Compact the vectors.
+        for (int pos : leaving)
+        {
+            // If idx = [0,1,2,3,4,5] and `1` and `4` leave, the compacted vector is:
+            //    idx = [0,5,2,3]
+            // So if the leaving index is behind `last_idx`, there is no need to move it.
+            if (pos > last_idx)
+                continue;
+
+            // Find a valid index at the end of the vector.
+            while (last_idx > pos && is_leaving[last_idx])
+                last_idx--;
+
+            // Same as above; skip if already in empty block.
+            if (pos >= last_idx)
+                continue;
+
+            // Swap data from end of vector to empty spot.
+            uid[pos] = uid[last_idx];
+            xp[pos] = xp[last_idx];
+            yp[pos] = yp[last_idx];
+            zp[pos] = zp[last_idx];
+
+            last_idx--;
+        }
+    }
+
+
+    template<typename TF>
     void calc_interpolation_factors_h(
         int* const restrict index,
         TF* const restrict factor,
@@ -231,6 +275,11 @@ namespace Particle_lagrangian_kernels
          */
 
         // Neighbour-neighbour + periodic boundary exchange with MPI.
+
+
+        // ------------------------------------------
+        // 1. Setup MPI communication with neighbors.
+        // ------------------------------------------
         auto& md = master.get_MPI_data();
 
         const TF xsize_sub = xsize / md.npx;
@@ -265,10 +314,15 @@ namespace Particle_lagrangian_kernels
                 md.mpicoordy + neighbor_coords[i][1]);
         }
 
-        // Check which particles leave current task, and where they move to.
-        std::vector<std::vector<int>> leaving_indices(n_neighbors);
 
-        for (int n=0; n<xp.size(); ++n)
+        // -------------------------------------
+        // 2. Setup outgoing particles:
+        //    Which leave, and where do they go?
+        // -------------------------------------
+        std::vector<std::vector<int>> leaving_indices(n_neighbors);
+        const int old_size = xp.size();
+
+        for (int n=0; n<old_size; ++n)
         {
             // First check if particle stays; probability is (probably..) much higher.
             if (xp[n] >= x0 && xp[n] < x1 && yp[n] >= y0 && yp[n] < y1)
@@ -338,7 +392,21 @@ namespace Particle_lagrangian_kernels
         const int total_leaving = all_leaving.size();
         std::sort(all_leaving.begin(), all_leaving.end());
 
-        // Collect how many particles this task receives from neighbors.
+
+        // -------------------------------------------------
+        // 3. Compact vectors to make them continuous again.
+        // -------------------------------------------------
+        // TODO: perhaps there is a smarter method. In theory, the amount of incoming and
+        //       outgoing particles should +/- balance. Is the compaction then needed? We could
+        //       write the incoming particles directly at the positions of the leaving particles.
+        //       This is a bit tricky if the balance is uneven, so I’ve kept it simple for now...
+
+        compact_vectors(all_leaving, uid, xp, yp, zp);
+
+
+        // ----------------------------
+        // 4. Setup incoming particles.
+        // ----------------------------
         std::vector<int> recv_counts(n_neighbors);
         std::vector<MPI_Request> requests(2 * n_neighbors);
 
@@ -373,19 +441,25 @@ namespace Particle_lagrangian_kernels
             total_incoming += recv_counts[i];
 
         // Debug..
-        std::cout << md.mpicoordx << ", " << md.mpicoordy << ", leaving=" << total_leaving << ", incoming=" << total_incoming << std::endl;
+        //std::cout << md.mpicoordx << ", " << md.mpicoordy << ", leaving=" << total_leaving << ", incoming=" << total_incoming << std::endl;
 
-        // Now that we know the new size, resize() arrays.
-        // This uses some buffer (`reserve_ratio`) to avoid re-allocating
-        // and copying the vectors on each model iteration.
-        const int new_size = xp.size() + total_incoming - total_leaving;
+        // ------------------
+        // 5. Resize vectors.
+        // ------------------
+        // Resize vectors with a `reserve_ratio` margin. This avoids needed
+        // to do resize() operations every model iteration, which is costly.
+
+        const int new_size = old_size + total_incoming - total_leaving;
 
         adaptive_resize(uid, new_size, reserve_ratio);
         adaptive_resize(xp, new_size, reserve_ratio);
         adaptive_resize(yp, new_size, reserve_ratio);
         adaptive_resize(zp, new_size, reserve_ratio);
 
-        // Exchange particles with neighbors.
+
+        // -------------------------------------
+        // 6. Exchange particles with neighbors.
+        // -------------------------------------
         MPI_Datatype particle_type = create_particle_type<TF>();
 
         std::vector<Particle<TF>> recv_buffer(total_incoming);
@@ -428,8 +502,20 @@ namespace Particle_lagrangian_kernels
         MPI_Type_free(&particle_type);
 
 
+        // --------------------------------------------
+        // Write data from receive buffer into vectors.
+        // --------------------------------------------
+        const int istart = old_size - total_leaving;
+        const int iend = istart + total_incoming;
 
-
+        for (int i=istart; i<iend; ++i)
+        {
+            const int idx = i - istart;
+            uid[i] = recv_buffer[idx].uid;
+            xp[i] = recv_buffer[idx].x;
+            yp[i] = recv_buffer[idx].y;
+            zp[i] = recv_buffer[idx].z;
+        }
     }
 }
 #endif
