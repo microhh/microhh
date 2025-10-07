@@ -54,11 +54,14 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
     {
         // Raw dump of all particles.
         sw_dump = inputin.get_item<bool>("particle_lagrangian", "sw_dump", "", false);
+
         if (sw_dump)
         {
             const int sampletime = inputin.get_item<int>("particle_lagrangian", "sampletime_dump", "");
             isampletime_dump = convert_to_itime(sampletime);
         }
+
+        reserve_ratio = inputin.get_item<TF>("particle_lagrangian", "reserve_ratio", "", 1.25);
     }
 }
 
@@ -182,15 +185,16 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
      */
 
     // Read buffers.
+    std::vector<int> uid_in;
     std::vector<TF> xp_in;
     std::vector<TF> yp_in;
     std::vector<TF> zp_in;
 
     // Read particles to their "home" task using parallel HDF5.
-    plio::read_particles_parallel<TF>(file_in.str(), xp_in, yp_in, zp_in, md.mpiid, md.nprocs);
+    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, md.mpiid, md.nprocs);
 
     // Send particles from "home" task to actual location in domain.
-    plio::distribute_particles(xp, yp, zp, xp_in, yp_in, zp_in,  gd.xsize, gd.ysize, master);
+    plio::distribute_particles(uid, xp, yp, zp, uid_in, xp_in, yp_in, zp_in,  gd.xsize, gd.ysize, master);
 
     #else
     /*

@@ -28,10 +28,11 @@
 
 namespace Particle_lagrangian_io
 {
-    template<typename TF>
+    template<typename T>
     void read_coordinate(
-        hid_t file_id, const char* dset_name,
-        TF* buffer,
+        hid_t file_id,
+        const char* dset_name,
+        T* buffer,
         hsize_t start,
         hsize_t count)
     {
@@ -50,7 +51,7 @@ namespace Particle_lagrangian_io
         H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
         // Read data.
-        H5Dread(dset, get_hdf5_type<TF>(), memspace, filespace, plist_id, buffer);
+        H5Dread(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
 
         // Cleanup!
         H5Pclose(plist_id);
@@ -63,6 +64,7 @@ namespace Particle_lagrangian_io
     template <typename TF>
     void read_particles_parallel(
         const std::string& filename,
+        std::vector<int>& uid,
         std::vector<TF>& x,
         std::vector<TF>& y,
         std::vector<TF>& z,
@@ -96,11 +98,13 @@ namespace Particle_lagrangian_io
         // Resize local vectors.
         // Use local size without buffer; these particles are only
         // temporarely on this task and shipped elsewhwere soon.
+        uid.resize(count);
         x.resize(count);
         y.resize(count);
         z.resize(count);
 
         // Read each coordinate with hyperslab selection
+        read_coordinate(file_id, "/particle_id", uid.data(), start, count);
         read_coordinate(file_id, "/x", x.data(), start, count);
         read_coordinate(file_id, "/y", y.data(), start, count);
         read_coordinate(file_id, "/z", z.data(), start, count);
@@ -136,6 +140,7 @@ namespace Particle_lagrangian_io
     template<typename TF>
     struct Particle
     {
+        int uid;
         TF x, y, z;
     };
 
@@ -156,17 +161,34 @@ namespace Particle_lagrangian_io
     MPI_Datatype create_particle_type()
     {
         MPI_Datatype particle_type;
-        MPI_Type_contiguous(3, get_mpi_type<TF>(), &particle_type);
+
+        int blocklengths[2] = {1, 3};
+        MPI_Aint displacements[2];
+        MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
+
+        Particle<TF> particle;
+        MPI_Aint base_address;
+        MPI_Get_address(&particle, &base_address);
+        MPI_Get_address(&particle.uid, &displacements[0]);
+        MPI_Get_address(&particle.x, &displacements[1]);
+
+        displacements[0] = MPI_Aint_diff(displacements[0], base_address);
+        displacements[1] = MPI_Aint_diff(displacements[1], base_address);
+
+        MPI_Type_create_struct(2, blocklengths, displacements, types, &particle_type);
         MPI_Type_commit(&particle_type);
+
         return particle_type;
     }
 
 
     template<typename TF>
     void distribute_particles(
+        std::vector<int>& uid_out,
         std::vector<TF>& x_out,
         std::vector<TF>& y_out,
         std::vector<TF>& z_out,
+        std::vector<int>& uid_in,
         std::vector<TF>& x_in,
         std::vector<TF>& y_in,
         std::vector<TF>& z_in,
@@ -181,7 +203,7 @@ namespace Particle_lagrangian_io
 
         const int np_local = x_in.size();
 
-        // Calculate target `mpiid` for each particle
+        // Calculate target `mpiid` for each particle.
         std::vector<int> target_rank(np_local);
         for (int n=0; n<np_local; ++n)
         {
@@ -208,7 +230,7 @@ namespace Particle_lagrangian_io
             MPI_INT,
             md.commxy);
 
-        // Calculate send/receive offsets (cumulative sum send/recv counts)/
+        // Calculate send/receive offsets (cumulative sum send/recv counts).
         // If e.g. send_counts = {3,5,2,4}, then
         //         send_offsets = {0,3,8,10}.
         std::vector<int> send_offsets(md.nprocs, 0);
@@ -233,6 +255,7 @@ namespace Particle_lagrangian_io
             const int pos = current_offset[rank];
             current_offset[rank] += 1;
 
+            particles_send[pos].uid = uid_in[n];
             particles_send[pos].x = x_in[n];
             particles_send[pos].y = y_in[n];
             particles_send[pos].z = z_in[n];
@@ -258,12 +281,14 @@ namespace Particle_lagrangian_io
         MPI_Type_free(&particle_type);
 
         // Unpack Particle structs in local vectors.
+        uid_out.resize(total_recv);
         x_out.resize(total_recv);
         y_out.resize(total_recv);
         z_out.resize(total_recv);
 
         for (int n=0; n<total_recv; ++n)
         {
+            uid_out[n] = particles_recv[n].uid;
             x_out[n] = particles_recv[n].x;
             y_out[n] = particles_recv[n].y;
             z_out[n] = particles_recv[n].z;

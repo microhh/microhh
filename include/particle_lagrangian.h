@@ -66,10 +66,10 @@ class Particle_lagrangian
         bool sw_dump;
         unsigned long isampletime_dump;
 
-        // Particle property arrays are oversized by a factor `buffer_margin`.
-        // This reduces the amount of time that the arrays have to be resized
+        // Particle property arrays are oversized by a factor `reserve_ratio`.
+        // This reduces the number of time that the arrays have to be resized
         // when particles move between cores.
-        const TF buffer_margin = 1.2;
+        TF reserve_ratio;
 
         // Particle properties.
         std::vector<int> uid;
