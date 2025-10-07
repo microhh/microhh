@@ -38,14 +38,17 @@ namespace Particle_lagrangian_kernels
         const int size     = v.size();      // Used elements.
         const int capacity = v.capacity();  // Reserved size.
 
-        if (new_size * reserve_ratio < capacity)
+        // Don't enlarge and shrink using the same ratio.
+        const double shrink_ratio = 2. * reserve_ratio - 1.;
+
+        if (new_size * shrink_ratio < capacity)
         {
             // Too large! Decrease capacity.
             const int new_capacity = int(new_size * reserve_ratio);
             std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
             v.reserve(new_capacity);
 
-            std::cout << "Too large! Size=" << size << ", new size=" << new_capacity << std::endl;
+            std::cout << "Too large! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
         }
         else if (new_size > capacity)
         {
@@ -53,7 +56,7 @@ namespace Particle_lagrangian_kernels
             const int new_capacity = int(new_size * reserve_ratio);
             v.reserve(new_capacity);
 
-            std::cout << "Too small! Size=" << size << ", new size=" << new_capacity << std::endl;
+            std::cout << "Too small! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
         }
 
         v.resize(new_size);
@@ -66,7 +69,10 @@ namespace Particle_lagrangian_kernels
         std::vector<int>& uid,
         std::vector<TF>& xp,
         std::vector<TF>& yp,
-        std::vector<TF>& zp)
+        std::vector<TF>& zp,
+        std::vector<TF>& xpt,
+        std::vector<TF>& ypt,
+        std::vector<TF>& zpt)
     {
         // Create lookup table to check if an index is leaving.
         // Prevents using a find operation, which is more expensive.
@@ -95,9 +101,14 @@ namespace Particle_lagrangian_kernels
 
             // Swap data from end of vector to empty spot.
             uid[pos] = uid[last_idx];
+
             xp[pos] = xp[last_idx];
             yp[pos] = yp[last_idx];
             zp[pos] = zp[last_idx];
+
+            xpt[pos] = xpt[last_idx];
+            ypt[pos] = ypt[last_idx];
+            zpt[pos] = zpt[last_idx];
 
             last_idx--;
         }
@@ -257,25 +268,15 @@ namespace Particle_lagrangian_kernels
         std::vector<TF>& xp,
         std::vector<TF>& yp,
         std::vector<TF>& zp,
+        std::vector<TF>& xpt,
+        std::vector<TF>& ypt,
+        std::vector<TF>& zpt,
         const TF xsize,
         const TF ysize,
         const TF reserve_ratio,
         Master& master)
     {
-        /*
-         * With the leaving particles stored, we can start changing the local vectors.
-         * Main idea: keep vectors continous by filling gaps with items from the end of the array.
-         * For example, if:
-         *     `x = [0, 1, 2, 3, .., 99]`
-         * And index `1` leaves, we can compact the vector to:
-         *     `x = [0, 99, 2, 3, .., 98].
-         * This only requires moving a single value instead of shifting the full vector.
-         * It also creates continous space at the end of the vector into which we can copy
-         * complete blocks of data coming from other tasks.
-         */
-
         // Neighbour-neighbour + periodic boundary exchange with MPI.
-
 
         // ------------------------------------------
         // 1. Setup MPI communication with neighbors.
@@ -373,9 +374,12 @@ namespace Particle_lagrangian_kernels
             {
                 const int idx = leaving_indices[i][j];
                 particles_to_send[i][j].uid = uid[idx];
-                particles_to_send[i][j].x = xp[idx];
-                particles_to_send[i][j].y = yp[idx];
-                particles_to_send[i][j].z = zp[idx];
+                particles_to_send[i][j].x   = xp[idx];
+                particles_to_send[i][j].y   = yp[idx];
+                particles_to_send[i][j].z   = zp[idx];
+                particles_to_send[i][j].xt  = xpt[idx];
+                particles_to_send[i][j].yt  = ypt[idx];
+                particles_to_send[i][j].zt  = zpt[idx];
             }
         }
 
@@ -401,7 +405,7 @@ namespace Particle_lagrangian_kernels
         //       write the incoming particles directly at the positions of the leaving particles.
         //       This is a bit tricky if the balance is uneven, so I’ve kept it simple for now...
 
-        compact_vectors(all_leaving, uid, xp, yp, zp);
+        compact_vectors(all_leaving, uid, xp, yp, zp, xpt, ypt, zpt);
 
 
         // ----------------------------
@@ -452,9 +456,14 @@ namespace Particle_lagrangian_kernels
         const int new_size = old_size + total_incoming - total_leaving;
 
         adaptive_resize(uid, new_size, reserve_ratio);
+
         adaptive_resize(xp, new_size, reserve_ratio);
         adaptive_resize(yp, new_size, reserve_ratio);
         adaptive_resize(zp, new_size, reserve_ratio);
+
+        adaptive_resize(xpt, new_size, reserve_ratio);
+        adaptive_resize(ypt, new_size, reserve_ratio);
+        adaptive_resize(zpt, new_size, reserve_ratio);
 
 
         // -------------------------------------
@@ -512,9 +521,14 @@ namespace Particle_lagrangian_kernels
         {
             const int idx = i - istart;
             uid[i] = recv_buffer[idx].uid;
+
             xp[i] = recv_buffer[idx].x;
             yp[i] = recv_buffer[idx].y;
             zp[i] = recv_buffer[idx].z;
+
+            xpt[i] = recv_buffer[idx].xt;
+            ypt[i] = recv_buffer[idx].yt;
+            zpt[i] = recv_buffer[idx].zt;
         }
     }
 }

@@ -1,7 +1,7 @@
 # Base dust.ini file.
 [master]
-npx=2
-npy=2
+npx=1
+npy=1
 
 [grid]
 itot=None
