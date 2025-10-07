@@ -406,9 +406,35 @@ namespace Particle_lagrangian_io
             file_id, "/time", H5T_NATIVE_DOUBLE, dspace_time,
             H5P_DEFAULT, plist_create, H5P_DEFAULT);
 
+        // Make time a dimension scale
+        H5DSset_scale(dset_time, "time");
+
         H5Dclose(dset_time);
         H5Pclose(plist_create);
         H5Sclose(dspace_time);
+
+        // Create particle_id dimension scale dataset.
+        hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
+        hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
+        hid_t dset_particle_id = H5Dcreate(
+            file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        // Make particle_id a dimension scale
+        H5DSset_scale(dset_particle_id, "particle_id");
+
+        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values
+        std::vector<int> particle_ids(n_particles);
+        for (int i = 0; i < n_particles; ++i)
+            particle_ids[i] = i;
+
+        hid_t plist_write = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_write, H5FD_MPIO_COLLECTIVE);
+        H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
+        H5Pclose(plist_write);
+
+        H5Dclose(dset_particle_id);
+        H5Sclose(dspace_particle_id);
 
         // Create particle datasets with unlimited time dimension.
         hsize_t dims[2] = {0, static_cast<hsize_t>(n_particles)};
@@ -421,9 +447,6 @@ namespace Particle_lagrangian_io
 
         hid_t h5_type = get_hdf5_type<TF>();
 
-        hid_t dset_uid = H5Dcreate(
-            file_id, "/particle_id", H5T_NATIVE_INT, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
         hid_t dset_x = H5Dcreate(
             file_id, "/x", h5_type, dspace,
             H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
@@ -434,7 +457,19 @@ namespace Particle_lagrangian_io
             file_id, "/z", h5_type, dspace,
             H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
 
-        H5Dclose(dset_uid);
+        // Attach dimension scales
+        dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
+        dset_particle_id = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
+
+        H5DSattach_scale(dset_x, dset_time, 0);
+        H5DSattach_scale(dset_x, dset_particle_id, 1);
+        H5DSattach_scale(dset_y, dset_time, 0);
+        H5DSattach_scale(dset_y, dset_particle_id, 1);
+        H5DSattach_scale(dset_z, dset_time, 0);
+        H5DSattach_scale(dset_z, dset_particle_id, 1);
+
+        H5Dclose(dset_time);
+        H5Dclose(dset_particle_id);
         H5Dclose(dset_x);
         H5Dclose(dset_y);
         H5Dclose(dset_z);
@@ -492,17 +527,14 @@ namespace Particle_lagrangian_io
         H5Dclose(dset_time);
 
         // Extend particle datasets.
-        hid_t dset_uid = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
         hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
         hid_t dset_y = H5Dopen(file_id, "/y", H5P_DEFAULT);
         hid_t dset_z = H5Dopen(file_id, "/z", H5P_DEFAULT);
 
-        H5Dset_extent(dset_uid, new_dims);
         H5Dset_extent(dset_x, new_dims);
         H5Dset_extent(dset_y, new_dims);
         H5Dset_extent(dset_z, new_dims);
 
-        H5Dclose(dset_uid);
         H5Dclose(dset_x);
         H5Dclose(dset_y);
         H5Dclose(dset_z);
@@ -516,8 +548,7 @@ namespace Particle_lagrangian_io
         if (start + count > static_cast<hsize_t>(n_particles))
             count = static_cast<hsize_t>(n_particles) - start;
 
-        // Write each coordinate (write_coordinate opens/closes datasets internally).
-        write_coordinate(file_id, "/particle_id", uid.data(), time_idx, start, count, n_particles);
+        // Write particle coordinates (write_coordinate opens/closes datasets internally).
         write_coordinate(file_id, "/x", x.data(), time_idx, start, count, n_particles);
         write_coordinate(file_id, "/y", y.data(), time_idx, start, count, n_particles);
         write_coordinate(file_id, "/z", z.data(), time_idx, start, count, n_particles);

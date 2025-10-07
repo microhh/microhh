@@ -36,27 +36,27 @@ ktot = z.size
 Initial profiles.
 """
 th = 290 + 0.003 * z
-u = np.zeros(ktot) + 5
+u = np.zeros(ktot) 
 
 
 """
 Define initial location particles.
 """
-n_particles = 100
+n_particles = 10000
 
 particle_id = np.arange(n_particles, dtype=np.int32)
 
-#x0 = xsize / 2
-#y0 = ysize / 2
-#size = 0.5
+x0 = xsize / 2
+y0 = ysize / 2
+size = 1
 
-#xp  = np.random.uniform(x0-size, x0+size, n_particles).astype(float_type)
-#yp  = np.random.uniform(y0-size, y0+size, n_particles).astype(float_type)
-#zp  = np.random.uniform(0, 2*size, n_particles).astype(float_type)
+xp  = np.random.uniform(x0-size, x0+size, n_particles).astype(float_type)
+yp  = np.random.uniform(y0-size, y0+size, n_particles).astype(float_type)
+zp  = np.random.uniform(0, 2*size, n_particles).astype(float_type)
 
-xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
-yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
-zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
+#xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
+#yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
+#zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
 
 #xp = np.arange(n_particles, dtype=float_type)
 #yp = np.arange(n_particles, dtype=float_type)
