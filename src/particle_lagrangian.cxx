@@ -143,11 +143,13 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     // Neighbour-neighbour exchange and cyclic boundary conditions.
     #ifdef USEMPI
     plk::particle_exchange_parallel(
+        uid,
         xp,
         yp,
         zp,
         gd.xsize,
         gd.ysize,
+        reserve_ratio,
         master);
     #else
     plk::periodic_exchange_serial(

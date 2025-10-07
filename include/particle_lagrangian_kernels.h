@@ -209,11 +209,13 @@ namespace Particle_lagrangian_kernels
 
     template<typename TF>
     void particle_exchange_parallel(
+        std::vector<int>& uid,
         std::vector<TF>& xp,
         std::vector<TF>& yp,
         std::vector<TF>& zp,
         const TF xsize,
         const TF ysize,
+        const TF reserve_ratio,
         Master& master)
     {
         /*
@@ -316,6 +318,7 @@ namespace Particle_lagrangian_kernels
             for (int j=0; j<send_counts[i]; ++j)
             {
                 const int idx = leaving_indices[i][j];
+                particles_to_send[i][j].uid = uid[idx];
                 particles_to_send[i][j].x = xp[idx];
                 particles_to_send[i][j].y = yp[idx];
                 particles_to_send[i][j].z = zp[idx];
@@ -382,47 +385,47 @@ namespace Particle_lagrangian_kernels
         adaptive_resize(yp, new_size, reserve_ratio);
         adaptive_resize(zp, new_size, reserve_ratio);
 
-//        // Exchange particles with neighbors.
-//        MPI_Datatype particle_type = create_particle_type<TF>();
-//
-//        std::vector<Particle<TF>> recv_buffer(total_incoming);
-//        int recv_offset = 0;
-//
-//        requests.clear();
-//        requests.resize(2 * n_neighbors);
-//
-//        for (int i=0; i<n_neighbors; ++i)
-//        {
-//            if (send_counts[i] > 0)
-//                MPI_Isend(
-//                    particles_to_send[i].data(),
-//                    send_counts[i],
-//                    particle_type,
-//                    mpiid_neighbors[i],
-//                    count,
-//                    md.commxy,
-//                    &requests[2*i]);
-//            else
-//                requests[2*i] = MPI_REQUEST_NULL;
-//
-//            if (recv_counts[i] > 0)
-//            {
-//                MPI_Irecv(
-//                    &recv_buffer[recv_offset],
-//                    recv_counts[i],
-//                    particle_type,
-//                    mpiid_neighbors[i],
-//                    count,
-//                    md.commxy,
-//                    &requests[2*i + 1]);
-//                recv_offset += recv_counts[i];
-//            }
-//            else
-//                requests[2*i + 1] = MPI_REQUEST_NULL;
-//        }
-//
-//        MPI_Waitall(2*n_neighbors, requests.data(), MPI_STATUSES_IGNORE);
-//        MPI_Type_free(&particle_type);
+        // Exchange particles with neighbors.
+        MPI_Datatype particle_type = create_particle_type<TF>();
+
+        std::vector<Particle<TF>> recv_buffer(total_incoming);
+        int recv_offset = 0;
+
+        requests.clear();
+        requests.resize(2 * n_neighbors);
+
+        for (int i=0; i<n_neighbors; ++i)
+        {
+            if (send_counts[i] > 0)
+                MPI_Isend(
+                    particles_to_send[i].data(),
+                    send_counts[i],
+                    particle_type,
+                    mpiid_neighbors[i],
+                    count,
+                    md.commxy,
+                    &requests[2*i]);
+            else
+                requests[2*i] = MPI_REQUEST_NULL;
+
+            if (recv_counts[i] > 0)
+            {
+                MPI_Irecv(
+                    &recv_buffer[recv_offset],
+                    recv_counts[i],
+                    particle_type,
+                    mpiid_neighbors[i],
+                    count,
+                    md.commxy,
+                    &requests[2*i + 1]);
+                recv_offset += recv_counts[i];
+            }
+            else
+                requests[2*i + 1] = MPI_REQUEST_NULL;
+        }
+
+        MPI_Waitall(2*n_neighbors, requests.data(), MPI_STATUSES_IGNORE);
+        MPI_Type_free(&particle_type);
 
 
 
