@@ -365,6 +365,7 @@ namespace Particle_lagrangian_io
         const std::string& filename,
         hid_t& file_id,
         const int n_particles,
+        const int szip_compression,
         Master& master)
     {
         auto& md = master.get_MPI_data();
@@ -444,6 +445,10 @@ namespace Particle_lagrangian_io
         hid_t plist_create_2d = H5Pcreate(H5P_DATASET_CREATE);
         hsize_t chunk_dims_2d[2] = {1, static_cast<hsize_t>(n_particles)};
         H5Pset_chunk(plist_create_2d, 2, chunk_dims_2d);
+
+        // Apply SZIP compression if requested.
+        if (szip_compression > 0)
+            H5Pset_szip(plist_create_2d, H5_SZIP_NN_OPTION_MASK, szip_compression);
 
         hid_t h5_type = get_hdf5_type<TF>();
 

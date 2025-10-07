@@ -41,10 +41,9 @@ class Particle_lagrangian
         Particle_lagrangian(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Particle_lagrangian();
 
-        void exec();                     // Update particle velocity/tendency.
+        void create(Timeloop<TF>&);      // Setup particles, I/O, ...
+        void exec(Timeloop<TF>&);        // Update particle velocity/tendency.
         void integrate(Timeloop<TF>&);   // Integrate particle locations.
-
-        void create(Timeloop<TF>&);
 
         // Load/save restart files.
         void load(const std::string&, const int);
@@ -52,7 +51,7 @@ class Particle_lagrangian
 
         // Dump particles.
         bool do_dump(const unsigned long);
-        void dump(const int, const double);
+        void dump(Timeloop<TF>&);
 
         unsigned long get_time_limit(const unsigned long);
 
@@ -68,11 +67,15 @@ class Particle_lagrangian
         bool sw_dump;
         unsigned long isampletime_dump;
         hid_t dump_file_id;     // HDF5 file handle for particle dumps.
+        int szip_compression;   // SZIP compression pixels-per-block (0 = no compression).
 
         // Particle property arrays are oversized by a factor `reserve_ratio`.
         // This reduces the number of time that the arrays have to be resized
         // when particles move between cores.
         TF reserve_ratio;
+
+        // Delay start of particle release.
+        unsigned long istarttime;
 
         // Particle properties.
         std::vector<int> uid;

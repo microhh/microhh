@@ -32,6 +32,7 @@ def grid(dz0, alpha, ktot):
 z, zsize = grid(20, 1.03, 64)
 ktot = z.size
 
+
 """
 Initial profiles.
 """
@@ -42,30 +43,22 @@ u = np.zeros(ktot)
 """
 Define initial location particles.
 """
-n_particles = 10000
+n_particles = 1000
 
 particle_id = np.arange(n_particles, dtype=np.int32)
 
 x0 = xsize / 2
 y0 = ysize / 2
-size = 1
+z0 = 20
+size = 0.5
 
 xp  = np.random.uniform(x0-size, x0+size, n_particles).astype(float_type)
 yp  = np.random.uniform(y0-size, y0+size, n_particles).astype(float_type)
-zp  = np.random.uniform(0, 2*size, n_particles).astype(float_type)
+zp  = np.random.uniform(z0-size, z0+size, n_particles).astype(float_type)
 
 #xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
 #yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
 #zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
-
-#xp = np.arange(n_particles, dtype=float_type)
-#yp = np.arange(n_particles, dtype=float_type)
-#zp = np.arange(n_particles, dtype=float_type)
-
-#xp = np.array([1600], dtype=float_type)
-#yp = np.array([1600], dtype=float_type)
-#zp = np.array([50  ], dtype=float_type)
-
 
 with h5py.File('particles.0000000.h5', 'w') as f:
     f.create_dataset('particle_id', data=particle_id)

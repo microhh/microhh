@@ -59,9 +59,15 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
         {
             const int sampletime = inputin.get_item<int>("particle_lagrangian", "sampletime_dump", "");
             isampletime_dump = convert_to_itime(sampletime);
+            szip_compression = inputin.get_item<int>("particle_lagrangian", "szip_compression", "", 0);
         }
 
         reserve_ratio = inputin.get_item<TF>("particle_lagrangian", "reserve_ratio", "", 1.25);
+
+        // Delayed start time of particles.
+        const int starttime = inputin.get_item<int>("particle_lagrangian", "starttime", "", 0);
+        istarttime = convert_to_itime(starttime);
+
     }
 }
 
@@ -74,10 +80,10 @@ Particle_lagrangian<TF>::~Particle_lagrangian()
 
 #ifndef USECUDA
 template<typename TF>
-void Particle_lagrangian<TF>::exec()
+void Particle_lagrangian<TF>::exec(Timeloop<TF>& timeloop)
 {
     // Calculate particle tendencies by tri-linear interpolation of Eulerian velocity fields to particle locations.
-    if (!sw_particle)
+    if (!sw_particle || timeloop.get_itime() < istarttime)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -125,7 +131,7 @@ void Particle_lagrangian<TF>::exec()
 template<typename TF>
 void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 {
-    if (!sw_particle)
+    if (!sw_particle || timeloop.get_itime() < istarttime)
         return;
 
     auto& gd = grid.get_grid_data();
@@ -284,6 +290,7 @@ void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop)
             file_out.str(),
             dump_file_id,
             n_particles,
+            szip_compression,
             master);
     }
 }
@@ -310,9 +317,15 @@ bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)
 
 
 template<typename TF>
-void Particle_lagrangian<TF>::dump(const int iotime, const double time)
+void Particle_lagrangian<TF>::dump(Timeloop<TF>& timeloop)
 {
+    if (timeloop.get_itime() < istarttime)
+        return;
+
     auto& md = master.get_MPI_data();
+
+    const int iotime = timeloop.get_iotime();
+    const double time = timeloop.get_time();
 
     // Gather particles back to their original MPI tasks based on `uid`.
     std::vector<int> uid_local;

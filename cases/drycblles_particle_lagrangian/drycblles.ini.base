@@ -47,9 +47,12 @@ z0h=0.1
 
 [particle_lagrangian]
 sw_particle=1
-n_particles=None
+reserve_ratio=1.5
+starttime=1800
+
 sw_dump=1
 sampletime_dump=10
+szip_compression=0
 
 [fields]
 visc=1.e-5

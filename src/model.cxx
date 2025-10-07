@@ -432,7 +432,7 @@ void Model<TF>::exec()
                 particle_bin->exec(*stats);
 
                 // Lagrangian particles.
-                particle_lagr->exec();
+                particle_lagr->exec(*timeloop);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -501,7 +501,7 @@ void Model<TF>::exec()
                     }
 
                     if (particle_lagr->do_dump(itime))
-                        particle_lagr->dump(iotime, time);
+                        particle_lagr->dump(*timeloop);
                 }
 
                 // Exit the simulation when the runtime has been hit.
