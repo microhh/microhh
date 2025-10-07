@@ -136,9 +136,15 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     timeloop.exec(zp, zpt);
 
     // Quick hack: bounce particles from domain bottom/top.
-    // I think we need to manipulate tendencies to do this correctly...
+    // TODO: I think we need to manipulate tendencies to do this correctly...
     for (int n=0; n<xp.size(); ++n)
-        if (zp[n] < 0) zp[n] = -zp[n];
+    {
+        if (zp[n] < 0)
+            zp[n] = -zp[n];
+
+        if (zp[n] > gd.zsize)
+            zp[n] = 2*gd.zsize - zp[n];
+    }
 
     // Neighbour-neighbour exchange and cyclic boundary conditions.
     #ifdef USEMPI
