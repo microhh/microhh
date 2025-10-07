@@ -61,6 +61,55 @@ namespace Particle_lagrangian_io
     }
 
 
+    template<typename T>
+    void write_coordinate(
+        hid_t file_id,
+        const char* dset_name,
+        const T* buffer,
+        hsize_t time_idx,
+        hsize_t start,
+        hsize_t count,
+        hsize_t n_total)
+    {
+        // Open dataset.
+        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t filespace = H5Dget_space(dset);
+
+        hid_t memspace;
+
+        if (count > 0)
+        {
+            // Select hyperslab in file: [time_idx, start:start+count]
+            hsize_t file_start[2] = {time_idx, start};
+            hsize_t file_count[2] = {1, count};
+            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+
+            // Local memory layout is simple; continuous 1D array of size `count`.
+            memspace = H5Screate_simple(1, &count, NULL);
+        }
+        else
+        {
+            // No particles to write - select empty hyperslab.
+            H5Sselect_none(filespace);
+            memspace = H5Scopy(filespace);
+            H5Sselect_none(memspace);
+        }
+
+        // Setup collective IO where all tasks participate.
+        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+        // Write data (all tasks must call this even if count=0).
+        H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
+
+        // Cleanup!
+        H5Pclose(plist_id);
+        H5Sclose(memspace);
+        H5Sclose(filespace);
+        H5Dclose(dset);
+    }
+
+
     template <typename TF>
     void read_particles_parallel(
         const std::string& filename,
@@ -68,6 +117,7 @@ namespace Particle_lagrangian_io
         std::vector<TF>& x,
         std::vector<TF>& y,
         std::vector<TF>& z,
+        int& n_particles,
         const int mpiid,
         const int nprocs)
     {
@@ -83,6 +133,8 @@ namespace Particle_lagrangian_io
         hsize_t n_total;
         H5Sget_simple_extent_dims(dspace, &n_total, NULL);
         H5Sclose(dspace);
+
+        n_particles = static_cast<int>(n_total);
 
         // Each task has `ceil(n_total / nprocs)` particles (except last task, see next code block).
         const int np_per_task = std::ceil(TF(n_total) / nprocs);
@@ -155,6 +207,13 @@ namespace Particle_lagrangian_io
             return MPI_DOUBLE;
         else
             throw std::runtime_error("Invalid float type for MPI!");
+    }
+
+
+    template<typename TF>
+    bool particle_uid_compare(const Particle<TF>& a, const Particle<TF>& b)
+    {
+        return a.uid < b.uid;
     }
 
 
@@ -298,6 +357,281 @@ namespace Particle_lagrangian_io
         // DEBUG.
         //for (int n=0; n<total_recv; ++n)
         //    std::cout << "mpiidx/y= " << md.mpicoordx << "/" << md.mpicoordy << " has x=" << x_out[n] << ", y=" << y_out[n] << std::endl;
+    }
+
+
+    template<typename TF>
+    void create_particle_dump(
+        const std::string& filename,
+        hid_t& file_id,
+        const int n_particles,
+        Master& master)
+    {
+        auto& md = master.get_MPI_data();
+
+        // Throw error if file exists.
+        int file_exists = 0;
+        if (md.mpiid == 0)
+        {
+            std::ifstream test(filename);
+            file_exists = test.good() ? 1 : 0;
+            test.close();
+        }
+        MPI_Bcast(&file_exists, 1, MPI_INT, 0, md.commxy);
+
+        if (file_exists)
+        {
+            std::string error_msg = "ERROR: Particle output file already exists: " + filename;
+            throw std::runtime_error(error_msg);
+        }
+
+        // Create file with parallel HDF5.
+        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
+        H5Pset_all_coll_metadata_ops(plist_id, true);
+        H5Pset_coll_metadata_write(plist_id, true);
+        file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
+        H5Pclose(plist_id);
+
+        // Create unlimited time dimension.
+        hsize_t time_dims[1] = {0};
+        hsize_t time_maxdims[1] = {H5S_UNLIMITED};
+        hid_t dspace_time = H5Screate_simple(1, time_dims, time_maxdims);
+
+        hid_t plist_create = H5Pcreate(H5P_DATASET_CREATE);
+        hsize_t chunk_dims[1] = {1};
+        H5Pset_chunk(plist_create, 1, chunk_dims);
+
+        hid_t dset_time = H5Dcreate(
+            file_id, "/time", H5T_NATIVE_DOUBLE, dspace_time,
+            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+
+        H5Dclose(dset_time);
+        H5Pclose(plist_create);
+        H5Sclose(dspace_time);
+
+        // Create particle datasets with unlimited time dimension.
+        hsize_t dims[2] = {0, static_cast<hsize_t>(n_particles)};
+        hsize_t maxdims[2] = {H5S_UNLIMITED, static_cast<hsize_t>(n_particles)};
+        hid_t dspace = H5Screate_simple(2, dims, maxdims);
+
+        hid_t plist_create_2d = H5Pcreate(H5P_DATASET_CREATE);
+        hsize_t chunk_dims_2d[2] = {1, static_cast<hsize_t>(n_particles)};
+        H5Pset_chunk(plist_create_2d, 2, chunk_dims_2d);
+
+        hid_t h5_type = get_hdf5_type<TF>();
+
+        hid_t dset_uid = H5Dcreate(
+            file_id, "/particle_id", H5T_NATIVE_INT, dspace,
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
+        hid_t dset_x = H5Dcreate(
+            file_id, "/x", h5_type, dspace,
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
+        hid_t dset_y = H5Dcreate(
+            file_id, "/y", h5_type, dspace,
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
+        hid_t dset_z = H5Dcreate(
+            file_id, "/z", h5_type, dspace,
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
+
+        H5Dclose(dset_uid);
+        H5Dclose(dset_x);
+        H5Dclose(dset_y);
+        H5Dclose(dset_z);
+        H5Pclose(plist_create_2d);
+        H5Sclose(dspace);
+
+        // Flush to ensure datasets are written to file.
+        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    }
+
+
+    template<typename TF>
+    void write_particles_parallel(
+        hid_t file_id,
+        const std::vector<int>& uid,
+        const std::vector<TF>& x,
+        const std::vector<TF>& y,
+        const std::vector<TF>& z,
+        const double time,
+        const int n_particles,
+        const int mpiid,
+        const int nprocs)
+    {
+        // Get current time dimension size_dump
+        hid_t dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
+        hid_t dspace_time = H5Dget_space(dset_time);
+        hsize_t time_idx;
+        H5Sget_simple_extent_dims(dspace_time, &time_idx, NULL);
+        H5Sclose(dspace_time);
+        H5Dclose(dset_time);
+
+        // Extend datasets to add new time step.
+        hsize_t new_dims_time[1] = {time_idx + 1};
+        hsize_t new_dims[2] = {time_idx + 1, static_cast<hsize_t>(n_particles)};
+
+        // Extend time dataset.
+        dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
+        H5Dset_extent(dset_time, new_dims_time);
+
+        // Write time value.
+        hid_t dspace_time_write = H5Dget_space(dset_time);
+        hsize_t time_start[1] = {time_idx};
+        hsize_t time_count[1] = {1};
+        H5Sselect_hyperslab(dspace_time_write, H5S_SELECT_SET, time_start, NULL, time_count, NULL);
+        hid_t memspace_time = H5Screate_simple(1, time_count, NULL);
+
+        hid_t plist_xfer = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_xfer, H5FD_MPIO_COLLECTIVE);
+
+        H5Dwrite(dset_time, H5T_NATIVE_DOUBLE, memspace_time, dspace_time_write, plist_xfer, &time);
+
+        H5Pclose(plist_xfer);
+        H5Sclose(memspace_time);
+        H5Sclose(dspace_time_write);
+        H5Dclose(dset_time);
+
+        // Extend particle datasets.
+        hid_t dset_uid = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
+        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
+        hid_t dset_y = H5Dopen(file_id, "/y", H5P_DEFAULT);
+        hid_t dset_z = H5Dopen(file_id, "/z", H5P_DEFAULT);
+
+        H5Dset_extent(dset_uid, new_dims);
+        H5Dset_extent(dset_x, new_dims);
+        H5Dset_extent(dset_y, new_dims);
+        H5Dset_extent(dset_z, new_dims);
+
+        H5Dclose(dset_uid);
+        H5Dclose(dset_x);
+        H5Dclose(dset_y);
+        H5Dclose(dset_z);
+
+        // Calculate hyperslab parameters for this MPI task.
+        const int np_per_task = std::ceil(TF(n_particles) / nprocs);
+        hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
+        hsize_t count = static_cast<hsize_t>(np_per_task);
+
+        // Last MPI task might have less if `n_particles % nprocs != 0`.
+        if (start + count > static_cast<hsize_t>(n_particles))
+            count = static_cast<hsize_t>(n_particles) - start;
+
+        // Write each coordinate (write_coordinate opens/closes datasets internally).
+        write_coordinate(file_id, "/particle_id", uid.data(), time_idx, start, count, n_particles);
+        write_coordinate(file_id, "/x", x.data(), time_idx, start, count, n_particles);
+        write_coordinate(file_id, "/y", y.data(), time_idx, start, count, n_particles);
+        write_coordinate(file_id, "/z", z.data(), time_idx, start, count, n_particles);
+
+        // Flush to disk to ensure data is written.
+        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    }
+
+
+    template<typename TF>
+    void gather_particles(
+        std::vector<int>& uid_out,
+        std::vector<TF>& x_out,
+        std::vector<TF>& y_out,
+        std::vector<TF>& z_out,
+        const std::vector<int>& uid_in,
+        const std::vector<TF>& x_in,
+        const std::vector<TF>& y_in,
+        const std::vector<TF>& z_in,
+        const int n_particles,
+        Master& master)
+    {
+        auto& md = master.get_MPI_data();
+
+        // Each task originally has `ceil(n_particles / nprocs)` particles.
+        const int np_per_task = std::ceil(TF(n_particles) / md.nprocs);
+
+        const int np_local = uid_in.size();
+
+        // Calculate which original MPI task each particle belongs to based on uid.
+        std::vector<int> target_rank(np_local);
+        for (int n=0; n<np_local; ++n)
+            target_rank[n] = uid_in[n] / np_per_task;
+
+        // Count particles going to each processor.
+        std::vector<int> send_counts(md.nprocs, 0);
+        for (int n=0; n<np_local; ++n)
+            send_counts[target_rank[n]] += 1;
+
+        // Exchange send counts across all tasks.
+        std::vector<int> recv_counts(md.nprocs);
+        const int size = 1;
+        MPI_Alltoall(
+            send_counts.data(),
+            size,
+            MPI_INT,
+            recv_counts.data(),
+            size,
+            MPI_INT,
+            md.commxy);
+
+        // Calculate send/receive offsets.
+        std::vector<int> send_offsets(md.nprocs, 0);
+        std::vector<int> recv_offsets(md.nprocs, 0);
+        for (int i=1; i<md.nprocs; ++i)
+        {
+            send_offsets[i] = send_offsets[i-1] + send_counts[i-1];
+            recv_offsets[i] = recv_offsets[i-1] + recv_counts[i-1];
+        }
+
+        const int total_send = send_offsets[md.nprocs-1] + send_counts[md.nprocs-1];
+        const int total_recv = recv_offsets[md.nprocs-1] + recv_counts[md.nprocs-1];
+
+        // Pack particles into send buffer.
+        std::vector<Particle<TF>> particles_send(total_send);
+        std::vector<int> current_offset = send_offsets;
+
+        for (int n=0; n < np_local; ++n)
+        {
+            const int rank = target_rank[n];
+            const int pos = current_offset[rank];
+            current_offset[rank] += 1;
+
+            particles_send[pos].uid = uid_in[n];
+            particles_send[pos].x = x_in[n];
+            particles_send[pos].y = y_in[n];
+            particles_send[pos].z = z_in[n];
+        }
+
+        // Allocate receive buffer.
+        std::vector<Particle<TF>> particles_recv(total_recv);
+
+        // Exchange particles.
+        MPI_Datatype particle_type = create_particle_type<TF>();
+
+        MPI_Alltoallv(
+            particles_send.data(),
+            send_counts.data(),
+            send_offsets.data(),
+            particle_type,
+            particles_recv.data(),
+            recv_counts.data(),
+            recv_offsets.data(),
+            particle_type,
+            md.commxy);
+
+        MPI_Type_free(&particle_type);
+
+        // Sort received particles by uid to restore original order.
+        std::sort(particles_recv.begin(), particles_recv.end(), particle_uid_compare<TF>);
+
+        // Unpack Particle structs in local vectors.
+        uid_out.resize(total_recv);
+        x_out.resize(total_recv);
+        y_out.resize(total_recv);
+        z_out.resize(total_recv);
+
+        for (int n=0; n<total_recv; ++n)
+        {
+            uid_out[n] = particles_recv[n].uid;
+            x_out[n] = particles_recv[n].x;
+            y_out[n] = particles_recv[n].y;
+            z_out[n] = particles_recv[n].z;
+        }
     }
 }
 #endif

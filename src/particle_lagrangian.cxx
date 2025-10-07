@@ -221,7 +221,7 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
     std::vector<TF> zp_in;
 
     // Read particles to their "home" task using parallel HDF5.
-    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, md.mpiid, md.nprocs);
+    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, n_particles, md.mpiid, md.nprocs);
 
     // Send particles from "home" task to actual location in domain.
     plio::distribute_particles(uid, xp, yp, zp, uid_in, xp_in, yp_in, zp_in,  gd.xsize, gd.ysize, master);
@@ -272,6 +272,20 @@ void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop)
 {
     if (!sw_particle)
         return;
+
+    if (sw_dump)
+    {
+        const int iotime = timeloop.get_iotime();
+        std::ostringstream file_out;
+        file_out << "particle_dump." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+
+        // Create single HDF5 file for particle dumps.
+        plio::create_particle_dump<TF>(
+            file_out.str(),
+            dump_file_id,
+            n_particles,
+            master);
+    }
 }
 
 
@@ -296,35 +310,39 @@ bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)
 
 
 template<typename TF>
-void Particle_lagrangian<TF>::dump(const int iotime)
+void Particle_lagrangian<TF>::dump(const int iotime, const double time)
 {
-    //master.print_message("Saving raw particle dump\n");
+    auto& md = master.get_MPI_data();
 
-    char file_name[256];
-    std::sprintf(file_name, "particles.%07d", iotime);
-    FILE* file = fopen(file_name, "wbx");
+    // Gather particles back to their original MPI tasks based on `uid`.
+    std::vector<int> uid_local;
+    std::vector<TF> x_local;
+    std::vector<TF> y_local;
+    std::vector<TF> z_local;
 
-    // Check file opening and reading.
-    bool success = (file != nullptr);
+    plio::gather_particles(
+        uid_local,
+        x_local,
+        y_local,
+        z_local,
+        uid,
+        xp,
+        yp,
+        zp,
+        n_particles,
+        master);
 
-    if (success)
-    {
-        fwrite(xp.data(), sizeof(TF), xp.size(), file);
-        fwrite(yp.data(), sizeof(TF), yp.size(), file);
-        fwrite(zp.data(), sizeof(TF), zp.size(), file);
-    }
-
-    if (!success)
-    {
-        #ifdef USEMPI
-        std::cout << "SINGLE PROCESS EXCEPTION: saving particle dump " << file_name << " failed." << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, 1);
-        #else
-        throw std::runtime_error("ERROR: saving particle dump failed");
-        #endif
-    }
-
-    fclose(file);
+    // Write particles to HDF5 file with parallel IO.
+    plio::write_particles_parallel(
+        dump_file_id,
+        uid_local,
+        x_local,
+        y_local,
+        z_local,
+        time,
+        n_particles,
+        md.mpiid,
+        md.nprocs);
 }
 
 

@@ -23,6 +23,8 @@
 #ifndef PARTICLE_LAGRANGIAN_H
 #define PARTICLE_LAGRANGIAN_H
 
+#include <hdf5.h>
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -50,7 +52,7 @@ class Particle_lagrangian
 
         // Dump particles.
         bool do_dump(const unsigned long);
-        void dump(const int);
+        void dump(const int, const double);
 
         unsigned long get_time_limit(const unsigned long);
 
@@ -65,6 +67,7 @@ class Particle_lagrangian
         // Raw dump of all particles.
         bool sw_dump;
         unsigned long isampletime_dump;
+        hid_t dump_file_id;     // HDF5 file handle for particle dumps.
 
         // Particle property arrays are oversized by a factor `reserve_ratio`.
         // This reduces the number of time that the arrays have to be resized

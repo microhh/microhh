@@ -274,8 +274,8 @@ void Model<TF>::load()
     source->create(*input, *input_nc);
 
     particle_bin->create(*timeloop);
-    particle_lagr->create(*timeloop);   // Does not do anything at the moment..
     particle_lagr->load(sim_name, timeloop->get_iotime());
+    particle_lagr->create(*timeloop);
 
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
@@ -501,7 +501,7 @@ void Model<TF>::exec()
                     }
 
                     if (particle_lagr->do_dump(itime))
-                        particle_lagr->dump(iotime);
+                        particle_lagr->dump(iotime, time);
                 }
 
                 // Exit the simulation when the runtime has been hit.
