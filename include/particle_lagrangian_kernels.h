@@ -233,18 +233,8 @@ namespace Particle_lagrangian_kernels
         // Periodic BCs without MPI.
         for (int n=0; n<xp.size(); ++n)
         {
-            // TODO: remove `if()`s for vectorization.
-            if (xp[n] >= xsize)
-                xp[n] -= xsize;
-
-            if (xp[n] < 0)
-                xp[n] += xsize;
-
-            if (yp[n] >= ysize)
-                yp[n] -= ysize;
-
-            if (yp[n] < 0)
-                yp[n] += ysize;
+            xp[n] = std::fmod(xp[n] + xsize, xsize);
+            yp[n] = std::fmod(yp[n] + ysize, ysize);
         }
     }
 
@@ -511,9 +501,9 @@ namespace Particle_lagrangian_kernels
         MPI_Type_free(&particle_type);
 
 
-        // --------------------------------------------
-        // Write data from receive buffer into vectors.
-        // --------------------------------------------
+        // -----------------------------------------------
+        // 7. Write data from receive buffer into vectors.
+        // -----------------------------------------------
         const int istart = old_size - total_leaving;
         const int iend = istart + total_incoming;
 
@@ -529,6 +519,16 @@ namespace Particle_lagrangian_kernels
             xpt[i] = recv_buffer[idx].xt;
             ypt[i] = recv_buffer[idx].yt;
             zpt[i] = recv_buffer[idx].zt;
+        }
+
+
+        // --------------------------------------
+        // 8. Apply periodic boundary conditions.
+        // --------------------------------------
+        for (int n=0; n<xp.size(); ++n)
+        {
+            xp[n] = std::fmod(xp[n] + xsize, xsize);
+            yp[n] = std::fmod(yp[n] + ysize, ysize);
         }
     }
 }

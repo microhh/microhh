@@ -36,13 +36,13 @@ ktot = z.size
 Initial profiles.
 """
 th = 290 + 0.003 * z
-u = np.zeros(ktot) 
+u = np.zeros(ktot) + 5
 
 
 """
 Define initial location particles.
 """
-n_particles = 1000
+n_particles = 100
 
 particle_id = np.arange(n_particles, dtype=np.int32)
 

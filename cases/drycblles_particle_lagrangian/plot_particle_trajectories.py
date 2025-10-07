@@ -9,11 +9,11 @@ plt.ion()
 
 float_type = np.float64
 
-files = glob.glob('particles.0*')
+files = [f for f in glob.glob('particles.0*') if f != 'particles.0000000.h5']
 files.sort()
 
 n_time = len(files)
-n_part = 10000
+n_part = 1
 
 x = np.zeros((n_part, n_time), dtype=float_type)
 y = np.zeros((n_part, n_time), dtype=float_type)
@@ -26,7 +26,7 @@ for t,f in enumerate(files):
     y[:,t] = raw[n_part:2*n_part]
     z[:,t] = raw[2*n_part:]
 
-n_plot = 5000
+n_plot = 1
 cmap = cmaps.WhiteBlueGreenYellowRed
 cc = cmap(np.linspace(0, 1, n_plot))
 
@@ -53,9 +53,8 @@ for t in range(0, 551, 1):
     plt.close('all')
 """
 
-nt = 550
 fig=plt.figure()
-plt.style.use('dark_background')
-fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+#plt.style.use('dark_background')
+#fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 for i in range(n_plot):
-    plt.plot(x[i,:nt], z[i,:nt], color='w', alpha=0.1)
+    plt.plot(x[i,:], z[i,:], color='k', alpha=1)
