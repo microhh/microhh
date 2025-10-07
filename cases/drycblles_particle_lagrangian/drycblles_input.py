@@ -42,7 +42,7 @@ u = np.zeros(ktot)
 """
 Define initial location particles.
 """
-n_particles = 100000
+n_particles = 1000
 
 particle_id = np.arange(n_particles, dtype=np.int32)
 
@@ -56,7 +56,7 @@ particle_id = np.arange(n_particles, dtype=np.int32)
 
 xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
 yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
-zp  = np.random.uniform(0, zsize, n_particles).astype(float_type)
+zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
 
 #xp = np.arange(n_particles, dtype=float_type)
 #yp = np.arange(n_particles, dtype=float_type)

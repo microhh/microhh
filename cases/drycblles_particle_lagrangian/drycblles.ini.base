@@ -1,7 +1,7 @@
 # Base dust.ini file.
 [master]
-npx=2
-npy=2
+npx=1
+npy=1
 
 [grid]
 itot=None
@@ -48,7 +48,7 @@ z0h=0.1
 [particle_lagrangian]
 sw_particle=1
 n_particles=None
-sw_dump=0
+sw_dump=1
 sampletime_dump=10
 
 [fields]

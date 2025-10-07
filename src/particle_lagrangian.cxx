@@ -298,7 +298,7 @@ bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)
 template<typename TF>
 void Particle_lagrangian<TF>::dump(const int iotime)
 {
-    master.print_message("Saving raw particle dump\n");
+    //master.print_message("Saving raw particle dump\n");
 
     char file_name[256];
     std::sprintf(file_name, "particles.%07d", iotime);
@@ -309,9 +309,9 @@ void Particle_lagrangian<TF>::dump(const int iotime)
 
     if (success)
     {
-        fwrite(xp.data(), sizeof(TF), n_particles, file);
-        fwrite(yp.data(), sizeof(TF), n_particles, file);
-        fwrite(zp.data(), sizeof(TF), n_particles, file);
+        fwrite(xp.data(), sizeof(TF), xp.size(), file);
+        fwrite(yp.data(), sizeof(TF), yp.size(), file);
+        fwrite(zp.data(), sizeof(TF), zp.size(), file);
     }
 
     if (!success)
