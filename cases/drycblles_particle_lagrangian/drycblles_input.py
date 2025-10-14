@@ -13,9 +13,9 @@ Settings
 float_type = np.float64     # np.float32 for -USESP=true, else np.float64.
 
 xsize = 3200
-ysize = 3200
+ysize = 1600
 
-itot = 64
+itot = 128
 jtot = 64
 
 
@@ -29,7 +29,8 @@ def grid(dz0, alpha, ktot):
     z = 0.5 * (zh[:-1] + zh[1:])
     return z, zh[-1]
 
-z, zsize = grid(20, 1.03, 64)
+#z, zsize = grid(20, 1.03, 64)
+z, zsize = grid(10, 1.013, 128)
 ktot = z.size
 
 
@@ -52,7 +53,8 @@ y0 = ysize / 2
 z0 = 20
 size = 0.5
 
-xp  = np.random.uniform(x0-size, x0+size, n_particles).astype(float_type)
+#xp  = np.random.uniform(x0-size, x0+size, n_particles).astype(float_type)
+xp  = np.linspace(x0-size, x0+size, n_particles).astype(float_type)
 yp  = np.random.uniform(y0-size, y0+size, n_particles).astype(float_type)
 zp  = np.random.uniform(z0-size, z0+size, n_particles).astype(float_type)
 
