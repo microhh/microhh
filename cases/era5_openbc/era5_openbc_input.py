@@ -33,8 +33,8 @@ import ls2d
 
 # MicroHH Python package.
 from microhhpy.spatial import Domain, plot_domains, calc_vertical_grid_2nd
-from microhhpy.openbc import create_era5_input
-from microhhpy.interpolate import regrid_les
+from microhhpy.real import create_input_from_regular_latlon
+from microhhpy.real import regrid_les
 
 import microhhpy.io as io
 import microhhpy.thermo as thermo
@@ -57,7 +57,7 @@ Settings
 float_type = np.float64
 
 start_date = datetime(year=2020, month=2, day=5, hour=12)
-end_date   = datetime(year=2020, month=2, day=5, hour=13)
+end_date   = datetime(year=2020, month=2, day=5, hour=15)
 
 # All domains are put in a sub-folder `work_dir/domX`.
 work_dir = 'test/'
@@ -107,7 +107,7 @@ dom0 = Domain(
     lat=settings['central_lat'],
     anchor='center',
     proj_str='+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs +type=crs'
-    )
+)
 
 # Inner domains(s), nested in parent LES domain.
 dom1 = Domain(
@@ -121,6 +121,33 @@ dom1 = Domain(
     center_in_parent=True,
     parent = dom0
 )
+
+#dom0 = Domain(
+#    xsize=8_000,
+#    ysize=8_000,
+#    itot=8,
+#    jtot=8,
+#    n_ghost=3,
+#    n_sponge=2,
+#    lbc_freq=3600,                  # Always 3600 for ERA5!
+#    lon=settings['central_lon'],
+#    lat=settings['central_lat'],
+#    anchor='center',
+#    proj_str='+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs +type=crs'
+#    )
+#
+## Inner domains(s), nested in parent LES domain.
+#dom1 = Domain(
+#    xsize = 4_000,
+#    ysize = 4_000,
+#    itot = 8,
+#    jtot = 8,
+#    n_ghost = 3,
+#    n_sponge = 2,
+#    lbc_freq = 60,
+#    center_in_parent=True,
+#    parent = dom0
+#)
 
 domains = [dom0, dom1]
 for i in range(len(domains)-1):
@@ -288,7 +315,7 @@ if args.domain == 0:
     # Standard dev. of Gaussian filter applied to interpolated fields (m).
     sigma_h = 10_000
 
-    create_era5_input(
+    create_input_from_regular_latlon(
         fields_era,
         era5.lons.data,   # Strip off array masks.
         era5.lats.data,
@@ -306,8 +333,9 @@ if args.domain == 0:
         perturb_amplitude={'thl': 0.1, 'qt': 0.1e-3},
         name_suffix='overwrite',
         output_dir=exp_dir,
-        ntasks=16,
-        dtype=float_type)
+        ntasks=8,
+        #ntasks=1,
+        float_type=float_type)
 
 else:
     """
