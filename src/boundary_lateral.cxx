@@ -623,7 +623,7 @@ namespace
 
             for (int k=kstart; k<kend; k++)
                 for (int j=0; j<ngc; j++)
-                    for (int i=istart; i<iend; i++)
+                    for (int i=0; i<icells; i++)
                     {
                         const int ijk_in = i + j*jstride_s + k*kstride_s;
                         const int ijk_out = i + j*jstride_out + k*kstride_out;
@@ -638,7 +638,7 @@ namespace
 
             for (int k=kstart; k<kend; k++)
                 for (int j=0; j<ngc; j++)
-                    for (int i=istart; i<iend; i++)
+                    for (int i=0; i<icells; i++)
                     {
                         const int ijk_in = i + (j+nsponge)*jstride_n + k*kstride_n;
                         const int ijk_out = i + (j+jend)*jstride_out + k*kstride_out;
@@ -937,7 +937,6 @@ void Boundary_lateral<TF>::read_lbc(
 
         fclose(pFile);
     };
-
 
     auto copy_boundary = [&](
             std::vector<TF>& fld_out,
@@ -1403,7 +1402,8 @@ void Boundary_lateral<TF>::set_ghost_cells(
     //dump_vector(fields.ap.at("u")->fld, "u");
     //dump_vector(fields.ap.at("v")->fld, "v");
     //dump_vector(fields.ap.at("w")->fld, "w");
-    //dump_vector(fields.ap.at("th")->fld, "th");
+    //dump_vector(fields.ap.at("thl")->fld, "thl");
+    //dump_vector(fields.ap.at("qt")->fld, "qt");
 
     //dump_vector(fields.at.at("u")->fld, "ut");
     //dump_vector(fields.at.at("v")->fld, "vt");
