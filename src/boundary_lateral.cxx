@@ -599,6 +599,15 @@ namespace
                         const int ijk_out = i + j*jstride_out + k*kstride_out;
                         fld[ijk_out] = lbc[ijk_in];
                     }
+
+            // Set one ghost cell below surface. What BC to use?
+            for (int j=0; j<jcells; j++)
+                for (int i=0; i<ngc; i++)
+                {
+                    const int ijk = i + j*jstride_out + kstart*kstride_out;
+                    const int ijk_gc = i + j*jstride_out + (kstart-1)*kstride_out;
+                    fld[ijk_gc] = fld[ijk];
+                }
         }
 
         if (location == Lbc_location::East)
@@ -614,6 +623,15 @@ namespace
                         const int ijk_out = (i+iend) + j*jstride_out + k*kstride_out;
                         fld[ijk_out] = lbc[ijk_in];
                     }
+
+            // Set one ghost cell below surface. What BC to use?
+            for (int j=0; j<jcells; j++)
+                for (int i=0; i<ngc; i++)
+                {
+                    const int ijk = (i+iend) + j*jstride_out + kstart*kstride_out;
+                    const int ijk_gc = (i+iend) + j*jstride_out + (kstart-1)*kstride_out;
+                    fld[ijk_gc] = fld[ijk];
+                }
         }
 
         if (location == Lbc_location::South)
@@ -629,6 +647,16 @@ namespace
                         const int ijk_out = i + j*jstride_out + k*kstride_out;
                         fld[ijk_out] = lbc[ijk_in];
                     }
+
+            // Set one ghost cell below surface. What BC to use?
+            for (int j=0; j<ngc; j++)
+                for (int i=0; i<icells; i++)
+                {
+                    const int ijk = i + j*jstride_out + kstart*kstride_out;
+                    const int ijk_gc = i + j*jstride_out + (kstart-1)*kstride_out;
+                    fld[ijk_gc] = fld[ijk];
+                }
+
         }
 
         if (location == Lbc_location::North)
@@ -644,6 +672,15 @@ namespace
                         const int ijk_out = i + (j+jend)*jstride_out + k*kstride_out;
                         fld[ijk_out] = lbc[ijk_in];
                     }
+
+            // Set one ghost cell below surface. What BC to use?
+            for (int j=0; j<ngc; j++)
+                for (int i=0; i<icells; i++)
+                {
+                    const int ijk = i + (j+jend)*jstride_out + kstart*kstride_out;
+                    const int ijk_gc = i + (j+jend)*jstride_out + (kstart-1)*kstride_out;
+                    fld[ijk_gc] = fld[ijk];
+                }
         }
     };
 
@@ -1404,11 +1441,6 @@ void Boundary_lateral<TF>::set_ghost_cells(
     //dump_vector(fields.ap.at("w")->fld, "w");
     //dump_vector(fields.ap.at("thl")->fld, "thl");
     //dump_vector(fields.ap.at("qt")->fld, "qt");
-
-    //dump_vector(fields.at.at("u")->fld, "ut");
-    //dump_vector(fields.at.at("v")->fld, "vt");
-    //dump_vector(fields.at.at("w")->fld, "wt");
-    //dump_vector(fields.at.at("th")->fld, "tht");
 
     //throw 1;
 }
