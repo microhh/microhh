@@ -1,6 +1,5 @@
 import numpy as np
 import netCDF4 as nc
-import xarray as xr
 import h5py
 
 # Available in microhh/python.
@@ -62,6 +61,11 @@ zp  = np.random.uniform(z0-size, z0+size, n_particles).astype(float_type)
 #yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
 #zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
 
+# If this fails; try downgrading both NetCDF4 and H5PY.
+# See this issue: https://github.com/h5py/h5py/issues/2453
+# pip uninstall netCDF4 h5py
+# pip install h5py==3.10.0
+# pip install netCDF4==1.6.5
 with h5py.File('particles.0000000.h5', 'w') as f:
     f.create_dataset('particle_id', data=particle_id)
     f['particle_id'].make_scale('particles')
