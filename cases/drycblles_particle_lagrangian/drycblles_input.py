@@ -9,7 +9,7 @@ import microhh_tools as mht
 """
 Settings
 """
-float_type = np.float64     # np.float32 for -USESP=true, else np.float64.
+float_type = np.float32     # np.float32 for -USESP=true, else np.float64.
 
 xsize = 3200
 ysize = 1600

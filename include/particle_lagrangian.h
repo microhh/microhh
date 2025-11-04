@@ -46,8 +46,8 @@ class Particle_lagrangian
         void integrate(Timeloop<TF>&);   // Integrate particle locations.
 
         // Load/save restart files.
-        void load(const std::string&, const int);
-        void save(const std::string&, const int);
+        void load(const int);
+        void save(const int);
 
         // Dump particles.
         bool do_dump(const unsigned long);

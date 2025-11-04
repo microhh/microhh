@@ -274,7 +274,7 @@ void Model<TF>::load()
     source->create(*input, *input_nc);
 
     particle_bin->create(*timeloop);
-    particle_lagr->load(sim_name, timeloop->get_iotime());
+    particle_lagr->load(timeloop->get_iotime());
     particle_lagr->create(*timeloop);
 
     aerosol->create(*input, *input_nc, *stats);
@@ -327,6 +327,8 @@ void Model<TF>::save()
 
     boundary->create_cold_start(*input_nc);
     boundary->save(timeloop->get_iotime(), *thermo);
+
+    particle_lagr->save(timeloop->get_iotime());
 }
 
 template<typename TF>
@@ -552,6 +554,7 @@ void Model<TF>::exec()
                             timeloop->save(iotime, itime, idt, iteration);
                             fields  ->save(iotime);
                             boundary->save(iotime, *thermo);
+                            particle_lagr->save(iotime);
                         }
                     }
                 }

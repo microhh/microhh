@@ -489,6 +489,178 @@ namespace Particle_lagrangian_io
 
 
     template<typename TF>
+    void create_particle_restart(
+        const std::string& filename,
+        hid_t& file_id,
+        const int n_particles,
+        Master& master)
+    {
+        auto& md = master.get_MPI_data();
+
+        // Throw error if file exists.
+        int file_exists = 0;
+        if (md.mpiid == 0)
+        {
+            std::ifstream test(filename);
+            file_exists = test.good() ? 1 : 0;
+            test.close();
+        }
+        MPI_Bcast(&file_exists, 1, MPI_INT, 0, md.commxy);
+
+        if (file_exists)
+        {
+            std::string error_msg = "ERROR: Particle output file already exists: " + filename;
+            throw std::runtime_error(error_msg);
+        }
+
+        // Create file with parallel HDF5.
+        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
+        H5Pset_all_coll_metadata_ops(plist_id, true);
+        H5Pset_coll_metadata_write(plist_id, true);
+        file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
+        H5Pclose(plist_id);
+
+        // Create particle_id dimension scale dataset.
+        hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
+        hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
+        hid_t dset_particle_id = H5Dcreate(
+            file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        // Make particle_id a dimension scale
+        H5DSset_scale(dset_particle_id, "particle_id");
+
+        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values
+        std::vector<int> particle_ids(n_particles);
+        for (int i = 0; i < n_particles; ++i)
+            particle_ids[i] = i;
+
+        hid_t plist_write = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_write, H5FD_MPIO_COLLECTIVE);
+        H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
+        H5Pclose(plist_write);
+
+        H5Dclose(dset_particle_id);
+        H5Sclose(dspace_particle_id);
+
+        // Create particle datasets without time dimension (single time step).
+        hsize_t dims[1] = {static_cast<hsize_t>(n_particles)};
+        hid_t dspace = H5Screate_simple(1, dims, dims);
+
+        hid_t plist_create = H5Pcreate(H5P_DATASET_CREATE);
+        hsize_t chunk_dims[1] = {static_cast<hsize_t>(n_particles)};
+        H5Pset_chunk(plist_create, 1, chunk_dims);
+
+        hid_t h5_type = get_hdf5_type<TF>();
+
+        hid_t dset_x = H5Dcreate(
+            file_id, "/x", h5_type, dspace,
+            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+        hid_t dset_y = H5Dcreate(
+            file_id, "/y", h5_type, dspace,
+            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+        hid_t dset_z = H5Dcreate(
+            file_id, "/z", h5_type, dspace,
+            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+
+        // Attach dimension scale
+        dset_particle_id = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
+
+        H5DSattach_scale(dset_x, dset_particle_id, 0);
+        H5DSattach_scale(dset_y, dset_particle_id, 0);
+        H5DSattach_scale(dset_z, dset_particle_id, 0);
+
+        H5Dclose(dset_particle_id);
+        H5Dclose(dset_x);
+        H5Dclose(dset_y);
+        H5Dclose(dset_z);
+        H5Pclose(plist_create);
+        H5Sclose(dspace);
+
+        // Flush to ensure datasets are written to file.
+        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    }
+
+
+    template<typename TF>
+    void write_particles_restart(
+        hid_t file_id,
+        const std::vector<int>& uid,
+        const std::vector<TF>& x,
+        const std::vector<TF>& y,
+        const std::vector<TF>& z,
+        const int n_particles,
+        const int mpiid,
+        const int nprocs)
+    {
+        // Calculate hyperslab parameters for this MPI task.
+        const int np_per_task = std::ceil(TF(n_particles) / nprocs);
+        hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
+        hsize_t count = static_cast<hsize_t>(np_per_task);
+
+        // Last MPI task might have less if `n_particles % nprocs != 0`.
+        if (start + count > static_cast<hsize_t>(n_particles))
+            count = static_cast<hsize_t>(n_particles) - start;
+
+        // Open datasets.
+        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
+        hid_t dset_y = H5Dopen(file_id, "/y", H5P_DEFAULT);
+        hid_t dset_z = H5Dopen(file_id, "/z", H5P_DEFAULT);
+
+        hid_t filespace_x = H5Dget_space(dset_x);
+        hid_t filespace_y = H5Dget_space(dset_y);
+        hid_t filespace_z = H5Dget_space(dset_z);
+
+        hid_t memspace;
+
+        if (count > 0)
+        {
+            // Select hyperslab in file: [start:start+count]
+            hsize_t file_start[1] = {start};
+            hsize_t file_count[1] = {count};
+            H5Sselect_hyperslab(filespace_x, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+            H5Sselect_hyperslab(filespace_y, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+            H5Sselect_hyperslab(filespace_z, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+
+            // Local memory layout is simple; continuous 1D array of size `count`.
+            memspace = H5Screate_simple(1, &count, NULL);
+        }
+        else
+        {
+            // No particles to write - select empty hyperslab.
+            H5Sselect_none(filespace_x);
+            H5Sselect_none(filespace_y);
+            H5Sselect_none(filespace_z);
+            memspace = H5Scopy(filespace_x);
+            H5Sselect_none(memspace);
+        }
+
+        // Setup collective IO where all tasks participate.
+        hid_t plist_xfer = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(plist_xfer, H5FD_MPIO_COLLECTIVE);
+
+        // Write data (all tasks must call this even if count=0).
+        H5Dwrite(dset_x, get_hdf5_type<TF>(), memspace, filespace_x, plist_xfer, x.data());
+        H5Dwrite(dset_y, get_hdf5_type<TF>(), memspace, filespace_y, plist_xfer, y.data());
+        H5Dwrite(dset_z, get_hdf5_type<TF>(), memspace, filespace_z, plist_xfer, z.data());
+
+        // Cleanup!
+        H5Pclose(plist_xfer);
+        H5Sclose(memspace);
+        H5Sclose(filespace_x);
+        H5Sclose(filespace_y);
+        H5Sclose(filespace_z);
+        H5Dclose(dset_x);
+        H5Dclose(dset_y);
+        H5Dclose(dset_z);
+
+        // Flush to disk to ensure data is written.
+        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    }
+
+
+    template<typename TF>
     void write_particles_parallel(
         hid_t file_id,
         const std::vector<int>& uid,

@@ -197,7 +197,7 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 
 
 template<typename TF>
-void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime)
+void Particle_lagrangian<TF>::load(const int iotime)
 {
     if (!sw_particle)
         return;
@@ -264,12 +264,57 @@ void Particle_lagrangian<TF>::load(const std::string& sim_name, const int iotime
 
 
 template<typename TF>
-void Particle_lagrangian<TF>::save(const std::string& sim_name, const int iotime)
+void Particle_lagrangian<TF>::save(const int iotime)
 {
-    if (!sw_particle)
+    if (!sw_particle || iotime == 0)
         return;
 
-    // TODO, no restarts for now!
+    std::ostringstream file_out;
+    file_out << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+
+    master.print_message("Saving \"%s\" ... ", file_out.str().c_str());
+
+    // Create new HDF5 file for each restart file.
+    plio::create_particle_restart<TF>(
+        file_out.str(),
+        dump_file_id,
+        n_particles,
+        master);
+
+    // Gather particles back to their original MPI tasks based on `uid`.
+    std::vector<int> uid_local;
+    std::vector<TF> x_local;
+    std::vector<TF> y_local;
+    std::vector<TF> z_local;
+
+    plio::gather_particles(
+        uid_local,
+        x_local,
+        y_local,
+        z_local,
+        uid,
+        xp,
+        yp,
+        zp,
+        n_particles,
+        master);
+
+    // Write gathered particles to restart file.
+    auto& md = master.get_MPI_data();
+    plio::write_particles_restart(
+        dump_file_id,
+        uid_local,
+        x_local,
+        y_local,
+        z_local,
+        n_particles,
+        md.mpiid,
+        md.nprocs);
+
+    // Close the restart file.
+    H5Fclose(dump_file_id);
+
+    master.print_message("OK\n");
 }
 
 
