@@ -190,11 +190,10 @@ namespace Particle_lagrangian_io
 
 
     template<typename TF>
-    struct Particle
+    struct Particle_io
     {
         int uid;
         TF x, y, z;     // Location.
-        TF xt, yt, zt;  // Location tendency.
     };
 
 
@@ -211,22 +210,25 @@ namespace Particle_lagrangian_io
 
 
     template<typename TF>
-    bool particle_uid_compare(const Particle<TF>& a, const Particle<TF>& b)
+    bool particle_uid_compare(const Particle_io<TF>& a, const Particle_io<TF>& b)
     {
         return a.uid < b.uid;
     }
 
 
     template<typename TF>
-    MPI_Datatype create_particle_type()
+    MPI_Datatype create_particle_type_io()
     {
+        // Create MPI type specific for particle I/O, which typically uses less
+        // elements per particle than the neighbour-neighbour MPI communication.
         MPI_Datatype particle_type;
 
-        int blocklengths[2] = {1, 6};
+        // 1=uid, 3=number of particle properties (currently x,y,z).
+        int blocklengths[2] = {1, 3};
         MPI_Aint displacements[2];
         MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
 
-        Particle<TF> particle;
+        Particle_io<TF> particle;
         MPI_Aint base_address;
         MPI_Get_address(&particle, &base_address);
         MPI_Get_address(&particle.uid, &displacements[0]);
@@ -306,7 +308,7 @@ namespace Particle_lagrangian_io
 
         // Pack particles into vector of Particle structs. This should make it easier
         // to add other properties like velocity or mass at a later point.
-        std::vector<Particle<TF>> particles_send(total_send);
+        std::vector<Particle_io<TF>> particles_send(total_send);
         std::vector<int> current_offset = send_offsets;
 
         for (int n=0; n < np_local; ++n)
@@ -322,10 +324,10 @@ namespace Particle_lagrangian_io
         }
 
         // Allocate receive buffer.
-        std::vector<Particle<TF>> particles_recv(total_recv);
+        std::vector<Particle_io<TF>> particles_recv(total_recv);
 
         // Exchange particles.
-        MPI_Datatype particle_type = create_particle_type<TF>();
+        MPI_Datatype particle_type = create_particle_type_io<TF>();
 
         MPI_Alltoallv(
             particles_send.data(),
@@ -618,7 +620,7 @@ namespace Particle_lagrangian_io
         const int total_recv = recv_offsets[md.nprocs-1] + recv_counts[md.nprocs-1];
 
         // Pack particles into send buffer.
-        std::vector<Particle<TF>> particles_send(total_send);
+        std::vector<Particle_io<TF>> particles_send(total_send);
         std::vector<int> current_offset = send_offsets;
 
         for (int n=0; n < np_local; ++n)
@@ -634,10 +636,10 @@ namespace Particle_lagrangian_io
         }
 
         // Allocate receive buffer.
-        std::vector<Particle<TF>> particles_recv(total_recv);
+        std::vector<Particle_io<TF>> particles_recv(total_recv);
 
         // Exchange particles.
-        MPI_Datatype particle_type = create_particle_type<TF>();
+        MPI_Datatype particle_type = create_particle_type_io<TF>();
 
         MPI_Alltoallv(
             particles_send.data(),

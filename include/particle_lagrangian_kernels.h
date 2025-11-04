@@ -23,12 +23,57 @@
 #ifndef PARTICLE_LAGRANGIAN_KERNELS_H
 #define PARTICLE_LAGRANGIAN_KERNELS_H
 
-#include "particle_lagrangian_io.h"     // For particle struct/MPI type.
-using namespace Particle_lagrangian_io;
-
-
 namespace Particle_lagrangian_kernels
 {
+    template<typename TF>
+    struct Particle_comm
+    {
+        int uid;
+        TF x, y, z;     // Location.
+        TF xt, yt, zt;  // Location tendency.
+    };
+
+
+    template<typename T>
+    MPI_Datatype get_mpi_type()
+    {
+        if constexpr (std::is_same_v<T, float>)
+            return MPI_FLOAT;
+        else if constexpr (std::is_same_v<T, double>)
+            return MPI_DOUBLE;
+        else
+            throw std::runtime_error("Invalid float type for MPI!");
+    }
+
+
+    template<typename TF>
+    MPI_Datatype create_particle_type_comm()
+    {
+        // Create MPI type specific for particle communication, which typically
+        // uses more elements per particle than the parallel I/O.
+        MPI_Datatype particle_type;
+
+        // 1=uid, 6=number of particle properties (currently x,y,z + x,y,z tendencies).
+        int blocklengths[2] = {1, 6};
+        MPI_Aint displacements[2];
+        MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
+
+        Particle_comm<TF> particle;
+        MPI_Aint base_address;
+        MPI_Get_address(&particle, &base_address);
+        MPI_Get_address(&particle.uid, &displacements[0]);
+        MPI_Get_address(&particle.x, &displacements[1]);
+
+        displacements[0] = MPI_Aint_diff(displacements[0], base_address);
+        displacements[1] = MPI_Aint_diff(displacements[1], base_address);
+
+        MPI_Type_create_struct(2, blocklengths, displacements, types, &particle_type);
+        MPI_Type_commit(&particle_type);
+
+        return particle_type;
+    }
+
+
     template<typename T>
     void adaptive_resize(
             std::vector<T>& v,
@@ -353,7 +398,7 @@ namespace Particle_lagrangian_kernels
 
         // Pack leaving particles into send buffers.
         std::vector<int> send_counts(n_neighbors);
-        std::vector<std::vector<Particle<TF>>> particles_to_send(n_neighbors);
+        std::vector<std::vector<Particle_comm<TF>>> particles_to_send(n_neighbors);
 
         for (int i=0; i<n_neighbors; ++i)
         {
@@ -459,9 +504,9 @@ namespace Particle_lagrangian_kernels
         // -------------------------------------
         // 6. Exchange particles with neighbors.
         // -------------------------------------
-        MPI_Datatype particle_type = create_particle_type<TF>();
+        MPI_Datatype particle_type = create_particle_type_comm<TF>();
 
-        std::vector<Particle<TF>> recv_buffer(total_incoming);
+        std::vector<Particle_comm<TF>> recv_buffer(total_incoming);
         int recv_offset = 0;
 
         requests.clear();
