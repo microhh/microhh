@@ -368,6 +368,8 @@ void Particle_lagrangian<TF>::dump(Timeloop<TF>& timeloop)
     if (timeloop.get_itime() < istarttime)
         return;
 
+    master.print_message("Saving particle dump for time %f\n", timeloop.get_time());
+
     auto& md = master.get_MPI_data();
 
     const int iotime = timeloop.get_iotime();

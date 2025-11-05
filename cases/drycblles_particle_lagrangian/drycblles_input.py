@@ -95,8 +95,6 @@ ini['grid']['zsize'] = zsize
 
 ini['buffer']['zstart'] = 0.75*zsize
 
-ini['particle_lagrangian']['n_particles'] = xp.size
-
 ini['cross']['xz'] = 0.5*ysize
 
 ini.save('drycblles.ini', allow_overwrite=True)
