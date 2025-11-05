@@ -74,7 +74,6 @@ namespace Particle_lagrangian_io
         // Open dataset.
         hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
         hid_t filespace = H5Dget_space(dset);
-
         hid_t memspace;
 
         if (count > 0)

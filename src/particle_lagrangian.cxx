@@ -275,9 +275,10 @@ void Particle_lagrangian<TF>::save(const int iotime)
     master.print_message("Saving \"%s\" ... ", file_out.str().c_str());
 
     // Create new HDF5 file for each restart file.
+    hid_t restart_file_id;
     plio::create_particle_restart<TF>(
         file_out.str(),
-        dump_file_id,
+        restart_file_id,
         n_particles,
         master);
 
@@ -302,7 +303,7 @@ void Particle_lagrangian<TF>::save(const int iotime)
     // Write gathered particles to restart file.
     auto& md = master.get_MPI_data();
     plio::write_particles_restart(
-        dump_file_id,
+        restart_file_id,
         uid_local,
         x_local,
         y_local,
@@ -312,7 +313,7 @@ void Particle_lagrangian<TF>::save(const int iotime)
         md.nprocs);
 
     // Close the restart file.
-    H5Fclose(dump_file_id);
+    H5Fclose(restart_file_id);
 
     master.print_message("OK\n");
 }

@@ -93,7 +93,7 @@ namespace Particle_lagrangian_kernels
             std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
             v.reserve(new_capacity);
 
-            std::cout << "Too large! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
+            //std::cout << "Too large! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
         }
         else if (new_size > capacity)
         {
@@ -101,7 +101,7 @@ namespace Particle_lagrangian_kernels
             const int new_capacity = int(new_size * reserve_ratio);
             v.reserve(new_capacity);
 
-            std::cout << "Too small! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
+            //std::cout << "Too small! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
         }
 
         v.resize(new_size);

@@ -48,7 +48,7 @@ z0h=0.1
 [particle_lagrangian]
 sw_particle=1
 reserve_ratio=1.5
-starttime=1800
+starttime=0
 
 sw_dump=1
 sampletime_dump=10
@@ -70,21 +70,21 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=7200
+endtime=600
 dt=6.
 dtmax=60.
-savetime=60
+savetime=300
 outputiter=50
 adaptivestep=true
 starttime=0
 rkorder=4
 
 [stats]
-swstats=1
+swstats=0
 sampletime=300
 
 [cross]
-swcross=1
+swcross=0
 crosslist=th,u,v,w
 sampletime=60
 xy=10,100
