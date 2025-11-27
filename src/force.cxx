@@ -473,7 +473,7 @@ Force<TF>::Force(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input
         swlspres = Large_scale_pressure_type::Geo_wind_3d;
 
         fc = inputin.get_item<TF>("force", "fc", ""); // CvH I still load the mean fc, maybe this is asking for trouble?
-        swtimedep_geo = inputin.get_item<TF>("force", "swtimedep_geo", "", false);
+        swtimedep_geo = inputin.get_item<bool>("force", "swtimedep_geo", "", false);
 
         if (swtimedep_geo)
             ugeo_loadtime = inputin.get_item<int>("force", "ugeo_loadtime", "");
