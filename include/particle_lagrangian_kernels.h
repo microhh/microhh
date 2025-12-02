@@ -23,6 +23,7 @@
 #ifndef PARTICLE_LAGRANGIAN_KERNELS_H
 #define PARTICLE_LAGRANGIAN_KERNELS_H
 
+
 namespace Particle_lagrangian_kernels
 {
     template<typename TF>
@@ -176,6 +177,7 @@ namespace Particle_lagrangian_kernels
         {
             const TF fi = (xp[i] - x0) * dxi;
             index[i] = static_cast<int>(fi);
+
             factor[i] = fi - index[i];
         }
     }
@@ -276,10 +278,13 @@ namespace Particle_lagrangian_kernels
         const TF ysize)
     {
         // Periodic BCs without MPI.
+        const TF xsize_inv = TF(1) / xsize;
+        const TF ysize_inv = TF(1) / ysize;
+
         for (int n=0; n<xp.size(); ++n)
         {
-            xp[n] = std::fmod(xp[n] + xsize, xsize);
-            yp[n] = std::fmod(yp[n] + ysize, ysize);
+            xp[n] -= std::floor(xp[n] * xsize_inv) * xsize;
+            yp[n] -= std::floor(yp[n] * ysize_inv) * ysize;
         }
     }
 
@@ -570,10 +575,13 @@ namespace Particle_lagrangian_kernels
         // --------------------------------------
         // 8. Apply periodic boundary conditions.
         // --------------------------------------
+        const TF xsize_inv = TF(1) / xsize;
+        const TF ysize_inv = TF(1) / ysize;
+
         for (int n=0; n<xp.size(); ++n)
         {
-            xp[n] = std::fmod(xp[n] + xsize, xsize);
-            yp[n] = std::fmod(yp[n] + ysize, ysize);
+            xp[n] -= std::floor(xp[n] * xsize_inv) * xsize;
+            yp[n] -= std::floor(yp[n] * ysize_inv) * ysize;
         }
     }
 }
