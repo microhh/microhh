@@ -43,10 +43,11 @@ u = np.zeros(ktot)
 """
 Define initial location particles.
 """
-n_particles = 1000
+n_particles = 10000
 
 particle_id = np.arange(n_particles, dtype=np.int32)
 
+"""
 x0 = xsize / 2
 y0 = ysize / 2
 z0 = 20
@@ -56,10 +57,11 @@ size = 0.5
 xp  = np.linspace(x0-size, x0+size, n_particles).astype(float_type)
 yp  = np.random.uniform(y0-size, y0+size, n_particles).astype(float_type)
 zp  = np.random.uniform(z0-size, z0+size, n_particles).astype(float_type)
+"""
 
-#xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
-#yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
-#zp  = np.random.uniform(0, 0.5*zsize, n_particles).astype(float_type)
+xp  = np.random.uniform(0, xsize, n_particles).astype(float_type)
+yp  = np.random.uniform(0, ysize, n_particles).astype(float_type)
+zp  = np.random.uniform(0, zsize, n_particles).astype(float_type)
 
 # If this fails; try downgrading both NetCDF4 and H5PY.
 # See this issue: https://github.com/h5py/h5py/issues/2453
