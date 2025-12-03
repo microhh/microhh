@@ -117,12 +117,15 @@ namespace Particle_lagrangian_io
         std::vector<TF>& y,
         std::vector<TF>& z,
         int& n_particles,
-        const int mpiid,
-        const int nprocs)
+        Master& master)
     {
+        auto& md = master.get_MPI_data();
+
         // Open file with parallel HDF5.
         hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-        H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
+        H5Pset_all_coll_metadata_ops(plist_id, true);
+        H5Pset_coll_metadata_read(plist_id, true);
         hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id);
         H5Pclose(plist_id);
 
@@ -132,12 +135,13 @@ namespace Particle_lagrangian_io
         hsize_t n_total;
         H5Sget_simple_extent_dims(dspace, &n_total, NULL);
         H5Sclose(dspace);
+        H5Dclose(dset_x);
 
         n_particles = static_cast<int>(n_total);
 
         // Each task has `ceil(n_total / nprocs)` particles (except last task, see next code block).
-        const int np_per_task = std::ceil(TF(n_total) / nprocs);
-        hsize_t start = mpiid * np_per_task;
+        const int np_per_task = std::ceil(TF(n_total) / md.nprocs);
+        hsize_t start = md.mpiid * np_per_task;
         hsize_t count = np_per_task;
 
         // Last MPI task might have less if `n_total % nprocs != 0`.
@@ -161,7 +165,6 @@ namespace Particle_lagrangian_io
         read_coordinate(file_id, "/z", z.data(), start, count);
 
         // Cleanup!
-        H5Dclose(dset_x);
         H5Fclose(file_id);
     }
 

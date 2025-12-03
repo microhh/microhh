@@ -227,7 +227,7 @@ void Particle_lagrangian<TF>::load(const int iotime)
     std::vector<TF> zp_in;
 
     // Read particles to their "home" task using parallel HDF5.
-    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, n_particles, md.mpiid, md.nprocs);
+    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, n_particles, master);
 
     // Send particles from "home" task to actual location in domain.
     plio::distribute_particles(uid, xp, yp, zp, uid_in, xp_in, yp_in, zp_in,  gd.xsize, gd.ysize, master);

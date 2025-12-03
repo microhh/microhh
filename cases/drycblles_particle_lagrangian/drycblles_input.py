@@ -65,7 +65,8 @@ zp  = np.random.uniform(0, zsize, n_particles).astype(float_type)
 
 # If this fails; try downgrading both NetCDF4 and H5PY.
 # See this issue: https://github.com/h5py/h5py/issues/2453
-# pip uninstall netCDF4 h5py
+# pip uninstall numpy netCDF4 h5py
+# pip install numpy==1.26.4
 # pip install h5py==3.10.0
 # pip install netCDF4==1.6.5
 with h5py.File('particles.0000000.h5', 'w') as f:
