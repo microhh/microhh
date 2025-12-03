@@ -39,18 +39,29 @@ namespace Particle_lagrangian_io
         // Open dataset.
         hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
         hid_t filespace = H5Dget_space(dset);
+        hid_t memspace;
 
-        // Select hyperslab.
-        H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
+        if (count > 0)
+        {
+            // Select hyperslab.
+            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
 
-        // Local memory layout is simple; continous 1D array of size `count`.
-        hid_t memspace = H5Screate_simple(1, &count, NULL);
+            // Local memory layout is simple; continous 1D array of size `count`.
+            memspace = H5Screate_simple(1, &count, NULL);
+        }
+        else
+        {
+            // No particles to read - select empty hyperslab.
+            H5Sselect_none(filespace);
+            memspace = H5Scopy(filespace);
+            H5Sselect_none(memspace);
+        }
 
         // Setup collective IO where all tasks participate.
         hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
         H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-        // Read data.
+        // Read data (all tasks must call this even if count=0).
         H5Dread(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
 
         // Cleanup!
@@ -125,7 +136,6 @@ namespace Particle_lagrangian_io
         hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
         H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
         H5Pset_all_coll_metadata_ops(plist_id, true);
-        H5Pset_coll_metadata_read(plist_id, true);
         hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id);
         H5Pclose(plist_id);
 
@@ -144,8 +154,10 @@ namespace Particle_lagrangian_io
         hsize_t start = md.mpiid * np_per_task;
         hsize_t count = np_per_task;
 
-        // Last MPI task might have less if `n_total % nprocs != 0`.
-        if (start + count > n_total)
+        // Handle case where start >= n_total (more tasks than particles per task).
+        if (start >= n_total)
+            count = 0;
+        else if (start + count > n_total)
             count = n_total - start;
 
         //std::cout << "n_total=" << n_total << ", n_per_task=" << np_per_task << ", mpiid=" << mpiid << ", start=" << start << ", count=" << count << std::endl;
@@ -601,8 +613,10 @@ namespace Particle_lagrangian_io
         hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
         hsize_t count = static_cast<hsize_t>(np_per_task);
 
-        // Last MPI task might have less if `n_particles % nprocs != 0`.
-        if (start + count > static_cast<hsize_t>(n_particles))
+        // Handle case where start >= n_particles (more tasks than particles per task).
+        if (start >= static_cast<hsize_t>(n_particles))
+            count = 0;
+        else if (start + count > static_cast<hsize_t>(n_particles))
             count = static_cast<hsize_t>(n_particles) - start;
 
         // Open datasets.
@@ -725,8 +739,10 @@ namespace Particle_lagrangian_io
         hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
         hsize_t count = static_cast<hsize_t>(np_per_task);
 
-        // Last MPI task might have less if `n_particles % nprocs != 0`.
-        if (start + count > static_cast<hsize_t>(n_particles))
+        // Handle case where start >= n_particles (more tasks than particles per task).
+        if (start >= static_cast<hsize_t>(n_particles))
+            count = 0;
+        else if (start + count > static_cast<hsize_t>(n_particles))
             count = static_cast<hsize_t>(n_particles) - start;
 
         // Write particle coordinates (write_coordinate opens/closes datasets internally).
