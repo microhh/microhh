@@ -37,8 +37,9 @@ set(FFTWF_LIB "fftw3f")
 set(IRC_LIB "irc")
 set(IRC_LIB "")
 set(HDF5_LIB "hdf5")
+set(HDF5_LIB_HL "hdf5_hl")
 set(SZIP_LIB "sz")
-set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB} ${SZIP_LIB} ${IRC_LIB} m z curl)
+set(LIBS ${FFTW_LIB} ${FFTWF_LIB} ${NETCDF_LIB_C} ${HDF5_LIB} ${HDF5_LIB_HL} ${SZIP_LIB} ${IRC_LIB} m z curl)
 
 
 if(USECUDA)
