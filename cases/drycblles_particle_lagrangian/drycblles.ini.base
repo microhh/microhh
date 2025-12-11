@@ -47,12 +47,14 @@ z0h=0.1
 
 [particle_lagrangian]
 sw_particle=1
-reserve_ratio=1.5
-starttime=1800
+reserve_ratio=1.1
+starttime=0
 
 sw_dump=1
 sampletime_dump=10
 szip_compression=0
+
+sw_stats=1
 
 [fields]
 visc=1.e-5
@@ -70,7 +72,7 @@ sigma=0.00223
 beta=2.
 
 [time]
-endtime=10800
+endtime=600
 dt=6.
 dtmax=60.
 savetime=3600
@@ -81,7 +83,7 @@ rkorder=4
 
 [stats]
 swstats=1
-sampletime=300
+sampletime=10
 
 [cross]
 swcross=1

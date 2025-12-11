@@ -41,17 +41,19 @@ class Particle_lagrangian
         Particle_lagrangian(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Particle_lagrangian();
 
-        void create(Timeloop<TF>&);      // Setup particles, I/O, ...
-        void exec(Timeloop<TF>&);        // Update particle velocity/tendency.
-        void integrate(Timeloop<TF>&);   // Integrate particle locations.
+        void create(Timeloop<TF>&, Stats<TF>&);    // Setup particles, I/O, statistics, ...
+        void exec(Timeloop<TF>&);                  // Update particle velocity/tendency.
+        void integrate(Timeloop<TF>&);             // Integrate particle locations.
 
-        // Load/save restart files.
-        void load(const int);
-        void save(const int);
+        void load(const int);                      // Load particles from restart file.
+        void save(const int);                      // Save particles to restart file.
 
         // Dump particles.
-        bool do_dump(const unsigned long);
-        void dump(Timeloop<TF>&);
+        bool do_dump(const unsigned long);         // To dump or not.
+        void dump(Timeloop<TF>&);                  // Save particle dumps.
+
+        // Statistics.
+        void exec_stats(Stats<TF>&);               // Save statistics.
 
         unsigned long get_time_limit(const unsigned long);
 
@@ -60,19 +62,26 @@ class Particle_lagrangian
         Grid<TF>& grid;
         Fields<TF>& fields;
 
-        bool sw_particle;       // Lagrangian particle on/off.
-        int n_particles;        // Global number of particles.
+        bool sw_particle;                          // Lagrangian particle on/off.
+        int n_particles;                           // Global number of particles.
 
         // Raw dump of all particles.
         bool sw_dump;
         unsigned long isampletime_dump;
-        hid_t dump_file_id;     // HDF5 file handle for particle dumps.
-        int szip_compression;   // SZIP compression pixels-per-block (0 = no compression).
+        hid_t dump_file_id;                        // HDF5 file handle for particle dumps.
+        int szip_compression;                      // SZIP compression pixels-per-block (0 = no compression).
+
+        // Profile and time serie statistics.
+        bool sw_stats;
 
         // Particle property arrays are oversized by a factor `reserve_ratio`.
         // This reduces the number of time that the arrays have to be resized
         // when particles move between cores.
         TF reserve_ratio;
+
+        // Memory buffer increase/decrease count for statistics...
+        int mem_inc = 0;
+        int mem_dec = 0;
 
         // Delay start of particle release.
         unsigned long istarttime;

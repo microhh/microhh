@@ -30,6 +30,7 @@
 #include "fields.h"
 #include "timeloop.h"
 #include "constants.h"
+#include "stats.h"
 
 #include "particle_lagrangian.h"
 #include "particle_lagrangian_kernels.h"
@@ -37,11 +38,6 @@
 
 namespace plk = Particle_lagrangian_kernels;
 namespace plio = Particle_lagrangian_io;
-
-namespace
-{
-
-}
 
 
 template<typename TF>
@@ -62,12 +58,15 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
             szip_compression = inputin.get_item<int>("particle_lagrangian", "szip_compression", "", 0);
         }
 
+        // Profile and time serie statistics.
+        sw_stats = inputin.get_item<bool>("particle_lagrangian", "sw_stats", "", false);
+
+        // "Oversize" ratio arrays.
         reserve_ratio = inputin.get_item<TF>("particle_lagrangian", "reserve_ratio", "", 1.25);
 
         // Delayed start time of particles.
         const int starttime = inputin.get_item<int>("particle_lagrangian", "starttime", "", 0);
         istarttime = convert_to_itime(starttime);
-
     }
 }
 
@@ -75,6 +74,36 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
 template<typename TF>
 Particle_lagrangian<TF>::~Particle_lagrangian()
 {
+}
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop, Stats<TF>& stats)
+{
+    if (!sw_particle)
+        return;
+
+    if (sw_dump)
+    {
+        const int iotime = timeloop.get_iotime();
+        std::ostringstream file_out;
+        file_out << "particle_dump." << std::setfill('0') << std::setw(7) << iotime << ".h5";
+
+        // Create single HDF5 file for particle dumps.
+        plio::create_particle_dump<TF>(
+            file_out.str(),
+            dump_file_id,
+            n_particles,
+            szip_compression,
+            master);
+    }
+
+    if (sw_stats && stats.get_switch())
+    {
+        std::string group_name = "particles";
+        stats.add_time_series("mem_inc", "Count of increase in memory buffer size", "-", group_name);
+        stats.add_time_series("mem_dec", "Count of decrease in memory buffer size", "-", group_name);
+    }
 }
 
 
@@ -154,6 +183,9 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 
     // Neighbour-neighbour exchange and cyclic boundary conditions.
     #ifdef USEMPI
+    int mem_inc_loc = 0;
+    int mem_dec_loc = 0;
+
     plk::particle_exchange_parallel(
         uid,
         xp,
@@ -165,7 +197,16 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
         gd.xsize,
         gd.ysize,
         reserve_ratio,
+        mem_inc_loc,
+        mem_dec_loc,
         master);
+
+    // Sum memory increase/decreases over all MPI ranks.
+    master.sum(&mem_inc_loc, 1);
+    master.sum(&mem_dec_loc, 1);
+
+    mem_inc += mem_inc_loc;
+    mem_dec += mem_dec_loc;
 
     // Resize non-communicated vectors.
     const int new_size = xp.size();
@@ -194,6 +235,17 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     #endif
 }
 #endif
+
+
+template<typename TF>
+void Particle_lagrangian<TF>::exec_stats(Stats<TF>& stats)
+{
+    if (!sw_particle || !sw_stats)
+        return;
+
+    stats.set_time_series("mem_inc", TF(mem_inc));
+    stats.set_time_series("mem_dec", TF(mem_dec));
+}
 
 
 template<typename TF>
@@ -316,29 +368,6 @@ void Particle_lagrangian<TF>::save(const int iotime)
     H5Fclose(restart_file_id);
 
     master.print_message("OK\n");
-}
-
-
-template<typename TF>
-void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop)
-{
-    if (!sw_particle)
-        return;
-
-    if (sw_dump)
-    {
-        const int iotime = timeloop.get_iotime();
-        std::ostringstream file_out;
-        file_out << "particle_dump." << std::setfill('0') << std::setw(7) << iotime << ".h5";
-
-        // Create single HDF5 file for particle dumps.
-        plio::create_particle_dump<TF>(
-            file_out.str(),
-            dump_file_id,
-            n_particles,
-            szip_compression,
-            master);
-    }
 }
 
 

@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <ios>
 #include <iostream>
 #include <fstream>
 #include <map>

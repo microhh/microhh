@@ -76,7 +76,7 @@ namespace Particle_lagrangian_kernels
 
 
     template<typename T>
-    void adaptive_resize(
+    int adaptive_resize(
             std::vector<T>& v,
             const int new_size,
             const double reserve_ratio)
@@ -84,12 +84,16 @@ namespace Particle_lagrangian_kernels
         const int size     = v.size();      // Used elements.
         const int capacity = v.capacity();  // Reserved size.
 
+        // Keep track of increases and decreases in size.
+        int status = 0;     // 0 = no change, 1 = increase, 2 = decrease.
+
         // Don't enlarge and shrink using the same ratio.
         const double shrink_ratio = 2. * reserve_ratio - 1.;
 
         if (new_size * shrink_ratio < capacity)
         {
             // Too large! Decrease capacity.
+            status = 2;
             const int new_capacity = int(new_size * reserve_ratio);
             std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
             v.reserve(new_capacity);
@@ -99,6 +103,7 @@ namespace Particle_lagrangian_kernels
         else if (new_size > capacity)
         {
             // Too small! Increase capacity.
+            status = 1;
             const int new_capacity = int(new_size * reserve_ratio);
             v.reserve(new_capacity);
 
@@ -106,6 +111,8 @@ namespace Particle_lagrangian_kernels
         }
 
         v.resize(new_size);
+
+        return status;
     }
 
 
@@ -314,6 +321,8 @@ namespace Particle_lagrangian_kernels
         const TF xsize,
         const TF ysize,
         const TF reserve_ratio,
+        int& mem_inc,
+        int& mem_dec,
         Master& master)
     {
         // Neighbour-neighbour + periodic boundary exchange with MPI.
@@ -495,7 +504,12 @@ namespace Particle_lagrangian_kernels
 
         const int new_size = old_size + total_incoming - total_leaving;
 
-        adaptive_resize(uid, new_size, reserve_ratio);
+        const int status = adaptive_resize(uid, new_size, reserve_ratio);
+
+        if (status == 1)
+            mem_inc += 1;
+        else if (status == 2)
+            mem_dec += 1;
 
         adaptive_resize(xp, new_size, reserve_ratio);
         adaptive_resize(yp, new_size, reserve_ratio);
@@ -583,6 +597,7 @@ namespace Particle_lagrangian_kernels
             xp[n] -= std::floor(xp[n] * xsize_inv) * xsize;
             yp[n] -= std::floor(yp[n] * ysize_inv) * ysize;
         }
+
     }
 }
 #endif
