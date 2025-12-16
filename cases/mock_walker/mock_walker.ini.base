@@ -17,10 +17,10 @@ stop[thl]=0.0
 sbot[qt]=None
 stop[qt]=0.0
 
-z0m=0.002
-z0h=0.002
-swconstantz0=True
-swcharnock=False
+z0m=-1
+z0h=-1
+swconstantz0=False
+swcharnock=True
 alpha_m=0.11
 alpha_ch=0.018
 # NOTE: we have a single `z0h` and not `z0h` and `z0q` at the moment.

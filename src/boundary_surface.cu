@@ -257,6 +257,38 @@ namespace
             }
         }
     }
+
+    template<typename TF> __global__
+    void calc_z0_charnock_g(
+            TF* const restrict z0m,
+            TF* const restrict z0h,
+            const TF* const restrict ustar,
+            const TF alpha_m,
+            const TF alpha_ch,
+            const TF alpha_h,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const TF visc = TF(1.5e-5);
+            const TF gi = TF(1)/Constants::grav<TF>;
+            const TF min_ustar = TF(1e-8);
+
+            const int ij  = i + j*jstride;
+
+            // Limit u* to prevent div/0:
+            const TF ustar_lim = std::max(ustar[ij], min_ustar);
+
+            // Roughness lengths, like IFS:
+            z0m[ij] = alpha_m * visc/ustar_lim + alpha_ch * fm::pow2(ustar_lim) * gi;
+            z0h[ij] = alpha_h * visc/ustar_lim;
+        }
+    }
 }
 
 template<typename TF>
@@ -335,6 +367,12 @@ void Boundary_surface<TF>::backward_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMemcpy(dudz_mo.data(), dudz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(dvdz_mo.data(), dvdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
 
+    if (sw_charnock)
+    {
+        cuda_safe_call(cudaMemcpy(z0m.data(), z0m_g, dmemsize2d, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(z0h.data(), z0h_g, dmemsize2d, cudaMemcpyDeviceToHost));
+    }
+
     if (thermo.get_switch() != Thermo_type::Disabled)
         cuda_safe_call(cudaMemcpy(dbdz_mo.data(), dbdz_mo_g, dmemsize2d, cudaMemcpyDeviceToHost));
 }
@@ -374,6 +412,25 @@ void Boundary_surface<TF>::exec(
     gridj = gd.jcells/blockj + (gd.jcells%blockj > 0);
     dim3 gridGPU2 (gridi,  gridj,  1);
     dim3 blockGPU2(blocki, blockj, 1);
+
+    // Update roughness lengths when Charnock relation is used,
+    // using friction velocity from previous time step (?).
+    if (sw_charnock)
+    {
+        calc_z0_charnock_g<TF><<<gridGPU, blockGPU>>>(
+                z0m_g,
+                z0h_g,
+                ustar_g,
+                alpha_m,
+                alpha_ch,
+                alpha_h,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+
+        boundary_cyclic.exec_2d_g(z0m_g);
+        boundary_cyclic.exec_2d_g(z0h_g);
+    }
 
     // Calculate dutot in tmp2
     auto dutot = fields.get_tmp_g();
