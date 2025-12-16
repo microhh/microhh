@@ -64,25 +64,30 @@ Case settings.
 """
 float_type = np.float32
 
+"""
 gpt_path = '/home/bart/meteo/models/coefficients_veerman/' 
 microhh_path = '/home/bart/meteo/models/microhh/'
-
 work_dir = 'test'
+"""
+
+gpt_path = '/gpfs/work3/0/lesmodels/team_bart/coefficients_veerman'
+microhh_path = '/home/bstratum/meteo/models/microhh'
+work_dir = '/scratch-shared/bstratum/mock_walker_test'
 
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
 
-xsize = 128000
-ysize = 32000
+xsize = 256000
+ysize = 64000
 
-itot = 128
-jtot = 32
+itot = 512
+jtot = 128
 
 npx = 4
 npy = 2
 
-endtime = 86400
+endtime = 10*86400
 
 # Official RCEMIP LES grid
 z = np.loadtxt('rcemip_les_grid.txt')
