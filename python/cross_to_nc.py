@@ -110,12 +110,12 @@ def convert_to_nc(variables):
                         try:
                             fin = mht.Read_binary(grid, f_in)
                         except Exception as ex:
-                            print (ex)
+                            #print (ex)
                             break
 
-                        print(
-                            "Processing %8s, time=%7i, index=%4i" %
-                            (variable, otime, index))
+                        #print(
+                        #    "Processing %8s, time=%7i, index=%4i" %
+                        #    (variable, otime, index))
 
                         ncfile.dimvar['time'][t] = time
 

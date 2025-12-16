@@ -37,8 +37,9 @@ beta=2.0
 [cross]
 swcross=True
 xy=0,31750
+xz=0
 sampletime=300
-crosslist=sw_flux_up,sw_flux_dn,lw_flux_up,lw_flux_dn,sw_flux_up_clear,sw_flux_dn_clear,lw_flux_up_clear,lw_flux_dn_clear,qt_fluxbot,thl_fluxbot,qt_path,ql_path,qi_path,qsat_path,u,v,thl,qt,w500hpa,rr_bot,rs_bot,rg_bot,z0h,z0m
+crosslist=sw_flux_up,sw_flux_dn,lw_flux_up,lw_flux_dn,sw_flux_up_clear,sw_flux_dn_clear,lw_flux_up_clear,lw_flux_dn_clear,qt_fluxbot,thl_fluxbot,qt_path,ql_path,qi_path,qlqi_path,qsat_path,u,v,w,thl,qt,ql,qr,qs,w500hpa,rr_bot,rs_bot,rg_bot,z0h,z0m
 
 [diff]
 swdiff=smag2
@@ -92,7 +93,7 @@ swclearskystats=True
 [stats]
 swstats=True
 swtendency=False
-sampletime=60
+sampletime=300
 
 [thermo]
 swthermo=moist
