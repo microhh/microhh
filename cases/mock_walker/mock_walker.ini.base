@@ -4,7 +4,7 @@ cflmax=1.2
 
 [boundary]
 swboundary=surface
-sbot_2d_list=thl,qt
+#sbot_2d_list=thl,qt
 
 mbcbot=noslip
 mbctop=freeslip
