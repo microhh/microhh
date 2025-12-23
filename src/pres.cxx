@@ -38,8 +38,8 @@
 #include "pres_4.h"
 
 template<typename TF>
-Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin), fft(fftin),
+Pres<TF>::Pres(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    master(masterin), grid(gridin), fields(fieldsin), fft(master, grid),
     field3d_operators(master, grid, fields)
 {
     #ifdef USECUDA
@@ -65,17 +65,17 @@ Pres<TF>::~Pres()
 
 template<typename TF>
 std::shared_ptr<Pres<TF>> Pres<TF>::factory(
-        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin)
+        Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin)
 {
     std::string swspatialorder = (gridin.get_spatial_order() == Grid_order::Second) ? "2" : "4";
     std::string swpres = inputin.get_item<std::string>("pres", "swpres", "", swspatialorder);
 
     if (swpres == "0")
-        return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, fftin, inputin);
+        return std::make_shared<Pres_disabled<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swpres == "2")
-        return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, fftin, inputin);
+        return std::make_shared<Pres_2<TF>>(masterin, gridin, fieldsin, inputin);
     else if (swpres == "4")
-        return std::make_shared<Pres_4<TF>>(masterin, gridin, fieldsin, fftin, inputin);
+        return std::make_shared<Pres_4<TF>>(masterin, gridin, fieldsin, inputin);
     else
     {
         std::string msg = swpres + " is an illegal value for swpres";

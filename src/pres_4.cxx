@@ -39,8 +39,8 @@
 using namespace Finite_difference::O4;
 
 template<typename TF>
-Pres_4<TF>::Pres_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
+Pres_4<TF>::Pres_4(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(master, grid)
 {
     #ifdef USECUDA
@@ -173,6 +173,18 @@ void Pres_4<TF>::init()
 
     boundary_cyclic.init();
     fft.init();
+}
+
+template<typename TF>
+void Pres_4<TF>::load()
+{
+    fft.load();
+}
+
+template<typename TF>
+void Pres_4<TF>::save()
+{
+    fft.save();
 }
 
 template<typename TF>

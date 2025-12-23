@@ -125,13 +125,12 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         soil_grid = std::make_shared<Soil_grid<TF>>(master, *grid, *input);
         fields    = std::make_shared<Fields<TF>>   (master, *grid, *soil_grid, *input);
         timeloop  = std::make_shared<Timeloop<TF>> (master, *grid, *soil_grid, *fields, *input, sim_mode);
-        fft       = std::make_shared<FFT<TF>>      (master, *grid);
 
         boundary  = Boundary<TF> ::factory(master, *grid, *soil_grid, *fields, *input);
 
         advec     = Advec<TF>    ::factory(master, *grid, *fields, *input);
         diff      = Diff<TF>     ::factory(master, *grid, *fields, *boundary, *input);
-        pres      = Pres<TF>     ::factory(master, *grid, *fields, *fft, *input);
+        pres      = Pres<TF>     ::factory(master, *grid, *fields, *input);
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
@@ -190,8 +189,6 @@ void Model<TF>::init()
     soil_grid->init();
     fields->init(*input, *dump, *cross, sim_mode);
 
-    fft->init();
-
     boundary->init(*input, *thermo, sim_mode);
     ib->init(*input, *cross);
     buffer->init();
@@ -241,7 +238,7 @@ void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load(*input, *input_nc);
-    fft->load();
+    pres->load();
     timeloop->load(timeloop->get_iotime());
 
     soil_grid->create(*input_nc);
@@ -307,7 +304,7 @@ void Model<TF>::save()
 
     // Save the initialized data to disk for the run mode.
     grid->save();
-    fft->save();
+    pres->save();
     fields->save(timeloop->get_iotime());
     timeloop->save(
             timeloop->get_iotime(),

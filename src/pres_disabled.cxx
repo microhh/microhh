@@ -27,8 +27,8 @@
 #include "pres_disabled.h"
 
 template<typename TF>
-Pres_disabled<TF>::Pres_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin) {}
+Pres_disabled<TF>::Pres_disabled(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, inputin) {}
 
 template<typename TF>
 Pres_disabled<TF>::~Pres_disabled() {}
@@ -48,6 +48,12 @@ void Pres_disabled<TF>::create(Stats<TF>& stats) {}
 
 template<typename TF>
 void Pres_disabled<TF>::set_values() {}
+
+template<typename TF>
+void Pres_disabled<TF>::load() {}
+
+template<typename TF>
+void Pres_disabled<TF>::save() {}
 
 template<typename TF>
 void Pres_disabled<TF>::exec(const double dt, Stats<TF>& stats) {}

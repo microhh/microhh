@@ -36,12 +36,14 @@ template<typename TF>
 class Pres_disabled : public Pres<TF>
 {
     public:
-        Pres_disabled(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
+        Pres_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Pres_disabled();
 
         void init();
         void set_values();
         void create(Stats<TF>&);
+        void load();
+        void save();
 
         void exec(double, Stats<TF>&);
         TF check_divergence();

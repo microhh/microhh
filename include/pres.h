@@ -40,14 +40,16 @@ template<typename TF>
 class Pres
 {
     public:
-        Pres(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
+        Pres(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Pres();
 
-        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
+        static std::shared_ptr<Pres> factory(Master&, Grid<TF>&, Fields<TF>&, Input&);
 
         virtual void init() = 0;
         virtual void set_values() = 0;
         virtual void create(Stats<TF>&) = 0;
+        virtual void load() = 0;
+        virtual void save() = 0;
 
         virtual void exec(double, Stats<TF>&) = 0;
         virtual TF check_divergence() = 0;
@@ -61,7 +63,7 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        FFT<TF>& fft;
+        FFT<TF> fft;
 
         Field3d_operators<TF> field3d_operators;
 

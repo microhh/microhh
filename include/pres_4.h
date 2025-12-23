@@ -35,12 +35,14 @@ template<typename TF>
 class Pres_4 : public Pres<TF>
 {
     public:
-        Pres_4(Master&, Grid<TF>&, Fields<TF>&, FFT<TF>&, Input&);
+        Pres_4(Master&, Grid<TF>&, Fields<TF>&, Input&);
         ~Pres_4();
 
         void init();
         void set_values();
         void create(Stats<TF>&);
+        void load();
+        void save();
 
         void exec(const double, Stats<TF>&);
         TF check_divergence();

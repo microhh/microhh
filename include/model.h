@@ -88,8 +88,6 @@ class Model
 
         std::shared_ptr<Timeloop<TF>> timeloop;
 
-        std::shared_ptr<FFT<TF>> fft;
-
         std::shared_ptr<Boundary<TF>> boundary;
         std::shared_ptr<Immersed_boundary<TF>> ib;
         std::shared_ptr<Buffer<TF>> buffer;

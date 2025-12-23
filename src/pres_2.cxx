@@ -32,8 +32,8 @@
 #include "stats.h"
 
 template<typename TF>
-Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT<TF>& fftin, Input& inputin) :
-    Pres<TF>(masterin, gridin, fieldsin, fftin, inputin),
+Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
+    Pres<TF>(masterin, gridin, fieldsin, inputin),
     boundary_cyclic(master, grid)
 {
     #ifdef USECUDA
@@ -119,6 +119,18 @@ void Pres_2<TF>::init()
 
     boundary_cyclic.init();
     fft.init();
+}
+
+template<typename TF>
+void Pres_2<TF>::load()
+{
+    fft.load();
+}
+
+template<typename TF>
+void Pres_2<TF>::save()
+{
+    fft.save();
 }
 
 template<typename TF>
