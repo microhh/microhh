@@ -22,6 +22,8 @@
 
 import numpy as np
 
+import ls2d
+
 from mock_walker import mock_walker_input
 
 
@@ -30,11 +32,13 @@ Case settings.
 """
 float_type = np.float32
 
+"""
 # Eddy
 gpt_path = '/home/bart/meteo/models/coefficients_veerman/' 
 microhh_path = '/home/bart/meteo/models/microhh/'
 microhh_bin = '/home/bart/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = 'test'
+"""
 
 """
 # Snellius
@@ -44,22 +48,37 @@ microhh_bin = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch-shared/bstratum/mock_walker_test'
 """
 
-sw_cos_sst = True
+# ECMWF HPC
+gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
+microhh_path = '/home/nkbs/meteo/models/microhh'
+microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
+work_dir = '/scratch/nkbs/mock_walker_spinup_test_400m'
+
+sw_cos_sst = False
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
 
-xsize = 128000
-ysize = 32000
+"""
+xsize = 1024*200
+ysize = 1024*200
 
-itot = 256
-jtot = 64
+itot = 1024
+jtot = 1024
+"""
 
-npx = 4
-npy = 2
+xsize = 512*400
+ysize = 512*400
 
-endtime = 24*3600
+itot = 512
+jtot = 512
 
+npx = 8
+npy = 16
+
+endtime = 4*24*3600
+
+"""
 # Official RCEMIP LES grid
 z = np.loadtxt('rcemip_les_grid.txt')
 z = z[:-2]   # From 146 to 144 levels for domain decomposition.
@@ -68,6 +87,11 @@ zsize = 32250
 zh = 0.5*(z[:-1] + z[1:])
 zh = np.append(0., zh)
 zh = np.append(zh, zsize)
+"""
+
+z = np.array([0, 2_000, 20_000, 100_000])
+f = np.array([1.05, 1.012, 1.04])
+grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
 
 # G-point sets from Veerman (2024).
 # For now the cheapest for testing. TBD with Martin/Menno.
@@ -76,7 +100,7 @@ coef_lw = 'rrtmgp-gas-lw-g056-cf2.nc'
 
 name = 'mock_walker'
 create_slurm_script = True
-wc_time = '04:00:00'
+wc_time = '24:00:00'
 
 mock_walker_input(
         name,
@@ -86,8 +110,8 @@ mock_walker_input(
         jtot,
         npx,
         npy,
-        z,
-        zh,
+        grid.z,
+        grid.zh,
         endtime,
         sw_cos_sst,
         mean_sst,

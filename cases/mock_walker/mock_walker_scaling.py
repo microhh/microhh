@@ -37,17 +37,28 @@ Case settings.
 """
 float_type = np.float32
 
+"""
+# Eddy
 gpt_path = '/home/bart/meteo/models/coefficients_veerman/' 
 microhh_path = '/home/bart/meteo/models/microhh/'
 microhh_bin = '/home/bart/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = 'test'
+"""
 
 """
+# Snellius
 gpt_path = '/gpfs/work3/0/lesmodels/team_bart/coefficients_veerman'
 microhh_path = '/home/bstratum/meteo/models/microhh'
-microhh_path = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
+microhh_bin = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch-shared/bstratum/mock_walker_test'
 """
+
+# ECMWF HPC
+gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
+microhh_path = '/home/nkbs/meteo/models/microhh'
+microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
+work_dir = '/scratch/nkbs/mock_walker_scaling_v1/'
+
 
 z = np.array([0, 2_000, 20_000, 100_000])
 f = np.array([1.05, 1.012, 1.04])
@@ -58,7 +69,7 @@ mean_sst = 300
 d_sst = 2.5
 ps = 101480
 
-endtime = 600
+endtime = 1800
 
 itot_base = 1920
 npx_base = 8
@@ -94,8 +105,8 @@ for name, jtot_node, configs in configurations:
         ysize = jtot * dxy
 
         ny = name.split('x')[-1]
-        name = f'{ny}x{nn_x}x{nn_y}'
-        case_path = f'{work_dir}/{name}'
+        case_name = f'{ny}x{nn_x}x{nn_y}'
+        case_path = f'{work_dir}/{case_name}'
 
         if not os.path.exists(case_path):
             os.makedirs(case_path)

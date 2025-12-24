@@ -1,6 +1,7 @@
 [advec]
 swadvec=2i5
 cflmax=1.2
+fluxlimit_list=qt,qr,qs,qg
 
 [boundary]
 swboundary=surface
@@ -107,7 +108,7 @@ endtime=None
 dt=6.0
 dtmax=60.0
 savetime=21600
-outputiter=10
+outputiter=1
 adaptivestep=True
 rkorder=4
 iotimeprec=1
