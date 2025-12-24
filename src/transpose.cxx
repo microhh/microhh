@@ -285,6 +285,9 @@ void Transpose<TF, TF_data>::exit_mpi()
 
 #ifdef FLOAT_SINGLE
 template class Transpose<float, float>;
+#ifdef FFT_DOUBLE
+template class Transpose<float, double>;
+#endif
 #else
 template class Transpose<double, double>;
 #endif

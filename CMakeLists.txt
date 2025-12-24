@@ -38,6 +38,19 @@ else()
   message(STATUS "Precision: Double (64-bits floats)")
 endif()
 
+# Set double precision FFTs + TDMA in pressure solver.
+if(NOT USEDPFFT)
+  set(USEDPFFT FALSE)
+endif()
+
+if(USEDPFFT)
+  if(NOT USESP)
+    message(FATAL_ERROR "Double precision uses double precision FFTs by default")
+  endif()
+  add_compile_definitions(FFT_DOUBLE)
+  message(STATUS "FFT+TDMA precision: Double (64-bits floats)")
+endif()
+
 # Check whether USEMPI and USECUDA are set, if not, set to FALSE.
 if(NOT USEMPI)
   set(USEMPI FALSE)
