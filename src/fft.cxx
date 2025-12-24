@@ -341,7 +341,7 @@ namespace
                      TF* const restrict fftinj, TF* const restrict fftoutj,
                      fftw_plan& iplanf, fftwf_plan& iplanff,
                      fftw_plan& jplanf, fftwf_plan& jplanff,
-                     const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                     const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
     {
         int kk = gd.itot*gd.jmax;
 
@@ -399,7 +399,7 @@ namespace
                       TF* const restrict fftinj, TF* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                      const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
     {
         int kk = gd.iblock*gd.jtot;
 
@@ -458,7 +458,7 @@ namespace
                      TF* const restrict fftinj, TF* const restrict fftoutj,
                      fftw_plan& iplanf, fftwf_plan& iplanff,
                      fftw_plan& jplanf, fftwf_plan& jplanff,
-                     const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                     const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
     {
         // Transpose the pressure field.
         transpose.exec_zx(tmp1, data);
@@ -525,7 +525,7 @@ namespace
                       TF* const restrict fftinj, TF* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF>& transpose)
+                      const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
     {
         // Transpose back to y.
         transpose.exec_zy(tmp1, data);

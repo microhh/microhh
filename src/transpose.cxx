@@ -24,22 +24,22 @@
 #include "grid.h"
 #include "transpose.h"
 
-template<typename TF>
-Transpose<TF>::Transpose(Master& masterin, Grid<TF>& gridin) :
+template<typename TF, typename TF_data>
+Transpose<TF, TF_data>::Transpose(Master& masterin, Grid<TF>& gridin) :
     master(masterin),
     grid(gridin),
     mpi_types_allocated(false)
 {
 }
 
-template<typename TF>
-Transpose<TF>::~Transpose()
+template<typename TF, typename TF_data>
+Transpose<TF, TF_data>::~Transpose()
 {
     exit_mpi();
 }
 
-template<typename TF>
-void Transpose<TF>::init()
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::init()
 {
     init_mpi();
 }
@@ -52,8 +52,8 @@ namespace
     template<> MPI_Datatype mpi_fp_type<float>() { return MPI_FLOAT; }
 }
 
-template<typename TF>
-void Transpose<TF>::init_mpi()
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::init_mpi()
 {
     auto& gd = grid.get_grid_data();
 
@@ -61,47 +61,47 @@ void Transpose<TF>::init_mpi()
 
     // transposez
     datacount = gd.imax*gd.jmax*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez);
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF_data>(), &transposez);
     MPI_Type_commit(&transposez);
 
     // transposez iblock/jblock/kblock
     datacount = gd.iblock*gd.jblock*gd.kblock;
-    MPI_Type_contiguous(datacount, mpi_fp_type<TF>(), &transposez2);
+    MPI_Type_contiguous(datacount, mpi_fp_type<TF_data>(), &transposez2);
     MPI_Type_commit(&transposez2);
 
     // transposex imax
     datacount  = gd.jmax*gd.kblock;
     datablock  = gd.imax;
     datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF_data>(), &transposex);
     MPI_Type_commit(&transposex);
 
     // transposex iblock
     datacount  = gd.jmax*gd.kblock;
     datablock  = gd.iblock;
     datastride = gd.itot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposex2);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF_data>(), &transposex2);
     MPI_Type_commit(&transposex2);
 
     // transposey
     datacount  = gd.kblock;
     datablock  = gd.iblock*gd.jmax;
     datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF_data>(), &transposey);
     MPI_Type_commit(&transposey);
 
     // transposey2
     datacount  = gd.kblock;
     datablock  = gd.iblock*gd.jblock;
     datastride = gd.iblock*gd.jtot;
-    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF>(), &transposey2);
+    MPI_Type_vector(datacount, datablock, datastride, mpi_fp_type<TF_data>(), &transposey2);
     MPI_Type_commit(&transposey2);
 
     mpi_types_allocated = true;
 }
 
-template<typename TF>
-void Transpose<TF>::exit_mpi()
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exit_mpi()
 {
     if (mpi_types_allocated)
     {
@@ -114,8 +114,8 @@ void Transpose<TF>::exit_mpi()
     }
 }
 
-template<typename TF>
-void Transpose<TF>::exec_zx(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_zx(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -140,8 +140,8 @@ void Transpose<TF>::exec_zx(TF* const restrict ar, TF* const restrict as)
     master.wait_all();
 }
 
-template<typename TF>
-void Transpose<TF>::exec_xz(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_xz(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -166,8 +166,8 @@ void Transpose<TF>::exec_xz(TF* const restrict ar, TF* const restrict as)
     master.wait_all();
 }
 
-template<typename TF>
-void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_xy(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -192,8 +192,8 @@ void Transpose<TF>::exec_xy(TF* const restrict ar, TF* const restrict as)
     master.wait_all();
 }
 
-template<typename TF>
-void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_yx(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -218,8 +218,8 @@ void Transpose<TF>::exec_yx(TF* const restrict ar, TF* const restrict as)
     master.wait_all();
 }
 
-template<typename TF>
-void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_yz(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -244,8 +244,8 @@ void Transpose<TF>::exec_yz(TF* const restrict ar, TF* const restrict as)
     master.wait_all();
 }
 
-template<typename TF>
-void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exec_zy(TF_data* const restrict ar, TF_data* const restrict as)
 {
     auto& gd = grid.get_grid_data();
     auto& md = master.get_MPI_data();
@@ -271,20 +271,20 @@ void Transpose<TF>::exec_zy(TF* const restrict ar, TF* const restrict as)
 }
 #else
 
-template<typename TF>
-void Transpose<TF>::init_mpi()
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::init_mpi()
 {
 }
 
-template<typename TF>
-void Transpose<TF>::exit_mpi()
+template<typename TF, typename TF_data>
+void Transpose<TF, TF_data>::exit_mpi()
 {
 }
 #endif
 
 
 #ifdef FLOAT_SINGLE
-template class Transpose<float>;
+template class Transpose<float, float>;
 #else
-template class Transpose<double>;
+template class Transpose<double, double>;
 #endif

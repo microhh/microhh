@@ -46,7 +46,7 @@ class FFT
     private:
         Master& master; // Reference to master class.
         Grid<TF>& grid; // Reference to grid class.
-        Transpose<TF> transpose; // Reference to grid class.
+        Transpose<TF, TF> transpose; // Transpose class.
 
         TF *fftini, *fftouti; // Help arrays for fast-fourier transforms in x-direction.
         TF *fftinj, *fftoutj; // Help arrays for fast-fourier transforms in y-direction.

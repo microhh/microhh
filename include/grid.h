@@ -180,7 +180,7 @@ class Grid
 
     private:
         Master& master; // Reference to master class.
-        Transpose<TF> transpose;
+        Transpose<TF, TF> transpose;
 
         Grid_order spatial_order; // Default spatial order of the operators to be used on this grid.
 
