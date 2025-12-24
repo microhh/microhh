@@ -265,8 +265,8 @@ def mock_walker_input(
 
             f.write(f'#!/bin/bash\n')
             f.write(f'#SBATCH --job-name={name}\n')
-            f.write(f'#SBATCH --output=mhh-%j.out\n')
-            f.write(f'#SBATCH --error=mhh-%j.err\n')
+            f.write(f'#SBATCH --output={work_dir}/mhh-%j.out\n')
+            f.write(f'#SBATCH --error={work_dir}/mhh-%j.err\n')
             f.write(f'#SBATCH --partition=par\n')
             f.write(f'#SBATCH -n {npx*npy} \n')
             f.write(f'#SBATCH --cpus-per-task=1\n')
