@@ -27,8 +27,8 @@
 #include "fft.h"
 
 
-template<typename TF>
-FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
+template<typename TF, typename TF_data>
+FFT<TF, TF_data>::FFT(Master& masterin, Grid<TF>& gridin) :
     master(masterin), grid(gridin),
     transpose(master, grid)
 {
@@ -44,7 +44,7 @@ FFT<TF>::FFT(Master& masterin, Grid<TF>& gridin) :
 
 #ifdef FLOAT_SINGLE
 template<>
-void FFT<float>::init()
+void FFT<float, float>::init()
 {
     auto& gd = grid.get_grid_data();
 
@@ -57,7 +57,7 @@ void FFT<float>::init()
 }
 #else
 template<>
-void FFT<double>::init()
+void FFT<double, double>::init()
 {
     auto& gd = grid.get_grid_data();
 
@@ -73,7 +73,7 @@ void FFT<double>::init()
 
 #ifdef FLOAT_SINGLE
 template<>
-FFT<float>::~FFT()
+FFT<float, float>::~FFT()
 {
     if (has_fftw_plan)
     {
@@ -92,7 +92,7 @@ FFT<float>::~FFT()
 }
 #else
 template<>
-FFT<double>::~FFT()
+FFT<double, double>::~FFT()
 {
     if (has_fftw_plan)
     {
@@ -114,7 +114,7 @@ FFT<double>::~FFT()
 
 #ifdef FLOAT_SINGLE
 template<>
-void FFT<float>::load()
+void FFT<float, float>::load()
 {
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
@@ -160,7 +160,7 @@ void FFT<float>::load()
 }
 #else
 template<>
-void FFT<double>::load()
+void FFT<double, double>::load()
 {
     // LOAD THE FFTW PLAN
     auto& gd = grid.get_grid_data();
@@ -209,7 +209,7 @@ void FFT<double>::load()
 
 #ifdef FLOAT_SINGLE
 template<>
-void FFT<float>::save()
+void FFT<float, float>::save()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
@@ -262,7 +262,7 @@ void FFT<float>::save()
 }
 #else
 template<>
-void FFT<double>::save()
+void FFT<double, double>::save()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
     // Use the FFTW3 many interface in order to reduce function call overhead.
@@ -335,13 +335,13 @@ namespace
     #endif
 
     #ifndef USEMPI
-    template<typename TF>
+    template<typename TF, typename TF_data>
     void fft_forward(TF* const restrict data,   TF* const restrict tmp1,
-                     TF* const restrict fftini, TF* const restrict fftouti,
-                     TF* const restrict fftinj, TF* const restrict fftoutj,
+                     TF_data* const restrict fftini, TF_data* const restrict fftouti,
+                     TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                      fftw_plan& iplanf, fftwf_plan& iplanff,
                      fftw_plan& jplanf, fftwf_plan& jplanff,
-                     const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
+                     const Grid_data<TF>& gd, Transpose<TF, TF_data>& transpose)
     {
         int kk = gd.itot*gd.jmax;
 
@@ -393,13 +393,13 @@ namespace
         }
     }
 
-    template<typename TF>
+    template<typename TF, typename TF_data>
     void fft_backward(TF* const restrict data,   TF* const restrict tmp1,
-                      TF* const restrict fftini, TF* const restrict fftouti,
-                      TF* const restrict fftinj, TF* const restrict fftoutj,
+                      TF_data* const restrict fftini, TF_data* const restrict fftouti,
+                      TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
+                      const Grid_data<TF>& gd, Transpose<TF, TF_data>& transpose)
     {
         int kk = gd.iblock*gd.jtot;
 
@@ -452,13 +452,13 @@ namespace
     }
 
     #else
-    template<typename TF>
+    template<typename TF, typename TF_data>
     void fft_forward(TF* const restrict data,   TF* const restrict tmp1,
-                     TF* const restrict fftini, TF* const restrict fftouti,
-                     TF* const restrict fftinj, TF* const restrict fftoutj,
+                     TF_data* const restrict fftini, TF_data* const restrict fftouti,
+                     TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                      fftw_plan& iplanf, fftwf_plan& iplanff,
                      fftw_plan& jplanf, fftwf_plan& jplanff,
-                     const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
+                     const Grid_data<TF>& gd, Transpose<TF, TF_data>& transpose)
     {
         // Transpose the pressure field.
         transpose.exec_zx(tmp1, data);
@@ -519,13 +519,13 @@ namespace
         transpose.exec_yz(data, tmp1);
     }
 
-    template<typename TF>
+    template<typename TF, typename TF_data>
     void fft_backward(TF* const restrict data,   TF* const restrict tmp1,
-                      TF* const restrict fftini, TF* const restrict fftouti,
-                      TF* const restrict fftinj, TF* const restrict fftoutj,
+                      TF_data* const restrict fftini, TF_data* const restrict fftouti,
+                      TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
                       fftw_plan& jplanb, fftwf_plan& jplanbf,
-                      const Grid_data<TF>& gd, Transpose<TF, TF>& transpose)
+                      const Grid_data<TF>& gd, Transpose<TF, TF_data>& transpose)
     {
         // Transpose back to y.
         transpose.exec_zy(tmp1, data);
@@ -588,15 +588,15 @@ namespace
     #endif
 }
 
-template<typename TF>
-void FFT<TF>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
+template<typename TF, typename TF_data>
+void FFT<TF, TF_data>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
 {
     fft_forward(data, tmp1, fftini, fftouti, fftinj, fftoutj,
             iplanf, iplanff, jplanf, jplanff, grid.get_grid_data(), transpose);
 }
 
-template<typename TF>
-void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
+template<typename TF, typename TF_data>
+void FFT<TF, TF_data>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
 {
     fft_backward(data, tmp1, fftini, fftouti, fftinj, fftoutj,
             iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(), transpose);
@@ -604,7 +604,7 @@ void FFT<TF>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
 
 
 #ifdef FLOAT_SINGLE
-template class FFT<float>;
+template class FFT<float, float>;
 #else
-template class FFT<double>;
+template class FFT<double, double>;
 #endif

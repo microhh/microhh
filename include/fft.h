@@ -29,7 +29,7 @@
 class Master;
 template<typename> class Grid;
 
-template<typename TF>
+template<typename TF, typename TF_data>
 class FFT
 {
     public:
@@ -46,10 +46,10 @@ class FFT
     private:
         Master& master; // Reference to master class.
         Grid<TF>& grid; // Reference to grid class.
-        Transpose<TF, TF> transpose; // Transpose class.
+        Transpose<TF, TF_data> transpose; // Transpose class.
 
-        TF *fftini, *fftouti; // Help arrays for fast-fourier transforms in x-direction.
-        TF *fftinj, *fftoutj; // Help arrays for fast-fourier transforms in y-direction.
+        TF_data *fftini, *fftouti; // Help arrays for fast-fourier transforms in x-direction.
+        TF_data *fftinj, *fftoutj; // Help arrays for fast-fourier transforms in y-direction.
         fftw_plan iplanf, iplanb; // FFTW3 plans for forward and backward transforms in x-direction.
         fftw_plan jplanf, jplanb; // FFTW3 plans for forward and backward transforms in y-direction.
         fftwf_plan iplanff, iplanbf; // FFTW3 plans for forward and backward transforms in x-direction.

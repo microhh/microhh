@@ -33,7 +33,7 @@
 class Master;
 template<typename> class Grid;
 template<typename> class Fields;
-template<typename> class FFT;
+template<typename, typename> class FFT;
 template<typename> class Stats;
 
 template<typename TF>
@@ -63,7 +63,7 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
-        FFT<TF> fft;
+        FFT<TF, TF> fft;
 
         Field3d_operators<TF> field3d_operators;
 

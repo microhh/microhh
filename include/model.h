@@ -36,7 +36,7 @@ template<typename> class Soil_grid;
 template<typename> class Fields;
 
 template<typename> class Timeloop;
-template<typename> class FFT;
+template<typename, typename> class FFT;
 template<typename> class Boundary;
 template<typename> class Immersed_boundary;
 template<typename> class Buffer;
