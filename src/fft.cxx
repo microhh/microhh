@@ -465,6 +465,13 @@ namespace
     {
         fftwf_execute(pf);
     }
+    #ifdef FFT_DOUBLE
+    template<>
+    void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
+    {
+        fftw_execute(p);
+    }
+    #endif
     #else
     template<>
     void fftw_execute_wrapper<double>(const fftw_plan& p, const fftwf_plan& pf)
@@ -495,7 +502,7 @@ namespace
                 fftini[ij] = data[ijk];
             }
 
-            fftw_execute_wrapper<TF>(iplanf, iplanff);
+            fftw_execute_wrapper<TF_data>(iplanf, iplanff);
 
             #pragma ivdep
             for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -519,7 +526,7 @@ namespace
                 fftinj[ij] = data[ijk];
             }
 
-            fftw_execute_wrapper<TF>(jplanf, jplanff);
+            fftw_execute_wrapper<TF_data>(jplanf, jplanff);
 
             #pragma ivdep
             for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -553,7 +560,7 @@ namespace
                 fftinj[ij] = data[ijk];
             }
 
-            fftw_execute_wrapper<TF>(jplanb, jplanbf);
+            fftw_execute_wrapper<TF_data>(jplanb, jplanbf);
 
             #pragma ivdep
             for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -577,7 +584,7 @@ namespace
                 fftini[ij] = data[ijk];
             }
 
-            fftw_execute_wrapper<TF>(iplanb, iplanbf);
+            fftw_execute_wrapper<TF_data>(iplanb, iplanbf);
 
             #pragma ivdep
             for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -592,7 +599,7 @@ namespace
 
     #else
     template<typename TF, typename TF_data>
-    void fft_forward(TF* const restrict data,   TF* const restrict tmp1,
+    void fft_forward(TF_data* const restrict data,   TF_data* const restrict tmp1,
                      TF_data* const restrict fftini, TF_data* const restrict fftouti,
                      TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                      fftw_plan& iplanf, fftwf_plan& iplanff,
@@ -615,7 +622,7 @@ namespace
                 fftini[ij] = tmp1[ijk];
             }
 
-            fftw_execute_wrapper<TF>(iplanf, iplanff);
+            fftw_execute_wrapper<TF_data>(iplanf, iplanff);
 
             #pragma ivdep
             for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -642,7 +649,7 @@ namespace
                 fftinj[ij] = data[ijk];
             }
 
-            fftw_execute_wrapper<TF>(jplanf, jplanff);
+            fftw_execute_wrapper<TF_data>(jplanf, jplanff);
 
             #pragma ivdep
             for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -659,7 +666,7 @@ namespace
     }
 
     template<typename TF, typename TF_data>
-    void fft_backward(TF* const restrict data,   TF* const restrict tmp1,
+    void fft_backward(TF_data* const restrict data,   TF_data* const restrict tmp1,
                       TF_data* const restrict fftini, TF_data* const restrict fftouti,
                       TF_data* const restrict fftinj, TF_data* const restrict fftoutj,
                       fftw_plan& iplanb, fftwf_plan& iplanbf,
@@ -682,7 +689,7 @@ namespace
                 fftinj[ij] = tmp1[ijk];
             }
 
-            fftw_execute_wrapper<TF>(jplanb, jplanbf);
+            fftw_execute_wrapper<TF_data>(jplanb, jplanbf);
 
             #pragma ivdep
             for (int n=0; n<gd.iblock*gd.jtot; ++n)
@@ -709,7 +716,7 @@ namespace
                 fftini[ij] = tmp1[ijk];
             }
 
-            fftw_execute_wrapper<TF>(iplanb, iplanbf);
+            fftw_execute_wrapper<TF_data>(iplanb, iplanbf);
 
             #pragma ivdep
             for (int n=0; n<gd.itot*gd.jmax; ++n)
@@ -728,14 +735,14 @@ namespace
 }
 
 template<typename TF, typename TF_data>
-void FFT<TF, TF_data>::exec_forward(TF* const restrict data, TF* const restrict tmp1)
+void FFT<TF, TF_data>::exec_forward(TF_data* const restrict data, TF_data* const restrict tmp1)
 {
     fft_forward(data, tmp1, fftini, fftouti, fftinj, fftoutj,
             iplanf, iplanff, jplanf, jplanff, grid.get_grid_data(), transpose);
 }
 
 template<typename TF, typename TF_data>
-void FFT<TF, TF_data>::exec_backward(TF* const restrict data, TF* const restrict tmp1)
+void FFT<TF, TF_data>::exec_backward(TF_data* const restrict data, TF_data* const restrict tmp1)
 {
     fft_backward(data, tmp1, fftini, fftouti, fftinj, fftoutj,
             iplanb, iplanbf, jplanb, jplanbf, grid.get_grid_data(), transpose);

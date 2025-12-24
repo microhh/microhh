@@ -779,8 +779,8 @@ TF Pres_4<TF>::calc_divergence(
 }
 
 
-#ifdef FLOAT_SINGLE
-template class Pres_4<float>;
-#else
-template class Pres_4<double>;
-#endif
+// #ifdef FLOAT_SINGLE
+// template class Pres_4<float>;
+// #else
+// template class Pres_4<double>;
+// #endif

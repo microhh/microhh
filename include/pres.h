@@ -63,7 +63,11 @@ class Pres
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        #ifdef FFT_DOUBLE
+        FFT<TF, double> fft;
+        #else
         FFT<TF, TF> fft;
+        #endif
 
         Field3d_operators<TF> field3d_operators;
 

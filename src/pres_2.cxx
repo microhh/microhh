@@ -117,6 +117,12 @@ void Pres_2<TF>::init()
 
     work2d.resize(gd.imax*gd.jmax);
 
+    #ifdef FFT_DOUBLE
+    work3d.resize(gd.imax*gd.jmax*gd.kmax);
+    b.resize(gd.imax*gd.jmax*gd.kmax);
+    p.resize(gd.imax*gd.jmax*gd.kmax);
+    #endif
+
     boundary_cyclic.init();
     fft.init();
 }
@@ -138,29 +144,32 @@ void Pres_2<TF>::set_values()
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
 
-    // Compute the modified wave numbers of the 2nd order scheme.
-    const TF dxidxi = 1./(gd.dx*gd.dx);
-    const TF dyidyi = 1./(gd.dy*gd.dy);
+    #ifdef FFT_DOUBLE
+    using TF_data = double;
+    #else
+    using TF_data = TF;
+    #endif
 
-    const TF pi = std::acos(-1.);
+    const TF_data dxidxi = 1./(gd.dx*gd.dx);
+    const TF_data dyidyi = 1./(gd.dy*gd.dy);
+    const TF_data pi = std::acos(TF_data(-1.));
 
     for (int j=0; j<gd.jtot/2+1; ++j)
-        bmatj[j] = 2. * (std::cos(2.*pi*(TF)j/(TF)gd.jtot)-1.) * dyidyi;
+        bmatj[j] = TF_data(2.) * (std::cos(TF_data(2.)*pi*TF_data(j)/TF_data(gd.jtot))-TF_data(1.)) * dyidyi;
 
     for (int j=gd.jtot/2+1; j<gd.jtot; ++j)
         bmatj[j] = bmatj[gd.jtot-j];
 
     for (int i=0; i<gd.itot/2+1; ++i)
-        bmati[i] = 2. * (std::cos(2.*pi*(TF)i/(TF)gd.itot)-1.) * dxidxi;
+        bmati[i] = TF_data(2.) * (std::cos(TF_data(2.)*pi*TF_data(i)/TF_data(gd.itot))-TF_data(1.)) * dxidxi;
 
     for (int i=gd.itot/2+1; i<gd.itot; ++i)
         bmati[i] = bmati[gd.itot-i];
 
-    // create vectors that go into the tridiagonal matrix solver
     for (int k=0; k<gd.kmax; ++k)
     {
-        a[k] = gd.dz[k+gd.kgc] * fields.rhorefh[k+gd.kgc  ]*gd.dzhi[k+gd.kgc  ];
-        c[k] = gd.dz[k+gd.kgc] * fields.rhorefh[k+gd.kgc+1]*gd.dzhi[k+gd.kgc+1];
+        a[k] = TF_data(gd.dz[k+gd.kgc]) * TF_data(fields.rhorefh[k+gd.kgc  ]) * TF_data(gd.dzhi[k+gd.kgc  ]);
+        c[k] = TF_data(gd.dz[k+gd.kgc]) * TF_data(fields.rhorefh[k+gd.kgc+1]) * TF_data(gd.dzhi[k+gd.kgc+1]);
     }
 }
 
@@ -294,7 +303,15 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
     int i,j,k,jj,kk,ijk;
     int iindex,jindex;
 
+    #ifdef FFT_DOUBLE
+    const int ncells = imax*jmax*kmax;
+    for (int n=0; n<ncells; ++n)
+        this->p[n] = static_cast<double>(p[n]);
+
+    fft.exec_forward(this->p.data(), this->work3d.data());
+    #else
     fft.exec_forward(p, work3d);
+    #endif
 
     jj = iblock;
     kk = iblock*jblock;
@@ -311,8 +328,13 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
                 jindex = md.mpicoordx * jblock + j;
 
                 ijk  = i + j*jj + k*kk;
+                #ifdef FFT_DOUBLE
+                this->b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+                this->p[ijk] = dz[k+kgc]*dz[k+kgc] * this->p[ijk];
+                #else
                 b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
                 p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
+                #endif
             }
 
     for (j=0; j<jblock; j++)
@@ -324,22 +346,44 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
 
             // substitute BC's
             ijk = i + j*jj;
+            #ifdef FFT_DOUBLE
+            this->b[ijk] += a[0];
+            #else
             b[ijk] += a[0];
+            #endif
 
             // for wave number 0, which contains average, set pressure at top to zero
             ijk  = i + j*jj + (kmax-1)*kk;
             if (iindex == 0 && jindex == 0)
+            {
+                #ifdef FFT_DOUBLE
+                this->b[ijk] -= c[kmax-1];
+                #else
                 b[ijk] -= c[kmax-1];
+                #endif
+            }
             // set dp/dz at top to zero
             else
+            {
+                #ifdef FFT_DOUBLE
+                this->b[ijk] += c[kmax-1];
+                #else
                 b[ijk] += c[kmax-1];
+                #endif
+            }
         }
 
-    // call tdma solver
+    #ifdef FFT_DOUBLE
+    tdma(a.data(), this->b.data(), c.data(), this->p.data(), work2d.data(), this->work3d.data(),
+         gd.iblock, gd.jblock, gd.kmax);
+
+    fft.exec_backward(this->p.data(), this->work3d.data());
+    #else
     tdma(a.data(), b, c.data(), p, work2d.data(), work3d,
          gd.iblock, gd.jblock, gd.kmax);
 
     fft.exec_backward(p, work3d);
+    #endif
 
     jj = imax;
     kk = imax*jmax;
@@ -356,7 +400,11 @@ void Pres_2<TF>::solve(TF* const restrict p, TF* const restrict work3d, TF* cons
             {
                 ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
                 ijk  = i + j*jj + k*kk;
+                #ifdef FFT_DOUBLE
+                p[ijkp] = static_cast<TF>(this->work3d[ijk]);
+                #else
                 p[ijkp] = work3d[ijk];
+                #endif
             }
 
     // set the boundary conditions

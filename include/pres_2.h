@@ -60,11 +60,22 @@ class Pres_2 : public Pres<TF>
         using Pres<TF>::fft;
         Boundary_cyclic<TF> boundary_cyclic;
 
+        #ifdef FFT_DOUBLE
+        std::vector<double> bmati;
+        std::vector<double> bmatj;
+        std::vector<double> a;
+        std::vector<double> c;
+        std::vector<double> work2d;
+        std::vector<double> work3d;
+        std::vector<double> b;
+        std::vector<double> p;
+        #else
         std::vector<TF> bmati;
         std::vector<TF> bmatj;
         std::vector<TF> a;
         std::vector<TF> c;
         std::vector<TF> work2d;
+        #endif
 
         #ifdef USECUDA
         using Pres<TF>::make_cufft_plan;
