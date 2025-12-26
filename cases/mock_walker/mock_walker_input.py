@@ -20,6 +20,7 @@
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import numpy as np
 
 import ls2d
@@ -51,10 +52,11 @@ work_dir = '/scratch-shared/bstratum/mock_walker_test'
 # ECMWF HPC
 gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
 microhh_path = '/home/nkbs/meteo/models/microhh'
-microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
-work_dir = '/scratch/nkbs/mock_walker_spinup_test_400m'
+#microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
+microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_dpfft_cpumpi/microhh'
+work_dir = '/scratch/nkbs/mock_walker_xl_400m'
 
-sw_cos_sst = False
+sw_cos_sst = True
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
@@ -67,6 +69,7 @@ itot = 1024
 jtot = 1024
 """
 
+"""
 xsize = 512*400
 ysize = 512*400
 
@@ -75,8 +78,33 @@ jtot = 512
 
 npx = 8
 npy = 16
+"""
 
-endtime = 4*24*3600
+# Full domain, 400 m resolution.
+# 128 x 32 :  15360 x  1024 x 128 @ 128 x  32, #/core = 491520.0
+xsize = 15360*400
+ysize = 1024*400
+
+itot = 15360
+jtot = 1024
+
+npx = 128
+npy = 32
+
+"""
+# Full domain, 200 m resolution.
+# 128 x 32 :  30720 x  2048 x 128 @ 128 x  32, #/core = 1966080.0
+xsize = 30720*200
+ysize = 2048*200
+
+itot = 30720
+jtot = 2048
+
+npx = 128
+npy = 32
+"""
+
+endtime = 10*24*3600
 
 """
 # Official RCEMIP LES grid
@@ -101,6 +129,9 @@ coef_lw = 'rrtmgp-gas-lw-g056-cf2.nc'
 name = 'mock_walker'
 create_slurm_script = True
 wc_time = '24:00:00'
+
+if not os.path.exists(work_dir):
+    os.makedirs(work_dir)
 
 mock_walker_input(
         name,
