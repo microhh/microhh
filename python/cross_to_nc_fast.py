@@ -26,112 +26,112 @@ import argparse
 import collections
 import glob
 import numpy as np
-from multiprocessing import set_start_method
+from multiprocessing import Pool, set_start_method
 import platform
-from tqdm.contrib.concurrent import process_map
 
 if platform.system() == 'Darwin':
     set_start_method('fork')
 
-def convert_to_nc(task):
-    variable, mode = task
-    try:
-        iotime = int(round(starttime / 10**iotimeprec))
+def convert_to_nc(tasks):
 
-        # Check if variable is surface cross-section.
-        if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, iotime)):
-            if mode != 'xy':
-                return
-            at_surface = True
-        else:
-            at_surface = False
+    # Loop over the (variable, mode) combinations
+    for variable, mode in tasks:
+        try:
+            iotime = int(round(starttime / 10**iotimeprec))
 
-        # Get the half level (000=full, 100=u, 010=v, etc) index.
-        filename = "{0}.{1}.nc".format(variable, mode)
-        halflevel = '000'
-        if not at_surface:
-            if indexes is None:
-                indexes_local,halflevel = mht.get_cross_indices(variable, mode)
+            # Check if variable is surface cross-section.
+            if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, iotime)):
+                if mode != 'xy':
+                    continue
+                at_surface = True
             else:
-                indexes_local = indexes
+                at_surface = False
 
-                files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
-                        variable, mode, indexes_local[0], iotime))
-                if len(files) == 0:
-                    raise Exception('Cannot find any cross-section')
-                halflevel = files[0].split('.')[-3]
-
-        dim = collections.OrderedDict()
-        dim['time'] = []
-        dim['z'] = range(ktot)
-        dim['y'] = range(jtot)
-        dim['x'] = range(itot)
-
-        if at_surface:
-            dim.pop('z')
-            indexes_local = [-1]
-        elif mode == 'xy':
-            dim.update({'z': []})
-        elif mode == 'xz':
-            dim.update({'y': []})
-        elif mode == 'yz':
-            dim.update({'x': []})
-
-        if halflevel[0] == '1':
-            dim['xh'] = dim.pop('x')
-        if halflevel[1] == '1':
-            dim['yh'] = dim.pop('y')
-        if halflevel[2] == '1':
-            dim['zh'] = dim.pop('z')
-
-        ncfile = mht.Create_ncfile(
-            grid, filename, variable, dim, precision, compression)
-
-        for key, val in dim.items():
-            if key == 'time':
-                continue
-            elif val == []:
-                ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
-
-        time_array = np.arange(starttime, endtime + sampletime, sampletime)
-        for t, time in enumerate(time_array):
-            for k in range(len(indexes_local)):
-                index = indexes_local[k]
-                otime = int(
-                    round(
-                        (time) / 10**iotimeprec))
-                if at_surface:
-                    f_in = "{0}.{1}.{2}.{3:07d}".format(
-                        variable, mode, halflevel, otime)
+            # Get the half level (000=full, 100=u, 010=v, etc) index.
+            filename = "{0}.{1}.nc".format(variable, mode)
+            halflevel = '000'
+            if not at_surface:
+                if indexes is None:
+                    indexes_local,halflevel = mht.get_cross_indices(variable, mode)
                 else:
-                    f_in = "{0:}.{1}.{2}.{3:05d}.{4:07d}".format(
-                        variable, mode, halflevel, index, otime)
-                try:
-                    fin = np.fromfile(f_in, dtype)
-                except Exception as ex:
-                    #print (ex)
-                    break
+                    indexes_local = indexes
 
-                #print(
-                #    "Processing %8s, time=%7i, index=%4i" %
-                #    (variable, otime, index))
+                    files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
+                            variable, mode, indexes_local[0], iotime))
+                    if len(files) == 0:
+                        raise Exception('Cannot find any cross-section')
+                    halflevel = files[0].split('.')[-3]
 
-                ncfile.dimvar['time'][t] = time
+            dim = collections.OrderedDict()
+            dim['time'] = []
+            dim['z'] = range(ktot)
+            dim['y'] = range(jtot)
+            dim['x'] = range(itot)
 
-                if at_surface:
-                    ncfile.var[t, :, :] = fin
-                elif mode == 'xy':
-                    ncfile.var[t, k, :, :] = fin
-                elif mode == 'xz':
-                    ncfile.var[t, :, k, :] = fin
-                elif mode == 'yz':
-                    ncfile.var[t, :, :, k] = fin
+            if at_surface:
+                dim.pop('z')
+                indexes_local = [-1]
+            elif mode == 'xy':
+                dim.update({'z': []})
+            elif mode == 'xz':
+                dim.update({'y': []})
+            elif mode == 'yz':
+                dim.update({'x': []})
 
-        ncfile.close()
+            if halflevel[0] == '1':
+                dim['xh'] = dim.pop('x')
+            if halflevel[1] == '1':
+                dim['yh'] = dim.pop('y')
+            if halflevel[2] == '1':
+                dim['zh'] = dim.pop('z')
 
-    except Exception as ex:
-        print(ex)
-        print("Failed to create %s" % filename)
+            ncfile = mht.Create_ncfile(
+                grid, filename, variable, dim, precision, compression)
+
+            for key, val in dim.items():
+                if key == 'time':
+                    continue
+                elif val == []:
+                    ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
+
+            for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
+                for k in range(len(indexes_local)):
+                    index = indexes_local[k]
+                    otime = int(
+                        round(
+                            (time) / 10**iotimeprec))
+                    if at_surface:
+                        f_in = "{0}.{1}.{2}.{3:07d}".format(
+                            variable, mode, halflevel, otime)
+                    else:
+                        f_in = "{0:}.{1}.{2}.{3:05d}.{4:07d}".format(
+                            variable, mode, halflevel, index, otime)
+                    try:
+                        fin = np.fromfile(f_in, dtype)
+                    except Exception as ex:
+                        #print (ex)
+                        break
+
+                    #print(
+                    #    "Processing %8s, time=%7i, index=%4i" %
+                    #    (variable, otime, index))
+
+                    ncfile.dimvar['time'][t] = time
+
+                    if at_surface:
+                        ncfile.var[t, :, :] = fin
+                    elif mode == 'xy':
+                        ncfile.var[t, k, :, :] = fin
+                    elif mode == 'xz':
+                        ncfile.var[t, :, k, :] = fin
+                    elif mode == 'yz':
+                        ncfile.var[t, :, :, k] = fin
+
+            ncfile.close()
+
+        except Exception as ex:
+            print(ex)
+            print("Failed to create %s" % filename)
 
 
 """
@@ -241,5 +241,9 @@ dtype = np.dtype(grid.en + grid.prec)
 
 # Create all (variable, mode) combinations to parallelize over
 tasks = [(var, mode) for var in variables for mode in modes]
+chunks = [tasks[i::nprocs] for i in range(nprocs)]
 
-process_map(convert_to_nc, tasks, max_workers=nprocs, chunksize=1)
+pool = Pool(processes=nprocs)
+pool.imap_unordered(convert_to_nc, chunks)
+pool.close()
+pool.join()
