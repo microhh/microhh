@@ -2019,9 +2019,9 @@ void Thermo_moist<TF>::create_cross(Cross<TF>& cross)
 
         // Vectors with allowed cross variables for buoyancy and liquid water.
         const std::vector<std::string> allowed_crossvars_b = {"b", "b_bot", "b_fluxbot"};
-        const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top"};
-        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path"};
-        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top"};
+        const std::vector<std::string> allowed_crossvars_ql = {"ql", "ql_path", "ql_base", "ql_top", "ql_ymean"};
+        const std::vector<std::string> allowed_crossvars_qi = {"qi", "qi_path", "qi_ymean"};
+        const std::vector<std::string> allowed_crossvars_qlqi = {"qlqi", "qlqi_path", "qlqi_base", "qlqi_top", "qlqi_ymean"};
         const std::vector<std::string> allowed_crossvars_qsat = {"qsat_path"};
         const std::vector<std::string> allowed_crossvars_misc = {"w500hpa"};
         const std::vector<std::string> allowed_crossvars_qlqithv = {"qlqicore_max_thv_prime"};
@@ -2306,6 +2306,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "ql_base", iotime);
         if (it == "ql_top")
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "ql_top", iotime);
+        if (it == "ql_ymean")
+            cross.cross_ymean(output->fld.data(), "ql_ymean", iotime, gd.sloc);
     }
 
     if (swcross_qi)
@@ -2317,6 +2319,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_simple(output->fld.data(), no_offset, "qi", iotime, gd.sloc);
         if (it == "qi_path")
             cross.cross_path(output->fld.data(), "qi_path", iotime);
+        if (it == "qi_ymean")
+            cross.cross_ymean(output->fld.data(), "qi_ymean", iotime, gd.sloc);
     }
 
     if (swcross_qlqi)
@@ -2332,6 +2336,8 @@ void Thermo_moist<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Bottom_to_top, "qlqi_base", iotime);
         if (it == "qlqi_top")
             cross.cross_height_threshold(output->fld.data(), 0., Cross_direction::Top_to_bottom, "qlqi_top", iotime);
+        if (it == "qlqi_ymean")
+            cross.cross_ymean(output->fld.data(), "qlqi_ymean", iotime, gd.sloc);
     }
 
     if (swcross_qsat)

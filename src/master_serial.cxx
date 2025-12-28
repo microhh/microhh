@@ -98,6 +98,8 @@ void Master::broadcast(float* data, int datasize, int mpiid_to_send) {}
 void Master::sum(int* var, int datasize) {}
 void Master::sum(double* var, int datasize) {}
 void Master::sum(float* var, int datasize) {}
+void Master::sum_y(double* var, int datasize) {}
+void Master::sum_y(float* var, int datasize) {}
 void Master::max(double* var, int datasize) {}
 void Master::max(float* var, int datasize) {}
 void Master::min(double* var, int datasize) {}

@@ -175,25 +175,25 @@ namespace
             int jstart, int jend,
             int kstart, int kend)
     {
-    // Path is integrated in first full level, set to zero first
-    for (int j=jstart; j<jend; j++)
-        #pragma ivdep
-        for (int i=istart; i<iend; i++)
-        {
-            const int ijk = i + j*jj + kstart*kk;
-            tmp[ijk] = 0.;
-        }
-
-    // Integrate with height
-    for (int k=kstart; k<kend; k++)
+        // Path is integrated in first full level, set to zero first
         for (int j=jstart; j<jend; j++)
-        #pragma ivdep
+            #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ijk1 = i + j*jj + kstart*kk;
-                const int ijk  = i + j*jj + k*kk;
-                tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                const int ijk = i + j*jj + kstart*kk;
+                tmp[ijk] = 0.;
             }
+
+        // Integrate with height
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk1 = i + j*jj + kstart*kk;
+                    const int ijk  = i + j*jj + k*kk;
+                    tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                }
     }
 
     template<typename TF>
@@ -247,6 +247,75 @@ namespace
                         }
                     }
         }
+    }
+
+    template<typename TF>
+    void calc_cross_ysum(
+            TF* const restrict xz_sum,
+            const TF* const restrict data,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        /*
+            Calculate xz cross-section summed over y-direction.
+            Mean is calculated outside this kernel after taking the
+            sum over the MPI y-communicator.
+        */
+
+        // Data is written to continuous buffer for MPI reduction.
+        const int kstride_xz = jstride;
+
+        // Reset slice.
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik = i + k*kstride_xz;
+                xz_sum[ik] = TF(0);
+            }
+
+        // Sum over y-direction
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jstride + k*kstride;
+                    const int ik = i + k*kstride_xz;
+
+                    xz_sum[ik] += data[ijk];
+                }
+    }
+
+    template<typename TF>
+    void flip_and_norm_xz(
+            TF* const restrict xz_out,
+            const TF* const restrict xz_in,
+            const int istart, const int iend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride,
+            const int jtot)
+    {
+        /*
+            xz slice is save continuous in memory for MPI-reduction.
+            Flip back to non-continous xz-slice, and divide out
+            jtot to obtain mean.
+        */
+
+        const int kstride_xz = jstride;
+        const TF jtot_i = TF(1) / jtot;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik_in = i + k*kstride_xz;
+                const int ik_out = i + k*kstride;
+
+                xz_out[ik_out] = xz_in[ik_in] * jtot_i;
+            }
     }
 }
 
@@ -525,7 +594,6 @@ bool Cross<TF>::do_cross(unsigned long itime)
     if (!swcross)
         return false;
 
-
     // check if time for execution
     if (itime % isampletime != 0)
         return false;
@@ -717,7 +785,6 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 {
-
     int nerror = 0;
     TF no_offset = 0.;
     auto tmpfld = fields.get_tmp();
@@ -733,6 +800,54 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 
     nerror += cross_plane(&tmp[gd.kstart*gd.ijcells], no_offset, name, iotime);
     fields.release_tmp(tmpfld);
+    return nerror;
+}
+
+template<typename TF>
+int Cross<TF>::cross_ymean(TF* restrict data, std::string name, int iotime, const std::array<int, 3>& loc)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+    const TF no_offset = 0.;
+    const int n_xz = gd.icells * gd.kcells;
+
+    auto tmp1 = fields.get_tmp();
+    auto tmp2 = fields.get_tmp();
+
+    // Calculate sum in xz slice.
+    calc_cross_ysum<TF>(
+            tmp2->fld.data(),
+            data,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.jstride, gd.kstride);
+
+    master.sum_y(tmp2->fld.data(), n_xz);
+
+    // Flip data from xy to xz plane, and divide out `jtot` to get mean.
+    flip_and_norm_xz<TF>(
+            tmp1->fld.data(),
+            tmp2->fld.data(),
+            gd.istart, gd.kend,
+            gd.kstart, gd.kend,
+            gd.jstride, gd.kstride,
+            gd.jtot);
+
+    // Save xz-slice.
+    char locstr[4];
+    std::snprintf(locstr, 4, "%1d%1d%1d", loc[0], loc[1], loc[2]);
+
+    char filename[256];
+    std::snprintf(filename, 256, "%s.%s.%s.%07d", name.c_str(), "xz", locstr, iotime);
+
+    nerror += check_save(
+            field3d_io.save_xz_slice(tmp1->fld.data(), no_offset, tmp2->fld.data(), filename, -gd.jgc, gd.kstart, gd.kend), filename);
+
+    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp2);
+
     return nerror;
 }
 
