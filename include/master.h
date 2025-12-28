@@ -78,6 +78,10 @@ class Master
         void sum(double*, int);
         void sum(float*, int);
 
+        // Overload the sum (ycomm) function.
+        void sum_y(double*, int);
+        void sum_y(float*, int);
+
         // Overload the max function.
         void max(double*, int);
         void max(float*, int);

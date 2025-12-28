@@ -36,6 +36,8 @@ def convert_to_nc(tasks):
 
     # Loop over the (variable, mode) combinations
     for variable, mode in tasks:
+        print(f'Converting {variable}-{mode}...')
+
         try:
             iotime = int(round(starttime / 10**iotimeprec))
 
@@ -50,6 +52,7 @@ def convert_to_nc(tasks):
             # Get the half level (000=full, 100=u, 010=v, etc) index.
             filename = "{0}.{1}.nc".format(variable, mode)
             halflevel = '000'
+
             if not at_surface:
                 if indexes is None:
                     indexes_local,halflevel = mht.get_cross_indices(variable, mode)
@@ -58,8 +61,10 @@ def convert_to_nc(tasks):
 
                     files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
                             variable, mode, indexes_local[0], iotime))
+
                     if len(files) == 0:
                         raise Exception('Cannot find any cross-section')
+
                     halflevel = files[0].split('.')[-3]
 
             dim = collections.OrderedDict()
