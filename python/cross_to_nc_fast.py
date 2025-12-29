@@ -42,30 +42,40 @@ def convert_to_nc(tasks):
             iotime = int(round(starttime / 10**iotimeprec))
 
             # Check if variable is surface cross-section.
-            if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, iotime)):
+            if os.path.isfile(f'{variable}.xy.000.{iotime:07d}'):
                 if mode != 'xy':
                     continue
                 at_surface = True
             else:
                 at_surface = False
 
-            # Get the half level (000=full, 100=u, 010=v, etc) index.
-            filename = "{0}.{1}.nc".format(variable, mode)
-            halflevel = '000'
+            # Check if variable is spanwise mean.
+            files = glob.glob(f'{variable}.xz.???.{iotime:07d}')
+            if len(files) > 0:
+                if mode != 'xz':
+                    continue
+                is_ymean = True
+            else:
+                is_ymean = False
 
-            if not at_surface:
+            # Get the half level (000=full, 100=u, 010=v, etc) index.
+            halflevel = '000'
+            if not at_surface and not is_ymean:
                 if indexes is None:
                     indexes_local,halflevel = mht.get_cross_indices(variable, mode)
                 else:
                     indexes_local = indexes
-
-                    files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
-                            variable, mode, indexes_local[0], iotime))
+                    files = glob.glob(f'{variable}.{mode}.*.{indexes_local:05d}.{iotime:07d}')
 
                     if len(files) == 0:
                         raise Exception('Cannot find any cross-section')
 
                     halflevel = files[0].split('.')[-3]
+
+            # Spanwise averaged crosses have different half level indicators.
+            if is_ymean:
+                f = f'{variable}.xz.000.{iotime:07d}'
+                halflevel = f.split('.')[-2]
 
             dim = collections.OrderedDict()
             dim['time'] = []
@@ -76,6 +86,10 @@ def convert_to_nc(tasks):
             if at_surface:
                 dim.pop('z')
                 indexes_local = [-1]
+            elif is_ymean:
+                dim.pop('y')
+                indexes_local = [-1]
+
             elif mode == 'xy':
                 dim.update({'z': []})
             elif mode == 'xz':
@@ -90,6 +104,7 @@ def convert_to_nc(tasks):
             if halflevel[2] == '1':
                 dim['zh'] = dim.pop('z')
 
+            filename = f'{variable}.{mode}.nc'
             ncfile = mht.Create_ncfile(
                 grid, filename, variable, dim, precision, compression)
 
@@ -99,31 +114,25 @@ def convert_to_nc(tasks):
                 elif val == []:
                     ncfile.dimvar[key][:] = grid.dim[key][indexes_local]
 
-            for t, time in enumerate(np.arange(starttime, endtime + sampletime, sampletime)):
+            for t, time in enumerate(np.arange(starttime, endtime+sampletime, sampletime)):
                 for k in range(len(indexes_local)):
                     index = indexes_local[k]
-                    otime = int(
-                        round(
-                            (time) / 10**iotimeprec))
-                    if at_surface:
-                        f_in = "{0}.{1}.{2}.{3:07d}".format(
-                            variable, mode, halflevel, otime)
-                    else:
-                        f_in = "{0:}.{1}.{2}.{3:05d}.{4:07d}".format(
-                            variable, mode, halflevel, index, otime)
-                    try:
-                        fin = np.fromfile(f_in, dtype)
-                    except Exception as ex:
-                        #print (ex)
-                        break
+                    otime = int(round((time) / 10**iotimeprec))
 
-                    #print(
-                    #    "Processing %8s, time=%7i, index=%4i" %
-                    #    (variable, otime, index))
+                    if at_surface or is_ymean:
+                        f_in = f'{variable}.{mode}.{halflevel}.{otime:07d}'
+                    else:
+                        f_in = f'{variable}.{mode}.{halflevel}.{index:05d}.{otime:07d}'
+
+                    if os.path.isfile(f_in):
+                        fin = np.fromfile(f_in, dtype)
+                    else:
+                        #print(f'Cannot find {f_in}...')
+                        break
 
                     ncfile.dimvar['time'][t] = time
 
-                    if at_surface:
+                    if at_surface or is_ymean:
                         ncfile.var[t, :, :] = fin
                     elif mode == 'xy':
                         ncfile.var[t, k, :, :] = fin
@@ -136,7 +145,7 @@ def convert_to_nc(tasks):
 
         except Exception as ex:
             print(ex)
-            print("Failed to create %s" % filename)
+            print(f'Failed to create {filename}')
 
 
 """
@@ -244,8 +253,26 @@ compression = not(args.nocompression)
 grid = mht.Read_grid(itot, jtot, ktot, order=order)
 dtype = np.dtype(grid.en + grid.prec)
 
-# Create all (variable, mode) combinations to parallelize over
-tasks = [(var, mode) for var in variables for mode in modes]
+# Black/white-list some variable-mode combinations.
+def is_valid_combination(var, mode):
+    allowed = {
+        ('_path', '_bot', '_fluxbot'): ['xy'],
+        ('_ymean',): ['xz'],
+    }
+
+    for patterns, allowed in allowed.items():
+        if any(pattern in var for pattern in patterns):
+            return mode in allowed
+
+    return True
+
+# Create all (variable, mode) combinations.
+tasks = []
+for var in variables:
+    for mode in modes:
+        if is_valid_combination(var, mode):
+            tasks.append((var, mode))
+
 chunks = [tasks[i::nprocs] for i in range(nprocs)]
 
 pool = Pool(processes=nprocs)
