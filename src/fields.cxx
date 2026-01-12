@@ -1208,6 +1208,10 @@ void Fields<TF>::create_stats(Stats<TF>& stats)
         // (Turbulence) Kinetic Energy
         stats.add_prof("ke" , "Kinetic energy" , "m2 s-2", "z", group_name);
         stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z", group_name);
+
+        // Base state density.
+        stats.add_fixed_prof("rhoref",  "Full level density dynamic core", "kg m-3", "z" , group_name, this->rhoref);
+        stats.add_fixed_prof("rhorefh", "Half level density dynamic core", "kg m-3", "zh", group_name, this->rhorefh);
     }
 
     // Add time series of scalar surface values
@@ -1245,6 +1249,7 @@ void Fields<TF>::save(int n)
     auto tmp1 = get_tmp();
     auto tmp2 = get_tmp();
 
+    // Save all prognostic fields.
     int nerror = 0;
     for (auto& f : ap)
     {
@@ -1334,6 +1339,81 @@ void Fields<TF>::load(int n)
 
     if (nerror)
         throw std::runtime_error("Error loading fields");
+}
+
+template<typename TF>
+void Fields<TF>::save_rhoref()
+{
+    auto& gd = grid.get_grid_data();
+
+    char filename[256];
+    int nerror = 0;
+    std::sprintf(filename, "%s.%07d", "rhoref", 0);
+    master.print_message("Saving \"%s\" ... ", filename);
+
+    if (master.get_mpiid() == 0)
+    {
+        FILE *pFile;
+        pFile = fopen(filename, "ab");
+
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+        {
+            master.print_message("OK\n");
+
+            fwrite(&rhoref [gd.kstart], sizeof(TF), gd.kmax, pFile);
+            fwrite(&rhorefh[gd.kstart], sizeof(TF), gd.kmax+1, pFile);
+
+            fclose(pFile);
+        }
+    }
+
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error in writing basestate density.");
+}
+
+
+template<typename TF>
+void Fields<TF>::load_rhoref()
+{
+    auto& gd = grid.get_grid_data();
+
+    char filename[256];
+    int nerror = 0;
+    std::sprintf(filename, "%s.%07d", "rhoref", 0);
+    master.print_message("Loading \"%s\" ... ", filename);
+
+    if (master.get_mpiid() == 0)
+    {
+        FILE* pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master.print_message("OK\n");
+
+            if (fread(&rhoref[gd.kstart], sizeof(TF), gd.ktot  , pFile) != (unsigned)gd.ktot )
+                ++nerror;
+            if (fread(&rhorefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile) != (unsigned)gd.ktot+1)
+                ++nerror;
+            fclose(pFile);
+        }
+    }
+
+    if (nerror)
+        throw std::runtime_error("Error in loading basestate density.");
+
+    master.broadcast(&rhoref[gd.kstart], gd.ktot  );
+    master.broadcast(&rhorefh[gd.kstart], gd.ktot+1);
 }
 
 #ifndef USECUDA
