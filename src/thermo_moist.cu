@@ -444,6 +444,7 @@ namespace
         TF* const __restrict__ T_bot,
         TF* const __restrict__ T_a,
         TF* const __restrict__ vpd,
+        TF* const __restrict__ vpds,
         TF* const __restrict__ qsat_bot,
         TF* const __restrict__ dqsatdT_bot,
         const TF* const __restrict__ thl_bot,
@@ -476,6 +477,10 @@ namespace
             const TF es = esat(ssa.t);
             const TF e = qt[ijk]/ssa.qs * es;
             vpd[ij] = es-e;
+
+            // "Surface to air" vapor pressure deficit.
+            const TF es_bot = esat(T_bot[ij]);
+            vpds[ij] = es_bot-e;
 
             // qsat(T_bot) + dqsatdT(T_bot)
             qsat_bot[ij] = qsat(ph[k], T_bot[ij]);
@@ -1377,6 +1382,7 @@ void Thermo_moist<TF>::get_land_surface_fields_g(
     TF* const __restrict__ T_bot,
     TF* const __restrict__ T_a,
     TF* const __restrict__ vpd,
+    TF* const __restrict__ vpds,
     TF* const __restrict__ qsat_bot,
     TF* const __restrict__ dqsatdT_bot)
 {
@@ -1391,7 +1397,7 @@ void Thermo_moist<TF>::get_land_surface_fields_g(
     dim3 blockGPU(blocki, blockj, 1);
 
     calc_land_surface_fields<TF><<<gridGPU, blockGPU>>>(
-        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot,
+        T_bot, T_a, vpd, vpds, qsat_bot, dqsatdT_bot,
         fields.sp.at("thl")->fld_bot_g,
         fields.sp.at("thl")->fld_g,
         fields.sp.at("qt")->fld_g,

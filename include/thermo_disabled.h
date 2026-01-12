@@ -86,7 +86,7 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function \"get_buoyancy_fluxbot_g\" not implemented in thermo_disabled"); }
         TF* get_basestate_fld_g(std::string)
             { throw std::runtime_error("Function \"get_basestate_fld_g\" not implemented in thermo_disabled"); }
-        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*, TF*)
             { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_disabled"); };
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
@@ -111,7 +111,7 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                std::vector<TF>&, std::vector<TF>&)
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }

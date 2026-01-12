@@ -175,9 +175,11 @@ namespace Soil_kernels
     }
 
     template<typename TF>
-    void calc_root_weighted_mean_theta(
+    void calc_root_weighted_mean_values(
             TF* const restrict theta_mean,
+            TF* const restrict t_mean,
             const TF* const restrict theta,
+            const TF* const restrict t,
             const int* const restrict soil_index,
             const TF* const restrict root_fraction,
             const TF* const restrict theta_wp,
@@ -193,6 +195,7 @@ namespace Soil_kernels
             {
                 const int ij = i + j*icells;
                 theta_mean[ij] = TF(0);
+                t_mean[ij] = TF(0);
             }
 
         for (int k=kstart; k<kend; ++k)
@@ -207,6 +210,7 @@ namespace Soil_kernels
                     const TF theta_lim = std::max(theta[ijk], theta_wp[si]);
                     theta_mean[ij] += root_fraction[ijk]
                             * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
+                    t_mean[ij] += root_fraction[ijk] * t[ijk];
                 }
     }
 

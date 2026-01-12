@@ -103,7 +103,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_columns_g(Field3d<TF>&, const int*, const int*, const int) const
             { throw std::runtime_error("Function get_radiation_columns_g not implemented"); }
-        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*)
+        void get_land_surface_fields_g(TF*, TF*, TF*, TF*, TF*, TF*)
             { throw std::runtime_error("Function \"get_land_surface_fields_g\" not implemented in thermo_dry"); };
         void get_buoyancy_surf_g(TF*, TF*, TF*)
             { throw std::runtime_error("Function \"get_buoyancy_surf_g\" not implemented in thermo_disabled"); };
@@ -118,7 +118,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
-                std::vector<TF>&, std::vector<TF>&)
+                std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.

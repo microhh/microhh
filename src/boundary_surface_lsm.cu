@@ -88,10 +88,22 @@ void Boundary_surface_lsm<TF>::exec(
     dim3 grid_gpu_2d_gc (gridi,  gridj,  1);
     dim3 block_gpu_2d_gc(blocki, blockj, 1);
 
+    // Tmp hack until we have Thijs' `get_tmp_xy_g()` in this code.
+    auto tmp_xy = fields.get_tmp_g();
+    int xy_index = 0;
+    auto get_tmp_xy = [&]()
+    {
+        TF* xy_ptr = &tmp_xy->fld_g[xy_index * gd.ijcells];
+        xy_index += 1;
+
+        if (xy_index >= gd.kcells)
+            throw std::runtime_error("Too many tmp XY slices!");
+
+        return xy_ptr;
+    };
+
     // Calculate filtered wind speed difference surface-atmosphere.
-    auto tmp1 = fields.get_tmp_g();
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* du_tot = tmp1->fld_bot_g;
+    TF* du_tot = get_tmp_xy();
 
     bsk::calc_dutot_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
         du_tot,
@@ -116,39 +128,41 @@ void Boundary_surface_lsm<TF>::exec(
     TF* lw_up = radiation.get_surface_radiation_g("lw_up");
 
     // Get (near-) surface thermo.
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* T_bot = tmp1->flux_bot_g;
-    TF* T_a = tmp1->grad_bot_g;
-    TF* vpd = tmp1->fld_top_g;
-    TF* qsat_bot = tmp1->flux_top_g;
-    TF* dqsatdT_bot = tmp1->grad_top_g;
+    TF* T_bot = get_tmp_xy();
+    TF* T_a = get_tmp_xy();
+    TF* vpd = get_tmp_xy();
+    TF* vpds = get_tmp_xy();
+    TF* qsat_bot = get_tmp_xy();
+    TF* dqsatdT_bot = get_tmp_xy();
 
     thermo.get_land_surface_fields_g(
-        T_bot, T_a, vpd, qsat_bot, dqsatdT_bot);
+        T_bot, T_a, vpd, vpds, qsat_bot, dqsatdT_bot);
 
     // Get (near-) surface buoyancy.
+    // NOTE: unlike the CPU version, `get_buoyancy_surf_g` calculates
+    // the surface + first model level buoy, AND the surface buoy flux.
     auto buoy = fields.get_tmp_g();
     thermo.get_buoyancy_surf_g(*buoy);
     const TF db_ref = thermo.get_db_ref();
 
     // Get basestate vectors.
-    TF* rhorefh = thermo.get_basestate_fld_g("rhoh");
-    TF* thvrefh = thermo.get_basestate_fld_g("thvh");
-    TF* exnrefh = thermo.get_basestate_fld_g("exnerh");
-    TF* prefh   = thermo.get_basestate_fld_g("prefh");
+    const std::vector<TF>& rhoref = thermo.get_basestate_vector("rho");
+    const std::vector<TF>& rhorefh = thermo.get_basestate_vector("rhoh");
+    const std::vector<TF>& thvrefh = thermo.get_basestate_vector("thvh");
+    const std::vector<TF>& exnrefh = thermo.get_basestate_vector("exnerh");
+    const std::vector<TF>& prefh = thermo.get_basestate_vector("ph");
 
     // Get surface precipitation (positive downwards, kg m-2 s-1 = mm s-1)
-    auto tmp2 = fields.get_tmp_g();
-    TF* rain_rate = tmp2->fld_bot_g;
+    TF* rain_rate = get_tmp_xy();
     microphys.get_surface_rain_rate_g(rain_rate);
 
     // XY tmp fields for intermediate calculations
-    // Aarrghh, TODO: replace with `get_tmp_xy_g()......`.
-    TF* f1  = tmp2->flux_bot_g;
-    TF* f2  = tmp2->grad_bot_g;
-    TF* f2b = tmp2->fld_top_g;
-    TF* f3  = tmp2->flux_top_g;
-    TF* theta_mean_n = tmp2->grad_top_g;
+    TF* f1  = get_tmp_xy();
+    TF* f2  = get_tmp_xy();
+    TF* f2b = get_tmp_xy();
+    TF* f3  = get_tmp_xy();
+    TF* theta_mean_n = get_tmp_xy();
+    TF* t_mean_n = get_tmp_xy();
 
     const double subdt = timeloop.get_sub_time_step();
 
@@ -171,9 +185,11 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate root fraction weighted mean soil water content
-    sk::calc_root_weighted_mean_theta_g<<<grid_gpu_2d, block_gpu_2d>>>(
+    sk::calc_root_weighted_mean_values_g<<<grid_gpu_2d, block_gpu_2d>>>(
             theta_mean_n,
+            t_mean_n,
             fields.sps.at("theta")->fld_g,
+            fields.sps.at("t")->fld_g,
             soil_index_g,
             root_fraction_g,
             theta_wp_g,
@@ -184,13 +200,94 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    // Calculate vegetation/soil resistance functions `f`.
-    lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            f1, f2, f2b, f3,
-            sw_dn,
+    if (sw_ags)
+    {
+        bool sw_splitleaf = false;
+
+        lsmk::calc_canopy_resistance_ags_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                tiles.at("veg").rs_g,
+                an_co2_g,
+                lai_g,
+                T_bot,
+                ra_g,
+                fields.sp.at("co2")->fld_g,
+                fields.sp.at("thl")->fld_g,
+                fields.sp.at("qt")->fld_g,
+                sw_dn,
+                theta_mean_n,
+                // albedo, only for splitleaf...
+                vpds,
+                alpha0_g,
+                t1gm_g,
+                t2gm_g,
+                t1am_g,
+                gm298_g,
+                gmin_g,
+                ammax298_g,
+                f0_g,
+                co2_comp298_g,
+                // cos_sza, only for splitleaf...
+                rhoref[gd.kstart],
+                rhorefh[gd.kstart],
+                sw_splitleaf,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells,
+                gd.ijcells);
+        cuda_check_error();
+
+        lsmk::calc_soil_respiration_jacobs_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                resp_co2_g,
+                t_mean_n,
+                r10_g,
+                ea_g,
+                rhorefh[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+
+        lsmk::set_net_co2_flux_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
+                fields.sp.at("co2")->flux_bot_g,
+                an_co2_g,
+                resp_co2_g,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+    }
+    else
+    {
+        // Calculate vegetation/soil resistance functions `f`.
+        lsmk::calc_resistance_functions_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                f1,
+                f2,
+                f3,
+                sw_dn,
+                theta_mean_n,
+                vpd,
+                gD_coeff_g,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
+
+        // Calculate canopy resistance for vegetation.
+        lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                tiles.at("veg").rs_g,
+                rs_veg_min_g, lai_g,
+                f1, f2, f3,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+    }
+
+    // Calculate soil resistance functions `f2b`.
+    lsmk::calc_soil_resistance_function_g<<<grid_gpu_2d, block_gpu_2d>>>(
+            f2b,
             fields.sps.at("theta")->fld_g,
-            theta_mean_n, vpd,
-            gD_coeff_g,
             c_veg_g,
             theta_wp_g,
             theta_fc_g,
@@ -202,16 +299,6 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    // Calculate canopy resistance for veg and soil tiles.
-    lsmk::calc_canopy_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            tiles.at("veg").rs_g,
-            rs_veg_min_g, lai_g,
-            f1, f2, f3,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
-
     lsmk::calc_soil_resistance_g<<<grid_gpu_2d, block_gpu_2d>>>(
             tiles.at("soil").rs_g,
             rs_soil_min_g, f2b,
@@ -220,69 +307,55 @@ void Boundary_surface_lsm<TF>::exec(
             gd.icells);
     cuda_check_error();
 
+    // Calculate Obuk, ustar, and ra.
+    if (sw_constant_z0)
+        lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                ustar_g,
+                obuk_g,
+                buoy->flux_bot_g,
+                ra_g,
+                nobuk_g,
+                du_tot,
+                buoy->fld_g,
+                buoy->fld_bot_g,
+                z0m_g,
+                z0h_g,
+                zL_sl_g,
+                f_sl_g,
+                db_ref,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.jcells,
+                gd.ijcells);
+    else
+        lsmk::calc_stability_g<TF, false><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
+                ustar_g,
+                obuk_g,
+                buoy->flux_bot_g,
+                ra_g,
+                nobuk_g,
+                du_tot,
+                buoy->fld_g,
+                buoy->fld_bot_g,
+                z0m_g,
+                z0h_g,
+                zL_sl_g,
+                f_sl_g,
+                db_ref,
+                gd.z[gd.kstart],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart,
+                gd.icells, gd.jcells,
+                gd.ijcells);
+    cuda_check_error();
+
     // Loop over tiles, and calculate tile properties and fluxes
     for (auto& tile : tiles)
     {
         bool use_cs_veg = (tile.first == "veg");
-
-        //
-        // 1) Calculate obuk/ustar/ra using thl_bot and qt_bot
-        // from previous time step (= old method, similar to DALES).
-        // 2) Calculate new thl_bot such that SEB closes.
-        //
-        thermo.get_buoyancy_surf_g(
-                buoy->fld_bot_g,
-                tile.second.thl_bot_g,
-                tile.second.qt_bot_g);
-
-        // Calculate Obuk, ustar, and ra.
-        if (sw_constant_z0)
-            lsmk::calc_stability_g<TF, true><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
-                    tile.second.ustar_g,
-                    tile.second.obuk_g,
-                    tile.second.bfluxbot_g,
-                    tile.second.ra_g,
-                    tile.second.nobuk_g,
-                    du_tot,
-                    buoy->fld_g,
-                    buoy->fld_bot_g,
-                    z0m_g, z0h_g,
-                    zL_sl_g,
-                    f_sl_g,
-                    db_ref,
-                    gd.z[gd.kstart],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart,
-                    gd.icells, gd.jcells,
-                    gd.ijcells);
-        else
-            lsmk::calc_stability_g<TF, false><<<grid_gpu_2d_gc, block_gpu_2d_gc>>>(
-                    tile.second.ustar_g,
-                    tile.second.obuk_g,
-                    tile.second.bfluxbot_g,
-                    tile.second.ra_g,
-                    tile.second.nobuk_g,
-                    du_tot,
-                    buoy->fld_g,
-                    buoy->fld_bot_g,
-                    z0m_g, z0h_g,
-                    zL_sl_g,
-                    f_sl_g,
-                    db_ref,
-                    gd.z[gd.kstart],
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart,
-                    gd.icells, gd.jcells,
-                    gd.ijcells);
-        cuda_check_error();
-
-        //auto tmp_cpu = fields.get_tmp();
-        //dump_field(tile.second.ustar_g, tmp_cpu->fld_bot.data(), "dump_gpu", gd.ijcells);
-        //fields.release_tmp(tmp_cpu);
-        //cudaDeviceSynchronize();
-        //throw 1;
 
         // Calculate surface fluxes
         lsmk::calc_fluxes_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
@@ -296,7 +369,7 @@ void Boundary_surface_lsm<TF>::exec(
                 fields.sp.at("qt")->fld_g,
                 fields.sps.at("t")->fld_g,
                 qsat_bot, dqsatdT_bot,
-                tile.second.ra_g,
+                ra_g,
                 tile.second.rs_g,
                 lambda_stable_g,
                 lambda_unstable_g,
@@ -307,8 +380,8 @@ void Boundary_surface_lsm<TF>::exec(
                 lw_up,
                 buoy->fld_g,
                 buoy->fld_bot_g,
-                rhorefh,
-                exnrefh,
+                rhorefh[gd.kstart],
+                exnrefh[gd.kstart],
                 db_ref, emis_sfc,
                 TF(subdt),
                 gd.istart, gd.iend,
@@ -347,10 +420,10 @@ void Boundary_surface_lsm<TF>::exec(
                 fields.sp.at("qt")->fld_g,
                 fields.sp.at("thl")->fld_bot_g,
                 fields.sp.at("qt")->fld_bot_g,
-                tiles.at("wet").ra_g,
-                rhorefh,
-                prefh,
-                exnrefh,
+                ra_g,
+                rhorefh[gd.kstart],
+                prefh[gd.kstart],
+                exnrefh[gd.kstart],
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.kstart,
@@ -359,7 +432,7 @@ void Boundary_surface_lsm<TF>::exec(
     }
 
     // Calculate tile averaged surface fluxes and values.
-    const TF rhoref_bot = thermo.get_basestate_vector("rhoh")[gd.kstart];
+    const TF rhoref_bot = rhorefh[gd.kstart];
     const TF rhocpi = TF(1) / (rhoref_bot * Constants::cp<TF>);
     const TF rholvi = TF(1) / (rhoref_bot * Constants::Lv<TF>);
     const TF no_scaling = TF(1);
@@ -367,8 +440,6 @@ void Boundary_surface_lsm<TF>::exec(
     // Surface fluxes.
     get_tiled_mean_g(fields.sp.at("thl")->flux_bot_g, "H", rhocpi);
     get_tiled_mean_g(fields.sp.at("qt")->flux_bot_g, "LE", rholvi);
-    get_tiled_mean_g(ustar_g, "ustar", no_scaling);
-    get_tiled_mean_g(buoy->flux_bot_g, "bfluxbot", no_scaling);
 
     // Surface values.
     get_tiled_mean_g(fields.sp.at("thl")->fld_bot_g, "thl_bot", TF(1));
@@ -377,17 +448,6 @@ void Boundary_surface_lsm<TF>::exec(
     // Set ghost cells `thl_bot`, `qt_bot`, needed for surface scheme
     boundary_cyclic.exec_2d_g(fields.sp.at("thl")->fld_bot_g);
     boundary_cyclic.exec_2d_g(fields.sp.at("qt")->fld_bot_g);
-
-    // Calculate bulk Obukhov length.
-    lsmk::calc_bulk_obuk_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-            obuk_g,
-            buoy->flux_bot_g,
-            ustar_g,
-            gd.z[gd.kstart],
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
 
     boundary_cyclic.exec_2d_g(ustar_g);
     boundary_cyclic.exec_2d_g(obuk_g);
@@ -483,27 +543,27 @@ void Boundary_surface_lsm<TF>::exec(
     cuda_check_error();
 
     // Calculate changes in the liquid water reservoir
-    lsmk::calc_liquid_water_reservoir_g<<<grid_gpu_2d, block_gpu_2d>>>(
-            fields.at2d.at("wl")->fld_g,
-            interception_g,
-            throughfall_g,
-            fields.ap2d.at("wl")->fld_g,
-            tiles.at("veg").LE_g,
-            tiles.at("soil").LE_g,
-            tiles.at("wet").LE_g,
-            tiles.at("veg").fraction_g,
-            tiles.at("soil").fraction_g,
-            tiles.at("wet").fraction_g,
-            rain_rate,
-            c_veg_g,
-            lai_g, subdt,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-    cuda_check_error();
-
-    fields.release_tmp_g(buoy);
-    fields.release_tmp_g(tmp2);
+    if (!sw_disable_wl)
+    {
+        lsmk::calc_liquid_water_reservoir_g<<<grid_gpu_2d, block_gpu_2d>>>(
+                fields.at2d.at("wl")->fld_g,
+                interception_g,
+                throughfall_g,
+                fields.ap2d.at("wl")->fld_g,
+                tiles.at("veg").LE_g,
+                tiles.at("soil").LE_g,
+                tiles.at("wet").LE_g,
+                tiles.at("veg").fraction_g,
+                tiles.at("soil").fraction_g,
+                tiles.at("wet").fraction_g,
+                rain_rate,
+                c_veg_g,
+                lai_g, subdt,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+    }
 
     if (sw_homogenize_sfc)
     {
@@ -574,12 +634,12 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Set flux boundary conditions at top and bottom of soil column
     // Top = soil heat flux (G) averaged over all tiles, bottom = zero flux.
-    get_tiled_mean_g(tmp1->fld_bot_g, "G", TF(1));
+    get_tiled_mean_g(tmp_xy->fld_bot_g, "G", TF(1));
 
     sk::set_bcs_temperature_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             fields.sps.at("t")->flux_top_g,
             fields.sps.at("t")->flux_bot_g,
-            tmp1->fld_bot_g,
+            tmp_xy->fld_bot_g,
             rho_C_g,
             soil_index_g,
             gd.istart, gd.iend,
@@ -688,7 +748,7 @@ void Boundary_surface_lsm<TF>::exec(
 
     // Calculate root water extraction
     lsmk::scale_tile_with_fraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
-            tmp1->fld_bot_g.view(),
+            tmp_xy->fld_bot_g.view(),
             tiles.at("veg").LE_g,
             tiles.at("veg").fraction_g,
             gd.istart, gd.iend,
@@ -698,10 +758,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     sk::calc_root_water_extraction_g<TF><<<grid_gpu_2d, block_gpu_2d>>>(
             source_g,
-            tmp1->fld_top_g.view(),
+            tmp_xy->fld_top_g.view(),
             fields.sps.at("theta")->fld_g,
             root_fraction_g,
-            tmp1->fld_bot_g,
+            tmp_xy->fld_bot_g,
             sgd.dzi_g,
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
@@ -724,7 +784,9 @@ void Boundary_surface_lsm<TF>::exec(
             sgd.kstart, sgd.kend,
             gd.icells, gd.ijcells);
 
-    fields.release_tmp_g(tmp1);
+
+    fields.release_tmp_g(buoy);
+    fields.release_tmp_g(tmp_xy);
 }
 
 template<typename TF>
@@ -750,16 +812,18 @@ void Boundary_surface_lsm<TF>::exec_column(Column<TF>& column)
     get_tiled_mean_g(tmp->fld_bot_g, "S", TF(1));
     column.calc_time_series("S", tmp->fld_bot_g, no_offset);
 
+    if (sw_ags)
+    {
+        column.calc_time_series("co2_an", an_co2_g, no_offset);
+        column.calc_time_series("co2_resp", resp_co2_g, no_offset);
+    }
+
     if (sw_tile_stats_col)
         for (auto& tile : tiles)
         {
             column.calc_time_series("c_"+tile.first, tile.second.fraction_g, no_offset);
 
-            column.calc_time_series("ustar_"+tile.first, tile.second.ustar_g, no_offset);
-            column.calc_time_series("obuk_"+tile.first, tile.second.obuk_g, no_offset);
-
             column.calc_time_series("rs_"+tile.first, tile.second.rs_g, no_offset);
-            column.calc_time_series("ra_"+tile.first, tile.second.ra_g, no_offset);
 
             column.calc_time_series("thl_bot_"+tile.first, tile.second.thl_bot_g, no_offset);
             column.calc_time_series("qt_bot_"+tile.first, tile.second.qt_bot_g, no_offset);
@@ -816,18 +880,6 @@ void Boundary_surface_lsm<TF>::get_tiled_mean_g(
         fld_veg  = tiles.at("veg").S_g;
         fld_soil = tiles.at("soil").S_g;
         fld_wet  = tiles.at("wet").S_g;
-    }
-    else if (name == "bfluxbot")
-    {
-        fld_veg  = tiles.at("veg").bfluxbot_g;
-        fld_soil = tiles.at("soil").bfluxbot_g;
-        fld_wet  = tiles.at("wet").bfluxbot_g;
-    }
-    else if (name == "ustar")
-    {
-        fld_veg  = tiles.at("veg").ustar_g;
-        fld_soil = tiles.at("soil").ustar_g;
-        fld_wet  = tiles.at("wet").ustar_g;
     }
     else if (name == "thl_bot")
     {
@@ -898,6 +950,7 @@ void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
     // Surface layer / Monin-Obukhov:
     cuda_safe_call(cudaMalloc(&obuk_g,  tf_memsize_ij));
     cuda_safe_call(cudaMalloc(&ustar_g, tf_memsize_ij));
+    cuda_safe_call(cudaMalloc(&ra_g, tf_memsize_ij));
 
     z0m_g.allocate(gd.ijcells);
     z0h_g.allocate(gd.ijcells);
@@ -952,6 +1005,28 @@ void Boundary_surface_lsm<TF>::prepare_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMalloc(&source_g, tf_memsize_ijk));
     cuda_safe_call(cudaMalloc(&root_fraction_g, tf_memsize_ijk));
 
+    if (sw_ags)
+    {
+        // 3.1 A-Gs and soil respiration parameters.
+        cuda_safe_call(cudaMalloc(&alpha0_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t1gm_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t2gm_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&t1am_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&gm298_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&gmin_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&ammax298_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&f0_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&co2_comp298_g, tf_memsize_ij));
+
+        // Soil respiration.
+        cuda_safe_call(cudaMalloc(&r10_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&ea_g, tf_memsize_ij));
+
+        // Surface CO2 fluxes.
+        cuda_safe_call(cudaMalloc(&an_co2_g, tf_memsize_ij));
+        cuda_safe_call(cudaMalloc(&resp_co2_g, tf_memsize_ij));
+    }
+
     // 4. Init lookup table with van Genuchten parameters:
     const int memsize_vg_lut = theta_res.size() * sizeof(TF);
 
@@ -991,6 +1066,7 @@ void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
     // Surface layer / Monin-Obukhov:
     cuda_safe_call(cudaMemcpy(obuk_g,  obuk.data(),  tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(ustar_g, ustar.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(ra_g, ra.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy(z0m_g, z0m.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(z0h_g, z0h.data(), tf_memsize_ij, cudaMemcpyHostToDevice));
@@ -1044,6 +1120,24 @@ void Boundary_surface_lsm<TF>::forward_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaMemcpy(source_g, source.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(root_fraction_g, root_fraction.data(), tf_memsize_ijk, cudaMemcpyHostToDevice));
 
+    if (sw_ags)
+    {
+        // 3.1 Copy A-Gs parameters.
+        cuda_safe_call(cudaMemcpy(alpha0_g, alpha0.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t1gm_g, t1gm.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t2gm_g, t2gm.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(t1am_g, t1am.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(gm298_g, gm298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(gmin_g, gmin.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(ammax298_g, ammax298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(f0_g, f0.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(co2_comp298_g, co2_comp298.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+
+        // Soil respiration.
+        cuda_safe_call(cudaMemcpy(r10_g, r10.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(ea_g, ea.data(), int_memsize_ij, cudaMemcpyHostToDevice));
+    }
+
     // 4. Copy lookup table with van Genuchten parameters:
     const int memsize_vg_lut = theta_res.size() * sizeof(TF);
 
@@ -1087,6 +1181,12 @@ void Boundary_surface_lsm<TF>::backward_device(Thermo<TF>& thermo)
     // Nearly all tile fields are used in the statistics:
     for (auto& tile : tiles)
         lsmk::backward_device_tile(tile.second, gd.ijcells);
+
+    if (sw_ags)
+    {
+        cuda_safe_call(cudaMemcpy(an_co2.data(), an_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(resp_co2.data(), resp_co2_g, tf_memsize_ij, cudaMemcpyDeviceToHost));
+    }
 }
 
 template<typename TF>
@@ -1137,6 +1237,25 @@ void Boundary_surface_lsm<TF>::clear_device(Thermo<TF>& thermo)
     cuda_safe_call(cudaFree(conductivity_h_g));
     cuda_safe_call(cudaFree(source_g));
     cuda_safe_call(cudaFree(root_fraction_g));
+
+    if (sw_ags)
+    {
+        cuda_safe_call(cudaFree(alpha0_g));
+        cuda_safe_call(cudaFree(t1gm_g));
+        cuda_safe_call(cudaFree(t2gm_g));
+        cuda_safe_call(cudaFree(t1am_g));
+        cuda_safe_call(cudaFree(gm298_g));
+        cuda_safe_call(cudaFree(gmin_g));
+        cuda_safe_call(cudaFree(ammax298_g));
+        cuda_safe_call(cudaFree(f0_g));
+        cuda_safe_call(cudaFree(co2_comp298_g));
+
+        cuda_safe_call(cudaFree(r10_g));
+        cuda_safe_call(cudaFree(ea_g));
+
+        cuda_safe_call(cudaFree(an_co2_g));
+        cuda_safe_call(cudaFree(resp_co2_g));
+    }
 
     cuda_safe_call(cudaFree(theta_res_g));
     cuda_safe_call(cudaFree(theta_wp_g));
