@@ -10,7 +10,7 @@ Settings
 # sw_source = 3d is a new method with sources prescribed through 3D binaries.
 #             The new method requires `microhhpy` (`pip install microhhpy`).
 # This script supports both methods as a demonstration, which should give identical results.
-sw_source = '3d'
+sw_source = 'gaussian'
 
 float_type = np.float32
 scalars = ['s1', 's2']     # All scalars.
