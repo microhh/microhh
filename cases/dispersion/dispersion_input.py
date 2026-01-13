@@ -146,7 +146,7 @@ elif sw_source == '3d':
 
     # Add sources.
     for scalar in scalars:
-        emiss.add_gaussian(scalar, strength, times[0], source_x0, source_y0, source_z0, sigma_x, sigma_y, sigma_z)
+        emiss.add_gaussian(scalar, strength, times[0], source_x0, source_y0, source_z0, sigma_x, sigma_y, sigma_z, sw_vmr)
 
     # Clip to required vertical extent.
     emiss.clip()
