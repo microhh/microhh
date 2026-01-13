@@ -596,7 +596,6 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
             check_added_cross(it.first, "_fluxbot", crosslist_global, cross_fluxbot);
             check_added_cross(it.first, "_fluxtop", crosslist_global, cross_fluxtop);
             check_added_cross(it.first, "_path",    crosslist_global, cross_path);
-            check_added_cross(it.first, "_ymean",   crosslist_global, cross_ymean);
         }
 
         for (auto& it : sd)
@@ -1515,9 +1514,6 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     
     for (auto& it : cross_path)
         cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
-
-    for (auto& it : cross_ymean)
-        cross.cross_ymean(a.at(it)->fld.data(), a.at(it)->name+"_ymean", iotime);
 }
 
 template<typename TF>
