@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -54,6 +54,7 @@ class Thermo_buoy : public Thermo<TF>
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
+        void create_stats(Stats<TF>&) {};    ///< Initialization of the fields statistics.
 
         bool check_field_exists(std::string name);
 
@@ -87,7 +88,7 @@ class Thermo_buoy : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
         void exec_stats(Stats<TF>&) {};

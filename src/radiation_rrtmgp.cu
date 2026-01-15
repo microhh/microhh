@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -1092,7 +1092,6 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                 sw_flux_dn_dif_inc_subset,
                 *fluxes_subset,
                 *bnd_fluxes_subset);
-
     }
 
     if (n_col_block_residual > 0)
@@ -1215,7 +1214,7 @@ void Radiation_rrtmgp<TF>::exec(
 
             if (sw_longwave)
             {
-                if (swtimedep_background)
+                if (swtimedep_background || swtimedep_basestate)
                 {
                     // Calculate new background column (on the CPU).
                     Float* ph_g = thermo.get_basestate_fld_g("prefh");
@@ -1552,6 +1551,12 @@ std::vector<TF>& Radiation_rrtmgp<TF>::get_surface_radiation(const std::string& 
 template <typename TF>
 TF* Radiation_rrtmgp<TF>::get_surface_radiation_g(const std::string& name)
 {
+    // Check if short/longwave is active, otherwise the fields below are not allocated.
+    if ((name == "sw_down" || name == "sw_up") && !sw_shortwave)
+        throw std::runtime_error("get_surface_radiation_g() requires swshortwave=true & swlongwave=true.");
+    else if ((name == "lw_down" || name == "lw_up") && !sw_longwave)
+        throw std::runtime_error("get_surface_radiation_g() requires swshortwave=true & swlongwave=true.");
+
     if (name == "sw_down")
         return sw_flux_dn_sfc_g;
     else if (name == "sw_up")

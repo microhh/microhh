@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -59,7 +59,8 @@ class Thermo_moist : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
-        void create_basestate(Input&, Netcdf_handle&);
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&);
+        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
 
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
@@ -143,7 +144,6 @@ class Thermo_moist : public Thermo<TF>
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   ///< Initialization of the statistics.
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
         void create_cross(Cross<TF>&);   ///< Initialization of the single column output.

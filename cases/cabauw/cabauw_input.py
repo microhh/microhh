@@ -8,30 +8,6 @@ import os, shutil
 import microhh_tools as mht
 
 
-def link(f1, f2):
-    """
-    Create symbolic link from `f1` to `f2`, if `f2` does not yet exist.
-    """
-    if os.path.islink(f2):
-        os.remove(f2)
-    if os.path.exists(f1):
-        os.symlink(f1, f2)
-    else:
-        raise Exception('Source file {} does not exist!'.format(f1))
-
-
-def copy(f1, f2):
-    """
-    Copy `f1` to `f2`, if `f2` does not yet exist.
-    """
-    if os.path.exists(f2):
-        os.remove(f2)
-    if os.path.exists(f1):
-        shutil.copy(f1, f2)
-    else:
-        raise Exception('Source file {} does not exist!'.format(f1))
-
-
 def check_time_bounds(ds, start_date, end_date):
     """
     Check if start and end dates are withing Dataset bounds.
@@ -43,7 +19,7 @@ def check_time_bounds(ds, start_date, end_date):
         raise Exception(f'Start or end date is out-of-bounds. Limits are {ds.time[0].values} to {ds.time[-1].values}')
 
 
-copy_or_link = copy
+linknotcopy = False
 
 def create_case_input(
         start_date,
@@ -58,6 +34,7 @@ def create_case_input(
         use_homogeneous_z0,
         use_homogeneous_ls,
         gpt_set,
+        sw_micro,
         itot, jtot, ktot,
         xsize, ysize, zsize,
         TF,
@@ -65,22 +42,16 @@ def create_case_input(
 
     # Link required files (if not present)
     if use_htessel:
-        copy_or_link('../../misc/van_genuchten_parameters.nc', 'van_genuchten_parameters.nc')
-    if use_rrtmgp:
-        if gpt_set == '256_224':
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g256.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g224.nc', 'coefficients_sw.nc')
-        elif gpt_set == '128_112':
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-lw-g128.nc', 'coefficients_lw.nc')
-            copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-gas-sw-g112.nc', 'coefficients_sw.nc')
-        else:
-            raise Exception('\"{}\" is not a valid g-point option...'.format(gpt_set))
+        mht.copy_lsmfiles(srcdir='../../misc/', link=linknotcopy)
 
-        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-lw.nc', 'cloud_coefficients_lw.nc')
-        copy_or_link('../../rte-rrtmgp-cpp/rrtmgp-data/rrtmgp-clouds-sw.nc', 'cloud_coefficients_sw.nc')
+    if use_rrtmgp:
+        mht.copy_radfiles(srcdir='../../rte-rrtmgp-cpp/rrtmgp-data/', gpt=gpt_set, link=linknotcopy)
 
     if use_aerosols:
-        copy_or_link('../../rte-rrtmgp-cpp/data/aerosol_optics.nc', 'aerosol_optics.nc')
+        mht.copy_aerosolfiles(srcdir='../../rte-rrtmgp-cpp/data/', link=linknotcopy)
+
+
+    heterogeneous_sfc = not use_homogeneous_z0 or not use_homogeneous_ls
 
     """
     Create vertical grid for LES
@@ -112,6 +83,11 @@ def create_case_input(
     # Interpolate to LES levels and ERA5 time (CAMS is 3-hourly).
     cams = cams.interp(time=ls2d.time)
     cams_z = cams.interp(z=z)
+
+    # Make sure aerosol concentrations are >= 0.
+    for v in cams_z:
+        if 'aermr' in v:
+            cams_z[v] = np.maximum(cams_z[v], 0.)
 
     if not use_rrtmgp:
         # Read ERA5 radiation, de-accumulate, and interpolate to LS2D times.
@@ -184,6 +160,25 @@ def create_case_input(
     ini['time']['endtime'] = (end_date - start_date).total_seconds()
     d = start_date
     ini['time']['datetime_utc'] = f'{d.year}-{d.month:02d}-{d.day:02d} {d.hour:02d}:{d.minute:02d}:{d.second:02d}'
+
+    if heterogeneous_sfc:
+        ini['stats']['xymasklist'] = ['wet_mask', 'dry_mask']
+
+    if sw_micro == 'nsw6':
+        ini['micro']['swmicro'] = sw_micro
+        ini['advec']['fluxlimit_list'] = ['qt', 'qr', 'qs', 'qg']
+        ini['limiter']['limitlist'] = ['qt', 'qr', 'qs', 'qg']
+    elif sw_micro == '2mom_warm':
+        ini['micro']['swmicro'] = sw_micro
+        ini['advec']['fluxlimit_list'] = ['qt', 'qr', 'nr']
+        ini['limiter']['limitlist'] = ['qt', 'qr', 'nr']
+    else:
+        ini['micro']['swmicro'] = False
+        ini['advec']['fluxlimit_list'] = ['qt']
+        ini['limiter']['limitlist'] = ['qt']
+
+    ini['column']['coordinates[x]'] = xsize/2
+    ini['column']['coordinates[y]'] = ysize/2
 
     ini.save('cabauw.ini', allow_overwrite=True)
 
@@ -404,6 +399,21 @@ def create_case_input(
 
         return mask
 
+
+    if heterogeneous_sfc:
+        """
+        Create surface mask for masked statistics.
+        """
+
+        mask = get_patches(blocksize_i=8, blocksize_j=8)
+
+        wet = mask.astype(TF)
+        dry = 1-wet
+
+        wet.tofile('wet_mask.0000000')
+        dry.tofile('dry_mask.0000000')
+
+
     if not use_homogeneous_z0:
         """
         Create checkerboard pattern for z0m and z0h
@@ -414,8 +424,6 @@ def create_case_input(
 
         z0m_2d = np.zeros((jtot, itot), dtype=TF)
         z0h_2d = np.zeros((jtot, itot), dtype=TF)
-
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
 
         z0m_2d[ mask] = z0m
         z0m_2d[~mask] = z0m/2.
@@ -438,9 +446,6 @@ def create_case_input(
         exclude = ['z0h', 'z0m', 'water_mask', 't_bot_water']
         lsm_data = LSM_input(itot, jtot, ktot=4, TF=TF, debug=True, exclude_fields=exclude)
 
-        # Set surface fields:
-        mask = get_patches(blocksize_i=8, blocksize_j=8)
-
         # Patched fields:
         lsm_data.c_veg[ mask] = ini['land_surface']['c_veg']
         lsm_data.c_veg[~mask] = ini['land_surface']['c_veg']/3.
@@ -457,9 +462,18 @@ def create_case_input(
         lsm_data.cs_veg[:,:] = ini['land_surface']['cs_veg']
 
         lsm_data.t_soil[:,:,:] = t_soil[:, np.newaxis, np.newaxis]
-        lsm_data.theta_soil[:,:,:] = theta_soil[:, np.newaxis, np.newaxis]
         lsm_data.index_soil[:,:,:] = index_soil[:, np.newaxis, np.newaxis]
         lsm_data.root_frac[:,:,:] = root_frac[:, np.newaxis, np.newaxis]
+
+        # Create dry/wet patches.
+        vg = xr.open_dataset('van_genuchten_parameters.nc')
+
+        theta_wp = float(vg.theta_wp[int(index_soil[0])])
+        theta_fc = float(vg.theta_fc[int(index_soil[0])])
+        theta_cap = theta_fc - theta_wp
+
+        lsm_data.theta_soil[:,  mask] = theta_fc - 0.1 * theta_cap
+        lsm_data.theta_soil[:, ~mask] = theta_wp + 0.1 * theta_cap
 
         # Check if all the variables have been set:
         lsm_data.check()
@@ -483,6 +497,8 @@ if __name__ == '__main__':
     use_tdep_aerosols = False    # False = time fixed RRTMGP aerosol in domain and background.
     use_tdep_gasses = False      # False = time fixed ERA5 (o3) and CAMS (co2, ch4) gasses.
     use_tdep_background = False  # False = time fixed RRTMGP T/h2o/o3 background profiles.
+
+    sw_micro = '2mom_warm'
 
     """
     NOTE: `use_tdep_aerosols` and `use_tdep_gasses` specify whether the aerosols and gasses
@@ -522,8 +538,9 @@ if __name__ == '__main__':
             use_homogeneous_z0,
             use_homogeneous_ls,
             gpt_set,
+            sw_micro,
             itot, jtot, ktot,
             xsize, ysize, zsize,
             TF,
-            npx=2,
-            npy=2)
+            npx=1,
+            npy=1)

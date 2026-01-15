@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -448,7 +448,7 @@ void Thermo_dry<TF>::create(
     tdep_pbot->create_timedep(input_nc, timedep_dim);
 
     // Set up output classes
-    create_stats(stats);
+    // create_stats(stats);
     create_column(column);
     create_dump(dump);
     create_cross(cross);
@@ -662,11 +662,11 @@ void Thermo_dry<TF>::create_stats(Stats<TF>& stats)
     if (stats.get_switch())
     {
         bs_stats = bs;
+
         // Add base state profiles to statistics
-        stats.add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  group_name, fields.rhoref );
-        stats.add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", group_name, fields.rhorefh);
         stats.add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z" , group_name, bs_stats.thref);
         stats.add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh", group_name, bs_stats.thref);
+
         if (bs_stats.swbasestate == Basestate_type::anelastic)
         {
             stats.add_fixed_prof("phydro",  "Full level hydrostatic pressure", "Pa", "z" , group_name, bs_stats.pref );
@@ -807,6 +807,8 @@ void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {
     const TF no_offset = 0.;
     auto output = fields.get_tmp();
+
+    bs_stats = bs;
 
     get_thermo_field(*output, "b",false, true);
     column.calc_column("b", output->fld.data(), no_offset);

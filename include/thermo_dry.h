@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -59,6 +59,7 @@ class Thermo_dry : public Thermo<TF>
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
+        void create_stats(Stats<TF>&);   // Initialization of the statistics.
 
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -94,8 +95,8 @@ class Thermo_dry : public Thermo<TF>
                 Field3d<TF>&, const std::string&, const bool);
         void get_buoyancy_surf_g(Field3d<TF>&);
         void get_buoyancy_fluxbot_g(Field3d<TF>&);
-        TF* get_basestate_fld_g(std::string)
-            { throw std::runtime_error("Function get_basestate_fld_g not implemented"); };
+        TF* get_basestate_fld_g(std::string);
+
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields_g not implemented"); }
         void get_radiation_fields_g(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
@@ -121,7 +122,7 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
 
         // Empty functions that are allowed to pass.
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
 
@@ -144,7 +145,6 @@ class Thermo_dry : public Thermo<TF>
         bool swcross_b;
         std::vector<std::string> dumplist;         // List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   // Initialization of the statistics.
         void create_column(Column<TF>&); // Initialization of the single column output.
         void create_dump(Dump<TF>&);     // Initialization of the single column output.
         void create_cross(Cross<TF>&);   // Initialization of the single column output.

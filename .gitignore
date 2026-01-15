@@ -2,15 +2,3 @@
 .code-workspace.code-workspace
 .gitignore
 .vscode
-.*
-*.00*0
-*.nc
-*.gif
-*.mpeg
-*.png
-*.csv
-
-cases
-build
-
-

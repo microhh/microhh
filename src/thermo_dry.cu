@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -144,6 +144,28 @@ namespace
             N2[ijk] = grav<TF>/thref[k]*static_cast<TF>(0.5)*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
+
+
+    template<typename TF> __global__
+    void calc_T_g(
+        TF* const __restrict__ T,
+        const TF* const __restrict__ th,
+        const TF* const __restrict__ exner,
+        const int istart, const int iend,
+        const int jstart, const int jend,
+        const int kstart, const int kend,
+        const int jstride, const int kstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jstride + k*kstride;
+            T[ijk] = exner[k] * th[ijk];
+        }
+    }
 } // end namespace
 
 template<typename TF>
@@ -196,6 +218,7 @@ void Thermo_dry<TF>::forward_device()
     cuda_safe_call(cudaMemcpy(bs.exnref_g,  bs.exnref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.exnrefh_g, bs.exnrefh.data(), nmemsize, cudaMemcpyHostToDevice));
 }
+
 template<typename TF>
 void Thermo_dry<TF>::backward_device()
 {
@@ -253,9 +276,7 @@ void Thermo_dry<TF>::exec(const double dt, Stats<TF>& stats)
     stats.calc_tend(*fields.mt.at("w"), tend_name);
 
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_thermo_field_g(
         Field3d<TF>& fld, const std::string& name, const bool cyclic)
@@ -292,6 +313,18 @@ void Thermo_dry<TF>::get_thermo_field_g(
             gd.icells, gd.ijcells);
         cuda_check_error();
     }
+    else if (name == "T")
+    {
+        calc_T_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("th")->fld_g,
+            bs.exnref_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
     else
     {
         std::string msg = "get_thermo_field \"" + name + "\" not supported";
@@ -301,9 +334,7 @@ void Thermo_dry<TF>::get_thermo_field_g(
     if (cyclic)
         boundary_cyclic.exec_g(fld.fld_g);
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
 {
@@ -323,9 +354,7 @@ void Thermo_dry<TF>::get_buoyancy_fluxbot_g(Field3d<TF>& b)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
-#endif
 
-#ifdef USECUDA
 template<typename TF>
 void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
 {
@@ -352,9 +381,25 @@ void Thermo_dry<TF>::get_buoyancy_surf_g(Field3d<TF>& b)
         gd.icells, gd.ijcells);
     cuda_check_error();
 }
-#endif
 
-#ifdef USECUDA
+template<typename TF>
+TF* Thermo_dry<TF>::get_basestate_fld_g(std::string name)
+{
+    if (name == "pref")
+        return bs.pref_g;
+    else if (name == "prefh")
+        return bs.prefh_g;
+    else if (name == "exner")
+        return bs.exnref_g;
+    else if (name == "exnerh")
+        return bs.exnrefh_g;
+    else
+    {
+        std::string error_message = "Can not get basestate field \"" + name + "\" from thermo_moist";
+        throw std::runtime_error(error_message);
+    }
+}
+
 template<typename TF>
 void Thermo_dry<TF>::exec_column(Column<TF>& column)
 {

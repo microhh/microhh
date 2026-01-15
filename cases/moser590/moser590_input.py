@@ -4,7 +4,7 @@ import netCDF4 as nc
 float_type = 'f8'
 
 # Get number of vertical levels and size from .ini file
-with open('moser600.ini') as f:
+with open('moser590.ini') as f:
     for line in f:
         if (line.split('=')[0]=='ktot'):
             kmax = int(line.split('=')[1])
@@ -31,7 +31,7 @@ for k in range(kmax):
 
 
 # write the data to a file
-nc_file = nc.Dataset("moser600_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
+nc_file = nc.Dataset("moser590_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 nc_file.createDimension("z", kmax)
 nc_z  = nc_file.createVariable("z" , float_type, ("z"))
