@@ -168,7 +168,6 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
     if (swsource)
     {
         sourcelist = input.get_list<std::string>("source", "sourcelist", "");
-
         source_x0 = input.get_list<TF>("source", "source_x0", "");
         source_y0 = input.get_list<TF>("source", "source_y0", "");
         source_z0 = input.get_list<TF>("source", "source_z0", "");
@@ -179,6 +178,10 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         line_x    = input.get_list<TF>("source", "line_x",    "", std::vector<TF>());
         line_y    = input.get_list<TF>("source", "line_y",    "", std::vector<TF>());
         line_z    = input.get_list<TF>("source", "line_z",    "", std::vector<TF>());
+
+        // Switch between input in mass or volume ratio.
+        // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
+        sw_vmr = input.get_list<bool>("source", "swvmr", "");
 
         auto check_and_default = [&](std::vector<TF>& vec)
         {
@@ -196,13 +199,17 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         check_and_default(line_y);
         check_and_default(line_z);
 
+        // Check if all inputs are the same size.
+        const int n = sourcelist.size();
+        if (source_x0.size() != n || source_y0.size() != n || source_z0.size() != n ||
+            sigma_x.size() != n || sigma_y.size() != n || sigma_z.size() != n ||
+            strength.size() != n || sw_vmr.size() != n ||
+            line_x.size() != n || line_y.size() != n || line_z.size() != n)
+            throw std::runtime_error("Source input vectors have inconsistent sizes.");
+
         // Timedep source location
         swtimedep_location = input.get_item<bool>("source", "swtimedep_location", "", false);
         swtimedep_strength = input.get_item<bool>("source", "swtimedep_strength", "", false);
-
-        // Switch between input in mass or volume ratio.
-        // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
-        sw_vmr = input.get_list<bool>("source", "swvmr", "");
 
         // Option for (non-time dependent) profiles for vertical distribution emissions.
         sw_emission_profile = input.get_item<bool>("source", "sw_profile", "", false);
