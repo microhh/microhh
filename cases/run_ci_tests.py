@@ -98,3 +98,8 @@ for prec in precs:
 
 if err > 0:
     sys.exit('One of more travis case tests failed!')
+
+
+print('---------------------------')
+print('Running case specific tests')
+print('---------------------------')
