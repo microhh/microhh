@@ -4,6 +4,8 @@ import os
 sys.path.append('../python/')
 import microhh_tools as mht
 
+from conservation_source.conservation_test import run_conservation_test
+
 modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
@@ -34,6 +36,7 @@ dns_options = {
 
 mpi_options = {
         'master': {'npx': 2, 'npy': 2}}
+
 
 print('-----------------')
 print('Running all cases')
@@ -96,5 +99,25 @@ for prec in precs:
                     les_options, mpi_options, les_perturbations,
                     microhh_exec, mode, 'bomex', experiment)
 
+
+print('---------------------------')
+print('Running case specific tests')
+print('---------------------------')
+
+cwd = os.getcwd()
+os.chdir('conservation_source')
+print('Running point source scalar conservation tests')
+err += run_conservation_test(modes, precs)
+os.chdir(cwd)
+
+
 if err > 0:
-    sys.exit('One of more CI tests failed!')
+    print('----------------------------')
+    print('One or more CI tests failed!')
+    print('----------------------------')
+    sys.exit(1)
+else:
+    print('--------------------')
+    print('All CI tests passed!')
+    print('--------------------')
+    sys.exit(0)

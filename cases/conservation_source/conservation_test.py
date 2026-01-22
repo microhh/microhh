@@ -32,7 +32,7 @@ def test_conservation(sw_thermo, sw_basestate, executable, precision):
     """
     Test scalar conservation from point source.
     """
-    print(f'--- Testing {executable} for swthermo={sw_thermo} with swbasestate={sw_basestate} ----')
+    print(f'Testing {executable} for swthermo={sw_thermo} with swbasestate={sw_basestate}')
     float_type = np.float32 if precision == 'sp' else np.float64
 
     """
@@ -94,45 +94,44 @@ def test_conservation(sw_thermo, sw_basestate, executable, precision):
     """
     3. Run case
     """
-    clean_case()
+    clean_case()   # Just to be sure case can start.
 
-    ret = 0
-    ret += execute(f'{executable} init conservation')
-    ret += execute(f'{executable} run conservation')
+    status = 0
+    status += execute(f'{executable} init conservation')
+    status += execute(f'{executable} run conservation')
 
-    if ret > 0:
-        raise Exception(f'Running case failed for {executable}')
+    if status > 0:
+        print(f'Running case with executable {executable} failed!')
+    else:
 
+        """
+        4. Check mass conservation for periodic scalar.
+        """
+        endtime = ini['time']['endtime']
+        savetime = ini['time']['savetime']
+        strength = ini['source']['strength']
 
-    """
-    4. Check mass conservation for periodic scalar.
-    """
-    endtime = ini['time']['endtime']
-    savetime = ini['time']['savetime']
-    strength = ini['source']['strength']
+        ds = xr_read_all('conservation.default.0000000.nc')
 
-    ds = xr_read_all('conservation.default.0000000.nc')
+        rhoref = ds.rhoref.values
+        zh = ds.zh.values
+        dz = zh[1:] - zh[:-1]
 
-    rhoref = ds.rhoref.values
-    zh = ds.zh.values
-    dz = zh[1:] - zh[:-1]
+        ret = 0
+        for time in range(0, endtime+1, savetime):
+            expected_mass = strength * time
 
-    ret = 0
-    for time in range(0, endtime+1, savetime):
-        expected_mass = strength * time
+            fld = np.fromfile(f's1.{time:07d}', float_type)
+            fld = fld.reshape((ktot, jtot, itot))
+            mass = np.sum(rhoref[:,None,None] * fld * dx * dy * dz[:,None,None])
 
-        fld = np.fromfile(f's1.{time:07d}', float_type)
-        fld = fld.reshape((ktot, jtot, itot))
-        mass = np.sum(rhoref[:,None,None] * fld * dx * dy * dz[:,None,None])
+            if not np.isclose(expected_mass, mass, rtol=1e-5):
+                print(f'Mass not conserved! Expected={expected_mass} kg, integral field={mass} kg.')
+                status += 1
 
-        if not np.isclose(expected_mass, mass, rtol=1e-5):
-            print(f'Mass not conserved! Expected={expected_mass} kg, integral field={mass} kg.')
-            ret += 1
+        clean_case()   # Don't leave messy case behind if last test.
 
-    clean_case()
-
-    if ret > 0:
-        raise Exception('One or more cases failed.')
+    return status
 
 
 def run_conservation_test(modes, precs):
@@ -140,13 +139,17 @@ def run_conservation_test(modes, precs):
     sw_thermos = ['dry', 'moist']
     sw_basestates = ['boussinesq', 'anelastic']
 
+    status = 0
+
     for mode in modes:
         for prec in precs:
             executable = f'../../build_{prec}_{mode}/microhh'
             
             for sw_thermo in sw_thermos:
                 for sw_basestate in sw_basestates:
-                    test_conservation(sw_thermo, sw_basestate, executable, prec)
+                    status += test_conservation(sw_thermo, sw_basestate, executable, prec)
+
+    return status
 
 
 if __name__ == '__main__':
@@ -154,4 +157,7 @@ if __name__ == '__main__':
     Run full conservation test including GPU.
     """
 
-    run_conservation_test(modes=['cpu', 'gpu'], precs=['sp', 'dp'])
+    status = run_conservation_test(modes=['cpu', 'gpu'], precs=['sp', 'dp'])
+
+    if status > 0:
+        raise Exception('One or more conservation tests failed.')
