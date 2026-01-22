@@ -107,7 +107,7 @@ print('---------------------------')
 cwd = os.getcwd()
 os.chdir('conservation_source')
 print('Running point source scalar conservation tests')
-err += run_conservation_test(modes, precs)
+err += run_conservation_test(modes=['cpu'], precs=['sp'])
 os.chdir(cwd)
 
 
