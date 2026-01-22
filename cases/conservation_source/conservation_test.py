@@ -8,6 +8,8 @@ import os
 import microhh_tools as mht
 
 from microhh_tools import execute
+#def execute(task):
+#    return subprocess.call(task, shell=True, executable='/bin/bash')
 
 def xr_read_all(f, groups=['default'], decode_times=False):
     # Read all NetCDF groups into a single Dataset.
@@ -15,6 +17,15 @@ def xr_read_all(f, groups=['default'], decode_times=False):
     for group in groups:
         dss.append(xr.open_dataset(f, group=group, decode_times=decode_times))
     return xr.merge(dss)
+
+
+def clean_case():
+    """
+    Clean working directory.
+    """
+    files = glob.glob('*00*')
+    for f in files:
+        os.remove(f)
 
 
 def test_conservation(sw_thermo, sw_basestate, executable, precision):
@@ -83,10 +94,7 @@ def test_conservation(sw_thermo, sw_basestate, executable, precision):
     """
     3. Run case
     """
-    # Cleanup!
-    files = glob.glob('*00*')
-    for f in files:
-        os.remove(f)
+    clean_case()
 
     ret = 0
     ret += execute(f'{executable} init conservation')
@@ -121,14 +129,13 @@ def test_conservation(sw_thermo, sw_basestate, executable, precision):
             print(f'Mass not conserved! Expected={expected_mass} kg, integral field={mass} kg.')
             ret += 1
 
+    clean_case()
+
     if ret > 0:
         raise Exception('One or more cases failed.')
 
 
-if __name__ == '__main__':
-
-    modes = ['cpu']
-    precs = ['sp', 'dp']
+def run_conservation_test(modes, precs):
 
     sw_thermos = ['dry', 'moist']
     sw_basestates = ['boussinesq', 'anelastic']
@@ -140,3 +147,11 @@ if __name__ == '__main__':
             for sw_thermo in sw_thermos:
                 for sw_basestate in sw_basestates:
                     test_conservation(sw_thermo, sw_basestate, executable, prec)
+
+
+if __name__ == '__main__':
+    """
+    Run full conservation test including GPU.
+    """
+
+    run_conservation_test(modes=['cpu', 'gpu'], precs=['sp', 'dp'])
