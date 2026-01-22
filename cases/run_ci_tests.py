@@ -4,9 +4,6 @@ import os
 sys.path.append('../python/')
 import microhh_tools as mht
 
-# Case specific imports.
-from conservation_source.conservation_test import run_conservation_test
-
 modes = ['cpu', 'cpumpi']
 precs = ['dp', 'sp']
 
@@ -100,4 +97,4 @@ for prec in precs:
                     microhh_exec, mode, 'bomex', experiment)
 
 if err > 0:
-    sys.exit('One of more travis case tests failed!')
+    sys.exit('One of more CI tests failed!')
