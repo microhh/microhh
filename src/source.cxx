@@ -42,6 +42,15 @@ namespace
 {
     namespace fm = Fast_math;
 
+    template<typename T>
+    void print_vector(const std::string& label, const std::vector<T>& vec)
+    {
+        std::cout << label << ": {";
+        for (int i=0; i<vec.size(); ++i)
+            std::cout << vec[i] << (i < vec.size()-1 ? ", " : "");
+        std::cout << "}" << std::endl;
+    }
+
     template<typename TF>
     std::vector<int> calc_shape_profile(
             const TF* restrict emission_profile, const TF* restrict z, const int kstart, const int kend)
@@ -183,29 +192,65 @@ Source<TF>::Source(Master& master, Grid<TF>& grid, Fields<TF>& fields, Input& in
         // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
         sw_vmr = input.get_list<bool>("source", "swvmr", "");
 
-        auto check_and_default = [&](std::vector<TF>& vec)
+        // Source input options are allowed to be a single value, in which
+        // case the values are broadcasted to the required size.
+        const int n_input = static_cast<int>(std::max({
+            sourcelist.size(),
+            source_x0.size(),
+            source_y0.size(),
+            source_z0.size(),
+            sigma_x.size(),
+            sigma_y.size(),
+            sigma_z.size(),
+            strength.size(),
+            line_x.size(),
+            line_y.size(),
+            line_z.size(),
+            sw_vmr.size()}));
+
+        auto check_and_default = [&](auto& vec, const std::string& label, const bool allow_zero_fill=false)
         {
-            if (vec.size() > 0 && vec.size() != source_x0.size())
-                throw std::runtime_error("Number of line input values doesn't match other source input values.");
-            else if (vec.size() == 0 && source_x0.size() > 0)
+            if (vec.size() == 0 && allow_zero_fill)
             {
-                vec.resize(source_x0.size());
-                std::fill(vec.begin(), vec.end(), TF(0));
+                // Fill with zeros.
+                vec.resize(n_input);
+                std::fill(vec.begin(), vec.end(), 0);
             }
+            else if (vec.size() == 0)
+            {
+                std::string message = "Source input vector \"" + label + "\" is empty.";
+                throw std::runtime_error(message);
+            }
+            else if (vec.size() == 1)
+            {
+                // Broadcast single value.
+                vec.resize(n_input);
+                std::fill(vec.begin(), vec.end(), vec[0]);
+            }
+            else if (vec.size() > 1 and vec.size() != n_input)
+                throw std::runtime_error("Source input vectors have inconsistent sizes.");
+
+            //print_vector(label, vec);
         };
 
-        // The `line_` input options are allowed to be empty. Set to zero if size differs from other input options.
-        check_and_default(line_x);
-        check_and_default(line_y);
-        check_and_default(line_z);
+        check_and_default(sourcelist, "sourcelist");
 
-        // Check if all inputs are the same size.
-        const int n = sourcelist.size();
-        if (source_x0.size() != n || source_y0.size() != n || source_z0.size() != n ||
-            sigma_x.size() != n || sigma_y.size() != n || sigma_z.size() != n ||
-            strength.size() != n || sw_vmr.size() != n ||
-            line_x.size() != n || line_y.size() != n || line_z.size() != n)
-            throw std::runtime_error("Source input vectors have inconsistent sizes.");
+        check_and_default(source_x0, "source_x0");
+        check_and_default(source_y0, "source_y0");
+        check_and_default(source_z0, "source_z0");
+
+        check_and_default(sigma_x, "sigma_x");
+        check_and_default(sigma_y, "sigma_y");
+        check_and_default(sigma_z, "sigma_z");
+
+        check_and_default(strength, "strength");
+
+        // The `line_` input options are allowed to be empty. Set to zero if size differs from other input options.
+        check_and_default(line_x, "line_x", true);
+        check_and_default(line_y, "line_y", true);
+        check_and_default(line_z, "line_z", true);
+
+        check_and_default(sw_vmr, "sw_vmr");
 
         // Timedep source location
         swtimedep_location = input.get_item<bool>("source", "swtimedep_location", "", false);
