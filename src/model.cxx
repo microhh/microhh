@@ -135,25 +135,23 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
+        source    = Source<TF>   ::factory(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
-        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
-        aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
-        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
-
+        force        = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer       = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay        = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter      = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
+        aerosol      = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background   = std::make_shared<Background<TF>>(master, *grid, *fields, *input);
         particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
+        ib           = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+        stats        = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
+        column       = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump         = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross        = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
 
-        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
-
-        stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
-        column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross     = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
-
-        budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+        // Keep this after `stats` constructor.
+        budget    = Budget<TF>   ::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -269,7 +267,7 @@ void Model<TF>::load()
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
-    source->create(*input, *input_nc);
+    source->create(*input, *timeloop, *input_nc);
     particle_bin->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
@@ -363,6 +361,7 @@ void Model<TF>::exec()
                 radiation ->update_time_dependent(*timeloop);
                 aerosol   ->update_time_dependent(*timeloop);
                 background->update_time_dependent(*timeloop);
+                source    ->update_time_dependent(*timeloop);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -419,11 +418,11 @@ void Model<TF>::exec()
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
-                // Add point and line sources of scalars.
-                source->exec(*timeloop);
-
                 // Gravitational settling of binned dust types.
                 particle_bin->exec(*stats);
+
+                // Add point and line sources of scalars.
+                source->exec(*thermo, *timeloop);
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -599,6 +598,7 @@ void Model<TF>::prepare_gpu()
     radiation->prepare_device();
     column   ->prepare_device();
     aerosol  ->prepare_device();
+    source   ->prepare_device();
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
