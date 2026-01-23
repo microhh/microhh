@@ -44,8 +44,13 @@ namespace Tools_g
     template<typename TF>
     void reduce_all(const TF *, TF *, int, int, int, Reduce_type, TF);
     template<typename TF> __global__
-    void set_to_val(TF* __restrict__, int, TF);
+    void set_to_val_kernel(TF* __restrict__, int, TF);
     template<typename TF> __global__
+    void mult_by_val_kernel(TF* __restrict__, int, TF);
+
+    template<typename TF>
+    void set_to_val(TF* __restrict__, int, TF);
+    template<typename TF>
     void mult_by_val(TF* __restrict__, int, TF);
 
     struct cuda_exception : public std::exception
