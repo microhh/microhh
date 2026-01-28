@@ -1,3 +1,4 @@
+
 # *  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  *   *      *
 #                                                       *      *  *
 #   * ████       ████   ████   █████▄    ▄█████   ████     *     *
@@ -25,14 +26,7 @@ else()
 endif()
 
 # Set compiler flags / options.
-
-#set(USER_CXX_FLAGS_RELEASE "-O3 -march=znver2 -mtune=znver2 -mfma -mavx2 -m3dnow -fomit-frame-pointer")
-#set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
-#
-#set(USER_FC_FLAGS "-fdefault-real-8 -fdefault-double-8 -fPIC -ffixed-line-length-none -fno-range-check")
-#set(USER_FC_FLAGS_RELEASE "-DNDEBUG -O3 -march=znver2 -mtune=znver2 -mfma -mavx2 -m3dnow -fomit-frame-pointer")
-
-set(USER_CXX_FLAGS "")
+set(USER_CXX_FLAGS "-std=c++20")
 set(USER_CXX_FLAGS_RELEASE "-Ofast -ffp=3 -flto")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g")
 
