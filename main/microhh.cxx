@@ -39,9 +39,15 @@ int main(int argc, char *argv[])
         // Initialize the model in precision.
         #ifdef FLOAT_SINGLE
         master.print_message("Precision: Single (32-bits floats)\n");
+
+        #ifdef FFT_DOUBLE
+        master.print_message("Precision FFT+TDMA: Double (64-bits floats)\n");
+        #endif
+
         Model<float> model(master, argc, argv);
         #else
         master.print_message("Precision: Double (64-bits floats)\n");
+
         Model<double> model(master, argc, argv);
         #endif
 

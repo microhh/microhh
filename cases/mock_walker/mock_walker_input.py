@@ -20,7 +20,10 @@
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import numpy as np
+
+import ls2d
 
 from mock_walker import mock_walker_input
 
@@ -30,11 +33,13 @@ Case settings.
 """
 float_type = np.float32
 
+"""
 # Eddy
 gpt_path = '/home/bart/meteo/models/coefficients_veerman/' 
 microhh_path = '/home/bart/meteo/models/microhh/'
 microhh_bin = '/home/bart/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = 'test'
+"""
 
 """
 # Snellius
@@ -44,22 +49,64 @@ microhh_bin = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch-shared/bstratum/mock_walker_test'
 """
 
+# ECMWF HPC
+gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
+microhh_path = '/home/nkbs/meteo/models/microhh'
+#microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
+microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_dpfft_cpumpi/microhh'
+work_dir = '/scratch/nkbs/mock_walker_xl_400m'
+
 sw_cos_sst = True
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
 
-xsize = 128000
-ysize = 32000
+"""
+xsize = 1024*200
+ysize = 1024*200
 
-itot = 256
-jtot = 64
+itot = 1024
+jtot = 1024
+"""
 
-npx = 4
-npy = 2
+"""
+xsize = 512*400
+ysize = 512*400
 
-endtime = 24*3600
+itot = 512
+jtot = 512
 
+npx = 8
+npy = 16
+"""
+
+# Full domain, 400 m resolution.
+# 128 x 32 :  15360 x  1024 x 128 @ 128 x  32, #/core = 491520.0
+xsize = 15360*400
+ysize = 1024*400
+
+itot = 15360
+jtot = 1024
+
+npx = 128
+npy = 32
+
+"""
+# Full domain, 200 m resolution.
+# 128 x 32 :  30720 x  2048 x 128 @ 128 x  32, #/core = 1966080.0
+xsize = 30720*200
+ysize = 2048*200
+
+itot = 30720
+jtot = 2048
+
+npx = 128
+npy = 32
+"""
+
+endtime = 10*24*3600
+
+"""
 # Official RCEMIP LES grid
 z = np.loadtxt('rcemip_les_grid.txt')
 z = z[:-2]   # From 146 to 144 levels for domain decomposition.
@@ -68,6 +115,11 @@ zsize = 32250
 zh = 0.5*(z[:-1] + z[1:])
 zh = np.append(0., zh)
 zh = np.append(zh, zsize)
+"""
+
+z = np.array([0, 2_000, 20_000, 100_000])
+f = np.array([1.05, 1.012, 1.04])
+grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
 
 # G-point sets from Veerman (2024).
 # For now the cheapest for testing. TBD with Martin/Menno.
@@ -76,7 +128,10 @@ coef_lw = 'rrtmgp-gas-lw-g056-cf2.nc'
 
 name = 'mock_walker'
 create_slurm_script = True
-wc_time = '04:00:00'
+wc_time = '24:00:00'
+
+if not os.path.exists(work_dir):
+    os.makedirs(work_dir)
 
 mock_walker_input(
         name,
@@ -86,8 +141,8 @@ mock_walker_input(
         jtot,
         npx,
         npy,
-        z,
-        zh,
+        grid.z,
+        grid.zh,
         endtime,
         sw_cos_sst,
         mean_sst,
