@@ -36,6 +36,7 @@ from mock_walker import mock_walker_input
 Case settings.
 """
 float_type = np.float32
+grid = 128  # or 144
 
 """
 # Eddy
@@ -53,16 +54,36 @@ microhh_bin = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch-shared/bstratum/mock_walker_test'
 """
 
+"""
 # ECMWF HPC
 gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
 microhh_path = '/home/nkbs/meteo/models/microhh'
 microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch/nkbs/mock_walker_scaling_v1/'
+"""
+
+# LUMI
+project = 'project_465002576'
+gpt_path = '/home/stratumv/meteo/models/coefficients_veerman'
+microhh_path = '/home/stratumv/meteo/models/microhh'
+microhh_bin = '/home/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
+work_dir = f'/scratch/{project}/mock_walker_scaling'
 
 
-z = np.array([0, 2_000, 20_000, 100_000])
-f = np.array([1.05, 1.012, 1.04])
-grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
+if grid == 128:
+    # Custom 128 layer grid.
+    z = np.array([0, 2_000, 20_000, 100_000])
+    f = np.array([1.05, 1.012, 1.04])
+    grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
+    z = grid.z
+    zsize = grid.zsize
+elif grid == 144:
+    # Default RCEMIP-I grid.
+    # Official RCEMIP LES grid
+    z = np.loadtxt('rcemip_les_grid.txt')
+    z = z[:-2]   # From 146 to 144 levels for domain decomposition.
+    zsize = 32250
+
 
 sw_cos_sst = False  # False for RCEMIP-I, True for RCEMIP-II
 mean_sst = 300
@@ -70,7 +91,6 @@ d_sst = 2.5
 ps = 101480
 
 endtime = 1800
-
 itot_base = 1920
 npx_base = 8
 npy_base = 16

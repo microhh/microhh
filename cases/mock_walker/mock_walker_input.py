@@ -49,27 +49,29 @@ microhh_bin = '/home/bstratum/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch-shared/bstratum/mock_walker_test'
 """
 
+"""
 # ECMWF HPC
 gpt_path = '/home/nkbs/meteo/models/coefficients_veerman'
 microhh_path = '/home/nkbs/meteo/models/microhh'
-#microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
 microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_dpfft_cpumpi/microhh'
 work_dir = '/scratch/nkbs/mock_walker_xl_400m'
+"""
+
+# LUMI
+project = 'project_465002576'
+gpt_path = '/home/stratumv/meteo/models/coefficients_veerman'
+microhh_path = '/home/stratumv/meteo/models/microhh'
+microhh_bin = '/home/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
+work_dir = f'/scratch/{project}/mock_walker_test'
 
 sw_cos_sst = True
+rotated_domain = False
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
 
-"""
-xsize = 1024*200
-ysize = 1024*200
 
-itot = 1024
-jtot = 1024
-"""
-
-"""
+# Small test domain.
 xsize = 512*400
 ysize = 512*400
 
@@ -78,8 +80,9 @@ jtot = 512
 
 npx = 8
 npy = 16
-"""
 
+
+"""
 # Full domain, 400 m resolution.
 # 128 x 32 :  15360 x  1024 x 128 @ 128 x  32, #/core = 491520.0
 xsize = 15360*400
@@ -90,6 +93,7 @@ jtot = 1024
 
 npx = 128
 npy = 32
+"""
 
 """
 # Full domain, 200 m resolution.
@@ -104,7 +108,8 @@ npx = 128
 npy = 32
 """
 
-endtime = 10*24*3600
+#endtime = 10*24*3600
+endtime = 3600
 
 """
 # Official RCEMIP LES grid
@@ -128,7 +133,7 @@ coef_lw = 'rrtmgp-gas-lw-g056-cf2.nc'
 
 name = 'mock_walker'
 create_slurm_script = True
-wc_time = '24:00:00'
+wc_time = '01:00:00'
 
 if not os.path.exists(work_dir):
     os.makedirs(work_dir)
@@ -141,13 +146,14 @@ mock_walker_input(
         jtot,
         npx,
         npy,
-        grid.z,
-        grid.zh,
+        z,
+        zsize,
         endtime,
         sw_cos_sst,
         mean_sst,
         d_sst,
         ps,
+        rotated_domain,
         coef_sw,
         coef_lw,
         wc_time,
@@ -156,4 +162,5 @@ mock_walker_input(
         microhh_path,
         microhh_bin,
         create_slurm_script,
+        project,
         float_type)

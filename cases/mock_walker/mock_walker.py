@@ -95,7 +95,7 @@ def mock_walker_input(
         npx,
         npy,
         z,
-        zh,
+        zsize,
         endtime,
         sw_cos_sst,
         mean_sst,
@@ -115,7 +115,6 @@ def mock_walker_input(
     """
     Create input files for Mock Walker case.
     """
-    zsize = zh[-1]
 
     # Table 2 W17.
     if mean_sst == 295:
