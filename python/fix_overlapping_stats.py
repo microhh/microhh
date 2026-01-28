@@ -26,49 +26,73 @@ Requires NCO (`ncks` and `ncrcat` commands).
 
 Example usage:
     `python fix_overlapping_stats.py drycblles.default.0000000.nc drycblles.default.0003600.nc`
+    `python fix_overlapping_stats.py drycblles.default.*.nc`
 
 This results in a file:
-    `drycblles.default.0003600.nc_fixed.nc`,
-from which the overlapping times with `drycblles.default.0000000.nc` are removed,
-and a final merged file called:
-    `drycblles.default.nc`.
+    `drycblles.default.nc`
+in which all files are merged and the overlapping times are removed.
 
-NOTE: none of the original statistics files are modified/removed,
-so this is a safe operation...
+NOTE: none of the original statistics files are modified/removed, so this is a safe operation.
 """
 
 import xarray as xr
 import numpy as np
 import subprocess
+import datetime
 import shutil
 import sys
+import os
 
-f1 = sys.argv[1]
-f2 = sys.argv[2]
+if len(sys.argv) < 3:
+    raise Exception('Provide at least two statistics files as arguments!')
 
-name = f1.split('.')[0]
-mode = f1.split('.')[1]
-f2_fixed = '{}_fixed.nc'.format(f2)
-out = '{}.{}.nc'.format(name, mode)
+files = sys.argv[1:]
+n_files = len(files)
 
-# 2. Read NetCDF files to determine overlapping times.
-nc1 = xr.open_dataset(f1, decode_times=False)
-nc2 = xr.open_dataset(f2, decode_times=False)
+print(f'Merging {n_files} files...')
 
-i0 = int(np.abs(nc2.time - nc1.time[-1]).argmin())+1
-i1 = nc2.time.size-1
+# Output file name, e.g. case_name.default.nc
+name = files[0].split('.')[0]
+mode = files[0].split('.')[1]
+file_out = f'{name}.{mode}.nc'
 
-# 3. Fix second NetCDF file use ncks.
-subprocess.run(['ncks', '-d', 'time,{},{}'.format(i0, i1), f2, f2_fixed])
+# List with NetCDF files with duplicate times removed.
+files_fixed = []
+to_remove = []
 
-# 4. Merge statistics files with `ncrcat`.
-subprocess.run(['ncrcat', f1, f2_fixed, out])
+for n in range(n_files-1):
+    print(f'Fixing {files[n]} + {files[n+1]}...')
 
-# 5. Check:
-nc3 = xr.open_dataset(out, decode_times=False)
-dt = np.diff(nc3.time.values)
+    # Read NetCDF files to determine overlapping times.
+    nc1 = xr.open_dataset(files[n],   decode_times=False)
+    nc2 = xr.open_dataset(files[n+1], decode_times=False)
+
+    i0 = int(np.abs(nc2.time - nc1.time[-1]).argmin())+1
+    i1 = nc2.time.size-1
+
+    if i0 > 1:
+        # Fix second NetCDF file use ncks. Replace with Xarray?
+        file_fixed = f'{name}.{mode}_{n+1}.nc'
+        subprocess.run(['ncks', '-d', f'time,{i0},{i1}', files[n+1], file_fixed])
+        files_fixed.append(file_fixed)
+        to_remove.append(file_fixed)
+    else:
+        files_fixed.append(files[n+1])
+
+print(files_fixed)
+
+# Merge statistics files with `ncrcat`.
+subprocess.run(['ncrcat', files[0], *files_fixed, file_out])
+
+# Check.
+nc = xr.open_dataset(file_out, decode_times=False)
+dt = np.diff(nc.time.values)
 
 if np.all(np.isclose(dt, dt[0])):
     print('Merge succes...!')
 else:
     print('Merge failed...!')
+
+# Cleanup temporary files.
+for f in to_remove:
+    os.remove(f)
