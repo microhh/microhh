@@ -111,6 +111,7 @@ def mock_walker_input(
         microhh_bin,
         create_slurm_script=False,
         account=None,
+        partition=None,
         float_type=np.float32):
     """
     Create input files for Mock Walker case.
@@ -285,7 +286,7 @@ def mock_walker_input(
             f.write(f'#SBATCH --job-name={name}\n')
             f.write(f'#SBATCH --output={work_dir}/mhh-%j.out\n')
             f.write(f'#SBATCH --error={work_dir}/mhh-%j.err\n')
-            f.write(f'#SBATCH --partition=par\n')
+            f.write(f'#SBATCH --partition={partition}\n')
             f.write(f'#SBATCH --ntasks={npx*npy}\n')
             f.write(f'#SBATCH --cpus-per-task=1\n')
             f.write(f'#SBATCH --ntasks-per-core=1\n')

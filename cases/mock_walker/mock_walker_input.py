@@ -59,9 +59,10 @@ work_dir = '/scratch/nkbs/mock_walker_xl_400m'
 
 # LUMI
 project = 'project_465002576'
-gpt_path = '/home/stratumv/meteo/models/coefficients_veerman'
-microhh_path = '/home/stratumv/meteo/models/microhh'
-microhh_bin = '/home/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
+partition = 'small'
+gpt_path = '/users/stratumv/meteo/models/coefficients_veerman'
+microhh_path = '/users/stratumv/meteo/models/microhh'
+microhh_bin = '/users/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
 work_dir = f'/scratch/{project}/mock_walker_test'
 
 sw_cos_sst = True
@@ -125,6 +126,8 @@ zh = np.append(zh, zsize)
 z = np.array([0, 2_000, 20_000, 100_000])
 f = np.array([1.05, 1.012, 1.04])
 grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
+z = grid.z
+zsize = grid.zsize
 
 # G-point sets from Veerman (2024).
 # For now the cheapest for testing. TBD with Martin/Menno.
@@ -163,4 +166,5 @@ mock_walker_input(
         microhh_bin,
         create_slurm_script,
         project,
+        partition,
         float_type)
