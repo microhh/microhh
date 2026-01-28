@@ -101,6 +101,7 @@ def mock_walker_input(
         mean_sst,
         d_sst,
         ps,
+        rotated_domain,
         coef_sw,
         coef_lw,
         wc_time,
@@ -108,8 +109,9 @@ def mock_walker_input(
         gpt_path,
         microhh_path,
         microhh_bin,
-        create_slurm_script,
-        float_type):
+        create_slurm_script=False,
+        account=None,
+        float_type=np.float32):
     """
     Create input files for Mock Walker case.
     """
@@ -124,8 +126,8 @@ def mock_walker_input(
         mean_q0 = 24.00e-3
     else:
         raise Exception('Unknown mean_sst')
-    
-    
+
+
     """
     Read ini file and set values.
     """
@@ -133,33 +135,33 @@ def mock_walker_input(
 
     ini['master']['npx'] = npx
     ini['master']['npy'] = npy
-    
+
     ini['grid']['itot'] = itot
     ini['grid']['jtot'] = jtot
     ini['grid']['ktot'] = z.size
-    
+
     ini['grid']['xsize'] = xsize
     ini['grid']['ysize'] = ysize
     ini['grid']['zsize'] = zsize
 
     if sw_cos_sst:
         ini['boundary']['sbot_2d_list'] = ['thl', 'qt']
-    
+
     ini['buffer']['zstart'] = 0.75*zsize
     ini['time']['endtime'] = endtime
-    
+
     ini['thermo']['pbot'] = ps
-    
+
     # For `!sw_cos_sst`:
     exn = exner(ps)
     ini['boundary']['sbot[thl]'] = mean_sst / exn
     ini['boundary']['sbot[qt]'] = qsat(ps, mean_sst)
-    
+
     # Check and write to final .ini file
     check_ini(ini)
     save_ini(ini, f'{work_dir}/mock_walker.ini')
-    
-    
+
+
     """
     Vetical profiles on radiation grid.
     """
@@ -168,12 +170,12 @@ def mock_walker_input(
     z_lay  = np.arange(dz/2, z_top, dz)
     z_lev = np.arange(0, z_top-dz/2, dz)
     z_lev = np.append(z_lev, z_top)
-    
+
     p_lay, q_lay, T_lay, _, o3_lay = calc_profiles(z_lay, ps, mean_sst, mean_q0)
     p_lev, _,     T_lev, _, _      = calc_profiles(z_lev, ps, mean_sst, mean_q0)
-    
+
     h2o_lay = q_lay / (eps - eps * q_lay)
-    
+
     background_concs = {
         'co2' :  348.e-6,
         'ch4' : 1650.e-9,
@@ -181,15 +183,15 @@ def mock_walker_input(
         'n2' : 0.7808,
         'o2' : 0.2095,
         }
-    
-    
+
+
     """
     Vertical profiles on LES grid.
     """
     _, qt, _, thl, o3 = calc_profiles(z, ps, mean_sst, mean_q0)
     h2o = qt / (eps - eps * qt)
-    
-    
+
+
     """
     Create case_input.nc.
     """
@@ -200,7 +202,7 @@ def mock_walker_input(
         'h2o' : h2o,
         'o3' : o3,
         }
-    
+
     radiation  = {
         'z_lay': z_lay,
         'z_lev': z_lev,
@@ -211,44 +213,59 @@ def mock_walker_input(
         'o3':    o3_lay,
         'h2o':   h2o_lay
         }
-    
+
     init.update(background_concs)
     radiation.update(background_concs)
-    
+
     save_case_input('mock_walker', init_profiles=init, radiation=radiation, output_dir=work_dir)
-    
-    
+
+
     if (sw_cos_sst):
         """
         2D surface fields with `SST(x) = <SST> - d_SST / 2 * cos(2 pi x / xsize)`.
+        if rotated_domain, the gradient is put in the y-direction.
         """
 
-        dx = xsize / itot
-        x = np.arange(dx/2, xsize, dx)
-        sst_x = mean_sst - d_sst / 2 * np.cos(2 * np.pi * x / xsize) 
-        
-        exn = exner(ps)
-        thl_x = sst_x / exn
-        qt_x  = qsat(ps, sst_x)
-        
         thl_sbot = np.zeros((jtot, itot), dtype=float_type)
         qt_sbot  = np.zeros((jtot, itot), dtype=float_type)
-        
-        thl_sbot[:,:] = thl_x[None, :]
-        qt_sbot[:,:] = qt_x[None, :]
-        
+
+        if rotated_domain:
+            dy = ysize / jtot
+            y = np.arange(dy/2, ysize, dy)
+            sst_y = mean_sst - d_sst / 2 * np.cos(2 * np.pi * y / ysize)
+
+            exn = exner(ps)
+            thl_y = sst_y / exn
+            qt_y  = qsat(ps, sst_y)
+
+            thl_sbot[:,:] = thl_y[:, None]
+            qt_sbot[:,:] = qt_y[:, None]
+
+        else:
+            dx = xsize / itot
+            x = np.arange(dx/2, xsize, dx)
+            sst_x = mean_sst - d_sst / 2 * np.cos(2 * np.pi * x / xsize)
+
+            exn = exner(ps)
+            thl_x = sst_x / exn
+            qt_x  = qsat(ps, sst_x)
+
+            thl_sbot[:,:] = thl_x[None, :]
+            qt_sbot[:,:] = qt_x[None, :]
+
+
         thl_sbot.tofile(f'{work_dir}/thl_bot_in.0000000')
         qt_sbot.tofile(f'{work_dir}/qt_bot_in.0000000')
-    
-    
+
+
     """
     Copy radiation files, executables, et cetera.
     """
     rrtmgp_path = f'{microhh_path}/rte-rrtmgp-cpp/rrtmgp-data'
-    
+
     shutil.copy2(f'{gpt_path}/{coef_sw}', f'{work_dir}/coefficients_sw.nc')
     shutil.copy2(f'{gpt_path}/{coef_lw}', f'{work_dir}/coefficients_lw.nc')
-    
+
     shutil.copy2(f'{rrtmgp_path}/rrtmgp-clouds-lw.nc', f'{work_dir}/cloud_coefficients_lw.nc')
     shutil.copy2(f'{rrtmgp_path}/rrtmgp-clouds-sw.nc', f'{work_dir}/cloud_coefficients_sw.nc')
 
@@ -264,14 +281,17 @@ def mock_walker_input(
         with open(slurm_script, 'w') as f:
 
             f.write(f'#!/bin/bash\n')
+            if account is not None:
+                f.write(f'#SBATCH --account={account}\n')
             f.write(f'#SBATCH --job-name={name}\n')
             f.write(f'#SBATCH --output=mhh-%j.out\n')
             f.write(f'#SBATCH --error=mhh-%j.err\n')
             f.write(f'#SBATCH --partition=par\n')
-            f.write(f'#SBATCH -n {npx*npy} \n')
+            f.write(f'#SBATCH --ntasks={npx*npy}\n')
             f.write(f'#SBATCH --cpus-per-task=1\n')
             f.write(f'#SBATCH --ntasks-per-core=1\n')
-            f.write(f'#SBATCH -t {wc_time}\n\n')
+            f.write(f'#SBATCH --mem=224G\n')
+            f.write(f'#SBATCH --time={wc_time}\n\n')
 
             f.write(f'source ~/setup_env.sh\n\n')
 
