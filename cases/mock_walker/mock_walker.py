@@ -280,7 +280,7 @@ def mock_walker_input(
         slurm_script = f'{work_dir}/run.slurm'
         with open(slurm_script, 'w') as f:
 
-            f.write(f'#!/bin/bash\n')
+            f.write(f'#!/bin/bash\n\n')
             if account is not None:
                 f.write(f'#SBATCH --account={account}\n')
             f.write(f'#SBATCH --job-name={name}\n')
