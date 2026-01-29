@@ -33,13 +33,9 @@ from mock_walker import mock_walker_input
 
 
 """
-Case settings.
-"""
-float_type = np.float32
-grid = 128  # or 144
-
-"""
 # Eddy
+project = None
+partition = None
 gpt_path = '/home/bart/meteo/models/coefficients_veerman/' 
 microhh_path = '/home/bart/meteo/models/microhh/'
 microhh_bin = '/home/bart/meteo/models/microhh/build_sp_cpumpi/microhh'
@@ -62,90 +58,89 @@ microhh_bin = '/home/nkbs/meteo/models/microhh/build_sp_cpumpi/microhh'
 work_dir = '/scratch/nkbs/mock_walker_scaling_v1/'
 """
 
+
 # LUMI
 project = 'project_465002576'
+partition = 'small'
 gpt_path = '/home/stratumv/meteo/models/coefficients_veerman'
 microhh_path = '/home/stratumv/meteo/models/microhh'
 microhh_bin = '/home/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
 work_dir = f'/scratch/{project}/mock_walker_scaling'
 
 
-if grid == 128:
-    # Custom 128 layer grid.
-    z = np.array([0, 2_000, 20_000, 100_000])
-    f = np.array([1.05, 1.012, 1.04])
-    grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
-    z = grid.z
-    zsize = grid.zsize
-elif grid == 144:
-    # Default RCEMIP-I grid.
-    # Official RCEMIP LES grid
-    z = np.loadtxt('rcemip_les_grid.txt')
-    z = z[:-2]   # From 146 to 144 levels for domain decomposition.
-    zsize = 32250
-
+"""
+Global settings.
+"""
+float_type = np.float32
 
 sw_cos_sst = False  # False for RCEMIP-I, True for RCEMIP-II
 mean_sst = 300
 d_sst = 2.5
 ps = 101480
-
 endtime = 1800
-itot_base = 1920
-npx_base = 8
-npy_base = 16
-dxy = 200
 
 coef_sw='rrtmgp-gas-sw-g049-cf2.nc'
 coef_lw='rrtmgp-gas-lw-g056-cf2.nc'
 
 create_slurm_script = True
-wc_time = '04:00:00'
+wc_time = '01:00:00'
 
-# Configurations weak-scaling test.
-configurations = [
-    ('16x1', 2048, [(1,1), (2,1), (4,1), (8,1), (16,1)]),
-    ('16x2', 1024, [(1,1), (2,2), (4,2), (8,2), (16,2)]),
-    ('16x4', 512,  [(1,1), (2,2), (4,4), (8,4), (16,4)]),
-]
 
-for name, jtot_node, configs in configurations:
-    print(f'Configuration: {name} nodes')
+def run_weak_scaling(settings, rotated_domain):
+    """
+    Run weak scaling set for all configs.
+    """
+    name = settings['name']
+    print(f'====== Running {name} ======')
 
-    for nn_x, nn_y in configs:
-        print(f'Running {nn_x} x {nn_y}')
+    if settings['ktot'] == 128:
+        # Custom 128 layer grid.
+        z = np.array([0, 2_000, 20_000, 100_000])
+        f = np.array([1.05, 1.012, 1.04])
+        grid = ls2d.grid.Grid_stretched_manual(128, 40, z, f)
+        z = grid.z
+        zsize = grid.zsize
+    elif settings['ktot'] == 144:
+        # Official RCEMIP LES grid.
+        z = np.loadtxt('rcemip_les_grid.txt')
+        z = z[:-2]   # From 146 to 144 levels for domain decomposition.
+        zsize = 32250
+    else:
+        raise Exception('Invalid vertical grid.')
 
-        itot = itot_base * nn_x
-        jtot = jtot_node * nn_y
+    for nn_x, nn_y in settings['configs']:
 
-        npx = npx_base * nn_x
-        npy = npy_base * nn_y
+        itot = settings['itot_b'] * nn_x
+        jtot = settings['jtot_b'] * nn_y
 
-        xsize = itot * dxy
-        ysize = jtot * dxy
+        npx = settings['npx_b'] * nn_x
+        npy = settings['npy_b'] * nn_y
 
-        ny = name.split('x')[-1]
-        case_name = f'{ny}x{nn_x}x{nn_y}'
-        case_path = f'{work_dir}/{case_name}'
+        xsize = itot * settings['dxy']
+        ysize = jtot * settings['dxy']
+
+        case_name = f'{name}_{nn_x}x{nn_y}'
+        case_path = f'{work_dir}/{name}/{nn_x}x{nn_y}'
 
         if not os.path.exists(case_path):
             os.makedirs(case_path)
 
         slurm_script = mock_walker_input(
-                name,
+                case_name,
                 xsize,
                 ysize,
                 itot,
                 jtot,
                 npx,
                 npy,
-                grid.z,
-                grid.zh,
+                z,
+                zsize,
                 endtime,
                 sw_cos_sst,
                 mean_sst,
                 d_sst,
                 ps,
+                rotated_domain,
                 coef_sw,
                 coef_lw,
                 wc_time,
@@ -154,6 +149,19 @@ for name, jtot_node, configs in configurations:
                 microhh_path,
                 microhh_bin,
                 create_slurm_script,
+                project,
+                partition,
                 float_type)
 
         subprocess.run(['sbatch', slurm_script], check=True)
+
+
+# 400 m, 128 vertical levels, non-rotated.
+settings = (
+    dict(name='400_128_16x1', itot_b=960, jtot_b=1024, ktot=128, npx_b=8, npy_b=16, dxy=390.625, configs=[(1,1), (2,1), (4,1), (8,1), (16,1)]),
+    dict(name='400_128_16x2', itot_b=960, jtot_b= 512, ktot=128, npx_b=8, npy_b=16, dxy=390.625, configs=[(1,1), (1,2), (2,2), (4,2), (8,2), (16,2)]),
+    dict(name='400_128_16x4', itot_b=960, jtot_b= 256, ktot=128, npx_b=8, npy_b=16, dxy=390.625, configs=[(1,1), (1,2), (1,4), (2,4), (4,4), (8,4), (16,4)])
+)
+
+for setting in settings:
+    run_weak_scaling(setting, False)
