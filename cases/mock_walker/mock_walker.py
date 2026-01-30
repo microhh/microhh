@@ -112,6 +112,7 @@ def mock_walker_input(
         create_slurm_script=False,
         account=None,
         partition=None,
+        copy_out_to=None,
         float_type=np.float32):
     """
     Create input files for Mock Walker case.
@@ -295,9 +296,15 @@ def mock_walker_input(
 
             f.write(f'source ~/setup_env.sh\n\n')
 
-            f.write(f'cd {work_dir}\n')
+            f.write(f'cd {work_dir}\n\n')
+
+            f.write('export FI_CXI_RX_MATCH_MODE=hybrid\n\n')
+
             f.write(f'srun ./microhh init mock_walker\n')
-            f.write(f'srun ./microhh run mock_walker')
+            f.write(f'srun ./microhh run mock_walker\n\n')
+
+            if copy_out_to is not None:
+                f.write(f'cp mock_walker.out {copy_out_to}/{name}.out')
 
         return slurm_script
 
