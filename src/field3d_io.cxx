@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "defines.h"
 #include "field3d_io.h"
+#include "timer.h"
 
 template<typename TF>
 Field3d_io<TF>::Field3d_io(Master& masterin, Grid<TF>& gridin) :
@@ -87,6 +88,8 @@ int Field3d_io<TF>::save_field3d(
                 tmp1[ijkb] = data[ijk] + offset;
             }
 
+    Timer timer;
+
     if (sw_transpose)
     {
         // Transpose the 3D field
@@ -136,6 +139,11 @@ int Field3d_io<TF>::save_field3d(
 
     MPI_Type_free(&subarray);
 
+    const double elapsed = timer.elapsed();
+    const size_t bytes = gd.itot * gd.jtot * gd.ktot * sizeof(TF);
+    const double trp = (bytes / (1024. * 1024. * 1024.)) / elapsed;
+    master.print_message("%s: %.2f GB/s\n", filename, trp);
+
     return 0;
 }
 
@@ -159,6 +167,8 @@ int Field3d_io<TF>::load_field3d(
 
     // For full 3D fields, use the transposed read to increase IO performance
     bool sw_transpose = (kmax == gd.kmax) ? true : false;
+
+    Timer timer;
 
     if (sw_transpose)
     {
@@ -227,6 +237,11 @@ int Field3d_io<TF>::load_field3d(
 
     MPI_Type_free(&subarray);
 
+    const double elapsed = timer.elapsed();
+    const size_t bytes = gd.itot * gd.jtot * gd.ktot * sizeof(TF);
+    const double trp = (bytes / (1024. * 1024. * 1024.)) / elapsed;
+    master.print_message("%s: %.2f GB/s\n", filename, trp);
+
     return 0;
 }
 
@@ -259,6 +274,8 @@ int Field3d_io<TF>::save_xz_slice(
                 const int ijkb = i + (k-kstart)*kkb;
                 tmp[ijkb] = data[ijk] + data0;
             }
+
+        Timer timer;
 
 #ifdef DISABLE_2D_MPIIO
 //
@@ -351,6 +368,11 @@ int Field3d_io<TF>::save_xz_slice(
 
         MPI_Type_free(&subxzslice);
 #endif
+
+        const double elapsed = timer.elapsed();
+        const size_t bytes = gd.itot * gd.jtot * sizeof(TF);
+        const double tp = (bytes / (1024. * 1024. * 1024.)) / elapsed;
+        master.print_message("%s: %.2f GB/s\n", filename, tp);
     }
 
     // Gather errors from other processes
@@ -390,6 +412,8 @@ int Field3d_io<TF>::save_yz_slice(
                 const int ijkb = j + (k-kstart)*kkb;
                 tmp[ijkb] = data[ijk] + data0;
             }
+
+        Timer timer;
 
 #ifdef DISABLE_2D_MPIIO
 //
@@ -481,6 +505,11 @@ int Field3d_io<TF>::save_yz_slice(
 
         MPI_Type_free(&subyzslice);
 #endif
+
+        const double elapsed = timer.elapsed();
+        const size_t bytes = gd.itot * gd.jtot * sizeof(TF);
+        const double tp = (bytes / (1024. * 1024. * 1024.)) / elapsed;
+        master.print_message("%s: %.2f GB/s\n", filename, tp);
     }
 
     // Gather errors from other processes
@@ -514,6 +543,8 @@ int Field3d_io<TF>::save_xy_slice(
             const int ijkb = i + j*jjb;
             tmp[ijkb] = data[ijk] + data0;
         }
+    
+    Timer timer;
 
 #ifdef DISABLE_2D_MPIIO
 //
@@ -600,6 +631,11 @@ int Field3d_io<TF>::save_xy_slice(
 
     MPI_Barrier(md.commxy);
 #endif
+
+    const double elapsed = timer.elapsed();
+    const size_t bytes = gd.itot * gd.jtot * sizeof(TF);
+    const double tp = (bytes / (1024. * 1024. * 1024.)) / elapsed;
+    master.print_message("%s: %.2f GB/s\n", filename, tp);
 
     return 0;
 }
