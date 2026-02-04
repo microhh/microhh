@@ -113,6 +113,8 @@ def mock_walker_input(
         account=None,
         partition=None,
         copy_out_to=None,
+        lfs_c=None,
+        lfs_s=None,
         float_type=np.float32):
     """
     Create input files for Mock Walker case.
@@ -299,6 +301,9 @@ def mock_walker_input(
             f.write(f'cd {work_dir}\n\n')
 
             f.write('export FI_CXI_RX_MATCH_MODE=hybrid\n\n')
+
+            if lfs_c is not None and lfs_s is not None:
+                f.write(f'lfs setstripe -c {lfs_c} -S {lfs_s} {work_dir}\n\n')
 
             f.write(f'srun ./microhh init mock_walker\n')
             f.write(f'srun ./microhh run mock_walker\n\n')

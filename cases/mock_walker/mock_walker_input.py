@@ -63,7 +63,7 @@ partition = 'small'
 gpt_path = '/users/stratumv/meteo/models/coefficients_veerman'
 microhh_path = '/users/stratumv/meteo/models/microhh'
 microhh_bin = '/users/stratumv/meteo/models/microhh/build_spdp_cpumpi/microhh'
-work_dir = f'/scratch/{project}/mock_walker_test'
+work_dir = f'/scratch/{project}/mock_walker_io'
 
 sw_cos_sst = True
 rotated_domain = False
