@@ -62,6 +62,9 @@ class Thermo_dry : public Thermo<TF>
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
         void create_stats(Stats<TF>&);   // Initialization of the statistics.
 
+        void load(const int);
+        void save(const int);
+
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
         void exec_dump(Dump<TF>&, unsigned long);
@@ -157,7 +160,7 @@ class Thermo_dry : public Thermo<TF>
             Basestate_type swbasestate;
 
             TF pbot;   // Surface pressure.
-            TF thref0; // Reference potential temperature in case of Boussinesq
+            TF thref0; // Reference potential temperature in case of Boussinesq.
 
             std::vector<TF> thref;
             std::vector<TF> threfh;
@@ -165,6 +168,8 @@ class Thermo_dry : public Thermo<TF>
             std::vector<TF> prefh;
             std::vector<TF> exnref;
             std::vector<TF> exnrefh;
+            std::vector<TF> rhoref;
+            std::vector<TF> rhorefh;
 
             // GPU functions and variables
             TF*  thref_g;
@@ -173,7 +178,10 @@ class Thermo_dry : public Thermo<TF>
             TF*  prefh_g;
             TF*  exnref_g;
             TF*  exnrefh_g;
+            TF*  rhoref_g;
+            TF*  rhorefh_g;
         };
+
         background_state bs;
         background_state bs_stats;
 

@@ -386,13 +386,124 @@ void Thermo_dry<TF>::init()
     bs.prefh.resize(gd.kcells);
     bs.exnref.resize(gd.kcells);
     bs.exnrefh.resize(gd.kcells);
+    bs.rhoref.resize(gd.kcells);
+    bs.rhorefh.resize(gd.kcells);
 }
 
 
 template<typename TF>
-void Thermo_dry<TF>::create(
-        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
-        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
+void Thermo_dry<TF>::save(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+    int nerror = 0;
+
+    if ((master.get_mpiid() == 0) && iotime == 0)
+    {
+        FILE *pFile;
+        char filename[256];
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime);
+        pFile = fopen(filename, "wbx");
+        master.print_message("Saving \"%s\" ... ", filename);
+
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            nerror++;
+        }
+        else
+            master.print_message("OK\n");
+
+        fwrite(&bs.thref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.threfh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.pref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.prefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.exnref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.exnrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fwrite(&bs.rhoref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
+        fwrite(&bs.rhorefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
+
+        fclose(pFile);
+    }
+
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error in writing thermo_basestate");
+}
+
+template<typename TF>
+void Thermo_dry<TF>::load(const int iotime)
+{
+    auto& gd = grid.get_grid_data();
+
+    int nerror = 0;
+    const int iotime_io = 0;
+
+    if ((master.get_mpiid() == 0))
+    {
+        char filename[256];
+        std::snprintf(filename, 256, "%s.%07d", "thermo_basestate", iotime_io);
+
+        std::printf("Loading \"%s\" ... ", filename);
+
+        FILE* pFile;
+        pFile = fopen(filename, "rb");
+        if (pFile == NULL)
+        {
+            master.print_message("FAILED\n");
+            ++nerror;
+        }
+        else
+        {
+            master.print_message("OK\n");
+
+            auto read = [&](std::vector<TF>& prof, const int size)
+            {
+                if (fread(&prof[gd.kstart], sizeof(TF), size, pFile) != (unsigned)size)
+                    ++nerror;
+            };
+
+            read(bs.thref, gd.ktot);
+            read(bs.threfh, gd.ktot+1);
+
+            read(bs.pref, gd.ktot);
+            read(bs.prefh, gd.ktot+1);
+
+            read(bs.exnref, gd.ktot);
+            read(bs.exnrefh, gd.ktot+1);
+
+            read(bs.rhoref, gd.ktot);
+            read(bs.rhorefh, gd.ktot+1);
+
+            fclose(pFile);
+        }
+    }
+
+    // Communicate the file read error over all procs.
+    master.sum(&nerror, 1);
+    if (nerror)
+        throw std::runtime_error("Error in loading thermo_moist basestate");
+
+    // Broadcast to other MPI tasks.
+    master.broadcast(bs.thref.data(), gd.kcells);
+    master.broadcast(bs.threfh.data(), gd.kcells);
+
+    master.broadcast(bs.pref.data(), gd.kcells);
+    master.broadcast(bs.prefh.data(), gd.kcells);
+
+    master.broadcast(bs.exnref.data(), gd.kcells);
+    master.broadcast(bs.exnrefh.data(), gd.kcells);
+
+    master.broadcast(bs.rhoref.data(), gd.kcells);
+    master.broadcast(bs.rhorefh.data(), gd.kcells);
+}
+
+
+template<typename TF>
+void Thermo_dry<TF>::create_basestate(
+        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
     fields.set_calc_mean_profs(true);
@@ -415,9 +526,23 @@ void Thermo_dry<TF>::create(
         std::rotate(bs.thref.rbegin(), bs.thref.rbegin() + gd.kstart, bs.thref.rend());
 
         calc_base_state(
-                fields.rhoref.data(), fields.rhorefh.data(), bs.pref.data(), bs.prefh.data(),
-                bs.exnref.data(), bs.exnrefh.data(), bs.thref.data(), bs.threfh.data(), bs.pbot,
-                gd.z.data(), gd.zh.data(), gd.dz.data(), gd.dzh.data(), gd.dzhi.data(), gd.kstart, gd.kend, gd.kcells);
+                bs.rhoref.data(),
+                bs.rhorefh.data(),
+                bs.pref.data(),
+                bs.prefh.data(),
+                bs.exnref.data(),
+                bs.exnrefh.data(),
+                bs.thref.data(),
+                bs.threfh.data(),
+                bs.pbot,
+                gd.z.data(),
+                gd.zh.data(),
+                gd.dz.data(),
+                gd.dzh.data(),
+                gd.dzhi.data(),
+                gd.kstart,
+                gd.kend,
+                gd.kcells);
     }
     else
     {
@@ -427,19 +552,44 @@ void Thermo_dry<TF>::create(
         // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx.
         for (int k=0; k<gd.kcells; ++k)
         {
+            bs.rhoref[k]  = 1.;
+            bs.rhorefh[k] = 1.;
             bs.thref[k]  = bs.thref0;
             bs.threfh[k] = bs.thref0;
         }
 
         // Calculate hydrostatic pressure
         calc_hydrostatic_pressure(
-                bs.pref.data(), bs.prefh.data(),
-                bs.exnref.data(), bs.exnrefh.data(),
-                bs.thref.data(), bs.threfh.data(),
-                gd.z.data(), gd.zh.data(),
-                gd.dz.data(), gd.dzh.data(), gd.dzhi.data(),
-                bs.pbot, gd.kstart, gd.kend, gd.kcells);
+                bs.pref.data(),
+                bs.prefh.data(),
+                bs.exnref.data(),
+                bs.exnrefh.data(),
+                bs.thref.data(),
+                bs.threfh.data(),
+                gd.z.data(),
+                gd.zh.data(),
+                gd.dz.data(),
+                gd.dzh.data(),
+                gd.dzhi.data(),
+                bs.pbot,
+                gd.kstart,
+                gd.kend,
+                gd.kcells);
     }
+
+    // Copy the initial reference to the fields. This is the reference used in the dynamics.
+    // This one is not updated throughout the simulation to be consistent with the anelastic approximation.
+    fields.rhoref = bs.rhoref;
+    fields.rhorefh = bs.rhorefh;
+}
+
+template<typename TF>
+void Thermo_dry<TF>::create(
+        Input& inputin, Netcdf_handle& input_nc, Stats<TF>& stats,
+        Column<TF>& column, Cross<TF>& cross, Dump<TF>& dump, Timeloop<TF>& timeloop)
+{
+    auto& gd = grid.get_grid_data();
+    fields.set_calc_mean_profs(true);
 
     // Init the toolbox classes.
     boundary_cyclic.init();
