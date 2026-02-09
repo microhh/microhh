@@ -1660,7 +1660,7 @@ void Thermo_moist<TF>::load(const int iotime)
 
 template<typename TF>
 void Thermo_moist<TF>::create_basestate(
-        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop, const bool overwrite_rhoref)
+        Input& inputin, Netcdf_handle& input_nc, Timeloop<TF>& timeloop)
 {
     auto& gd = grid.get_grid_data();
 
@@ -1707,19 +1707,10 @@ void Thermo_moist<TF>::create_basestate(
         }
     }
 
-    if (overwrite_rhoref)
-    {
-        // Only copy the initial rhoref to fields during the `init` (cold start) phase.
-        fields.rhoref = bs.rhoref;
-        fields.rhorefh = bs.rhorefh;
-    }
-    else
-    {
-        // Overwrite rhoref from basestate with rhoref from fields,
-        // to make sure that the correct base state enters the statistics.
-        bs.rhoref = fields.rhoref;
-        bs.rhorefh = fields.rhorefh;
-    }
+    // 6. Copy the initial reference to the fields. This is the reference used in the dynamics.
+    //    This one is not updated throughout the simulation to be consistent with the anelastic approximation.
+    fields.rhoref = bs.rhoref;
+    fields.rhorefh = bs.rhorefh;
 }
 
 template<typename TF>

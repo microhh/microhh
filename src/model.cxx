@@ -328,8 +328,7 @@ void Model<TF>::save()
             timeloop->get_iteration());
 
     // In the `init` mode, `rhoref` is defined and saved below by `save_rhoref`.
-    const bool define_rhoref = true;
-    thermo->create_basestate(*input, *input_nc, *timeloop, define_rhoref);
+    thermo->create_basestate(*input, *input_nc, *timeloop);
     thermo->save(timeloop->get_iotime());
     fields->save_rhoref();
 
