@@ -2,11 +2,10 @@ import netCDF4 as nc
 import numpy as np
 import sys
 
-import microhhpy.io as io
-
+import microhh_tools as mht
 
 # Case settings.
-domain = sys.argv[1]
+domain = sys.argv[1]    # 'inner' or 'outer'
 dtype = np.float64
 
 
@@ -44,7 +43,7 @@ xsize_sub = xend_sub - xstart_sub
 ysize_sub = yend_sub - ystart_sub
 
 grid_ratio_ij = 2
-grid_ratio_k = 2
+grid_ratio_k = 1
 
 itot_sub = int(xsize_sub / dx * grid_ratio_ij + 0.5)
 jtot_sub = int(ysize_sub / dy * grid_ratio_ij + 0.5)
@@ -98,7 +97,7 @@ nc_file.close()
 """
 Update .ini
 """
-ini = io.read_ini('drycblles.ini.base')
+ini = mht.Read_namelist('drycblles.ini.base')
 
 ini['time']['endtime'] = endtime
 
@@ -136,7 +135,6 @@ if domain == 'outer':
     ini['subdomain']['savetime_buffer'] = 120
     ini['subdomain']['zstart_buffer'] = 0.75 * zsize
 
-
 elif domain == 'inner':
 
     ini['grid']['itot'] = itot_sub
@@ -158,4 +156,4 @@ elif domain == 'inner':
 
     ini['subdomain']['sw_subdomain'] = False
 
-io.save_ini(ini, 'drycblles.ini')
+ini.save('drycblles.ini', allow_overwrite=True)
