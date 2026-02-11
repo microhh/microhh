@@ -1117,7 +1117,6 @@ Thermo_moist<TF>::Thermo_moist(Master& masterin, Grid<TF>& gridin, Fields<TF>& f
     else
         throw std::runtime_error("Invalid option for \"swbasestate\"");
 
-
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
