@@ -50,30 +50,72 @@ Source_gaussian<TF>::Source_gaussian(Master& masterin, Grid<TF>& gridin, Fields<
     line_x     = inputin.get_list<TF>("source", "line_x",    "", std::vector<TF>());
     line_y     = inputin.get_list<TF>("source", "line_y",    "", std::vector<TF>());
     line_z     = inputin.get_list<TF>("source", "line_z",    "", std::vector<TF>());
-    
-    auto check_and_default = [&](std::vector<TF>& vec)
-    {
-        if (vec.size() > 0 && vec.size() != source_x0.size())
-            throw std::runtime_error("Number of line input values doesn't match other source input values.");
-        else if (vec.size() == 0 && source_x0.size() > 0)
-        {
-            vec.resize(source_x0.size());
-            std::fill(vec.begin(), vec.end(), TF(0));
-        }
-    };
-    
-    // The `line_` input options are allowed to be empty. Set to zero if size differs from other input options.
-    check_and_default(line_x);
-    check_and_default(line_y);
-    check_and_default(line_z);
-    
-    // Timedep source location
-    swtimedep_location = inputin.get_item<bool>("source", "swtimedep_location", "", false);
-    swtimedep_strength = inputin.get_item<bool>("source", "swtimedep_strength", "", false);
-    
+
     // Switch between input in mass or volume ratio.
     // swvmr=true = kmol tracer s-1, swvmr=false = kg tracer s-1
     sw_vmr = inputin.get_list<bool>("source", "swvmr", "");
+
+    // Source input options are allowed to be a single value, in which
+    // case the values are broadcasted to the required size.
+    const int n_input = static_cast<int>(std::max({
+        sourcelist.size(),
+        source_x0.size(),
+        source_y0.size(),
+        source_z0.size(),
+        sigma_x.size(),
+        sigma_y.size(),
+        sigma_z.size(),
+        strength.size(),
+        line_x.size(),
+        line_y.size(),
+        line_z.size(),
+        sw_vmr.size()}));
+
+    auto check_and_default = [&](auto& vec, const std::string& label, const bool allow_zero_fill=false)
+    {
+        if (vec.size() == 0 && allow_zero_fill)
+        {
+            // Fill with zeros.
+            vec.resize(n_input);
+            std::fill(vec.begin(), vec.end(), 0);
+        }
+        else if (vec.size() == 0)
+        {
+            std::string message = "Source input vector \"" + label + "\" is empty.";
+            throw std::runtime_error(message);
+        }
+        else if (vec.size() == 1)
+        {
+            // Broadcast single value.
+            vec.resize(n_input);
+            std::fill(vec.begin(), vec.end(), vec[0]);
+        }
+        else if (vec.size() > 1 and vec.size() != n_input)
+            throw std::runtime_error("Source input vectors have inconsistent sizes.");
+    };
+
+    check_and_default(sourcelist, "sourcelist");
+
+    check_and_default(source_x0, "source_x0");
+    check_and_default(source_y0, "source_y0");
+    check_and_default(source_z0, "source_z0");
+
+    check_and_default(sigma_x, "sigma_x");
+    check_and_default(sigma_y, "sigma_y");
+    check_and_default(sigma_z, "sigma_z");
+
+    check_and_default(strength, "strength");
+
+    // The `line_` input options are allowed to be empty. Set to zero if size differs from other input options.
+    check_and_default(line_x, "line_x", true);
+    check_and_default(line_y, "line_y", true);
+    check_and_default(line_z, "line_z", true);
+
+    check_and_default(sw_vmr, "sw_vmr");
+
+    // Timedep source location
+    swtimedep_location = inputin.get_item<bool>("source", "swtimedep_location", "", false);
+    swtimedep_strength = inputin.get_item<bool>("source", "swtimedep_strength", "", false);
     
     // Option for (non-time dependent) profiles for vertical distribution emissions.
     sw_emission_profile = inputin.get_item<bool>("source", "sw_profile", "", false);

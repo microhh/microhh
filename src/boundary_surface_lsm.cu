@@ -507,13 +507,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     if (sw_homogenize_sfc)
     {
-        const int blockGPU = 256;
-        const int gridGPU = gd.ijcells/blockGPU + (gd.ijcells%blockGPU > 0);
-
         auto homogenize = [&](TF* const __restrict__ field)
         {
             const TF mean_value = field3d_operators.calc_mean_2d_g(field);
-            Tools_g::set_to_val<<<gridGPU, blockGPU>>>(field, gd.ijcells, mean_value);
+            Tools_g::set_to_val<TF>(field, gd.ijcells, mean_value);
         };
 
         // Homogenize the surface fields which interact with the atmosphere.
