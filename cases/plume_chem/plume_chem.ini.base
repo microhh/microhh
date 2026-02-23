@@ -130,7 +130,7 @@ savetime=3600
 outputiter=5
 adaptivestep=true
 starttime=0
-rkorder=4
+rkorder=3
 
 [stats]
 swstats=1

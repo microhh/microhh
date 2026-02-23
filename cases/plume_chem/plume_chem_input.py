@@ -25,7 +25,7 @@ start_hour = 6
 end_hour = 7
 
 # Enable resolved plume rise:
-sw_plume_rise = True
+sw_plume_rise = False
 
 # Enable non-linear KPP chemistry:
 sw_chemistry = True
