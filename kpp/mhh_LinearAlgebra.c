@@ -39,11 +39,11 @@
 
 int KppDecomp( double *JVS )
 {
-double W[14];
+double W[9];
 double a;
 int k, kk, j, jj;
 
-  for( k = 0; k < 14; k++ ) {
+  for( k = 0; k < 9; k++ ) {
     if( JVS[ LU_DIAG[k] ] == 0.0 ) return k+1;
     for( kk = LU_CROW[k]; kk < LU_CROW[k+1]; kk++ )
       W[ LU_ICOL[kk] ] = JVS[kk];
@@ -126,134 +126,89 @@ void KppSolveCmplxR(double JVSR[], double JVSI[], double XR[], double XI[])
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	END FUNCTION KppSolveCmplxR
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-/* End of SPARSE_UTIL function                                      */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// End of SPARSE_UTIL function
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-/*                                                                  */
-/* KppSolve - sparse back substitution                              */
-/*   Arguments :                                                    */
-/*      JVS       - sparse Jacobian of variables                    */
-/*      X         - Vector for variables                            */
-/*                                                                  */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// 
+// KppSolve - sparse back substitution
+//   Arguments :
+//      JVS       - sparse Jacobian of variables
+//      X         - Vector for variables
+// 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void KppSolve( 
-  double JVS[],                          /* sparse Jacobian of variables */
-  double X[]                             /* Vector for variables */
+  double JVS[LU_NONZERO],                /* sparse Jacobian of variables */
+  double X[NVAR]                         /* Vector for variables */
 )
 {
-  X[3] = X[3]-JVS[11]*X[1];
-  X[6] = X[6]-JVS[26]*X[4]-JVS[27]*X[5];
-  X[7] = X[7]-JVS[35]*X[1];
-  X[8] = X[8]-JVS[43]*X[5]-JVS[44]*X[7];
-  X[9] = X[9]-JVS[51]*X[0]-JVS[52]*X[2]-JVS[53]*X[3]-JVS[54]*X[4]
-        -JVS[55]*X[5]-JVS[56]*X[6]-JVS[57]*X[7]-JVS[58]*X[8];
-  X[10] = X[10]-JVS[64]*X[0]-JVS[65]*X[2]-JVS[66]*X[4]-JVS[67]*X[5]
-         -JVS[68]*X[6]-JVS[69]*X[8]-JVS[70]*X[9];
-  X[11] = X[11]-JVS[75]*X[1]-JVS[76]*X[3]-JVS[77]*X[5]-JVS[78]*X[6]
-         -JVS[79]*X[7]-JVS[80]*X[8]-JVS[81]*X[9]-JVS[82]*X[10];
-  X[12] = X[12]-JVS[86]*X[4]-JVS[87]*X[5]-JVS[88]*X[8]-JVS[89]*X[9]
-         -JVS[90]*X[10]-JVS[91]*X[11];
-  X[13] = X[13]-JVS[94]*X[7]-JVS[95]*X[8]-JVS[96]*X[9]-JVS[97]*X[10]
-         -JVS[98]*X[11]-JVS[99]*X[12];
-  X[13] = X[13]/JVS[100];
-  X[12] = (X[12]-JVS[93]*X[13])/(JVS[92]);
-  X[11] = (X[11]-JVS[84]*X[12]-JVS[85]*X[13])/(JVS[83]);
-  X[10] = (X[10]-JVS[72]*X[11]-JVS[73]*X[12]-JVS[74]*X[13])/(JVS[71]);
-  X[9] = (X[9]-JVS[60]*X[10]-JVS[61]*X[11]-JVS[62]*X[12]-JVS[63]*X[13])
-        /(JVS[59]);
-  X[8] = (X[8]-JVS[46]*X[9]-JVS[47]*X[10]-JVS[48]*X[11]-JVS[49]*X[12]
-        -JVS[50]*X[13])/(JVS[45]);
-  X[7] = (X[7]-JVS[37]*X[8]-JVS[38]*X[9]-JVS[39]*X[10]-JVS[40]*X[11]
-        -JVS[41]*X[12]-JVS[42]*X[13])/(JVS[36]);
-  X[6] = (X[6]-JVS[29]*X[8]-JVS[30]*X[9]-JVS[31]*X[10]-JVS[32]*X[11]
-        -JVS[33]*X[12]-JVS[34]*X[13])/(JVS[28]);
-  X[5] = (X[5]-JVS[23]*X[8]-JVS[24]*X[9]-JVS[25]*X[11])/(JVS[22]);
-  X[4] = (X[4]-JVS[19]*X[9]-JVS[20]*X[10]-JVS[21]*X[12])/(JVS[18]);
-  X[3] = (X[3]-JVS[13]*X[6]-JVS[14]*X[7]-JVS[15]*X[9]-JVS[16]*X[10]
-        -JVS[17]*X[11])/(JVS[12]);
-  X[2] = (X[2]-JVS[7]*X[5]-JVS[8]*X[6]-JVS[9]*X[8]-JVS[10]*X[9])
-        /(JVS[6]);
-  X[1] = (X[1]-JVS[4]*X[7]-JVS[5]*X[11])/(JVS[3]);
-  X[0] = (X[0]-JVS[1]*X[9]-JVS[2]*X[10])/(JVS[0]);
+  X[7] = X[7]-JVS[19]*X[5]-JVS[20]*X[6];
+  X[8] = X[8]-JVS[23]*X[6]-JVS[24]*X[7];
+  X[8] = X[8]/JVS[25];
+  X[7] = (X[7]-JVS[22]*X[8])/(JVS[21]);
+  X[6] = (X[6]-JVS[17]*X[7]-JVS[18]*X[8])/(JVS[16]);
+  X[5] = (X[5]-JVS[15]*X[7])/(JVS[14]);
+  X[4] = X[4]/JVS[13];
+  X[3] = (X[3]-JVS[9]*X[4]-JVS[10]*X[5]-JVS[11]*X[7]-JVS[12]*X[8])
+        /(JVS[8]);
+  X[2] = (X[2]-JVS[5]*X[3]-JVS[6]*X[5]-JVS[7]*X[7])/(JVS[4]);
+  X[1] = X[1]/JVS[3];
+  X[0] = (X[0]-JVS[1]*X[3]-JVS[2]*X[6])/(JVS[0]);
 }
 
-/* End of KppSolve function                                         */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// End of KppSolve function
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-/*                                                                  */
-/* KppSolveTR - sparse, transposed back substitution                */
-/*   Arguments :                                                    */
-/*      JVS       - sparse Jacobian of variables                    */
-/*      X         - Vector for variables                            */
-/*      XX        - Vector for output variables                     */
-/*                                                                  */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// 
+// KppSolveTR - sparse, transposed back substitution
+//   Arguments :
+//      JVS       - sparse Jacobian of variables
+//      X         - Vector for variables
+//      XX        - Vector for output variables
+// 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void KppSolveTR( 
-  double JVS[],                          /* sparse Jacobian of variables */
-  double X[],                            /* Vector for variables */
-  double XX[]                            /* Vector for output variables */
+  double JVS[LU_NONZERO],                /* sparse Jacobian of variables */
+  double X[NVAR],                        /* Vector for variables */
+  double XX[NVAR]                        /* Vector for output variables */
 )
 {
   XX[0] = X[0]/JVS[0];
   XX[1] = X[1]/JVS[3];
-  XX[2] = X[2]/JVS[6];
-  XX[3] = X[3]/JVS[12];
-  XX[4] = X[4]/JVS[18];
-  XX[5] = (X[5]-JVS[7]*XX[2])/(JVS[22]);
-  XX[6] = (X[6]-JVS[8]*XX[2]-JVS[13]*XX[3])/(JVS[28]);
-  XX[7] = (X[7]-JVS[4]*XX[1]-JVS[14]*XX[3])/(JVS[36]);
-  XX[8] = (X[8]-JVS[9]*XX[2]-JVS[23]*XX[5]-JVS[29]*XX[6]-JVS[37]*XX[7])
-         /(JVS[45]);
-  XX[9] = (X[9]-JVS[1]*XX[0]-JVS[10]*XX[2]-JVS[15]*XX[3]-JVS[19]*XX[4]
-         -JVS[24]*XX[5]-JVS[30]*XX[6]-JVS[38]*XX[7]-JVS[46]*XX[8])
-         /(JVS[59]);
-  XX[10] = (X[10]-JVS[2]*XX[0]-JVS[16]*XX[3]-JVS[20]*XX[4]-JVS[31]
-          *XX[6]-JVS[39]*XX[7]-JVS[47]*XX[8]-JVS[60]*XX[9])/(JVS[71]);
-  XX[11] = (X[11]-JVS[5]*XX[1]-JVS[17]*XX[3]-JVS[25]*XX[5]-JVS[32]
-          *XX[6]-JVS[40]*XX[7]-JVS[48]*XX[8]-JVS[61]*XX[9]-JVS[72]
-          *XX[10])/(JVS[83]);
-  XX[12] = (X[12]-JVS[21]*XX[4]-JVS[33]*XX[6]-JVS[41]*XX[7]-JVS[49]
-          *XX[8]-JVS[62]*XX[9]-JVS[73]*XX[10]-JVS[84]*XX[11])/(JVS[92]);
-  XX[13] = (X[13]-JVS[34]*XX[6]-JVS[42]*XX[7]-JVS[50]*XX[8]-JVS[63]
-          *XX[9]-JVS[74]*XX[10]-JVS[85]*XX[11]-JVS[93]*XX[12])
-          /(JVS[100]);
-  XX[13] = XX[13];
-  XX[12] = XX[12]-JVS[99]*XX[13];
-  XX[11] = XX[11]-JVS[91]*XX[12]-JVS[98]*XX[13];
-  XX[10] = XX[10]-JVS[82]*XX[11]-JVS[90]*XX[12]-JVS[97]*XX[13];
-  XX[9] = XX[9]-JVS[70]*XX[10]-JVS[81]*XX[11]-JVS[89]*XX[12]-JVS[96]
-         *XX[13];
-  XX[8] = XX[8]-JVS[58]*XX[9]-JVS[69]*XX[10]-JVS[80]*XX[11]-JVS[88]
-         *XX[12]-JVS[95]*XX[13];
-  XX[7] = XX[7]-JVS[44]*XX[8]-JVS[57]*XX[9]-JVS[79]*XX[11]-JVS[94]
-         *XX[13];
-  XX[6] = XX[6]-JVS[56]*XX[9]-JVS[68]*XX[10]-JVS[78]*XX[11];
-  XX[5] = XX[5]-JVS[27]*XX[6]-JVS[43]*XX[8]-JVS[55]*XX[9]-JVS[67]
-         *XX[10]-JVS[77]*XX[11]-JVS[87]*XX[12];
-  XX[4] = XX[4]-JVS[26]*XX[6]-JVS[54]*XX[9]-JVS[66]*XX[10]-JVS[86]
-         *XX[12];
-  XX[3] = XX[3]-JVS[53]*XX[9]-JVS[76]*XX[11];
-  XX[2] = XX[2]-JVS[52]*XX[9]-JVS[65]*XX[10];
-  XX[1] = XX[1]-JVS[11]*XX[3]-JVS[35]*XX[7]-JVS[75]*XX[11];
-  XX[0] = XX[0]-JVS[51]*XX[9]-JVS[64]*XX[10];
+  XX[2] = X[2]/JVS[4];
+  XX[3] = (X[3]-JVS[1]*XX[0]-JVS[5]*XX[2])/(JVS[8]);
+  XX[4] = (X[4]-JVS[9]*XX[3])/(JVS[13]);
+  XX[5] = (X[5]-JVS[6]*XX[2]-JVS[10]*XX[3])/(JVS[14]);
+  XX[6] = (X[6]-JVS[2]*XX[0])/(JVS[16]);
+  XX[7] = (X[7]-JVS[7]*XX[2]-JVS[11]*XX[3]-JVS[15]*XX[5]-JVS[17]*XX[6])
+         /(JVS[21]);
+  XX[8] = (X[8]-JVS[12]*XX[3]-JVS[18]*XX[6]-JVS[22]*XX[7])/(JVS[25]);
+  XX[8] = XX[8];
+  XX[7] = XX[7]-JVS[24]*XX[8];
+  XX[6] = XX[6]-JVS[20]*XX[7]-JVS[23]*XX[8];
+  XX[5] = XX[5]-JVS[19]*XX[7];
+  XX[4] = XX[4];
+  XX[3] = XX[3];
+  XX[2] = XX[2];
+  XX[1] = XX[1];
+  XX[0] = XX[0];
 }
 
-/* End of KppSolveTR function                                       */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// End of KppSolveTR function
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-/*                                                                  */
-/* BLAS_UTIL - BLAS-LIKE utility functions                          */
-/*   Arguments :                                                    */
-/*                                                                  */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// 
+// BLAS_UTIL - BLAS-LIKE utility functions
+//   Arguments :
+// 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 /*--------------------------------------------------------------
  
@@ -497,7 +452,9 @@ void WADD(int N, double X[], double Y[], double Z[])
 	   Z[i + 4] = X[i + 4] + Y[i + 4];
 	} /* end for */
 } /* end function WADD */
-/* End of BLAS_UTIL function                                        */
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+// End of BLAS_UTIL function
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 
 

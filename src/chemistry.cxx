@@ -104,19 +104,20 @@ namespace
     template<typename TF>
     void pss(
             TF* restrict thno3, const TF* const restrict hno3,
-            TF* restrict tn2o5, const TF* const restrict n2o5,
             TF* restrict th2o2, const TF* const restrict h2o2,
             TF* restrict tco, const TF* const restrict co,
             TF* restrict thcho, const TF* const restrict hcho,
             TF* restrict trooh, const TF* const restrict rooh,
             TF* restrict tc3h6, const TF* const restrict c3h6,
-            TF* restrict tro2, const TF* const restrict ro2,
-            TF* restrict tho2, const TF* const restrict ho2,
             TF* restrict to3, const TF* const restrict o3,
             TF* restrict tno, const TF* const restrict no,
-            TF* restrict tno3, const TF* const restrict no3,
             TF* restrict tno2, const TF* const restrict no2,
             TF* restrict toh, const TF* const restrict oh,
+            TF* restrict tho2, const TF* const restrict ho2,
+            TF* restrict tro2, const TF* const restrict ro2,
+            TF* restrict tno3, const TF* const restrict no3,
+            TF* restrict tn2o5, const TF* const restrict n2o5,
+            //const bool sw_scheme,
             const TF* const restrict jval,
             const TF* const restrict emval,
             const TF* const restrict vdo3,
@@ -149,7 +150,7 @@ namespace
         const int Pj_ch2om = 6;
         const int Pj_ch3o2h = 7;
 
-        const TF RTOLS = 1e-3;
+        const TF RTOLS = 1e-2;
 
         const TF xmh2o = 18.015265;
         const TF xmh2o_i = TF(1) / xmh2o;
@@ -165,7 +166,7 @@ namespace
         for(int i=0; i<NVAR; i++)
         {
             RTOL[i] = RTOLS;
-            ATOL[i] = 1.0;
+            ATOL[i] = 1e4;
             //tscale[i] = 1e20;
         }
 
@@ -186,6 +187,7 @@ namespace
             const TF CFACTOR = C_M;
             const TF C_H2 = TF(500e-9) * CFACTOR ; // 500 ppb --> #/cm3
             const TF sdt_cfac_i = TF(1) / (sdt * CFACTOR);
+            const TF cfac_i = TF(1) / CFACTOR; 
 
             if (k==kstart)
             {
@@ -270,19 +272,19 @@ namespace
 
                     // Convert to molecules per cm3 and add tendenccies of other processes.
                     VAR[ind_HNO3] = std::max((hno3[ijk] + thno3[ijk] * sdt) * CFACTOR, TF(0));
-                    VAR[ind_N2O5] = std::max((n2o5[ijk] + tn2o5[ijk] * sdt) * CFACTOR, TF(0));
                     VAR[ind_H2O2] = std::max((h2o2[ijk] + th2o2[ijk] * sdt) * CFACTOR, TF(0));
                     VAR[ind_CO  ] = std::max((co[ijk]   + tco[ijk]   * sdt) * CFACTOR, TF(0));
                     VAR[ind_HCHO] = std::max((hcho[ijk] + thcho[ijk] * sdt) * CFACTOR, TF(0));
                     VAR[ind_ROOH] = std::max((rooh[ijk] + trooh[ijk] * sdt) * CFACTOR, TF(0));
                     VAR[ind_RH]   = std::max((c3h6[ijk] + tc3h6[ijk] * sdt) * CFACTOR, TF(0));
-                    VAR[ind_RO2]  = std::max((ro2[ijk]  + tro2[ijk]  * sdt) * CFACTOR, TF(0));
-                    VAR[ind_HO2]  = std::max((ho2[ijk]  + tho2[ijk]  * sdt) * CFACTOR, TF(0));
                     VAR[ind_O3]   = std::max((o3[ijk]   + to3[ijk]   * sdt) * CFACTOR, TF(0));
                     VAR[ind_NO]   = std::max((no[ijk]   + tno[ijk]   * sdt) * CFACTOR, TF(0));
-                    VAR[ind_NO3]  = std::max((no3[ijk]  + tno3[ijk]  * sdt) * CFACTOR, TF(0));
                     VAR[ind_NO2]  = std::max((no2[ijk]  + tno2[ijk]  * sdt) * CFACTOR, TF(0));
-                    VAR[ind_OH]   = std::max((oh[ijk]   + toh[ijk]   * sdt) * CFACTOR, TF(0));
+                    // VAR[ind_OH]   = std::max((oh[ijk]   + toh[ijk]   * sdt) * CFACTOR, TF(0));
+                    // VAR[ind_HO2]  = std::max((ho2[ijk]  + tho2[ijk]  * sdt) * CFACTOR, TF(0));
+                    // VAR[ind_RO2]  = std::max((ro2[ijk]  + tro2[ijk]  * sdt) * CFACTOR, TF(0));
+                    // VAR[ind_NO3]  = std::max((no3[ijk]  + tno3[ijk]  * sdt) * CFACTOR, TF(0));
+                    // VAR[ind_N2O5] = std::max((n2o5[ijk] + tn2o5[ijk] * sdt) * CFACTOR, TF(0));
 
                   
                     if (k==kstart)
@@ -295,8 +297,7 @@ namespace
                             RCONST[44] = vdhcho[ij] * dzi[k];
                             RCONST[45] = vdrooh[ij] * dzi[k];
                         }
-                    
-                            
+                     
                     Fun(VAR, FIX, RCONST, Vdot, RF);
 
                     // Get statistics for reaction fluxes:
@@ -305,25 +306,21 @@ namespace
                         for (int l=0; l<NREACT; ++l)
                             rfa[(k-kstart)*NREACT+l] +=  RF[l]*dt;    // take the first evaluation in the RK3 steps, but with full time step.
                     }
-
-                    WCOPY(NVAR, VAR, 1, VAR0, 1);
-                    INTEGRATE(TF(0), sdt);  //brings VAR0 --> VAR, with timestep sdt
-                    //  Reculculate tendency and add to the tendency of the transported tracers:
-                    thno3[ijk] += (VAR[ind_HNO3] - VAR0[ind_HNO3]) * sdt_cfac_i;
-                    tn2o5[ijk] += (VAR[ind_N2O5] - VAR0[ind_N2O5]) * sdt_cfac_i;
-                    th2o2[ijk] += (VAR[ind_H2O2] - VAR0[ind_H2O2]) * sdt_cfac_i;
-                    tco[ijk] +=   (VAR[ind_CO  ] - VAR0[ind_CO  ]) * sdt_cfac_i;
-                    thcho[ijk] += (VAR[ind_HCHO] - VAR0[ind_HCHO]) * sdt_cfac_i;
-                    trooh[ijk] += (VAR[ind_ROOH] - VAR0[ind_ROOH]) * sdt_cfac_i;
-                    tc3h6[ijk] += (VAR[ind_RH  ] - VAR0[ind_RH  ]) * sdt_cfac_i;
-                    tro2[ijk] +=  (VAR[ind_RO2 ] - VAR0[ind_RO2 ]) * sdt_cfac_i;
-                    tho2[ijk] +=  (VAR[ind_HO2 ] - VAR0[ind_HO2 ]) * sdt_cfac_i;
-                    to3[ijk] +=   (VAR[ind_O3  ] - VAR0[ind_O3  ]) * sdt_cfac_i;
-                    tno[ijk] +=   (VAR[ind_NO  ] - VAR0[ind_NO  ]) * sdt_cfac_i;
-                    tno3[ijk] +=  (VAR[ind_NO3 ] - VAR0[ind_NO3 ]) * sdt_cfac_i;
-                    tno2[ijk] +=  (VAR[ind_NO2 ] - VAR0[ind_NO2 ]) * sdt_cfac_i;
-                    toh[ijk] +=   (VAR[ind_OH  ] - VAR0[ind_OH  ]) * sdt_cfac_i;
-
+                    
+                    thno3[ijk] += Vdot[ind_HNO3] * cfac_i;
+                    th2o2[ijk] += Vdot[ind_H2O2] * cfac_i;
+                    tco[ijk]   += Vdot[ind_CO]   * cfac_i;
+                    thcho[ijk] += Vdot[ind_HCHO] * cfac_i;
+                    trooh[ijk] += Vdot[ind_ROOH] * cfac_i;
+                    tc3h6[ijk] += Vdot[ind_RH]   * cfac_i;
+                    to3[ijk]   += Vdot[ind_O3]   * cfac_i;  
+                    tno[ijk]   += Vdot[ind_NO]   * cfac_i;  
+                    tno2[ijk]  += Vdot[ind_NO2]  * cfac_i; 
+                    // toh[ijk]   += Vdot[ind_OH]   * cfac_i;ß
+                    // tho2[ijk]  += Vdot[ind_HO2]  * cfac_i;
+                    // tro2[ijk]  += Vdot[ind_RO2]  /CFACTOR;
+                    // tno3[ijk]  += Vdot[ind_NO3]  /CFACTOR;
+                    // tn2o5[ijk] += Vdot[ind_N2O5] /CFACTOR;
  
                 } // i
         } // k
@@ -338,6 +335,7 @@ Chemistry<TF>::Chemistry(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsi
     auto& gd = grid.get_grid_data();
 
     sw_chemistry = inputin.get_item<bool>("chemistry", "swchemistry", "", false);
+    //sw_scheme = inputin.get_item<bool>("chemistry", "swscheme", "", false);
 
     if (!sw_chemistry)
         return;
@@ -691,19 +689,20 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 
     pss<TF>(
         fields.st.at("hno3")->fld.data(), fields.sp.at("hno3")->fld.data(),
-        fields.st.at("n2o5")->fld.data(), fields.sp.at("n2o5")->fld.data(),
         fields.st.at("h2o2")->fld.data(), fields.sp.at("h2o2")->fld.data(),
         fields.st.at("co")  ->fld.data(), fields.sp.at("co")->fld.data(),
         fields.st.at("hcho")->fld.data(), fields.sp.at("hcho")->fld.data(),
         fields.st.at("rooh")->fld.data(), fields.sp.at("rooh")->fld.data(),
         fields.st.at("c3h6")->fld.data(), fields.sp.at("c3h6")->fld.data(),
-        fields.st.at("ro2") ->fld.data(), fields.sp.at("ro2")->fld.data(),
-        fields.st.at("ho2") ->fld.data(), fields.sp.at("ho2")->fld.data(),
         fields.st.at("o3")  ->fld.data(), fields.sp.at("o3")->fld.data(),
         fields.st.at("no")  ->fld.data(), fields.sp.at("no")->fld.data(),
-        fields.st.at("no3") ->fld.data(), fields.sp.at("no3")->fld.data(),
         fields.st.at("no2") ->fld.data(), fields.sp.at("no2")->fld.data(),
         fields.st.at("oh")  ->fld.data(), fields.sp.at("oh")->fld.data(),
+        fields.st.at("ho2") ->fld.data(), fields.sp.at("ho2")->fld.data(),
+        fields.st.at("ro2") ->fld.data(), fields.sp.at("ro2")->fld.data(),
+        fields.st.at("no3") ->fld.data(), fields.sp.at("no3")->fld.data(),
+        fields.st.at("n2o5")->fld.data(), fields.sp.at("n2o5")->fld.data(),
+        //sw_scheme,
         jval, emval,
         vdo3.data(),
         vdno.data(),

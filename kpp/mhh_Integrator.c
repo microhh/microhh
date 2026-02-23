@@ -303,7 +303,7 @@ int Rosenbrock(double Y[], double Tstart, double Tend,
   /*~~~>  For Scalar tolerances (IPAR[1] != 0)  the code uses AbsTol[0] and RelTol[0]
 !   For Vector tolerances (IPAR[1] == 0) the code uses AbsTol(1:NVAR) and RelTol(1:NVAR) */
    if (IPAR[1] == 0) {
-      VectorTol = 1; UplimTol  = 14;
+      VectorTol = 1; UplimTol  = 9;
    } else { 
       VectorTol = 0; UplimTol  = 1;
    } /* end if */
@@ -487,13 +487,13 @@ int RosenbrockIntegrator(
                                       or failure (if negative)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 {   
-   double Ynew[14], Fcn0[14], Fcn[14],
-      dFdT[14],
-      Jac0[101], Ghimj[101];
-   double K[14*ros_S];   
+   double Ynew[9], Fcn0[9], Fcn[9],
+      dFdT[9],
+      Jac0[26], Ghimj[26];
+   double K[9*ros_S];   
    double H, T, Hnew, HC, HG, Fac, Tau; 
-   double Err, Yerr[14];
-   int Pivot[14], Direction, ioffset, j, istage;
+   double Err, Yerr[9];
+   int Pivot[9], Direction, ioffset, j, istage;
    char RejectLastH, RejectMoreH;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -554,48 +554,48 @@ int RosenbrockIntegrator(
   /*~~~>   Compute the stages  */
    for (istage = 1; istage <= ros_S; istage++) {
       
-      /* Current istage offset. Current istage vector is K[ioffset:ioffset+14-1] */
-      ioffset = 14*(istage-1);
+      /* Current istage offset. Current istage vector is K[ioffset:ioffset+9-1] */
+      ioffset = 9*(istage-1);
 	 
       /* For the 1st istage the function has been computed previously */
       if ( istage == 1 )
-	   WCOPY(14,Fcn0,1,Fcn,1);
+	   WCOPY(9,Fcn0,1,Fcn,1);
       else { /* istage>1 and a new function evaluation is needed at current istage */
 	if ( ros_NewF[istage-1] ) {
-	   WCOPY(14,Y,1,Ynew,1);
+	   WCOPY(9,Y,1,Ynew,1);
 	   for (j = 1; j <= istage-1; j++)
-	     WAXPY(14,ros_A[(istage-1)*(istage-2)/2+j-1],
-                   &K[14*(j-1)],1,Ynew,1); 
+	     WAXPY(9,ros_A[(istage-1)*(istage-2)/2+j-1],
+                   &K[9*(j-1)],1,Ynew,1); 
 	   Tau = T + ros_Alpha[istage-1]*Direction*H;
            (*ode_Fun)(Tau,Ynew,Fcn);
 	} /*end if ros_NewF(istage)*/
       } /* end if istage */
 	 
-      WCOPY(14,Fcn,1,&K[ioffset],1);
+      WCOPY(9,Fcn,1,&K[ioffset],1);
       for (j = 1; j <= istage-1; j++) {
 	 HC = ros_C[(istage-1)*(istage-2)/2+j-1]/(Direction*H);
-	 WAXPY(14,HC,&K[14*(j-1)],1,&K[ioffset],1);
+	 WAXPY(9,HC,&K[9*(j-1)],1,&K[ioffset],1);
       } /* for j */
 	 
       if ((!Autonomous) && (ros_Gamma[istage-1])) { 
         HG = Direction*H*ros_Gamma[istage-1];
-	WAXPY(14,HG,dFdT,1,&K[ioffset],1);
+	WAXPY(9,HG,dFdT,1,&K[ioffset],1);
       } /* end if !Autonomous */
       
       SolveTemplate(Ghimj, Pivot, &K[ioffset]);
 	 
-   } /* for istage */	    
+   } /* for istage */	 
 	    
 
   /*~~~>  Compute the new solution   */
-   WCOPY(14,Y,1,Ynew,1);
+   WCOPY(9,Y,1,Ynew,1);
    for (j=1; j<=ros_S; j++)
-       WAXPY(14,ros_M[j-1],&K[14*(j-1)],1,Ynew,1);
+       WAXPY(9,ros_M[j-1],&K[9*(j-1)],1,Ynew,1);
 
   /*~~~>  Compute the error estimation   */
-   WSCAL(14,ZERO,Yerr,1);
+   WSCAL(9,ZERO,Yerr,1);
    for (j=1; j<=ros_S; j++)    
-       WAXPY(14,ros_E[j-1],&K[14*(j-1)],1,Yerr,1);
+       WAXPY(9,ros_E[j-1],&K[9*(j-1)],1,Yerr,1);
    Err = ros_ErrorNorm ( Y, Ynew, Yerr, AbsTol, RelTol, VectorTol );
 
   /*~~~> New step size is bounded by FacMin <= Hnew/H <= FacMax  */
@@ -651,7 +651,7 @@ double ros_ErrorNorm (
    int i;
    
    Err = ZERO;
-   for (i=0; i<14; i++) {
+   for (i=0; i<9; i++) {
 	Ymax = MAX(ABS(Y[i]),ABS(Ynew[i]));
      if (VectorTol) {
        Scale = AbsTol[i]+RelTol[i]*Ymax;
@@ -660,7 +660,7 @@ double ros_ErrorNorm (
      } /* end if */
      Err = Err+(Yerr[i]*Yerr[i])/(Scale*Scale);
    } /* for i */
-   Err  = SQRT(Err/(double)14);
+   Err  = SQRT(Err/(double)9);
 
    return Err;
    
@@ -684,8 +684,8 @@ void ros_FunTimeDerivative (
    
    Delta = SQRT(Roundoff)*MAX(DeltaMin,ABS(T));
    (*ode_Fun)(T+Delta,Y,dFdT);
-   WAXPY(14,(-ONE),Fcn0,1,dFdT,1);
-   WSCAL(14,(ONE/Delta),dFdT,1);
+   WAXPY(9,(-ONE),Fcn0,1,dFdT,1);
+   WSCAL(9,(ONE/Delta),dFdT,1);
 
 }  /*  ros_FunTimeDerivative */
 
@@ -718,10 +718,10 @@ char ros_PrepareMatrix (
    while (1) {  /* while Singular */
    
   /*~~~>    Construct Ghimj = 1/(H*ham) - Jac0 */
-     WCOPY(101,Jac0,1,Ghimj,1);
-     WSCAL(101,(-ONE),Ghimj,1);
+     WCOPY(26,Jac0,1,Ghimj,1);
+     WSCAL(26,(-ONE),Ghimj,1);
      ghinv = ONE/(Direction*(*H)*gam);
-     for (i=0; i<14; i++) {
+     for (i=0; i<9; i++) {
        Ghimj[LU_DIAG[i]] = Ghimj[LU_DIAG[i]]+ghinv;
      } /* for i */
   /*~~~>    Compute LU decomposition  */
@@ -897,7 +897,7 @@ void DecompTemplate( double A[], int Pivot[], int* ising )
 {   
    *ising = KppDecomp ( A );
   /*~~~> Note: for a full matrix use Lapack:
-      DGETRF( 14, 14, A, 14, Pivot, ising ) */
+      DGETRF( 13, 13, A, 13, Pivot, ising ) */
     
    Ndec++;
 
@@ -912,7 +912,7 @@ void DecompTemplate( double A[], int Pivot[], int* ising )
    KppSolve( A, b );
   /*~~~> Note: for a full matrix use Lapack:
       NRHS = 1
-      DGETRS( 'N', 14 , NRHS, A, 14, Pivot, b, 14, INFO ) */
+      DGETRS( 'N', 13 , NRHS, A, 13, Pivot, b, 13, INFO ) */
      
    Nsol++;
 

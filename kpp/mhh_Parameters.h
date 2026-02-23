@@ -24,53 +24,59 @@
 
 
 #define NSPEC                17          /* Number of chemical species */
-#define NVAR                 14          /* Number of Variable species */
-#define NVARACT              14          /* Number of Active species */
-#define NFIX                 3           /* Number of Fixed species */
+#define NVAR                 9           /* Number of Variable species */
+#define NFAM                 1           /* Number of Prod/Loss Families */
+#define NVARACT              9           /* Number of Active species */
+#define NFIX                 8           /* Number of Fixed species */
 #define NREACT               46          /* Number of reactions */
 #define NVARST               0           /* Starting of variables in conc. vect. */
-#define NFIXST               14          /* Starting of fixed in conc. vect. */
-#define NONZERO              97          /* Number of nonzero entries in Jacobian */
-#define LU_NONZERO           101         /* Number of nonzero entries in LU factoriz. of Jacobian */
-#define CNVAR                15          /* (NVAR+1) Number of elements in compressed row format */
+#define NFIXST               9           /* Starting of fixed in conc. vect. */
+#define NONZERO              26          /* Number of nonzero entries in Jacobian */
+#define LU_NONZERO           26          /* Number of nonzero entries in LU factoriz. of Jacobian */
+#define CNVAR                10          /* (NVAR+1) Number of elements in compressed row format */
 #define CNEQN                47          /* (NREACT+1) Number stoicm elements in compressed col format */
-#define NHESS                82          /* Length of Sparse Hessian */
+#define NHESS                9           /* Length of Sparse Hessian */
 #define NLOOKAT              17          /* Number of species to look at */
 #define NMONITOR             3           /* Number of species to monitor */
 #define NMASS                1           /* Number of atoms to check mass balance */
 
-/* Index declaration for variable species in C and VAR              */
-/*   VAR(ind_spc) = C(ind_spc)                                      */
+// Index declaration for variable species in C and VAR
+//   VAR(ind_spc) = C(ind_spc)
 
-#define ind_H2O2             0          
-#define ind_N2O5             1          
+#define ind_HNO3             0          
+#define ind_H2O2             1          
 #define ind_CO               2          
-#define ind_HNO3             3          
+#define ind_HCHO             3          
 #define ind_ROOH             4          
 #define ind_RH               5          
-#define ind_HCHO             6          
-#define ind_NO2              7          
-#define ind_O3               8          
-#define ind_OH               9          
-#define ind_HO2              10         
-#define ind_NO3              11         
-#define ind_RO2              12         
-#define ind_NO               13         
+#define ind_NO2              6          
+#define ind_O3               7          
+#define ind_NO               8          
 
-/* Index declaration for fixed species in C                         */
-/*   C(ind_spc)                                                     */
+// Index declaration for fixed species in C
+//   C(ind_spc)
 
-#define ind_CH4              14         
-#define ind_M                15         
-#define ind_DUMMY            16         
+#define ind_CH4              9          
+#define ind_M                10         
+#define ind_DUMMY            11         
+#define ind_OH               12         
+#define ind_HO2              13         
+#define ind_RO2              14         
+#define ind_NO3              15         
+#define ind_N2O5             16         
 
-/* Index declaration for fixed species in FIX                       */
-/*    FIX(indf_spc) = C(ind_spc) = C(NVAR+indf_spc)                 */
+// Index declaration for fixed species in FIX
+//    FIX(indf_spc) = C(ind_spc) = C(NVAR+indf_spc)
 
 #define indf_CH4             0          
 #define indf_M               1          
 #define indf_DUMMY           2          
+#define indf_OH              3          
+#define indf_HO2             4          
+#define indf_RO2             5          
+#define indf_NO3             6          
+#define indf_N2O5            7          
 
-#define NJVRP                67          /* Length of sparse Jacobian JVRP */
+#define NJVRP                34          /* Length of sparse Jacobian JVRP */
 
-#define NSTOICM              124         /* Length of Sparse Stoichiometric Matrix */
+#define NSTOICM              65          /* Length of Sparse Stoichiometric Matrix */
