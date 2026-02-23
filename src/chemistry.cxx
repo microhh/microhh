@@ -36,19 +36,20 @@
 #include "thermo.h"
 #include "stats.h"
 #include "netcdf_interface.h"
-#include "chemistry.h"
 #include "constants.h"
 #include "timeloop.h"
 #include "deposition.h"
 #include "boundary.h"
 #include "cross.h"
 
+#include "chemistry.h"
+#include "chemistry_plume_kernels.h"
+
 namespace
 {
     // From microhh_root/kpp:
     #include "mhh_Parameters.h"
     #include "mhh_Function.c"
-    #include "mhh_Rates.cxx"
 
     double C[NSPEC];                         /* Concentration of all species */
     double * VAR = & C[0];
@@ -155,36 +156,36 @@ namespace
             const TF TEMP = tprof[k];
             const TF C_H2O = std::max(qprof[k] * xmair * C_M * xmh2o_i, TF(1));
 
-            RCONST[0 ] = ARR3(TF(1.7E-12), TF(-940), TEMP);
-            RCONST[1 ] = ARR3(TF(1.E-14), TF(-490), TEMP);
-            RCONST[2 ] = ARR3(TF(4.8E-11), TF(250), TEMP);
-            RCONST[3 ] = EPR(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
-            RCONST[4 ] = ARR3(TF(2.9E-12), TF(-160), TEMP);
-            RCONST[5 ] = ARR3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
-            RCONST[6 ] = ARR3(TF(3.E-12), TF(-1500), TEMP);
-            RCONST[7 ] = ARR3(TF(1.4E-13), TF(-2470), TEMP);
-            RCONST[8 ] = ARR3(TF(1.8E-11), TF(110), TEMP);
-            RCONST[9 ] = TROE_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
-            RCONST[10] = TROE_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
-            RCONST[11] = ARR3(TF(3.3E-12), TF(270), TEMP);
-            RCONST[12] = TROE_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
+            RCONST[0 ] = arr3(TF(1.7E-12), TF(-940), TEMP);
+            RCONST[1 ] = arr3(TF(1.E-14), TF(-490), TEMP);
+            RCONST[2 ] = arr3(TF(4.8E-11), TF(250), TEMP);
+            RCONST[3 ] = epr(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
+            RCONST[4 ] = arr3(TF(2.9E-12), TF(-160), TEMP);
+            RCONST[5 ] = arr3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
+            RCONST[6 ] = arr3(TF(3.E-12), TF(-1500), TEMP);
+            RCONST[7 ] = arr3(TF(1.4E-13), TF(-2470), TEMP);
+            RCONST[8 ] = arr3(TF(1.8E-11), TF(110), TEMP);
+            RCONST[9 ] = troe_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
+            RCONST[10] = troe_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
+            RCONST[11] = arr3(TF(3.3E-12), TF(270), TEMP);
+            RCONST[12] = troe_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
             RCONST[13] = TF(4e-12);
-            RCONST[14] = RK28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
+            RCONST[14] = rk28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
             RCONST[15] = TF(0.0004);
-            RCONST[16] = ARR3(TF(2.45E-12), TF(-1775), TEMP);
-            RCONST[17] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + ARR3(TF(498), TF(-1160), TEMP))));
-            RCONST[18] = ARR3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + ARR3(TF(498.), TF(-1160), TEMP)));
-            RCONST[19] = ARR3(TF(2.8E-12), TF(300), TEMP);
+            RCONST[16] = arr3(TF(2.45E-12), TF(-1775), TEMP);
+            RCONST[17] = arr3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + arr3(TF(498), TF(-1160), TEMP))));
+            RCONST[18] = arr3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + arr3(TF(498.), TF(-1160), TEMP)));
+            RCONST[19] = arr3(TF(2.8E-12), TF(300), TEMP);
             RCONST[20] = TF(1.2e-12);
-            RCONST[21] = ARR3(TF(3.8E-12), TF(200), TEMP);
-            RCONST[22] = ARR3(TF(5.5E-12), TF(125), TEMP);
+            RCONST[21] = arr3(TF(3.8E-12), TF(200), TEMP);
+            RCONST[22] = arr3(TF(5.5E-12), TF(125), TEMP);
             RCONST[23] = TF(5.8e-16);
-            RCONST[24] = TROE_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
-            RCONST[25] = ARR3(TF(9.5E-14), TF(390), TEMP);
-            RCONST[26] = ARR3(TF(5.5E-15), TF(-1880), TEMP);
+            RCONST[24] = troe_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
+            RCONST[25] = arr3(TF(9.5E-14), TF(390), TEMP);
+            RCONST[26] = arr3(TF(5.5E-15), TF(-1880), TEMP);
             RCONST[27] = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), C_M, TF(0.5), TEMP);
-            RCONST[28] = ARR3(TF(4.6E-13), TF(-1155), TEMP);
-            RCONST[29] = usr_O3_hv_H2O(TEMP, C_M, C_H2O, jval[Pj_o31d]);
+            RCONST[28] = arr3(TF(4.6E-13), TF(-1155), TEMP);
+            RCONST[29] = usr_o3_hv_h2o(TEMP, C_M, C_H2O, jval[Pj_o31d]);
             RCONST[30] = jval[Pj_no2];
             RCONST[31] = jval[Pj_n2o5];
             RCONST[32] = jval[Pj_no3];
