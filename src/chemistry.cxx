@@ -47,13 +47,7 @@ namespace
 {
     // From microhh_root/kpp:
     #include "mhh_Parameters.h"
-    #include "mhh_Global.h"
-    #include "mhh_Sparse.h"
-    #include "mhh_Integrator.c"      /* needs to be modified */
-    #include "mhh_Function.c"        /* needs to be modified */
-    #include "mhh_LinearAlgebra.c"
-    #include "mhh_JacobianSP.c"
-    #include "mhh_Jacobian.c"
+    #include "mhh_Function.c"
     #include "mhh_Rates.cxx"
 
     double C[NSPEC];                         /* Concentration of all species */
