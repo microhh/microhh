@@ -24,9 +24,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "mhh_Parameters.h"
-#include "mhh_Global.h"
-#include "mhh_Sparse.h"
+//#include "mhh_Parameters.h"
+//#include "mhh_Global.h"
+//#include "mhh_Sparse.h"
 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -77,8 +77,10 @@ void Fun(
              + 0.0004                          // A[15] (Hardcoded k)
              + RCT[31];                        // A[31]
 
-      if (L_N2O5 > 1.0e-30) F[7] = P_N2O5 / L_N2O5;
-      else F[7] = 0.0;
+      if (L_N2O5 > 1.0e-30)
+          F[7] = P_N2O5 / L_N2O5;
+      else
+          F[7] = 0.0;
 
       // ---------------------------------------------------------------------
       // 2. Solve NO3 (Index F[6])
@@ -97,8 +99,10 @@ void Fun(
             + RCT[28]*V[5]                     // A[28]: RH(V5)
             + RCT[32];                         // A[32]: Loss
 
-      if (L_NO3 > 1.0e-30) F[6] = P_NO3 / L_NO3;
-      else F[6] = 0.0;
+      if (L_NO3 > 1.0e-30)
+          F[6] = P_NO3 / L_NO3;
+      else
+          F[6] = 0.0;
 
       // ---------------------------------------------------------------------
       // 3. Solve RO2 (Index F[5])
@@ -116,8 +120,10 @@ void Fun(
             + 1.2e-12*F[6]                     // A[20]: NO3(F6) (Uses F6 now)
             + 2.0*RCT[25]*F[5];                // A[25]: RO2(F5) - Quadratic
 
-      if (L_RO2 > 1.0e-30) F[5] = P_RO2 / L_RO2;
-      else F[5] = 0.0;
+      if (L_RO2 > 1.0e-30)
+          F[5] = P_RO2 / L_RO2;
+      else
+          F[5] = 0.0;
 
       // ---------------------------------------------------------------------
       // 4. Solve HO2 and OH (Index F[4] F[3])
@@ -144,8 +150,11 @@ void Fun(
             + 4.0e-12*F[6]                     // A[13]: NO3(F6) (Uses F6 now)
             + RCT[17]*F[5]                     // A[17]: RO2(F5)
             + RCT[18]*F[5];                    // A[18]: RO2(F5)
-      if (L_HO2 > 1.0e-30) F[4] = P_HO2 / L_HO2;
-            else F[4] = 0.0;
+
+      if (L_HO2 > 1.0e-30)
+          F[4] = P_HO2 / L_HO2;
+      else
+          F[4] = 0.0;
 
       // OH Prod: HO2+O3(A1), HO2+NO(A11), RH+O3(0.33*A26), O3+hv(2*A29), 
       //       ROOH+hv(A33), H2O2+hv(2*A36)
@@ -170,8 +179,11 @@ void Fun(
            + RCT[22]*V[3]                      // A[22]: HCHO(V3)
            + RCT[24]*V[2]                      // A[24]: CO(V2)
            + RCT[27]*V[5];                     // A[27]: RH(V5)
-      if (L_OH > 1.0e-30) F[3] = P_OH / L_OH;
-           else F[3] = 0.0;  
+
+      if (L_OH > 1.0e-30)
+          F[3] = P_OH / L_OH;
+      else
+          F[3] = 0.0;
       
   }
 
@@ -219,7 +231,6 @@ void Fun(
   A[43] = RCT[43]*V[1];
   A[44] = RCT[44]*V[3];
   A[45] = RCT[45]*V[4];
-
 
 // Aggregate function
   Vdot[0] = A[12]+A[13]-A[14]+2*A[15]+A[23]-A[42];

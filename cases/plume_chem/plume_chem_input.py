@@ -22,7 +22,7 @@ jtot = 32
 ktot = 96
 
 start_hour = 6
-end_hour = 18
+end_hour = 7
 
 # Enable resolved plume rise:
 sw_plume_rise = True
