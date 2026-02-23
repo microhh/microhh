@@ -228,12 +228,12 @@ namespace
                     //Fun(VAR, FIX, RCONST, Vdot, RF);
                     // Content FUN function.
                     // QSSA Auxiliary Variables
-                      double P_OH, L_OH;
-                      double P_HO2, L_HO2;
-                      double P_RO2, L_RO2;
-                      double P_NO3, L_NO3;
-                      double P_N2O5, L_N2O5;
-                      int i_qssa;
+                    TF P_OH, L_OH;
+                    TF P_HO2, L_HO2;
+                    TF P_RO2, L_RO2;
+                    TF P_NO3, L_NO3;
+                    TF P_N2O5, L_N2O5;
+                    int i_qssa;
 
                     // =========================================================================
                     // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
