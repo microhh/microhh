@@ -91,7 +91,6 @@ class Chemistry
         std::vector<TF> emi_isop;
         std::vector<TF> emi_no;
         std::vector<TF> rfa;
-        std::vector<TF> rka;
         std::vector<TF> qprof;
         std::vector<TF> tprof;
         TF trfa;
@@ -105,7 +104,5 @@ class Chemistry
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
 
-        const std::string tend_name = "chemistry";
-        const std::string tend_longname = "Chemistry";
 };
 #endif

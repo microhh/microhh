@@ -41,8 +41,10 @@ namespace Constants
     template<typename TF> constexpr TF rho_i = 7.e2;          // Density of ice   [kg m-3]
     template<typename TF> constexpr TF mu0_min = 1e-6;        // Minimum value used for cos(sza)
     template<typename TF> constexpr TF sigma_b = 5.67e-8;     // Boltzmann constant [W m-1 K-1]
-    template<typename TF> constexpr TF xmair = 28.9647;       // Molar mass of dry air [kg kmol-1]
-    template<typename TF> constexpr TF xmh2o = 18.01528;      // Molar mass of h2o [kg kmol-1]
+    template<typename TF> constexpr TF xmair   = 28.9647;          // Molar mass of dry air [kg kmol-1]
+    template<typename TF> constexpr TF xmair_i = TF(1) / xmair<TF>; // Inverse molar mass of dry air [kmol kg-1]
+    template<typename TF> constexpr TF xmh2o   = 18.01528;          // Molar mass of h2o [kg kmol-1]
+    template<typename TF> constexpr TF xmh2o_i = TF(1) / xmh2o<TF>; // Inverse molar mass of h2o [kmol kg-1]
 
     // Soil / land-surface specific constants
     template<typename TF> constexpr TF rho_C_matrix   = 1.6e6;   // Volumetric soil heat capacity [J m-3 K-1]

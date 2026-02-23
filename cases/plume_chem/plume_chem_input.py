@@ -33,6 +33,9 @@ sw_chemistry = True
 # Enable land-surface model and more detailled deposition.
 sw_land_surface = True
 
+# Switch between old and new (equilibrium fast species) schemes.
+sw_new_scheme = False
+
 
 """
 Read base .ini file for case settings.
@@ -78,15 +81,19 @@ if (sw_chemistry):
         'h2o2': 1.1e-9,
         'o3': 9e-8,
         'hcho': 5e-10,
-        'ho2': 1.5e-11,
-        'oh': 1e-13,
-        'no3': 5e-14,
-        'n2o5': 8e-14,
         'rooh': 3.6e-10,
-        'c3h6': 3.3e-9,
-        'ro2': 7e-12}
+        'c3h6': 3.3e-9}
+
+    if not sw_new_scheme:
+        species.update({
+            'oh': 1e-13,
+            'ho2': 1.5e-11,
+            'ro2': 7e-12,
+            'no3': 5e-14,
+            'n2o5': 8e-14})
 
     deposition_species = ['o3', 'no', 'no2', 'hno3', 'h2o2', 'rooh', 'hcho']
+
 else:
     species = {}
 
