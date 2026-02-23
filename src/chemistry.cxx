@@ -49,7 +49,7 @@ namespace
 {
     // From microhh_root/kpp:
     #include "mhh_Parameters.h"
-    #include "mhh_Function.c"
+    //#include "mhh_Function.c"
 
     double C[NSPEC];                         /* Concentration of all species */
     double * VAR = & C[0];
@@ -228,7 +228,7 @@ namespace
                     VAR[ind_O3]   = std::max((o3[ijk]   + to3[ijk]   * sdt) * CFACTOR, TF(0));
                     VAR[ind_NO]   = std::max((no[ijk]   + tno[ijk]   * sdt) * CFACTOR, TF(0));
                     VAR[ind_NO2]  = std::max((no2[ijk]  + tno2[ijk]  * sdt) * CFACTOR, TF(0));
-                  
+
                     if (k==kstart)
                     {
                         RCONST[39] = vdo3[ij]   * dzi[k];
@@ -239,8 +239,200 @@ namespace
                         RCONST[44] = vdhcho[ij] * dzi[k];
                         RCONST[45] = vdrooh[ij] * dzi[k];
                     }
-                     
-                    Fun(VAR, FIX, RCONST, Vdot, RF);
+
+                    //Fun(VAR, FIX, RCONST, Vdot, RF);
+                    // Content FUN function.
+                    // QSSA Auxiliary Variables
+                      double P_OH, L_OH;
+                      double P_HO2, L_HO2;
+                      double P_RO2, L_RO2;
+                      double P_NO3, L_NO3;
+                      double P_N2O5, L_N2O5;
+                      int i_qssa;
+
+                      // =========================================================================
+                      // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
+                      // =========================================================================
+                      for (i_qssa = 0; i_qssa < 2; i_qssa++) {
+
+                          // ---------------------------------------------------------------------
+                          // 1. Solve N2O5 (Index FIX[7])
+                          // ---------------------------------------------------------------------
+                          // Prod: NO2 + NO3 (A9)
+                          P_N2O5 = RCONST[9]*VAR[6]*FIX[6];               // RF[9]: NO2(V6) + NO3(F6)
+
+                          // Loss: N2O5 -> NO2+NO3 (A10), N2O5 -> 2HNO3 (A15), Loss(A31)
+                          L_N2O5 = RCONST[10]                         // RF[10]
+                                 + 0.0004                          // RF[15] (Hardcoded k)
+                                 + RCONST[31];                        // RF[31]
+
+                          if (L_N2O5 > 1.0e-30)
+                              FIX[7] = P_N2O5 / L_N2O5;
+                          else
+                              FIX[7] = 0.0;
+
+                          // ---------------------------------------------------------------------
+                          // 2. Solve NO3 (Index FIX[6])
+                          // ---------------------------------------------------------------------
+                          // Prod: NO2+O3 (A7), N2O5->NO2+NO3 (A10), HNO3+OH (A14)
+                          P_NO3 = RCONST[7]*VAR[6]*VAR[7]                 // RF[7]: NO2(V6) + O3(V7)
+                                + RCONST[10]*FIX[7]                     // RF[10]: N2O5(F7)
+                                + RCONST[14]*VAR[0]*FIX[3];               // RF[14]: HNO3(V0) + OH(F3)
+
+                          // Loss: NO(A8), NO2(A9), HO2(A13), RO2(A20), HCHO(A23), RH(A28), Loss(A32)
+                          L_NO3 = RCONST[8]*VAR[8]                      // RF[8]: NO(V8)
+                                + RCONST[9]*VAR[6]                      // RF[9]: NO2(V6) (To N2O5)
+                                + 4.0e-12*FIX[4]                     // RF[13]: HO2(F4) (Hardcoded k)
+                                + 1.2e-12*FIX[5]                     // RF[20]: RO2(F5) (Hardcoded k)
+                                + 5.8e-16*VAR[3]                     // RF[23]: HCHO(V3) (Hardcoded k)
+                                + RCONST[28]*VAR[5]                     // RF[28]: RH(V5)
+                                + RCONST[32];                         // RF[32]: Loss
+
+                          if (L_NO3 > 1.0e-30)
+                              FIX[6] = P_NO3 / L_NO3;
+                          else
+                              FIX[6] = 0.0;
+
+                          // ---------------------------------------------------------------------
+                          // 3. Solve RO2 (Index FIX[5])
+                          // ---------------------------------------------------------------------
+                          // Prod: CH4+OH(A16), ROOH+OH(0.6*A21), RH+O3(0.31*A26), RH+OH(A27)
+                          P_RO2 = RCONST[16]*FIX[3]*FIX[0]                // RF[16]: OH(F3) + CH4(F0)
+                                + 0.6*RCONST[21]*VAR[4]*FIX[3]            // RF[21]: ROOH(V4) + OH(F3)
+                                + 0.31*RCONST[26]*VAR[5]*VAR[7]           // RF[26]: RH(V5) + O3(V7)
+                                + RCONST[27]*VAR[5]*FIX[3];               // RF[27]: RH(V5) + OH(F3)
+
+                          // Loss: HO2(A17, A18), NO(A19), NO3(A20), RO2(2*A25)
+                          L_RO2 = RCONST[17]*FIX[4]                     // RF[17]: HO2(F4)
+                                + RCONST[18]*FIX[4]                     // RF[18]: HO2(F4)
+                                + RCONST[19]*VAR[8]                     // RF[19]: NO(V8)
+                                + 1.2e-12*FIX[6]                     // RF[20]: NO3(F6) (Uses F6 now)
+                                + 2.0*RCONST[25]*FIX[5];                // RF[25]: RO2(F5) - Quadratic
+
+                          if (L_RO2 > 1.0e-30)
+                              FIX[5] = P_RO2 / L_RO2;
+                          else
+                              FIX[5] = 0.0;
+
+                          // ---------------------------------------------------------------------
+                          // 4. Solve HO2 and OH (Index FIX[4] FIX[3])
+                          // ---------------------------------------------------------------------
+                          // HO2 Prod: O3+OH(A0), H2O2+OH(A4), OH+M(A5), RO2+NO(A19), RO2+NO3(A20),
+                          //       HCHO+OH(A22), CO+OH(A24), RO2+RO2(0.74*A25), RH+O3(0.19*A26),
+                          //       ROOH+hv(A33), HCHO+hv(2*A35)
+                          P_HO2 = RCONST[0]*VAR[7]*FIX[3]                 // RF[0]: O3(V7) + OH(F3)
+                                + RCONST[4]*VAR[1]*FIX[3]                 // RF[4]: H2O2(V1) + OH(F3)
+                                + RCONST[5]*FIX[3]                      // RF[5]: OH(F3)
+                                + RCONST[19]*FIX[5]*VAR[8]                // RF[19]: RO2(F5) + NO(V8)
+                                + 1.2e-12*FIX[6]*FIX[5]                // RF[20]: NO3(F6) + RO2(F5)
+                                + RCONST[22]*VAR[3]*FIX[3]                // RF[22]: HCHO(V3) + OH(F3)
+                                + RCONST[24]*VAR[2]*FIX[3]                // RF[24]: CO(V2) + OH(F3)
+                                + 0.74*RCONST[25]*FIX[5]*FIX[5]           // RF[25]: RO2(F5)^2
+                                + 0.19*RCONST[26]*VAR[5]*VAR[7]           // RF[26]: RH(V5) + O3(V7)
+                                + RCONST[33]*VAR[4]                     // RF[33]: ROOH(V4)
+                                + 2.0*RCONST[35]*VAR[3];                // RF[35]: HCHO(V3)
+                          // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
+                          L_HO2 = RCONST[1]*VAR[7]                      // RF[1]: O3(V7)
+                                + RCONST[2]*FIX[3]                      // RF[2]: OH(F3)
+                                + 2.0*RCONST[3]*FIX[4]                  // RF[3]: HO2(F4)
+                                + RCONST[11]*VAR[8]                     // RF[11]: NO(V8)
+                                + 4.0e-12*FIX[6]                     // RF[13]: NO3(F6) (Uses F6 now)
+                                + RCONST[17]*FIX[5]                     // RF[17]: RO2(F5)
+                                + RCONST[18]*FIX[5];                    // RF[18]: RO2(F5)
+
+                          if (L_HO2 > 1.0e-30)
+                              FIX[4] = P_HO2 / L_HO2;
+                          else
+                              FIX[4] = 0.0;
+
+                          // OH Prod: HO2+O3(A1), HO2+NO(A11), RH+O3(0.33*A26), O3+hv(2*A29),
+                          //       ROOH+hv(A33), H2O2+hv(2*A36)
+                          P_OH = RCONST[1]*VAR[7]*FIX[4]                  // RF[1]: O3(V7) + HO2(F4)
+                               + RCONST[11]*FIX[4]*VAR[8]                 // RF[11]: HO2(F4) + NO(V8)
+                               + 0.33*RCONST[26]*VAR[5]*VAR[7]            // RF[26]: RH(V5) + O3(V7)
+                               + 2.0*RCONST[29]*VAR[7]                  // RF[29]: O3(V7)
+                               + RCONST[33]*VAR[4]                      // RF[33]: ROOH(V4)
+                               + 2.0*RCONST[36]*VAR[1];                 // RF[36]: H2O2(V1)
+
+
+                          // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
+                          //       CH4(A16), ROOH(0.6*A21), HCHO(A22), CO(A24), RH(A27)
+                          L_OH = RCONST[0]*VAR[7]                       // RF[0]: O3(V7)
+                               + RCONST[2]*FIX[4]                       // RF[2]: HO2(F4)
+                               + RCONST[4]*VAR[1]                       // RF[4]: H2O2(V1)
+                               + RCONST[5]                            // RF[5]
+                               + RCONST[12]*VAR[6]                      // RF[12]: NO2(V6)
+                               + RCONST[14]*VAR[0]                      // RF[14]: HNO3(V0)
+                               + RCONST[16]*FIX[0]                      // RF[16]: CH4(F0)
+                               + 0.6*RCONST[21]*VAR[4]                  // RF[21]: ROOH(V4)
+                               + RCONST[22]*VAR[3]                      // RF[22]: HCHO(V3)
+                               + RCONST[24]*VAR[2]                      // RF[24]: CO(V2)
+                               + RCONST[27]*VAR[5];                     // RF[27]: RH(V5)
+
+                          if (L_OH > 1.0e-30)
+                              FIX[3] = P_OH / L_OH;
+                          else
+                              FIX[3] = 0.0;
+
+                      }
+
+                    // Computation of equation rates
+                      RF[0] = RCONST[0]*VAR[7]*FIX[3];
+                      RF[1] = RCONST[1]*VAR[7]*FIX[4];
+                      RF[3] = RCONST[3]*FIX[4]*FIX[4];
+                      RF[4] = RCONST[4]*VAR[1]*FIX[3];
+                      RF[6] = RCONST[6]*VAR[7]*VAR[8];
+                      RF[7] = RCONST[7]*VAR[6]*VAR[7];
+                      RF[8] = RCONST[8]*VAR[8]*FIX[6];
+                      RF[9] = RCONST[9]*VAR[6]*FIX[6];
+                      RF[10] = RCONST[10]*FIX[7];
+                      RF[11] = RCONST[11]*VAR[8]*FIX[4];
+                      RF[12] = RCONST[12]*VAR[6]*FIX[3];
+                      RF[13] = 4e-12*FIX[4]*FIX[6];
+                      RF[14] = RCONST[14]*VAR[0]*FIX[3];
+                      RF[15] = 0.0004*FIX[7];
+                      RF[17] = RCONST[17]*FIX[4]*FIX[5];
+                      RF[18] = RCONST[18]*FIX[4]*FIX[5];
+                      RF[19] = RCONST[19]*VAR[8]*FIX[5];
+                      RF[20] = 1.2e-12*FIX[5]*FIX[6];
+                      RF[21] = RCONST[21]*VAR[4]*FIX[3];
+                      RF[22] = RCONST[22]*VAR[3]*FIX[3];
+                      RF[23] = 5.8e-16*VAR[3]*FIX[6];
+                      RF[24] = RCONST[24]*VAR[2]*FIX[3];
+                      RF[25] = RCONST[25]*FIX[5]*FIX[5];
+                      RF[26] = RCONST[26]*VAR[5]*VAR[7];
+                      RF[27] = RCONST[27]*VAR[5]*FIX[3];
+                      RF[28] = RCONST[28]*VAR[5]*FIX[6];
+                      RF[29] = RCONST[29]*VAR[7];
+                      RF[30] = RCONST[30]*VAR[6];
+                      RF[31] = RCONST[31]*FIX[7];
+                      RF[32] = RCONST[32]*FIX[6];
+                      RF[33] = RCONST[33]*VAR[4];
+                      RF[34] = RCONST[34]*VAR[3];
+                      RF[35] = RCONST[35]*VAR[3];
+                      RF[36] = RCONST[36]*VAR[1];
+                      RF[37] = RCONST[37]*FIX[2];
+                      RF[38] = RCONST[38]*FIX[2];
+                      RF[39] = RCONST[39]*VAR[7];
+                      RF[40] = RCONST[40]*VAR[8];
+                      RF[41] = RCONST[41]*VAR[6];
+                      RF[42] = RCONST[42]*VAR[0];
+                      RF[43] = RCONST[43]*VAR[1];
+                      RF[44] = RCONST[44]*VAR[3];
+                      RF[45] = RCONST[45]*VAR[4];
+
+                    // Aggregate function
+                      Vdot[0] = RF[12]+RF[13]-RF[14]+2*RF[15]+RF[23]-RF[42];
+                      Vdot[1] = RF[3]-RF[4]-RF[36]-RF[43];
+                      Vdot[2] = RF[22]-RF[24]+0.56*RF[26]+RF[34]+RF[35];
+                      Vdot[3] = RF[18]+RF[19]+RF[20]+0.4*RF[21]-RF[22]-RF[23]+1.37*RF[25]+1.04
+                               *RF[26]+1.5*RF[27]+RF[33]-RF[34]-RF[35]-RF[44];
+                      Vdot[4] = RF[17]-RF[21]-RF[33]-RF[45];
+                      Vdot[5] = -RF[26]-RF[27]-RF[28]+RF[38];
+                      Vdot[6] = RF[6]-RF[7]+2*RF[8]-RF[9]+RF[10]+RF[11]-RF[12]+RF[19]+RF[20]-RF[30]
+                               +RF[31]+RF[32]-RF[41];
+                      Vdot[7] = -RF[0]-RF[1]-RF[6]-RF[7]-RF[26]-RF[29]+RF[30]+RF[32]-RF[39];
+                      Vdot[8] = -RF[6]-RF[8]-RF[11]-RF[19]+RF[30]+RF[37]-RF[40];
 
                     // Get statistics for reaction fluxes:
                     if (abs(sdt/dt - 1./3.) < 1e-5)
@@ -248,17 +440,17 @@ namespace
                         for (int l=0; l<NREACT; ++l)
                             rfa[(k-kstart)*NREACT+l] +=  RF[l]*dt;    // take the first evaluation in the RK3 steps, but with full time step.
                     }
-                    
+
                     thno3[ijk] += Vdot[ind_HNO3] * cfac_i;
                     th2o2[ijk] += Vdot[ind_H2O2] * cfac_i;
                     tco[ijk]   += Vdot[ind_CO]   * cfac_i;
                     thcho[ijk] += Vdot[ind_HCHO] * cfac_i;
                     trooh[ijk] += Vdot[ind_ROOH] * cfac_i;
                     tc3h6[ijk] += Vdot[ind_RH]   * cfac_i;
-                    to3[ijk]   += Vdot[ind_O3]   * cfac_i;  
-                    tno[ijk]   += Vdot[ind_NO]   * cfac_i;  
-                    tno2[ijk]  += Vdot[ind_NO2]  * cfac_i; 
- 
+                    to3[ijk]   += Vdot[ind_O3]   * cfac_i;
+                    tno[ijk]   += Vdot[ind_NO]   * cfac_i;
+                    tno2[ijk]  += Vdot[ind_NO2]  * cfac_i;
+
                 } // i
         } // k
     }
