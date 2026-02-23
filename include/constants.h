@@ -45,6 +45,7 @@ namespace Constants
     template<typename TF> constexpr TF xmair_i = TF(1) / xmair<TF>; // Inverse molar mass of dry air [kmol kg-1]
     template<typename TF> constexpr TF xmh2o   = 18.01528;          // Molar mass of h2o [kg kmol-1]
     template<typename TF> constexpr TF xmh2o_i = TF(1) / xmh2o<TF>; // Inverse molar mass of h2o [kmol kg-1]
+    template<typename TF> constexpr TF Na      = 6.02214086e23;     // Avogadro's number [molecules mol-1]
 
     // Soil / land-surface specific constants
     template<typename TF> constexpr TF rho_C_matrix   = 1.6e6;   // Volumetric soil heat capacity [J m-3 K-1]

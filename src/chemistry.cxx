@@ -125,20 +125,12 @@ namespace
         const int Pj_ch2om = 6;
         const int Pj_ch3o2h = 7;
 
-        const TF xmh2o = 18.015265;
-        const TF xmh2o_i = TF(1) / xmh2o;
-        const TF xmair = 28.9647;       // Molar mass of dry air  [kg kmol-1]
-        const TF xmair_i = TF(1) / xmair;
-        const TF Na = 6.02214086e23; // Avogadros number [molecules mol-1]
-
-        TF C_M = 2.55e19;  // because of scope KPP generated routines
-
         VAR = &C[0];
         FIX = &C[14];
 
         for (int k=kstart; k<kend; ++k)
         {
-            C_M = TF(1e-3) * rhoref[k] * Na * xmair_i;   // molecules/cm3 for chemistry!
+            const TF C_M = TF(1e-3) * rhoref[k] * Constants::Na<TF> * Constants::xmair_i<TF>;   // molecules/cm3 for chemistry!
 
             // From ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
             const TF CFACTOR = C_M;
@@ -147,7 +139,7 @@ namespace
 
             // rate constants on horizontal average quantities,
             const TF TEMP = tprof[k];
-            const TF C_H2O = std::max(qprof[k] * xmair * C_M * xmh2o_i, TF(1));
+            const TF C_H2O = std::max(qprof[k] * Constants::xmair<TF> * C_M * Constants::xmh2o_i<TF>, TF(1));
 
             RCONST[0 ] = arr3(TF(1.7E-12), TF(-940), TEMP);
             RCONST[1 ] = arr3(TF(1.E-14), TF(-490), TEMP);
@@ -208,7 +200,7 @@ namespace
                     const int ij = i + j*jstride;
 
                     // kg/kg --> molH2O/molAir --*C_M--> molecules/cm3 limit to 1 molecule/cm3 to avoid error usr_HO2_HO2
-                    // const TF C_H2O = std::max(qt[ijk] * xmair * C_M * xmh2o_i, TF(1));
+                    // const TF C_H2O = std::max(qt[ijk] * xmair * C_M * Constants::xmh2o_i<TF>, TF(1));
                     // const TF TEMP = temp[ijk];
 
                     // Convert to molecules per cm3 and add tendenccies of other processes.
