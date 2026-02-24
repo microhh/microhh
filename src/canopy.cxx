@@ -336,7 +336,6 @@ void Canopy<TF>::exec()
 }
 #endif
 
-
 #ifdef FLOAT_SINGLE
 template class Canopy<float>;
 #else

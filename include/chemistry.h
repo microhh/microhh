@@ -29,6 +29,7 @@
 
 #include "timeloop.h"
 #include "boundary.h"
+#include "field3d_operators.h"
 #include "stats.h"
 
 enum Jval
@@ -73,23 +74,18 @@ class Chemistry
         void exec_cross(Cross<TF>&, unsigned long);                                             ///< Execute cross-sections.
 
     protected:
-        // Cross sections
         std::vector<std::string> cross_list;         // List of active cross variables
 
     private:
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Field3d_operators<TF> field3d_operators;
 
         bool sw_chemistry;
 
-        Field3d_operators<TF> field3d_operators;
-
         std::shared_ptr<Deposition<TF>> deposition;
-
         std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
-
-        std::vector<TF> jval;   // time-interpolated value to pass to the chemistry routine
 
         // CPU arrays.
         std::vector<double> time;   // NOTE: keep this double.
@@ -101,8 +97,9 @@ class Chemistry
         std::vector<TF> jch2or;
         std::vector<TF> jch2om;
         std::vector<TF> jch3o2h;
+        std::vector<TF> jval;
 
-        // vectors to contain calculated deposition velocities (m/s)
+        // Vectors with deposition velocities (m/s)
         std::vector<TF> vdo3;
         std::vector<TF> vdno;
         std::vector<TF> vdno2;
@@ -110,7 +107,5 @@ class Chemistry
         std::vector<TF> vdh2o2;
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
-
-
 };
 #endif
