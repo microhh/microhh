@@ -517,15 +517,6 @@ void Chemistry<TF>::create(
         time.resize(time_dim_length);
     }
 
-    for (std::string varname : ename)    // check dimension also of emissions
-    {
-        std::map<std::string, int> dims = group_nc.get_variable_dimensions(varname);
-        std::pair<std::string, int> unique_time = check_for_unique_time_dim(dims);
-        time_dim = unique_time.first;
-        time_dim_length = unique_time.second;
-        time.resize(time_dim_length);
-    }
-
     jo31d.resize(time_dim_length);
     jh2o2.resize(time_dim_length);
     jno2.resize(time_dim_length);
@@ -534,9 +525,6 @@ void Chemistry<TF>::create(
     jch2or.resize(time_dim_length);
     jch2om.resize(time_dim_length);
     jch3o2h.resize(time_dim_length);
-    emi_isop.resize(time_dim_length);
-    emi_no.resize(time_dim_length);
-
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(jo31d, jname[0],  {0}, {time_dim_length});
     group_nc.get_variable(jh2o2, jname[1],  {0}, {time_dim_length});
@@ -546,9 +534,6 @@ void Chemistry<TF>::create(
     group_nc.get_variable(jch2or, jname[5],  {0}, {time_dim_length});
     group_nc.get_variable(jch2om, jname[6],  {0}, {time_dim_length});
     group_nc.get_variable(jch3o2h, jname[7],  {0}, {time_dim_length});
-    group_nc.get_variable(emi_isop, ename[0],  {0}, {time_dim_length});
-    group_nc.get_variable(emi_no,   ename[1],  {0}, {time_dim_length});
-
     // Store output of averaging.
     rfa.resize(this->n_reactions*gd.ktot);
     for (int l=0;l<this->n_reactions*gd.ktot;++l)

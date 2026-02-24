@@ -90,8 +90,6 @@ class Chemistry
         Mask<TF> m;     // borrow from Stats to gather statistics chemistry
         int statistics_counter;
         std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
-        std::vector<std::string> ename={"emi_isop","emi_no"};
-
         TF jval[n_jval];   // time-interpolated value to pass to the chemistry routine
 
         std::vector<double> time;   // NOTE: keep this double.
@@ -103,8 +101,6 @@ class Chemistry
         std::vector<TF> jch2or;
         std::vector<TF> jch2om;
         std::vector<TF> jch3o2h;
-        std::vector<TF> emi_isop;
-        std::vector<TF> emi_no;
         std::vector<TF> rfa;
         TF trfa;
 
