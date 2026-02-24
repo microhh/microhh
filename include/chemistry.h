@@ -22,9 +22,11 @@
 
 #ifndef CHEMISTRY_H
 #define CHEMISTRY_H
+
 #include <vector>
 #include <string>
 #include <map>
+
 #include "timeloop.h"
 #include "boundary.h"
 #include "stats.h"
@@ -103,6 +105,8 @@ class Chemistry
         std::vector<TF> vdh2o2;
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
+
+        const int n_reactions = 46;
 
 };
 #endif

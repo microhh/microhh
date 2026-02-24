@@ -47,11 +47,6 @@
 
 namespace
 {
-    // From microhh_root/kpp:
-    #include "mhh_Parameters.h"
-    //#include "mhh_Function.c"
-
-
     std::pair<std::string, int> check_for_unique_time_dim(const std::map<std::string, int>& dims)
     {
         // Check for the existence of a unique time dimension.
@@ -76,7 +71,6 @@ namespace
 
         return std::make_pair(time_dim, time_dim_length);
     }
-
 
 
     template<typename TF>
@@ -438,8 +432,8 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 
         // sum of all PEs:
         // printf("trfa: %13.4e iteration: %i time: %13.4e \n", trfa,iteration,time);
-        master.sum(rfa.data(),NREACT*gd.ktot);
-        for (int l=0; l<NREACT*gd.ktot; ++l)
+        master.sum(rfa.data(),this->n_reactions*gd.ktot);
+        for (int l=0; l<this->n_reactions*gd.ktot; ++l)
             rfa[l] /= (trfa*gd.itot*gd.jtot);    // mean over the horizontal plane in molecules/(cm3 * s)
 
         // Put the data into the NetCDF file.
@@ -453,7 +447,7 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
 
         m.profs.at("chem_budget").data = rfa;
 
-        const int ksize = NREACT*gd.ktot;
+        const int ksize = this->n_reactions*gd.ktot;
         std::vector<int> time_rfaz_size  = {1, ksize};
         std::vector<TF> prof_nogc(
             m.profs.at("chem_budget").data.begin() ,
@@ -469,7 +463,7 @@ void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>
     }
 
     // (re-)intialize statistics
-    for (int l=0; l<NREACT*gd.ktot; ++l)
+    for (int l=0; l<this->n_reactions*gd.ktot; ++l)
         rfa[l] = 0.0;
     trfa = (TF) 0.0;
 }
@@ -566,8 +560,8 @@ void Chemistry<TF>::create(
     group_nc.get_variable(emi_no,   ename[1],  {0}, {time_dim_length});
 
     // Store output of averaging.
-    rfa.resize(NREACT*gd.ktot);
-    for (int l=0;l<NREACT*gd.ktot;++l)
+    rfa.resize(this->n_reactions*gd.ktot);
+    for (int l=0;l<this->n_reactions*gd.ktot;++l)
         rfa[l] = 0.0;
     trfa = (TF)0.0;
     qprof.resize(gd.kcells);
@@ -590,7 +584,7 @@ void Chemistry<TF>::create(
         // Create dimensions.
         m.data_file->add_dimension("z", gd.kmax);
         m.data_file->add_dimension("zh", gd.kmax+1);
-        m.data_file->add_dimension("rfaz", NREACT*gd.ktot);
+        m.data_file->add_dimension("rfaz", this->n_reactions*gd.ktot);
         m.data_file->add_dimension("ijcells",gd.ijcells);
         m.data_file->add_dimension("time");
 
@@ -629,7 +623,7 @@ void Chemistry<TF>::create(
 
         Netcdf_handle& handle =
                 m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
-        Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", "rfaz"}), std::vector<TF>(gd.ktot*NREACT), level};
+        Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", "rfaz"}), std::vector<TF>(gd.ktot*this->n_reactions), level};
         m.profs.emplace(
                 std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
 
