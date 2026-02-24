@@ -629,6 +629,8 @@ void Model<TF>::prepare_gpu()
     canopy   ->prepare_device();
     aerosol  ->prepare_device();
     source   ->prepare_device();
+    chemistry->prepare_device();
+
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -650,6 +652,7 @@ void Model<TF>::clear_gpu()
     column   ->clear_device();
     canopy   ->clear_device();
     aerosol  ->clear_device();
+    chemistry->clear_device();
 
     // Clear pressure last, for memory check
     pres     ->clear_device();

@@ -73,7 +73,13 @@ class Chemistry
         void exec_stats(const int, const double, Stats<TF>&);                                   ///< Execute statistics
         void exec_cross(Cross<TF>&, unsigned long);                                             ///< Execute cross-sections.
 
+        #ifdef USECUDA
+        void prepare_device();  ///< Allocate and copy data to GPU.
+        void clear_device();    ///< Deallocate all arrays on GPU.
+        #endif
+
     protected:
+        // Cross sections
         std::vector<std::string> cross_list;         // List of active cross variables
 
     private:
@@ -107,5 +113,26 @@ class Chemistry
         std::vector<TF> vdh2o2;
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
+
+        #ifdef USECUDA
+        cuda_vector<TF> jo31d_g;
+        cuda_vector<TF> jh2o2_g;
+        cuda_vector<TF> jno2_g;
+        cuda_vector<TF> jno3_g;
+        cuda_vector<TF> jn2o5_g;
+        cuda_vector<TF> jch2or_g;
+        cuda_vector<TF> jch2om_g;
+        cuda_vector<TF> jch3o2h_g;
+        cuda_vector<TF> jval_g;
+
+        // Vectors with deposition velocities (m/s)
+        cuda_vector<TF> vdo3_g;
+        cuda_vector<TF> vdno_g;
+        cuda_vector<TF> vdno2_g;
+        cuda_vector<TF> vdhno3_g;
+        cuda_vector<TF> vdh2o2_g;
+        cuda_vector<TF> vdrooh_g;
+        cuda_vector<TF> vdhcho_g;
+        #endif
 };
 #endif

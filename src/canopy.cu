@@ -39,12 +39,18 @@ void Canopy<TF>::exec()
 template <typename TF>
 void Canopy<TF>::prepare_device()
 {
+    if (!sw_canopy)
+        return;
+
     throw std::runtime_error("Canopy is not (yet) implemented on the GPU.");
 }
 
 template <typename TF>
 void Canopy<TF>::clear_device()
 {
+    if (!sw_canopy)
+        return;
+
     throw std::runtime_error("Canopy is not (yet) implemented on the GPU.");
 }
 #endif

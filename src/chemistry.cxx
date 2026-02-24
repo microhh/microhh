@@ -465,6 +465,7 @@ void Chemistry<TF>::create(
     jch2or.resize(time_dim_length);
     jch2om.resize(time_dim_length);
     jch3o2h.resize(time_dim_length);
+
     group_nc.get_variable(time, time_dim, {0}, {time_dim_length});
     group_nc.get_variable(jo31d, jname[0],  {0}, {time_dim_length});
     group_nc.get_variable(jh2o2, jname[1],  {0}, {time_dim_length});
@@ -474,6 +475,7 @@ void Chemistry<TF>::create(
     group_nc.get_variable(jch2or, jname[5],  {0}, {time_dim_length});
     group_nc.get_variable(jch2om, jname[6],  {0}, {time_dim_length});
     group_nc.get_variable(jch3o2h, jname[7],  {0}, {time_dim_length});
+
     if (stats.get_switch())
     {
         // Stats:
