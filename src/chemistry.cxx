@@ -111,66 +111,66 @@ namespace
             const int kstart, const int kend,
             const int jstride, const int kstride)
     {
-        const int Pj_o31d = 0;
-        const int Pj_h2o2 = 1;
-        const int Pj_no2  = 2;
-        const int Pj_no3  = 3;
-        const int Pj_n2o5 = 4;
-        const int Pj_ch2or = 5;
-        const int Pj_ch2om = 6;
-        const int Pj_ch3o2h = 7;
+        const int pj_o31d = 0;
+        const int pj_h2o2 = 1;
+        const int pj_no2  = 2;
+        const int pj_no3  = 3;
+        const int pj_n2o5 = 4;
+        const int pj_ch2or = 5;
+        const int pj_ch2om = 6;
+        const int pj_ch3o2h = 7;
 
         for (int k=kstart; k<kend; ++k)
         {
-            const TF C_M = TF(1e-3) * rhoref[k] * Constants::Na<TF> * Constants::xmair_i<TF>;   // molecules/cm3 for chemistry!
+            const TF c_m = TF(1e-3) * rhoref[k] * Constants::Na<TF> * Constants::xmair_i<TF>;   // molecules/cm3 for chemistry!
 
             // From ppb (units mixing ratio) to molecules/cm3 --> changed: now mol/mol unit for transported tracers:
-            const TF cfactor = C_M;
+            const TF cfactor = c_m;
             const TF cfac_i = TF(1) / cfactor;
-            const TF C_H2 = TF(500e-9) * cfactor ; // 500 ppb --> #/cm3
+            const TF c_h2 = TF(500e-9) * cfactor ; // 500 ppb --> #/cm3
 
             // rate constants on horizontal average quantities,
-            const TF TEMP = tprof[k];
-            const TF C_H2O = std::max(qprof[k] * Constants::xmair<TF> * C_M * Constants::xmh2o_i<TF>, TF(1));
+            const TF temp = tprof[k];
+            const TF c_h2o = std::max(qprof[k] * Constants::xmair<TF> * c_m * Constants::xmh2o_i<TF>, TF(1));
 
-            const TF rconst0  = arr3(TF(1.7E-12), TF(-940), TEMP);
-            const TF rconst1  = arr3(TF(1.E-14), TF(-490), TEMP);
-            const TF rconst2  = arr3(TF(4.8E-11), TF(250), TEMP);
-            const TF rconst3  = epr(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), C_M, C_H2O, TEMP);
-            const TF rconst4  = arr3(TF(2.9E-12), TF(-160), TEMP);
-            const TF rconst5  = arr3(TF(2.8E-12), TF(-1800), TEMP) * C_H2;
-            const TF rconst6  = arr3(TF(3.E-12), TF(-1500), TEMP);
-            const TF rconst7  = arr3(TF(1.4E-13), TF(-2470), TEMP);
-            const TF rconst8  = arr3(TF(1.8E-11), TF(110), TEMP);
-            const TF rconst9  = troe_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), C_M, TEMP);
-            const TF rconst10 = troe_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), C_M, TF(-11000), TF(-11080), TEMP);
-            const TF rconst11 = arr3(TF(3.3E-12), TF(270), TEMP);
-            const TF rconst12 = troe_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), C_M, TEMP);
-            const TF rconst14 = rk28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), C_M, TEMP);
-            const TF rconst16 = arr3(TF(2.45E-12), TF(-1775), TEMP);
-            const TF rconst17 = arr3(TF(3.8E-13), TF(780), TEMP) * (TF(1)-(TF(1)/(TF(1) + arr3(TF(498), TF(-1160), TEMP))));
-            const TF rconst18 = arr3(TF(3.8E-13), TF(780), TEMP) * (TF(1)/(TF(1.) + arr3(TF(498.), TF(-1160), TEMP)));
-            const TF rconst19 = arr3(TF(2.8E-12), TF(300), TEMP);
-            const TF rconst21 = arr3(TF(3.8E-12), TF(200), TEMP);
-            const TF rconst22 = arr3(TF(5.5E-12), TF(125), TEMP);
-            const TF rconst24 = troe_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), C_M, TEMP);
-            const TF rconst25 = arr3(TF(9.5E-14), TF(390), TEMP);
-            const TF rconst26 = arr3(TF(5.5E-15), TF(-1880), TEMP);
-            const TF rconst27 = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), C_M, TF(0.5), TEMP);
-            const TF rconst28 = arr3(TF(4.6E-13), TF(-1155), TEMP);
-            const TF rconst29 = usr_o3_hv_h2o(TEMP, C_M, C_H2O, jval[Pj_o31d]);
-            const TF rconst30 = jval[Pj_no2];
-            const TF rconst31 = jval[Pj_n2o5];
-            const TF rconst32 = jval[Pj_no3];
-            const TF rconst33 = jval[Pj_ch3o2h];
-            const TF rconst34 = jval[Pj_ch2om];
-            const TF rconst35 = jval[Pj_ch2or];
-            const TF rconst36 = jval[Pj_h2o2];
+            const TF rconst0  = arr3(TF(1.7E-12), TF(-940), temp);
+            const TF rconst1  = arr3(TF(1.E-14), TF(-490), temp);
+            const TF rconst2  = arr3(TF(4.8E-11), TF(250), temp);
+            const TF rconst3  = epr(TF(3.E-13), TF(460), TF(2.1E-33), TF(920), TF(1.4E-21), TF(2200), c_m, c_h2o, temp);
+            const TF rconst4  = arr3(TF(2.9E-12), TF(-160), temp);
+            const TF rconst5  = arr3(TF(2.8E-12), TF(-1800), temp) * c_h2;
+            const TF rconst6  = arr3(TF(3.E-12), TF(-1500), temp);
+            const TF rconst7  = arr3(TF(1.4E-13), TF(-2470), temp);
+            const TF rconst8  = arr3(TF(1.8E-11), TF(110), temp);
+            const TF rconst9  = troe_ifs(TF(3.6E-30), TF(4.1), TF(1.9E-12), TF(-0.2), TF(10), c_m, temp);
+            const TF rconst10 = troe_ifs2(TF(1.3E-3), TF(-3.5), TF(9.7E14), TF(0.1), TF(10), c_m, TF(-11000), TF(-11080), temp);
+            const TF rconst11 = arr3(TF(3.3E-12), TF(270), temp);
+            const TF rconst12 = troe_no2oh(TF(3.2E-30), TF(4.5), TF(3.E-11), TF(10), c_m, temp);
+            const TF rconst14 = rk28(TF(2.4E-14), TF(460), TF(6.51E-34), TF(1335), TF(2.69E-17), TF(2199), c_m, temp);
+            const TF rconst16 = arr3(TF(2.45E-12), TF(-1775), temp);
+            const TF rconst17 = arr3(TF(3.8E-13), TF(780), temp) * (TF(1)-(TF(1)/(TF(1) + arr3(TF(498), TF(-1160), temp))));
+            const TF rconst18 = arr3(TF(3.8E-13), TF(780), temp) * (TF(1)/(TF(1.) + arr3(TF(498.), TF(-1160), temp)));
+            const TF rconst19 = arr3(TF(2.8E-12), TF(300), temp);
+            const TF rconst21 = arr3(TF(3.8E-12), TF(200), temp);
+            const TF rconst22 = arr3(TF(5.5E-12), TF(125), temp);
+            const TF rconst24 = troe_cooh(TF(5.9E-33), TF(1.4), TF(1.1E-12), TF(-1.3), TF(1.5E-13), TF(-0.6), TF(2.1E9), TF(-6.1), TF(0.6), c_m, temp);
+            const TF rconst25 = arr3(TF(9.5E-14), TF(390), temp);
+            const TF rconst26 = arr3(TF(5.5E-15), TF(-1880), temp);
+            const TF rconst27 = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), c_m, TF(0.5), temp);
+            const TF rconst28 = arr3(TF(4.6E-13), TF(-1155), temp);
+            const TF rconst29 = usr_o3_hv_h2o(temp, c_m, c_h2o, jval[pj_o31d]);
+            const TF rconst30 = jval[pj_no2];
+            const TF rconst31 = jval[pj_n2o5];
+            const TF rconst32 = jval[pj_no3];
+            const TF rconst33 = jval[pj_ch3o2h];
+            const TF rconst34 = jval[pj_ch2om];
+            const TF rconst35 = jval[pj_ch2or];
+            const TF rconst36 = jval[pj_h2o2];
             const TF rconst37 = TF(0);
             const TF rconst38 = TF(0);
 
-            const TF fix_ch4   = TF(1800e-9) * cfactor;  // methane concentration
-            const TF fix_cm    = C_M;                     // air density
+            const TF fix_ch4   = TF(1800e-9) * cfactor;   // methane concentration
+            const TF fix_cm    = c_m;                     // air density
             const TF fix_dummy = TF(1);                   // species added to emit
 
             // Results from QSSA iteration below.
@@ -206,47 +206,41 @@ namespace
                     const TF rconst44 = (k == kstart) ? vdhcho[ij] * dzi[k] : TF(0);
                     const TF rconst45 = (k == kstart) ? vdrooh[ij] * dzi[k] : TF(0);
 
-                    //Fun(VAR, FIX, RCONST, Vdot, RF);
-                    // Content FUN function.
                     // QSSA Auxiliary Variables
-                    TF P_OH, L_OH;
-                    TF P_HO2, L_HO2;
-                    TF P_RO2, L_RO2;
-                    TF P_NO3, L_NO3;
-                    TF P_N2O5, L_N2O5;
-                    int i_qssa;
+                    TF p_oh, l_oh;
+                    TF p_ho2, l_ho2;
+                    TF p_ro2, l_ro2;
+                    TF p_no3, l_no3;
+                    TF p_n2o5, l_n2o5;
 
                     // =========================================================================
                     // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
                     // =========================================================================
-                    for (i_qssa = 0; i_qssa < 2; i_qssa++) {
-
+                    for (int i_qssa=0; i_qssa<2; i_qssa++)
+                    {
                         // ---------------------------------------------------------------------
                         // 1. Solve N2O5 (Index fix_n2o5)
                         // ---------------------------------------------------------------------
                         // Prod: NO2 + NO3 (A9)
-                        P_N2O5 = rconst9*var_no2*fix_no3;               // RF[9]: NO2(V6) + NO3(F6)
+                        p_n2o5 = rconst9*var_no2*fix_no3;               // RF[9]: NO2(V6) + NO3(F6)
 
                         // Loss: N2O5 -> NO2+NO3 (A10), N2O5 -> 2HNO3 (A15), Loss(A31)
-                        L_N2O5 = rconst10                         // RF[10]
+                        l_n2o5 = rconst10                         // RF[10]
                                + 0.0004                          // RF[15] (Hardcoded k)
                                + rconst31;                        // RF[31]
 
-                        if (L_N2O5 > 1.0e-30)
-                            fix_n2o5 = P_N2O5 / L_N2O5;
-                        else
-                            fix_n2o5 = 0.0;
+                        fix_n2o5 = (l_n2o5 > TF(1e-30)) ? p_n2o5 / l_n2o5 : TF(0);
 
                         // ---------------------------------------------------------------------
                         // 2. Solve NO3 (Index fix_no3)
                         // ---------------------------------------------------------------------
                         // Prod: NO2+O3 (A7), N2O5->NO2+NO3 (A10), HNO3+OH (A14)
-                        P_NO3 = rconst7*var_no2*var_o3                 // RF[7]: NO2(V6) + O3(V7)
+                        p_no3 = rconst7*var_no2*var_o3                 // RF[7]: NO2(V6) + O3(V7)
                               + rconst10*fix_n2o5                     // RF[10]: N2O5(F7)
                               + rconst14*var_hno3*fix_oh;               // RF[14]: HNO3(V0) + OH(F3)
 
                         // Loss: NO(A8), NO2(A9), HO2(A13), RO2(A20), HCHO(A23), RH(A28), Loss(A32)
-                        L_NO3 = rconst8*var_no                      // RF[8]: NO(V8)
+                        l_no3 = rconst8*var_no                      // RF[8]: NO(V8)
                               + rconst9*var_no2                      // RF[9]: NO2(V6) (To N2O5)
                               + 4.0e-12*fix_ho2                     // RF[13]: HO2(F4) (Hardcoded k)
                               + 1.2e-12*fix_ro2                     // RF[20]: RO2(F5) (Hardcoded k)
@@ -254,31 +248,25 @@ namespace
                               + rconst28*var_rh                     // RF[28]: RH(V5)
                               + rconst32;                         // RF[32]: Loss
 
-                        if (L_NO3 > 1.0e-30)
-                            fix_no3 = P_NO3 / L_NO3;
-                        else
-                            fix_no3 = 0.0;
+                        fix_no3 = (l_no3 > TF(1e-30)) ? p_no3 / l_no3 : TF(0);
 
                         // ---------------------------------------------------------------------
                         // 3. Solve RO2 (Index fix_ro2)
                         // ---------------------------------------------------------------------
                         // Prod: CH4+OH(A16), ROOH+OH(0.6*A21), RH+O3(0.31*A26), RH+OH(A27)
-                        P_RO2 = rconst16*fix_oh*fix_ch4                // RF[16]: OH(F3) + CH4(F0)
+                        p_ro2 = rconst16*fix_oh*fix_ch4                // RF[16]: OH(F3) + CH4(F0)
                               + 0.6*rconst21*var_rooh*fix_oh            // RF[21]: ROOH(V4) + OH(F3)
                               + 0.31*rconst26*var_rh*var_o3           // RF[26]: RH(V5) + O3(V7)
                               + rconst27*var_rh*fix_oh;               // RF[27]: RH(V5) + OH(F3)
 
                         // Loss: HO2(A17, A18), NO(A19), NO3(A20), RO2(2*A25)
-                        L_RO2 = rconst17*fix_ho2                     // RF[17]: HO2(F4)
+                        l_ro2 = rconst17*fix_ho2                     // RF[17]: HO2(F4)
                               + rconst18*fix_ho2                     // RF[18]: HO2(F4)
                               + rconst19*var_no                     // RF[19]: NO(V8)
                               + 1.2e-12*fix_no3                     // RF[20]: NO3(F6) (Uses F6 now)
                               + 2.0*rconst25*fix_ro2;                // RF[25]: RO2(F5) - Quadratic
 
-                        if (L_RO2 > 1.0e-30)
-                            fix_ro2 = P_RO2 / L_RO2;
-                        else
-                            fix_ro2 = 0.0;
+                        fix_ro2 = (l_ro2 > TF(1e-30)) ? p_ro2 / l_ro2 : TF(0);
 
                         // ---------------------------------------------------------------------
                         // 4. Solve HO2 and OH (Index fix_ho2 fix_oh)
@@ -286,7 +274,7 @@ namespace
                         // HO2 Prod: O3+OH(A0), H2O2+OH(A4), OH+M(A5), RO2+NO(A19), RO2+NO3(A20),
                         //       HCHO+OH(A22), CO+OH(A24), RO2+RO2(0.74*A25), RH+O3(0.19*A26),
                         //       ROOH+hv(A33), HCHO+hv(2*A35)
-                        P_HO2 = rconst0*var_o3*fix_oh                 // RF[0]: O3(V7) + OH(F3)
+                        p_ho2 = rconst0*var_o3*fix_oh                 // RF[0]: O3(V7) + OH(F3)
                               + rconst4*var_h2o2*fix_oh                 // RF[4]: H2O2(V1) + OH(F3)
                               + rconst5*fix_oh                      // RF[5]: OH(F3)
                               + rconst19*fix_ro2*var_no                // RF[19]: RO2(F5) + NO(V8)
@@ -298,7 +286,7 @@ namespace
                               + rconst33*var_rooh                     // RF[33]: ROOH(V4)
                               + 2.0*rconst35*var_hcho;                // RF[35]: HCHO(V3)
                         // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
-                        L_HO2 = rconst1*var_o3                      // RF[1]: O3(V7)
+                        l_ho2 = rconst1*var_o3                      // RF[1]: O3(V7)
                               + rconst2*fix_oh                      // RF[2]: OH(F3)
                               + 2.0*rconst3*fix_ho2                  // RF[3]: HO2(F4)
                               + rconst11*var_no                     // RF[11]: NO(V8)
@@ -306,14 +294,11 @@ namespace
                               + rconst17*fix_ro2                     // RF[17]: RO2(F5)
                               + rconst18*fix_ro2;                    // RF[18]: RO2(F5)
 
-                        if (L_HO2 > 1.0e-30)
-                            fix_ho2 = P_HO2 / L_HO2;
-                        else
-                            fix_ho2 = 0.0;
+                        fix_ho2 = (l_ho2 > TF(1e-30)) ? p_ho2 / l_ho2 : TF(0);
 
                         // OH Prod: HO2+O3(A1), HO2+NO(A11), RH+O3(0.33*A26), O3+hv(2*A29),
                         //       ROOH+hv(A33), H2O2+hv(2*A36)
-                        P_OH = rconst1*var_o3*fix_ho2                  // RF[1]: O3(V7) + HO2(F4)
+                        p_oh = rconst1*var_o3*fix_ho2                  // RF[1]: O3(V7) + HO2(F4)
                              + rconst11*fix_ho2*var_no                 // RF[11]: HO2(F4) + NO(V8)
                              + 0.33*rconst26*var_rh*var_o3            // RF[26]: RH(V5) + O3(V7)
                              + 2.0*rconst29*var_o3                  // RF[29]: O3(V7)
@@ -323,7 +308,7 @@ namespace
 
                         // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
                         //       CH4(A16), ROOH(0.6*A21), HCHO(A22), CO(A24), RH(A27)
-                        L_OH = rconst0*var_o3                       // RF[0]: O3(V7)
+                        l_oh = rconst0*var_o3                       // RF[0]: O3(V7)
                              + rconst2*fix_ho2                       // RF[2]: HO2(F4)
                              + rconst4*var_h2o2                       // RF[4]: H2O2(V1)
                              + rconst5                            // RF[5]
@@ -335,14 +320,10 @@ namespace
                              + rconst24*var_co                      // RF[24]: CO(V2)
                              + rconst27*var_rh;                     // RF[27]: RH(V5)
 
-                        if (L_OH > 1.0e-30)
-                            fix_oh = P_OH / L_OH;
-                        else
-                            fix_oh = 0.0;
-
+                        fix_oh = (l_oh > TF(1e-30)) ? p_oh / l_oh : TF(0);
                     }
 
-                    // Computation of equation rates
+                    // Computation of equation rates.
                     const TF rf0  = rconst0*var_o3*fix_oh;
                     const TF rf1  = rconst1*var_o3*fix_ho2;
                     const TF rf3  = rconst3*fix_ho2*fix_ho2;
