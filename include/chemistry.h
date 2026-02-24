@@ -31,6 +31,19 @@
 #include "boundary.h"
 #include "stats.h"
 
+enum Jval
+{
+    o31d   = 0,
+    h2o2   = 1,
+    no2    = 2,
+    no3    = 3,
+    n2o5   = 4,
+    ch2or  = 5,
+    ch2om  = 6,
+    ch3o2h = 7,
+    n_jval
+};
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -79,7 +92,7 @@ class Chemistry
         std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
         std::vector<std::string> ename={"emi_isop","emi_no"};
 
-        TF jval[8];   // time-interpolated value to pass to the chemistry routine
+        TF jval[n_jval];   // time-interpolated value to pass to the chemistry routine
 
         std::vector<double> time;   // NOTE: keep this double.
         std::vector<TF> jo31d;

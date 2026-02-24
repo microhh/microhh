@@ -114,15 +114,6 @@ namespace
             const int jstride,
             const int kstride)
     {
-        const int pj_o31d = 0;
-        const int pj_h2o2 = 1;
-        const int pj_no2  = 2;
-        const int pj_no3  = 3;
-        const int pj_n2o5 = 4;
-        const int pj_ch2or = 5;
-        const int pj_ch2om = 6;
-        const int pj_ch3o2h = 7;
-
         for (int k=kstart; k<kend; ++k)
         {
             const TF c_m = TF(1e-3) * rhoref[k] * Constants::Na<TF> * Constants::xmair_i<TF>;   // molecules/cm3 for chemistry!
@@ -161,7 +152,7 @@ namespace
             const TF rconst26 = arr3(TF(5.5E-15), TF(-1880), temp);
             const TF rconst27 = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), c_m, TF(0.5), temp);
             const TF rconst28 = arr3(TF(4.6E-13), TF(-1155), temp);
-            const TF rconst29 = usr_o3_hv_h2o(temp, c_m, c_h2o, jval[pj_o31d]);
+            const TF rconst29 = usr_o3_hv_h2o(temp, c_m, c_h2o, jval[Jval::o31d]);
             const TF rconst37 = TF(0);
             const TF rconst38 = TF(0);
 
@@ -221,7 +212,7 @@ namespace
                         // Loss: N2O5 -> NO2+NO3 (A10), N2O5 -> 2HNO3 (A15), Loss(A31)
                         l_n2o5 = rconst10                         // RF[10]
                                + 0.0004                          // RF[15] (Hardcoded k)
-                               + jval[pj_n2o5];                   // RF[31]
+                               + jval[Jval::n2o5];                   // RF[31]
 
                         fix_n2o5 = (l_n2o5 > TF(1e-30)) ? p_n2o5 / l_n2o5 : TF(0);
 
@@ -240,7 +231,7 @@ namespace
                               + 1.2e-12*fix_ro2                     // RF[20]: RO2(F5) (Hardcoded k)
                               + 5.8e-16*var_hcho                     // RF[23]: HCHO(V3) (Hardcoded k)
                               + rconst28*var_rh                     // RF[28]: RH(V5)
-                              + jval[pj_no3];                     // RF[32]: Loss
+                              + jval[Jval::no3];                     // RF[32]: Loss
 
                         fix_no3 = (l_no3 > TF(1e-30)) ? p_no3 / l_no3 : TF(0);
 
@@ -277,8 +268,8 @@ namespace
                               + rconst24*var_co*fix_oh                // RF[24]: CO(V2) + OH(F3)
                               + 0.74*rconst25*fix_ro2*fix_ro2           // RF[25]: RO2(F5)^2
                               + 0.19*rconst26*var_rh*var_o3           // RF[26]: RH(V5) + O3(V7)
-                              + jval[pj_ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
-                              + 2.0*jval[pj_ch2or]*var_hcho;          // RF[35]: HCHO(V3)
+                              + jval[Jval::ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
+                              + 2.0*jval[Jval::ch2or]*var_hcho;          // RF[35]: HCHO(V3)
                         // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
                         l_ho2 = rconst1*var_o3                      // RF[1]: O3(V7)
                               + rconst2*fix_oh                      // RF[2]: OH(F3)
@@ -296,8 +287,8 @@ namespace
                              + rconst11*fix_ho2*var_no                 // RF[11]: HO2(F4) + NO(V8)
                              + 0.33*rconst26*var_rh*var_o3            // RF[26]: RH(V5) + O3(V7)
                              + 2.0*rconst29*var_o3                  // RF[29]: O3(V7)
-                             + jval[pj_ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
-                             + 2.0*jval[pj_h2o2]*var_h2o2;           // RF[36]: H2O2(V1)
+                             + jval[Jval::ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
+                             + 2.0*jval[Jval::h2o2]*var_h2o2;           // RF[36]: H2O2(V1)
 
 
                         // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
@@ -345,13 +336,13 @@ namespace
                     const TF rf27 = rconst27*var_rh*fix_oh;
                     const TF rf28 = rconst28*var_rh*fix_no3;
                     const TF rf29 = rconst29*var_o3;
-                    const TF rf30 = jval[pj_no2]*var_no2;
-                    const TF rf31 = jval[pj_n2o5]*fix_n2o5;
-                    const TF rf32 = jval[pj_no3]*fix_no3;
-                    const TF rf33 = jval[pj_ch3o2h]*var_rooh;
-                    const TF rf34 = jval[pj_ch2om]*var_hcho;
-                    const TF rf35 = jval[pj_ch2or]*var_hcho;
-                    const TF rf36 = jval[pj_h2o2]*var_h2o2;
+                    const TF rf30 = jval[Jval::no2]*var_no2;
+                    const TF rf31 = jval[Jval::n2o5]*fix_n2o5;
+                    const TF rf32 = jval[Jval::no3]*fix_no3;
+                    const TF rf33 = jval[Jval::ch3o2h]*var_rooh;
+                    const TF rf34 = jval[Jval::ch2om]*var_hcho;
+                    const TF rf35 = jval[Jval::ch2or]*var_hcho;
+                    const TF rf36 = jval[Jval::h2o2]*var_h2o2;
                     const TF rf37 = rconst37;
                     const TF rf38 = rconst38;
                     const TF rf39 = rconst39*var_o3;
@@ -704,14 +695,14 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
 
     Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
 
-    jval[0] = ifac.fac0 * jo31d[ifac.index0] + ifac.fac1 * jo31d[ifac.index1];
-    jval[1] = ifac.fac0 * jh2o2[ifac.index0] + ifac.fac1 * jh2o2[ifac.index1];
-    jval[2] = ifac.fac0 * jno2[ifac.index0]  + ifac.fac1 * jno2[ifac.index1];
-    jval[3] = ifac.fac0 * jno3[ifac.index0] + ifac.fac1 * jno3[ifac.index1];
-    jval[4] = ifac.fac0 * jn2o5[ifac.index0] + ifac.fac1 * jn2o5[ifac.index1];
-    jval[5] = ifac.fac0 * jch2or[ifac.index0] + ifac.fac1 * jch2or[ifac.index1];
-    jval[6] = ifac.fac0 * jch2om[ifac.index0] + ifac.fac1 * jch2om[ifac.index1];
-    jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
+    jval[Jval::o31d]   = ifac.fac0 * jo31d[ifac.index0]   + ifac.fac1 * jo31d[ifac.index1];
+    jval[Jval::h2o2]   = ifac.fac0 * jh2o2[ifac.index0]   + ifac.fac1 * jh2o2[ifac.index1];
+    jval[Jval::no2]    = ifac.fac0 * jno2[ifac.index0]    + ifac.fac1 * jno2[ifac.index1];
+    jval[Jval::no3]    = ifac.fac0 * jno3[ifac.index0]    + ifac.fac1 * jno3[ifac.index1];
+    jval[Jval::n2o5]   = ifac.fac0 * jn2o5[ifac.index0]   + ifac.fac1 * jn2o5[ifac.index1];
+    jval[Jval::ch2or]  = ifac.fac0 * jch2or[ifac.index0]  + ifac.fac1 * jch2or[ifac.index1];
+    jval[Jval::ch2om]  = ifac.fac0 * jch2om[ifac.index0]  + ifac.fac1 * jch2om[ifac.index1];
+    jval[Jval::ch3o2h] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
 
     deposition->update_time_dependent(
             timeloop,
