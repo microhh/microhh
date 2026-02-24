@@ -21,7 +21,6 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//#include <cstdio>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -75,17 +74,25 @@ namespace
 
     template<typename TF>
     void pss(
-            TF* restrict thno3, const TF* const restrict hno3,
-            TF* restrict th2o2, const TF* const restrict h2o2,
-            TF* restrict tco, const TF* const restrict co,
-            TF* restrict thcho, const TF* const restrict hcho,
-            TF* restrict trooh, const TF* const restrict rooh,
-            TF* restrict tc3h6, const TF* const restrict c3h6,
-            TF* restrict to3, const TF* const restrict o3,
-            TF* restrict tno, const TF* const restrict no,
-            TF* restrict tno2, const TF* const restrict no2,
+            TF* const restrict thno3,
+            TF* const restrict th2o2,
+            TF* const restrict tco,
+            TF* const restrict thcho,
+            TF* const restrict trooh,
+            TF* const restrict tc3h6,
+            TF* const restrict to3,
+            TF* const restrict tno,
+            TF* const restrict tno2,
+            const TF* const restrict hno3,
+            const TF* const restrict h2o2,
+            const TF* const restrict co,
+            const TF* const restrict hcho,
+            const TF* const restrict rooh,
+            const TF* const restrict c3h6,
+            const TF* const restrict o3,
+            const TF* const restrict no,
+            const TF* const restrict no2,
             const TF* const restrict jval,
-            const TF* const restrict emval,
             const TF* const restrict vdo3,
             const TF* const restrict vdno,
             const TF* const restrict vdno2,
@@ -97,13 +104,15 @@ namespace
             const TF* const restrict qprof,
             const TF* const restrict dzi,
             const TF* const restrict rhoref,
-            const TF dt,
             const TF sdt,
-            const TF switch_dt,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int kstart, const int kend,
-            const int jstride, const int kstride)
+            const int istart,
+            const int iend,
+            const int jstart,
+            const int jend,
+            const int kstart,
+            const int kend,
+            const int jstride,
+            const int kstride)
     {
         const int pj_o31d = 0;
         const int pj_h2o2 = 1;
@@ -156,9 +165,7 @@ namespace
             const TF rconst37 = TF(0);
             const TF rconst38 = TF(0);
 
-            const TF fix_ch4   = TF(1800e-9) * cfactor;   // methane concentration
-            const TF fix_cm    = c_m;                     // air density
-            const TF fix_dummy = TF(1);                   // species added to emit
+            const TF fix_ch4 = TF(1800e-9) * cfactor;   // methane concentration
 
             // Results from QSSA iteration below.
             TF fix_oh   = TF(0);
@@ -345,8 +352,8 @@ namespace
                     const TF rf34 = jval[pj_ch2om]*var_hcho;
                     const TF rf35 = jval[pj_ch2or]*var_hcho;
                     const TF rf36 = jval[pj_h2o2]*var_h2o2;
-                    const TF rf37 = rconst37*fix_dummy;
-                    const TF rf38 = rconst38*fix_dummy;
+                    const TF rf37 = rconst37;
+                    const TF rf38 = rconst38;
                     const TF rf39 = rconst39*var_o3;
                     const TF rf40 = rconst40*var_no;
                     const TF rf41 = rconst41*var_no2;
@@ -469,7 +476,6 @@ void Chemistry<TF>::init(Input& inputin)
 
     auto& gd = grid.get_grid_data();
 
-    switch_dt = inputin.get_item<TF>("chemistry", "switch_dt", "", (TF)1e5);
     statistics_counter = 0;
 
     // initialize 2D deposition arrays:
@@ -557,8 +563,7 @@ void Chemistry<TF>::create(
     for (int l=0;l<this->n_reactions*gd.ktot;++l)
         rfa[l] = 0.0;
     trfa = (TF)0.0;
-    qprof.resize(gd.kcells);
-    tprof.resize(gd.kcells);
+
 
     if (stats.get_switch())
     {
@@ -707,9 +712,6 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
     jval[5] = ifac.fac0 * jch2or[ifac.index0] + ifac.fac1 * jch2or[ifac.index1];
     jval[6] = ifac.fac0 * jch2om[ifac.index0] + ifac.fac1 * jch2om[ifac.index1];
     jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
-    emval[0] = ifac.fac0 * emi_isop[ifac.index0] + ifac.fac1 * emi_isop[ifac.index1];
-    emval[1] = ifac.fac0 * emi_no[ifac.index0] + ifac.fac1 * emi_no[ifac.index1];
-
     deposition->update_time_dependent(
             timeloop,
             boundary,
@@ -732,25 +734,35 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 
     auto& gd = grid.get_grid_data();
 
-    auto tmp = fields.get_tmp();
-    thermo.get_thermo_field(*tmp, "T", true, false);
+    // Calculate the mean temperature profile.
+    auto temperature = fields.get_tmp();
+    thermo.get_thermo_field(*temperature, "T", true, false);
+    field3d_operators.calc_mean_profile(temperature->fld_mean.data(), temperature->fld.data());
 
-    // Calculate the mean temperature and water vapor mixing ratio.
-    field3d_operators.calc_mean_profile(tprof.data(), tmp->fld.data());
-    qprof = fields.sp.at("qt")->fld_mean;
-    //field3d_operators.calc_mean_profile(qprof.data(), fields.sp.at("qt")->fld.data());
+    // Pre-calculate rate constants that only depend on height.
+    // For the CPU this is not necessary, for the GPU this is useful for performance.
+    auto rconst = fields.get_tmp();
 
     pss<TF>(
-        fields.st.at("hno3")->fld.data(), fields.sp.at("hno3")->fld.data(),
-        fields.st.at("h2o2")->fld.data(), fields.sp.at("h2o2")->fld.data(),
-        fields.st.at("co")  ->fld.data(), fields.sp.at("co")->fld.data(),
-        fields.st.at("hcho")->fld.data(), fields.sp.at("hcho")->fld.data(),
-        fields.st.at("rooh")->fld.data(), fields.sp.at("rooh")->fld.data(),
-        fields.st.at("c3h6")->fld.data(), fields.sp.at("c3h6")->fld.data(),
-        fields.st.at("o3")  ->fld.data(), fields.sp.at("o3")->fld.data(),
-        fields.st.at("no")  ->fld.data(), fields.sp.at("no")->fld.data(),
-        fields.st.at("no2") ->fld.data(), fields.sp.at("no2")->fld.data(),
-        jval, emval,
+        fields.st.at("hno3")->fld.data(),
+        fields.st.at("h2o2")->fld.data(),
+        fields.st.at("co")  ->fld.data(),
+        fields.st.at("hcho")->fld.data(),
+        fields.st.at("rooh")->fld.data(),
+        fields.st.at("c3h6")->fld.data(),
+        fields.st.at("o3")  ->fld.data(),
+        fields.st.at("no")  ->fld.data(),
+        fields.st.at("no2") ->fld.data(),
+        fields.sp.at("hno3")->fld.data(),
+        fields.sp.at("h2o2")->fld.data(),
+        fields.sp.at("co")  ->fld.data(),
+        fields.sp.at("hcho")->fld.data(),
+        fields.sp.at("rooh")->fld.data(),
+        fields.sp.at("c3h6")->fld.data(),
+        fields.sp.at("o3")  ->fld.data(),
+        fields.sp.at("no")  ->fld.data(),
+        fields.sp.at("no2") ->fld.data(),
+        jval,
         vdo3.data(),
         vdno.data(),
         vdno2.data(),
@@ -758,17 +770,22 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
         vdh2o2.data(),
         vdrooh.data(),
         vdhcho.data(),
-        tprof.data(),
-        qprof.data(),
+        temperature->fld_mean.data(),
+        fields.sp.at("qt")->fld_mean.data(),
         gd.dzi.data(),
         fields.rhoref.data(),
-        dt, sdt, switch_dt,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.kstart, gd.kend,
-        gd.icells, gd.ijcells);
+        sdt,
+        gd.istart,
+        gd.iend,
+        gd.jstart,
+        gd.jend,
+        gd.kstart,
+        gd.kend,
+        gd.icells,
+        gd.ijcells);
 
-    fields.release_tmp(tmp);
+    fields.release_tmp(temperature);
+    fields.release_tmp(rconst);
 
     //isop_stat<TF>(
     //      fields.st.at("isop")->fld.data(), fields.sp.at("isop")->fld.data(),
