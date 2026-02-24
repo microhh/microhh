@@ -712,6 +712,7 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
     jval[5] = ifac.fac0 * jch2or[ifac.index0] + ifac.fac1 * jch2or[ifac.index1];
     jval[6] = ifac.fac0 * jch2om[ifac.index0] + ifac.fac1 * jch2om[ifac.index1];
     jval[7] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
+
     deposition->update_time_dependent(
             timeloop,
             boundary,
@@ -727,7 +728,7 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
 
 #ifndef USECUDA
 template <typename TF>
-void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
+void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
 {
     if (!sw_chemistry)
         return;
@@ -794,5 +795,8 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo,double sdt,double dt)
 }
 #endif
 
+#ifdef FLOAT_SINGLE
+template class Chemistry<float>;
+#else
 template class Chemistry<double>;
-//:template class Chemistry<float>;
+#endif

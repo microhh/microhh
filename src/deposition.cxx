@@ -719,5 +719,8 @@ void Deposition<TF>::spatial_avg_vd(
 }
 
 
+#ifdef FLOAT_SINGLE
+template class Deposition<float>;
+#else
 template class Deposition<double>;
-//:template class Chemistry<float>;
+#endif

@@ -52,12 +52,12 @@ class Chemistry
         Chemistry(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the chemistry class.
         ~Chemistry();                                       ///< Destructor  of the chemistry class.
 
-        void init(Input&);                 ///< Initialize the arrays that contain the profiles.
-        void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&, Cross<TF>&);   ///< Read the profiles of the forces from the input.
-        void update_time_dependent(Timeloop<TF>&,Boundary<TF>&); ///< Update the time dependent parameters.
-        void exec(Thermo<TF>&,double,double);     ///< Add the tendencies belonging to the chemistry processes.
-        void exec_stats(const int, const double, Stats<TF>&);   /// calculate statistics
-        void exec_cross(Cross<TF>&, unsigned long);
+        void init(Input&);                                                                      ///< Initialize the arrays that contain the profiles.
+        void create(const Timeloop<TF>&, std::string, Netcdf_handle&, Stats<TF>&, Cross<TF>&);  ///< Read the profiles of the forces from the input.
+        void update_time_dependent(Timeloop<TF>&,Boundary<TF>&);                                ///< Update the time dependent parameters.
+        void exec(Thermo<TF>&, double, double);                                                 ///< Add the tendencies belonging to the chemistry processes.
+        void exec_stats(const int, const double, Stats<TF>&);                                   ///< Execute statistics
+        void exec_cross(Cross<TF>&, unsigned long);                                             ///< Execute cross-sections.
 
     protected:
         // Cross sections
@@ -78,8 +78,10 @@ class Chemistry
         int statistics_counter;
         std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
         std::vector<std::string> ename={"emi_isop","emi_no"};
+
         TF jval[8];   // time-interpolated value to pass to the chemistry routine
-        std::vector<TF> time;
+
+        std::vector<double> time;   // NOTE: keep this double.
         std::vector<TF> jo31d;
         std::vector<TF> jh2o2;
         std::vector<TF> jno2;
