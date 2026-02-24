@@ -87,11 +87,11 @@ class Chemistry
 
         std::shared_ptr<Deposition<TF>> deposition;
 
-        Mask<TF> m;     // borrow from Stats to gather statistics chemistry
-        int statistics_counter;
         std::vector<std::string> jname={"jo31d","jh2o2","jno2","jno3","jn2o5","jch2or","jch2om","jch3o2h"};
-        TF jval[n_jval];   // time-interpolated value to pass to the chemistry routine
 
+        std::vector<TF> jval;   // time-interpolated value to pass to the chemistry routine
+
+        // CPU arrays.
         std::vector<double> time;   // NOTE: keep this double.
         std::vector<TF> jo31d;
         std::vector<TF> jh2o2;
@@ -101,8 +101,6 @@ class Chemistry
         std::vector<TF> jch2or;
         std::vector<TF> jch2om;
         std::vector<TF> jch3o2h;
-        std::vector<TF> rfa;
-        TF trfa;
 
         // vectors to contain calculated deposition velocities (m/s)
         std::vector<TF> vdo3;
@@ -113,7 +111,6 @@ class Chemistry
         std::vector<TF> vdrooh;
         std::vector<TF> vdhcho;
 
-        const int n_reactions = 46;
 
 };
 #endif

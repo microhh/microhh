@@ -400,65 +400,6 @@ Chemistry<TF>::~Chemistry()
 {
 }
 
-template<typename TF>
-void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>& stats)
-{
-    if (!sw_chemistry or stats.get_switch())
-        return;
-
-    const TF no_offset = 0.;
-    const TF no_threshold = 0.;
-    auto& gd = grid.get_grid_data();
-
-    if (iteration != 0)   // this does not make sense for first step = t=0.
-    {
-        // add deposition velocities to statistics:
-        stats.calc_stats_2d("vdo3"   , vdo3,   no_offset);
-        stats.calc_stats_2d("vdno"   , vdno,   no_offset);
-        stats.calc_stats_2d("vdno2"  , vdno2,  no_offset);
-        stats.calc_stats_2d("vdhno3" , vdhno3, no_offset);
-        stats.calc_stats_2d("vdh2o2" , vdh2o2, no_offset);
-        stats.calc_stats_2d("vdrooh" , vdrooh, no_offset);
-        stats.calc_stats_2d("vdhcho" , vdhcho, no_offset);
-
-        // sum of all PEs:
-        // printf("trfa: %13.4e iteration: %i time: %13.4e \n", trfa,iteration,time);
-        master.sum(rfa.data(),this->n_reactions*gd.ktot);
-        for (int l=0; l<this->n_reactions*gd.ktot; ++l)
-            rfa[l] /= (trfa*gd.itot*gd.jtot);    // mean over the horizontal plane in molecules/(cm3 * s)
-
-        // Put the data into the NetCDF file.
-        const std::vector<int> time_index{statistics_counter};
-
-        // Write the time and iteration number.
-        m.time_var->insert(time     , time_index);
-        m.iter_var->insert(iteration, time_index);
-
-        const std::vector<int> time_rfaz_index = {statistics_counter, 0};
-
-        m.profs.at("chem_budget").data = rfa;
-
-        const int ksize = this->n_reactions*gd.ktot;
-        std::vector<int> time_rfaz_size  = {1, ksize};
-        std::vector<TF> prof_nogc(
-            m.profs.at("chem_budget").data.begin() ,
-            m.profs.at("chem_budget").data.begin() + ksize);
-
-        m.profs.at("chem_budget").ncvar.insert(prof_nogc, time_rfaz_index, time_rfaz_size);
-
-        // Synchronize the NetCDF file.
-        m.data_file->sync();
-        // Increment the statistics index.
-        ++statistics_counter;
-
-    }
-
-    // (re-)intialize statistics
-    for (int l=0; l<this->n_reactions*gd.ktot; ++l)
-        rfa[l] = 0.0;
-    trfa = (TF) 0.0;
-}
-
 template <typename TF>
 void Chemistry<TF>::init(Input& inputin)
 {
@@ -466,8 +407,6 @@ void Chemistry<TF>::init(Input& inputin)
         return;
 
     auto& gd = grid.get_grid_data();
-
-    statistics_counter = 0;
 
     // initialize 2D deposition arrays:
     vdo3.resize(gd.ijcells);
@@ -517,6 +456,7 @@ void Chemistry<TF>::create(
         time.resize(time_dim_length);
     }
 
+    jval.resize(n_jval);
     jo31d.resize(time_dim_length);
     jh2o2.resize(time_dim_length);
     jno2.resize(time_dim_length);
@@ -534,13 +474,6 @@ void Chemistry<TF>::create(
     group_nc.get_variable(jch2or, jname[5],  {0}, {time_dim_length});
     group_nc.get_variable(jch2om, jname[6],  {0}, {time_dim_length});
     group_nc.get_variable(jch3o2h, jname[7],  {0}, {time_dim_length});
-    // Store output of averaging.
-    rfa.resize(this->n_reactions*gd.ktot);
-    for (int l=0;l<this->n_reactions*gd.ktot;++l)
-        rfa[l] = 0.0;
-    trfa = (TF)0.0;
-
-
     if (stats.get_switch())
     {
         // Stats:
@@ -548,73 +481,6 @@ void Chemistry<TF>::create(
         const std::vector<std::string> stat_op_def = {"mean", "2", "3", "4", "w", "grad", "diff", "flux", "path"};
         const std::vector<std::string> stat_op_w = {"mean", "2", "3", "4"};
         const std::vector<std::string> stat_op_p = {"mean", "2", "w", "grad"};
-
-        std::stringstream filename;
-        filename << sim_name << "." << "chemistry" << "." << std::setfill('0') << std::setw(7) << iotime << ".nc";
-
-        // Create new NetCDF file in Mask<TF> m
-        m.data_file = std::make_unique<Netcdf_file>(master, filename.str(), Netcdf_mode::Create);
-
-        // Create dimensions.
-        m.data_file->add_dimension("z", gd.kmax);
-        m.data_file->add_dimension("zh", gd.kmax+1);
-        m.data_file->add_dimension("rfaz", this->n_reactions*gd.ktot);
-        m.data_file->add_dimension("ijcells",gd.ijcells);
-        m.data_file->add_dimension("time");
-
-        // Create variables belonging to dimensions.
-        Netcdf_handle& iter_handle =
-                m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
-
-        m.iter_var = std::make_unique<Netcdf_variable<int>>(iter_handle.add_variable<int>("iter", {"time"}));
-        m.iter_var->add_attribute("units", "-");
-        m.iter_var->add_attribute("long_name", "Iteration number");
-
-        m.time_var = std::make_unique<Netcdf_variable<TF>>(m.data_file->template add_variable<TF>("time", {"time"}));
-        if (timeloop.has_utc_time())
-            m.time_var->add_attribute("units", "seconds since " + timeloop.get_datetime_utc_start_string());
-        else
-            m.time_var->add_attribute("units", "seconds since start");
-        m.time_var->add_attribute("long_name", "Time");
-
-        Netcdf_variable<TF> z_var = m.data_file->template add_variable<TF>("z", {"z"});
-        z_var.add_attribute("units", "m");
-        z_var.add_attribute("long_name", "Full level height");
-
-        Netcdf_variable<TF> zh_var = m.data_file->template add_variable<TF>("zh", {"zh"});
-        zh_var.add_attribute("units", "m");
-        zh_var.add_attribute("long_name", "Half level height");
-
-        std::string name = "chem_budget";
-        std::string longname = "chemistry budget per layer";
-        std::string unit = "molecules cm-3 s-1";
-        Netcdf_variable<TF> rfaz_var = m.data_file->template add_variable<TF>("rfaz", {"rfaz"});
-        rfaz_var.add_attribute("units", unit);
-        rfaz_var.add_attribute("long_name", longname);
-
-        // add a profile of reaction rates x z
-        Level_type level =  Level_type::Full;
-
-        Netcdf_handle& handle =
-                m.data_file->group_exists("default") ? m.data_file->get_group("default") : m.data_file->add_group("default");
-        Prof_var<TF> tmp{handle.add_variable<TF>(name, {"time", "rfaz"}), std::vector<TF>(gd.ktot*this->n_reactions), level};
-        m.profs.emplace(
-                std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(tmp)));
-
-        m.profs.at(name).ncvar.add_attribute("units", unit);
-        m.profs.at(name).ncvar.add_attribute("long_name", longname);
-
-        // Save the grid variables.
-        std::vector<TF> z_nogc (gd.z. begin() + gd.kstart, gd.z. begin() + gd.kend  );
-        std::vector<TF> zh_nogc(gd.zh.begin() + gd.kstart, gd.zh.begin() + gd.kend+1);
-        z_var .insert( z_nogc, {0});
-        zh_var.insert(zh_nogc, {0});
-
-        // Synchronize the NetCDF file.
-        m.data_file->sync();
-
-        m.nmask. resize(gd.kcells);
-        m.nmaskh.resize(gd.kcells);
 
         // add the deposition-velocity timeseries in deposition group statistics
         const std::string group_named = "deposition";
@@ -639,6 +505,31 @@ void Chemistry<TF>::create(
         deposition->create(stats, cross);
     }
 }
+
+template<typename TF>
+void Chemistry<TF>::exec_stats(const int iteration, const double time, Stats<TF>& stats)
+{
+    if (!sw_chemistry or stats.get_switch())
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    const TF no_offset = 0.;
+    const TF no_threshold = 0.;
+
+    if (iteration != 0)   // this does not make sense for first step = t=0.
+    {
+        // add deposition velocities to statistics:
+        stats.calc_stats_2d("vdo3"   , vdo3,   no_offset);
+        stats.calc_stats_2d("vdno"   , vdno,   no_offset);
+        stats.calc_stats_2d("vdno2"  , vdno2,  no_offset);
+        stats.calc_stats_2d("vdhno3" , vdhno3, no_offset);
+        stats.calc_stats_2d("vdh2o2" , vdh2o2, no_offset);
+        stats.calc_stats_2d("vdrooh" , vdrooh, no_offset);
+        stats.calc_stats_2d("vdhcho" , vdhcho, no_offset);
+    }
+}
+
 
 template<typename TF>
 void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
@@ -668,7 +559,7 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             cross.cross_plane(vdhcho.data(), no_offset, name, iotime);
     }
 
-    // see if to write per tile:
+    // See if to write per tile:
     deposition->exec_cross(cross, iotime);
 }
 
@@ -716,10 +607,6 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
     thermo.get_thermo_field(*temperature, "T", true, false);
     field3d_operators.calc_mean_profile(temperature->fld_mean.data(), temperature->fld.data());
 
-    // Pre-calculate rate constants that only depend on height.
-    // For the CPU this is not necessary, for the GPU this is useful for performance.
-    auto rconst = fields.get_tmp();
-
     pss<TF>(
         fields.st.at("hno3")->fld.data(),
         fields.st.at("h2o2")->fld.data(),
@@ -739,7 +626,7 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
         fields.sp.at("o3")  ->fld.data(),
         fields.sp.at("no")  ->fld.data(),
         fields.sp.at("no2") ->fld.data(),
-        jval,
+        jval.data(),
         vdo3.data(),
         vdno.data(),
         vdno2.data(),
@@ -762,12 +649,6 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
         gd.ijcells);
 
     fields.release_tmp(temperature);
-    fields.release_tmp(rconst);
-
-    //isop_stat<TF>(
-    //      fields.st.at("isop")->fld.data(), fields.sp.at("isop")->fld.data(),
-    //      gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
-    //      gd.icells, gd.ijcells);
 }
 #endif
 
