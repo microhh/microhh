@@ -23,8 +23,14 @@
 #ifndef CHEMISTRY_PLUME_KERNELS_H
 #define CHEMISTRY_PLUME_KERNELS_H
 
+#ifdef __CUDACC__
+#  define CUDA_MACRO __host__ __device__
+#else
+#  define CUDA_MACRO
+#endif
+
 template<typename TF>
-TF epr(
+CUDA_MACRO inline TF epr(
         const TF a1, const TF c1,
         const TF a2, const TF c2,
         const TF a3, const TF c3,
@@ -37,14 +43,14 @@ TF epr(
 }
 
 template<typename TF>
-TF arr3(
+CUDA_MACRO inline TF arr3(
         const TF a0, const TF b0, const TF temp)
 {
     return a0 * exp(b0 / temp);
 }
 
 template<typename TF>
-TF troe_no2oh(
+CUDA_MACRO inline TF troe_no2oh(
         const TF kzero, const TF mzero, const TF kinf,
         const TF fmulti, const TF mn2, const TF temp)
 {
@@ -55,7 +61,7 @@ TF troe_no2oh(
 }
 
 template<typename TF>
-TF troe_cooh(
+CUDA_MACRO inline TF troe_cooh(
         const TF kzero, const TF mzero, const double kinf,
         const TF minf, const TF k3, const TF c3,
         const TF k4, const TF c4, const TF fmulti,
@@ -70,7 +76,7 @@ TF troe_cooh(
 }
 
 template<typename TF>
-TF troe_ifs(
+CUDA_MACRO inline TF troe_ifs(
         const TF kzero, const TF mzero, const TF kinf,
         const TF minf, const TF fmulti, const TF mn2, const TF temp)
 {
@@ -81,7 +87,7 @@ TF troe_ifs(
 }
 
 template<typename TF>
-TF troe_ifs2(
+CUDA_MACRO inline TF troe_ifs2(
         const TF kzero, const TF mzero, const TF kinf,
         const TF minf, const TF fmulti, const TF mn2,
         const TF c1, const TF c2, const TF temp)
@@ -93,7 +99,7 @@ TF troe_ifs2(
 }
 
 template<typename TF>
-TF k3rd_iupac(
+CUDA_MACRO inline TF k3rd_iupac(
         const TF kzero, const TF mzero, const TF kinf,
         const TF minf, const TF fmulti, const TF mn2,
         const TF nm, const TF temp)
@@ -104,7 +110,7 @@ TF k3rd_iupac(
 }
 
 template<typename TF>
-TF usr_o3_hv_h2o(
+CUDA_MACRO inline TF usr_o3_hv_h2o(
         const TF temp, const TF c_m, const TF c_h2o, const TF j_o1d)
 {
     const TF kh2o = TF(1.63e-10) * c_h2o * exp(TF(60)/temp);
@@ -114,7 +120,7 @@ TF usr_o3_hv_h2o(
 }
 
 template<typename TF>
-TF rk28(
+CUDA_MACRO inline TF rk28(
         const TF k0a, const TF k0ea,
         const TF k2a, const TF k2ea,
         const TF k3a, const TF k3ea,
