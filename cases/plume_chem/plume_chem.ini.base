@@ -17,7 +17,7 @@ swspatialorder=2
 
 [advec]
 swadvec=2i5
-cflmax=1.4
+cflmax=1.3
 fluxlimit_list=None
 
 [limiter]
@@ -25,7 +25,7 @@ limitlist=None
 
 [diff]
 swdiff=smag2
-dnmax=0.4
+dnmax=0.3
 
 [thermo]
 swthermo=moist
@@ -56,11 +56,11 @@ z0h=0.1
 swtimedep=None
 timedeplist=None
 
-scalar_outflow=None
-flow_direction[north]=outflow
-flow_direction[east]=outflow
-flow_direction[south]=outflow
-flow_direction[west]=inflow
+#scalar_outflow=None
+#flow_direction[north]=outflow
+#flow_direction[east]=outflow
+#flow_direction[south]=outflow
+#flow_direction[west]=inflow
 
 [land_surface]
 swhomogeneous=0

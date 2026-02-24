@@ -11,7 +11,7 @@ from lsm_input import LSM_input
 """
 Settings.
 """
-float_type = 'f8'
+float_type = np.float32
 
 xsize = 6400
 ysize = 3200
@@ -30,11 +30,17 @@ sw_plume_rise = False
 # Enable non-linear KPP chemistry:
 sw_chemistry = True
 
+# Enable deposition coupled to LSM. With False, fixed deposition velocities are used.
+sw_deposition = False
+
 # Enable land-surface model and more detailled deposition.
 sw_land_surface = True
 
 # Switch between old and new (equilibrium fast species) schemes.
 sw_new_scheme = False
+
+# Switch between periodic and open boundaries for scalars.
+sw_openbc = True
 
 
 """
@@ -95,7 +101,11 @@ if (sw_chemistry):
     deposition_species = ['o3', 'no', 'no2', 'hno3', 'h2o2', 'rooh', 'hcho']
 
 else:
-    species = {}
+    # Always provide some species (same as emission species) for debugging without chemistry.
+    species = {
+        'co': 1.1e-7,
+        'no': 3e-11,
+        'no2': 4e-10}
 
 
 """
@@ -302,11 +312,9 @@ for j in range(-1,2):
         z = z0
 
         emi.add('co2', strength_co2, True, x, y, z, sigma_x, sigma_y, sigma_z)
-
-        if (sw_chemistry):
-            emi.add('no2', strength_no2, True, x, y, z, sigma_x, sigma_y, sigma_z)
-            emi.add('no',  strength_no,  True, x, y, z, sigma_x, sigma_y, sigma_z)
-            emi.add('co',  strength_co,  True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('no2', strength_no2, True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('no',  strength_no,  True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emi.add('co',  strength_co,  True, x, y, z, sigma_x, sigma_y, sigma_z)
 
         if sw_plume_rise:
             emi.add('thl', strength_T, False, x, y, z, sigma_x, sigma_y, sigma_z)
@@ -381,7 +389,13 @@ scalars = ['co2'] + list(species.keys())
 ini['advec']['fluxlimit_list'] = scalars
 ini['limiter']['limitlist'] = scalars
 ini['fields']['slist'] = scalars
-ini['boundary']['scalar_outflow'] = scalars
+
+if sw_openbc:
+    ini['boundary']['scalar_outflow'] = scalars
+    ini['boundary']['flow_direction[north]']='outflow'
+    ini['boundary']['flow_direction[east]']='outflow'
+    ini['boundary']['flow_direction[south]']='outflow'
+    ini['boundary']['flow_direction[west]']='inflow'
 
 ini['time']['endtime'] = (end_hour - start_hour) * 3600
 
@@ -390,11 +404,10 @@ ini['source']['sourcelist'] = emi.source_list
 ini['chemistry']['swchemistry'] = sw_chemistry
 
 crosslist = ['thl', 'qt', 'u', 'v', 'w', 'thl_fluxbot', 'qt_fluxbot', 'co2']
+crosslist += list(species.keys())
+crosslist += [f'{x}_path' for x in species.keys()]
 
 if (sw_chemistry):
-    # Add chemicial species and their vertical integrals.
-    crosslist += list(species.keys())
-    crosslist += [f'{x}_path' for x in species.keys()]
     crosslist += [f'vd{x}' for x in deposition_species]
 
 if (sw_land_surface and sw_chemistry):
@@ -418,10 +431,7 @@ else:
 
     ini['radiation']['swradiation'] = False
 
-if (sw_chemistry and sw_land_surface):
-    ini['deposition']['swdeposition'] = True
-else:
-    ini['deposition']['swdeposition'] = False
+ini['deposition']['swdeposition'] = sw_deposition
 
 ini['cross']['crosslist'] = crosslist
 ini['cross']['xz'] = ysize/2
