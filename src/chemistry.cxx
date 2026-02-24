@@ -153,13 +153,6 @@ namespace
             const TF rconst27 = k3rd_iupac(TF(8.6E-27), TF(3.5), TF(3.E-11), TF(1), TF(0.6), c_m, TF(0.5), temp);
             const TF rconst28 = arr3(TF(4.6E-13), TF(-1155), temp);
             const TF rconst29 = usr_o3_hv_h2o(temp, c_m, c_h2o, jval[pj_o31d]);
-            const TF rconst30 = jval[pj_no2];
-            const TF rconst31 = jval[pj_n2o5];
-            const TF rconst32 = jval[pj_no3];
-            const TF rconst33 = jval[pj_ch3o2h];
-            const TF rconst34 = jval[pj_ch2om];
-            const TF rconst35 = jval[pj_ch2or];
-            const TF rconst36 = jval[pj_h2o2];
             const TF rconst37 = TF(0);
             const TF rconst38 = TF(0);
 
@@ -221,7 +214,7 @@ namespace
                         // Loss: N2O5 -> NO2+NO3 (A10), N2O5 -> 2HNO3 (A15), Loss(A31)
                         l_n2o5 = rconst10                         // RF[10]
                                + 0.0004                          // RF[15] (Hardcoded k)
-                               + rconst31;                        // RF[31]
+                               + jval[pj_n2o5];                   // RF[31]
 
                         fix_n2o5 = (l_n2o5 > TF(1e-30)) ? p_n2o5 / l_n2o5 : TF(0);
 
@@ -240,7 +233,7 @@ namespace
                               + 1.2e-12*fix_ro2                     // RF[20]: RO2(F5) (Hardcoded k)
                               + 5.8e-16*var_hcho                     // RF[23]: HCHO(V3) (Hardcoded k)
                               + rconst28*var_rh                     // RF[28]: RH(V5)
-                              + rconst32;                         // RF[32]: Loss
+                              + jval[pj_no3];                     // RF[32]: Loss
 
                         fix_no3 = (l_no3 > TF(1e-30)) ? p_no3 / l_no3 : TF(0);
 
@@ -277,8 +270,8 @@ namespace
                               + rconst24*var_co*fix_oh                // RF[24]: CO(V2) + OH(F3)
                               + 0.74*rconst25*fix_ro2*fix_ro2           // RF[25]: RO2(F5)^2
                               + 0.19*rconst26*var_rh*var_o3           // RF[26]: RH(V5) + O3(V7)
-                              + rconst33*var_rooh                     // RF[33]: ROOH(V4)
-                              + 2.0*rconst35*var_hcho;                // RF[35]: HCHO(V3)
+                              + jval[pj_ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
+                              + 2.0*jval[pj_ch2or]*var_hcho;          // RF[35]: HCHO(V3)
                         // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
                         l_ho2 = rconst1*var_o3                      // RF[1]: O3(V7)
                               + rconst2*fix_oh                      // RF[2]: OH(F3)
@@ -296,8 +289,8 @@ namespace
                              + rconst11*fix_ho2*var_no                 // RF[11]: HO2(F4) + NO(V8)
                              + 0.33*rconst26*var_rh*var_o3            // RF[26]: RH(V5) + O3(V7)
                              + 2.0*rconst29*var_o3                  // RF[29]: O3(V7)
-                             + rconst33*var_rooh                      // RF[33]: ROOH(V4)
-                             + 2.0*rconst36*var_h2o2;                 // RF[36]: H2O2(V1)
+                             + jval[pj_ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
+                             + 2.0*jval[pj_h2o2]*var_h2o2;           // RF[36]: H2O2(V1)
 
 
                         // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
@@ -345,13 +338,13 @@ namespace
                     const TF rf27 = rconst27*var_rh*fix_oh;
                     const TF rf28 = rconst28*var_rh*fix_no3;
                     const TF rf29 = rconst29*var_o3;
-                    const TF rf30 = rconst30*var_no2;
-                    const TF rf31 = rconst31*fix_n2o5;
-                    const TF rf32 = rconst32*fix_no3;
-                    const TF rf33 = rconst33*var_rooh;
-                    const TF rf34 = rconst34*var_hcho;
-                    const TF rf35 = rconst35*var_hcho;
-                    const TF rf36 = rconst36*var_h2o2;
+                    const TF rf30 = jval[pj_no2]*var_no2;
+                    const TF rf31 = jval[pj_n2o5]*fix_n2o5;
+                    const TF rf32 = jval[pj_no3]*fix_no3;
+                    const TF rf33 = jval[pj_ch3o2h]*var_rooh;
+                    const TF rf34 = jval[pj_ch2om]*var_hcho;
+                    const TF rf35 = jval[pj_ch2or]*var_hcho;
+                    const TF rf36 = jval[pj_h2o2]*var_h2o2;
                     const TF rf37 = rconst37*fix_dummy;
                     const TF rf38 = rconst38*fix_dummy;
                     const TF rf39 = rconst39*var_o3;
