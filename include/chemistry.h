@@ -115,14 +115,6 @@ class Chemistry
         std::vector<TF> vdhcho;
 
         #ifdef USECUDA
-        cuda_vector<TF> jo31d_g;
-        cuda_vector<TF> jh2o2_g;
-        cuda_vector<TF> jno2_g;
-        cuda_vector<TF> jno3_g;
-        cuda_vector<TF> jn2o5_g;
-        cuda_vector<TF> jch2or_g;
-        cuda_vector<TF> jch2om_g;
-        cuda_vector<TF> jch3o2h_g;
         cuda_vector<TF> jval_g;
 
         // Vectors with deposition velocities (m/s)

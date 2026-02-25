@@ -443,15 +443,8 @@ void Chemistry<TF>::prepare_device()
     const int time_size = time.size();
 
     // Allocate GPU arrays.
+    // Only `jval_g` is enough; interpolation is performed at CPU, and memcpy'd to device.
     jval_g.allocate(n_jval);
-    jo31d_g.allocate(time_size);
-    jh2o2_g.allocate(time_size);
-    jno2_g.allocate(time_size);
-    jno3_g.allocate(time_size);
-    jn2o5_g.allocate(time_size);
-    jch2or_g.allocate(time_size);
-    jch2om_g.allocate(time_size);
-    jch3o2h_g.allocate(time_size);
 
     vdo3_g.allocate(gd.ijcells);
     vdno_g.allocate(gd.ijcells);
@@ -463,16 +456,6 @@ void Chemistry<TF>::prepare_device()
 
     // Copy data from host to device.
     cuda_safe_call(cudaMemcpy(jval_g,    jval.data(),    n_jval*sizeof(TF),     cudaMemcpyHostToDevice));
-
-    const int memsize_time = time_size * sizeof(TF);
-    cuda_safe_call(cudaMemcpy(jo31d_g,   jo31d.data(),   memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jh2o2_g,   jh2o2.data(),   memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jno2_g,    jno2.data(),    memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jno3_g,    jno3.data(),    memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jn2o5_g,   jn2o5.data(),   memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jch2or_g,  jch2or.data(),  memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jch2om_g,  jch2om.data(),  memsize_time, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(jch3o2h_g, jch3o2h.data(), memsize_time, cudaMemcpyHostToDevice));
 
     const int memsize_ij = gd.ijcells * sizeof(TF);
     cuda_safe_call(cudaMemcpy(vdo3_g,    vdo3.data(),    memsize_ij, cudaMemcpyHostToDevice));
