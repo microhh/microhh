@@ -62,7 +62,7 @@ CUDA_MACRO inline TF troe_no2oh(
 
 template<typename TF>
 CUDA_MACRO inline TF troe_cooh(
-        const TF kzero, const TF mzero, const double kinf,
+        const TF kzero, const TF mzero, const TF kinf,
         const TF minf, const TF k3, const TF c3,
         const TF k4, const TF c4, const TF fmulti,
         const TF mn2, const TF temp)
