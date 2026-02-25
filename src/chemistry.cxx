@@ -400,6 +400,94 @@ Chemistry<TF>::~Chemistry()
 {
 }
 
+#ifndef USECUDA
+template <typename TF>
+void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)
+{
+    if (!sw_chemistry)
+        return;
+
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+
+    jval[Jval::o31d]   = ifac.fac0 * jo31d[ifac.index0]   + ifac.fac1 * jo31d[ifac.index1];
+    jval[Jval::h2o2]   = ifac.fac0 * jh2o2[ifac.index0]   + ifac.fac1 * jh2o2[ifac.index1];
+    jval[Jval::no2]    = ifac.fac0 * jno2[ifac.index0]    + ifac.fac1 * jno2[ifac.index1];
+    jval[Jval::no3]    = ifac.fac0 * jno3[ifac.index0]    + ifac.fac1 * jno3[ifac.index1];
+    jval[Jval::n2o5]   = ifac.fac0 * jn2o5[ifac.index0]   + ifac.fac1 * jn2o5[ifac.index1];
+    jval[Jval::ch2or]  = ifac.fac0 * jch2or[ifac.index0]  + ifac.fac1 * jch2or[ifac.index1];
+    jval[Jval::ch2om]  = ifac.fac0 * jch2om[ifac.index0]  + ifac.fac1 * jch2om[ifac.index1];
+    jval[Jval::ch3o2h] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
+
+    deposition->update_time_dependent(
+            timeloop,
+            boundary,
+            vdo3.data(),
+            vdno.data(),
+            vdno2.data(),
+            vdhno3.data(),
+            vdh2o2.data(),
+            vdrooh.data(),
+            vdhcho.data());
+}
+
+template <typename TF>
+void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
+{
+    if (!sw_chemistry)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    // Calculate the mean temperature profile.
+    auto temperature = fields.get_tmp();
+    thermo.get_thermo_field(*temperature, "T", true, false);
+    field3d_operators.calc_mean_profile(temperature->fld_mean.data(), temperature->fld.data());
+
+    pss<TF>(
+        fields.st.at("hno3")->fld.data(),
+        fields.st.at("h2o2")->fld.data(),
+        fields.st.at("co")  ->fld.data(),
+        fields.st.at("hcho")->fld.data(),
+        fields.st.at("rooh")->fld.data(),
+        fields.st.at("c3h6")->fld.data(),
+        fields.st.at("o3")  ->fld.data(),
+        fields.st.at("no")  ->fld.data(),
+        fields.st.at("no2") ->fld.data(),
+        fields.sp.at("hno3")->fld.data(),
+        fields.sp.at("h2o2")->fld.data(),
+        fields.sp.at("co")  ->fld.data(),
+        fields.sp.at("hcho")->fld.data(),
+        fields.sp.at("rooh")->fld.data(),
+        fields.sp.at("c3h6")->fld.data(),
+        fields.sp.at("o3")  ->fld.data(),
+        fields.sp.at("no")  ->fld.data(),
+        fields.sp.at("no2") ->fld.data(),
+        jval.data(),
+        vdo3.data(),
+        vdno.data(),
+        vdno2.data(),
+        vdhno3.data(),
+        vdh2o2.data(),
+        vdrooh.data(),
+        vdhcho.data(),
+        temperature->fld_mean.data(),
+        fields.sp.at("qt")->fld_mean.data(),
+        gd.dzi.data(),
+        fields.rhoref.data(),
+        sdt,
+        gd.istart,
+        gd.iend,
+        gd.jstart,
+        gd.jend,
+        gd.kstart,
+        gd.kend,
+        gd.icells,
+        gd.ijcells);
+
+    fields.release_tmp(temperature);
+}
+#endif
+
 template <typename TF>
 void Chemistry<TF>::init(Input& inputin)
 {
@@ -565,94 +653,7 @@ void Chemistry<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     deposition->exec_cross(cross, iotime);
 }
 
-template <typename TF>
-void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)
-{
-    if (!sw_chemistry)
-        return;
 
-    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
-
-    jval[Jval::o31d]   = ifac.fac0 * jo31d[ifac.index0]   + ifac.fac1 * jo31d[ifac.index1];
-    jval[Jval::h2o2]   = ifac.fac0 * jh2o2[ifac.index0]   + ifac.fac1 * jh2o2[ifac.index1];
-    jval[Jval::no2]    = ifac.fac0 * jno2[ifac.index0]    + ifac.fac1 * jno2[ifac.index1];
-    jval[Jval::no3]    = ifac.fac0 * jno3[ifac.index0]    + ifac.fac1 * jno3[ifac.index1];
-    jval[Jval::n2o5]   = ifac.fac0 * jn2o5[ifac.index0]   + ifac.fac1 * jn2o5[ifac.index1];
-    jval[Jval::ch2or]  = ifac.fac0 * jch2or[ifac.index0]  + ifac.fac1 * jch2or[ifac.index1];
-    jval[Jval::ch2om]  = ifac.fac0 * jch2om[ifac.index0]  + ifac.fac1 * jch2om[ifac.index1];
-    jval[Jval::ch3o2h] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
-
-    deposition->update_time_dependent(
-            timeloop,
-            boundary,
-            vdo3.data(),
-            vdno.data(),
-            vdno2.data(),
-            vdhno3.data(),
-            vdh2o2.data(),
-            vdrooh.data(),
-            vdhcho.data());
-}
-
-
-#ifndef USECUDA
-template <typename TF>
-void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
-{
-    if (!sw_chemistry)
-        return;
-
-    auto& gd = grid.get_grid_data();
-
-    // Calculate the mean temperature profile.
-    auto temperature = fields.get_tmp();
-    thermo.get_thermo_field(*temperature, "T", true, false);
-    field3d_operators.calc_mean_profile(temperature->fld_mean.data(), temperature->fld.data());
-
-    pss<TF>(
-        fields.st.at("hno3")->fld.data(),
-        fields.st.at("h2o2")->fld.data(),
-        fields.st.at("co")  ->fld.data(),
-        fields.st.at("hcho")->fld.data(),
-        fields.st.at("rooh")->fld.data(),
-        fields.st.at("c3h6")->fld.data(),
-        fields.st.at("o3")  ->fld.data(),
-        fields.st.at("no")  ->fld.data(),
-        fields.st.at("no2") ->fld.data(),
-        fields.sp.at("hno3")->fld.data(),
-        fields.sp.at("h2o2")->fld.data(),
-        fields.sp.at("co")  ->fld.data(),
-        fields.sp.at("hcho")->fld.data(),
-        fields.sp.at("rooh")->fld.data(),
-        fields.sp.at("c3h6")->fld.data(),
-        fields.sp.at("o3")  ->fld.data(),
-        fields.sp.at("no")  ->fld.data(),
-        fields.sp.at("no2") ->fld.data(),
-        jval.data(),
-        vdo3.data(),
-        vdno.data(),
-        vdno2.data(),
-        vdhno3.data(),
-        vdh2o2.data(),
-        vdrooh.data(),
-        vdhcho.data(),
-        temperature->fld_mean.data(),
-        fields.sp.at("qt")->fld_mean.data(),
-        gd.dzi.data(),
-        fields.rhoref.data(),
-        sdt,
-        gd.istart,
-        gd.iend,
-        gd.jstart,
-        gd.jend,
-        gd.kstart,
-        gd.kend,
-        gd.icells,
-        gd.ijcells);
-
-    fields.release_tmp(temperature);
-}
-#endif
 
 #ifdef FLOAT_SINGLE
 template class Chemistry<float>;

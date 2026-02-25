@@ -403,6 +403,38 @@ void Chemistry<TF>::exec(Thermo<TF>& thermo, const double sdt, const double dt)
     fields.release_tmp_g(temperature);
 }
 
+template <typename TF>
+void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& boundary)
+{
+    if (!sw_chemistry)
+        return;
+
+    Interpolation_factors<TF> ifac = timeloop.get_interpolation_factors(time);
+
+    // There is nothing the GPU can speedup here, simply calculate at CPU and memcpy to device.
+    jval[Jval::o31d]   = ifac.fac0 * jo31d[ifac.index0]   + ifac.fac1 * jo31d[ifac.index1];
+    jval[Jval::h2o2]   = ifac.fac0 * jh2o2[ifac.index0]   + ifac.fac1 * jh2o2[ifac.index1];
+    jval[Jval::no2]    = ifac.fac0 * jno2[ifac.index0]    + ifac.fac1 * jno2[ifac.index1];
+    jval[Jval::no3]    = ifac.fac0 * jno3[ifac.index0]    + ifac.fac1 * jno3[ifac.index1];
+    jval[Jval::n2o5]   = ifac.fac0 * jn2o5[ifac.index0]   + ifac.fac1 * jn2o5[ifac.index1];
+    jval[Jval::ch2or]  = ifac.fac0 * jch2or[ifac.index0]  + ifac.fac1 * jch2or[ifac.index1];
+    jval[Jval::ch2om]  = ifac.fac0 * jch2om[ifac.index0]  + ifac.fac1 * jch2om[ifac.index1];
+    jval[Jval::ch3o2h] = ifac.fac0 * jch3o2h[ifac.index0] + ifac.fac1 * jch3o2h[ifac.index1];
+
+    cuda_safe_call(cudaMemcpy(jval_g, jval.data(), n_jval*sizeof(TF), cudaMemcpyHostToDevice));
+
+    //deposition->update_time_dependent(
+    //        timeloop,
+    //        boundary,
+    //        vdo3.data(),
+    //        vdno.data(),
+    //        vdno2.data(),
+    //        vdhno3.data(),
+    //        vdh2o2.data(),
+    //        vdrooh.data(),
+    //        vdhcho.data());
+}
+
 template<typename TF>
 void Chemistry<TF>::prepare_device()
 {
