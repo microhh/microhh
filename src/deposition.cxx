@@ -20,12 +20,11 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//#include <cstdio>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 #include <iomanip>
 #include <utility>
 #include "master.h"
@@ -56,13 +55,13 @@ namespace
             const TF fac,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells)
+            const int jstride)
     {
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij  = i + j*icells;
+                const int ij  = i + j*jstride;
 
                 fld[ij] = (
                     f_veg [ij] * fld_veg [ij] +
@@ -77,31 +76,30 @@ namespace
             TF* const restrict fld,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells)
+            const int jstride)
     {
-        //Calculate sum and count
-        TF n_dep = TF(0);
+        // Calculate sum and count.
         TF sum_dep = TF(0);
+        int n_dep = 0;
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij = i + j*icells;
+                const int ij = i + j*jstride;
 
                 sum_dep += fld[ij];
-                n_dep += 1.0;
+                ++n_dep;
             }
 
-        // Calculate average
-        TF avg_dep = sum_dep / n_dep;
+        // Calculate average.
+        const TF avg_dep = sum_dep / n_dep;
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
             {
-                const int ij = i + j*icells;
-
+                const int ij = i + j*jstride;
                 fld[ij] = avg_dep;
             }
     }
@@ -117,30 +115,26 @@ namespace
             const TF rwat,
             const int istart, const int iend,
             const int jstart, const int jend,
-            const int icells)
+            const int jstride)
     {
-    for (int j=jstart; j<jend; ++j)
-        #pragma ivdep
-        for (int i=istart; i<iend; ++i)
-        {
-
-            const int ij = i + j*icells;
-
-            if (water_mask[ij] == 1)
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
             {
-                const TF ckarman = 0.4;
-                const TF rb = TF(1) / (ckarman * ustar[ij]) * diff_scl;
+                const int ij = i + j*jstride;
 
-                fld[ij] = TF(1) / (ra[ij] + rb + rwat);
+                if (water_mask[ij] == 1)
+                {
+                    const TF rb = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl;
+
+                    fld[ij] = TF(1) / (ra[ij] + rb + rwat);
+                }
             }
-
-        }
-
     }
 
     template<typename TF>
     void calc_deposition_per_tile(
-        const std::basic_string<char> lu_type,
+        const std::string& lu_type,
         TF* restrict vdo3,
         TF* restrict vdno,
         TF* restrict vdno2,
@@ -163,16 +157,13 @@ namespace
         const TF* const restrict diff_scl,
         const int istart, const int iend,
         const int jstart, const int jend,
-        const int jj)
+        const int jstride)
     {
-
         const int ntrac_vd = 7;
-        const TF ckarman = TF(0.4);
         const TF hc = TF(10); // constant for now...
 
         if (lu_type == "veg")
         {
-
             // Note: I think memory-wise it's more efficient to first loop over ij and then over species,
             // because otherwise rb and rc vectors must be allocated for the entire grid instead of for
             // the number of tracers. Also, it avoids the use of if statements (e.g. "if (t==0) vdo3[ij] = ...")
@@ -183,20 +174,20 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i) {
 
-                    const int ij = i + j*jj;
+                    const int ij = i + j*jstride;
 
-                    //Do not proceed in loop if tile fraction is small
+                    // Do not proceed in loop if tile fraction is small.
                     if (fraction[ij] < TF(1e-12))
                         continue;
 
-                    //rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995)
+                    // Rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995).
                     rmes_local[1] = rmes[1] * rs[ij];
                     rmes_local[2] = rmes[2] * rs[ij];
                     const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
 
                     for (int t=0; t<ntrac_vd; ++t)
                     {
-                        rb[t] = TF(2) / (ckarman * ustar[ij]) * diff_scl[t];
+                        rb[t] = TF(2) / (Constants::kappa<TF> * ustar[ij]) * diff_scl[t];
                         rc[t] = TF(1) / (TF(1) / (diff_scl[t] + rs[ij] + rmes_local[t]) + TF(1) / rcut[t] + TF(1) / (ra_inc + rsoil[t]));
                     }
 
@@ -217,15 +208,13 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i) {
 
-                    const int ij = i + j*jj;
+                    const int ij = i + j*jstride;
 
-                    //Do not proceed in loop if tile fraction is small
+                    // Do not proceed in loop if tile fraction is small.
                     if (fraction[ij] < TF(1e-12)) continue;
 
                     for (int t=0; t<ntrac_vd; ++t)
-                    {
-                        rb[t] = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
-                    }
+                        rb[t] = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl[t];
 
                     vdo3[ij]   = TF(1) / (ra[ij] + rb[0] + rsoil[0]);
                     vdno[ij]   = TF(1) / (ra[ij] + rb[1] + rsoil[1]);
@@ -246,25 +235,26 @@ namespace
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
-                    const int ij = i + j*jj;
+                    const int ij = i + j*jstride;
 
                     // Do not proceed in loop if tile fraction is small
-                    if (fraction[ij] < TF(1e-12)) continue;
+                    if (fraction[ij] < TF(1e-12))
+                        continue;
 
-                    // rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995)
+                    // Rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995).
                     rmes_local[1] = rmes[1] * rs[ij];
                     rmes_local[2] = rmes[2] * rs[ij];
                     const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
 
-                    //Note that in rc calculation, rcut is replaced by rws for calculating wet skin uptake
+                    // Note that in rc calculation, rcut is replaced by rws for calculating wet skin uptake.
                     for (int t=0; t<ntrac_vd; ++t)
                     {
-                        rb_veg[t]  = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
-                        rb_soil[t] = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
+                        rb_veg[t]  = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl[t];
+                        rb_soil[t] = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl[t];
                         rc[t] = TF(1) / (TF(1) / (diff_scl[t] + rs_veg[ij] + rmes_local[t]) + TF(1) / rws[t] + TF(1) / (ra_inc + rsoil[t]));
                     }
 
-                    // Calculate vd for wet skin tile as the weighted average of vd to wet soil and to wet vegetation
+                    // Calculate vd for wet skin tile as the weighted average of vd to wet soil and to wet vegetation.
                     vdo3[ij]   = c_veg[ij] / (ra[ij] + rb_veg[0] + rc[0]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[0] + rsoil[0]);
                     vdno[ij]   = c_veg[ij] / (ra[ij] + rb_veg[1] + rc[1]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[1] + rsoil[1]);
                     vdno2[ij]  = c_veg[ij] / (ra[ij] + rb_veg[2] + rc[2]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[2] + rsoil[2]);
@@ -284,12 +274,10 @@ Deposition<TF>::Deposition(Master& masterin, Grid<TF>& gridin, Fields<TF>& field
     sw_deposition = inputin.get_item<bool>("deposition", "swdeposition", "", false);
 }
 
-
 template <typename TF>
 Deposition<TF>::~Deposition()
 {
 }
-
 
 template <typename TF>
 void Deposition<TF>::init(Input& inputin)
@@ -468,7 +456,6 @@ void Deposition<TF>::update_time_dependent(
     spatial_avg_vd(vdh2o2);
     spatial_avg_vd(vdrooh);
     spatial_avg_vd(vdhcho);
-
 }
 
 
@@ -557,16 +544,18 @@ const TF Deposition<TF>::get_vd(const std::string& name) const
 
 template<typename TF>
 void Deposition<TF>::get_tiled_mean(
-    TF* restrict fld_out, std::string name, const TF fac,
+    TF* const restrict fld_out,
+    const std::string& name,
+    const TF fac,
     const TF* const restrict fveg,
     const TF* const restrict fsoil,
     const TF* const restrict fwet)
 {
     auto& gd = grid.get_grid_data();
 
-    TF* fld_veg;
-    TF* fld_soil;
-    TF* fld_wet;
+    const TF* fld_veg;
+    const TF* fld_soil;
+    const TF* fld_wet;
 
     // Yikes..
     if (name == "o3")
@@ -631,7 +620,8 @@ void Deposition<TF>::get_tiled_mean(
 
 template<typename TF>
 void Deposition<TF>::update_vd_water(
-        TF* restrict fld_out, std::string name,
+        TF* const restrict fld_out,
+        const std::string& name,
         const TF* const restrict ra,
         const TF* const restrict ustar,
         const int* const restrict water_mask,
@@ -640,50 +630,42 @@ void Deposition<TF>::update_vd_water(
 {
     auto& gd = grid.get_grid_data();
 
-    // TF* fld;
     TF diff_scl_val;
     TF rwat_val;
 
     // Yikes...
     if (name == "o3")
     {
-        // fld = vd_o3.data();
         diff_scl_val = diff_scl[0];
         rwat_val = rwat[0];
     }
     else if (name == "no")
     {
-        // fld = vd_no.data();
         diff_scl_val = diff_scl[1];
         rwat_val = rwat[1];
     }
     else if (name == "no2")
     {
-        // fld = vd_no2.data();
         diff_scl_val = diff_scl[2];
         rwat_val = rwat[2];
     }
     else if (name == "hno3")
     {
-        // fld = vd_hno3.data();
         diff_scl_val = diff_scl[3];
         rwat_val = rwat[3];
     }
     else if (name == "h2o2")
     {
-        // fld = vd_h2o2.data();
         diff_scl_val = diff_scl[4];
         rwat_val = rwat[4];
     }
-    else  if (name == "rooh")
+    else if (name == "rooh")
     {
-        // fld = vd_rooh.data();
         diff_scl_val = diff_scl[5];
         rwat_val = rwat[5];
     }
     else if (name == "hcho")
     {
-        // fld = vd_hcho.data();
         diff_scl_val = diff_scl[6];
         rwat_val = rwat[6];
     }

@@ -74,8 +74,8 @@ class Deposition
              TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
-        void get_tiled_mean(TF*, std::string, TF, const TF*, const TF*, const TF*);
-        void update_vd_water(TF*, std::string, const TF*, const TF*, const int*, const TF*, const TF*);
+        void get_tiled_mean(TF*, const std::string&, TF, const TF*, const TF*, const TF*);
+        void update_vd_water(TF*, const std::string&, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
         void spatial_avg_vd(TF*);                           //MAQ_AV_21042022+ added spatial_avg_vd
 
