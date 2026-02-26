@@ -211,7 +211,7 @@ namespace
 
                         // Loss: N2O5 -> NO2+NO3 (A10), N2O5 -> 2HNO3 (A15), Loss(A31)
                         l_n2o5 = rconst10                         // RF[10]
-                               + 0.0004                          // RF[15] (Hardcoded k)
+                               + TF(0.0004)                       // RF[15] (Hardcoded k)
                                + jval[Jval::n2o5];                   // RF[31]
 
                         fix_n2o5 = (l_n2o5 > TF(1e-30)) ? p_n2o5 / l_n2o5 : TF(0);
@@ -227,9 +227,9 @@ namespace
                         // Loss: NO(A8), NO2(A9), HO2(A13), RO2(A20), HCHO(A23), RH(A28), Loss(A32)
                         l_no3 = rconst8*var_no                      // RF[8]: NO(V8)
                               + rconst9*var_no2                      // RF[9]: NO2(V6) (To N2O5)
-                              + 4.0e-12*fix_ho2                     // RF[13]: HO2(F4) (Hardcoded k)
-                              + 1.2e-12*fix_ro2                     // RF[20]: RO2(F5) (Hardcoded k)
-                              + 5.8e-16*var_hcho                     // RF[23]: HCHO(V3) (Hardcoded k)
+                              + TF(4.0e-12)*fix_ho2                  // RF[13]: HO2(F4) (Hardcoded k)
+                              + TF(1.2e-12)*fix_ro2                  // RF[20]: RO2(F5) (Hardcoded k)
+                              + TF(5.8e-16)*var_hcho                 // RF[23]: HCHO(V3) (Hardcoded k)
                               + rconst28*var_rh                     // RF[28]: RH(V5)
                               + jval[Jval::no3];                     // RF[32]: Loss
 
@@ -240,16 +240,16 @@ namespace
                         // ---------------------------------------------------------------------
                         // Prod: CH4+OH(A16), ROOH+OH(0.6*A21), RH+O3(0.31*A26), RH+OH(A27)
                         p_ro2 = rconst16*fix_oh*fix_ch4                // RF[16]: OH(F3) + CH4(F0)
-                              + 0.6*rconst21*var_rooh*fix_oh            // RF[21]: ROOH(V4) + OH(F3)
-                              + 0.31*rconst26*var_rh*var_o3           // RF[26]: RH(V5) + O3(V7)
+                              + TF(0.6)*rconst21*var_rooh*fix_oh        // RF[21]: ROOH(V4) + OH(F3)
+                              + TF(0.31)*rconst26*var_rh*var_o3       // RF[26]: RH(V5) + O3(V7)
                               + rconst27*var_rh*fix_oh;               // RF[27]: RH(V5) + OH(F3)
 
                         // Loss: HO2(A17, A18), NO(A19), NO3(A20), RO2(2*A25)
                         l_ro2 = rconst17*fix_ho2                     // RF[17]: HO2(F4)
                               + rconst18*fix_ho2                     // RF[18]: HO2(F4)
                               + rconst19*var_no                     // RF[19]: NO(V8)
-                              + 1.2e-12*fix_no3                     // RF[20]: NO3(F6) (Uses F6 now)
-                              + 2.0*rconst25*fix_ro2;                // RF[25]: RO2(F5) - Quadratic
+                              + TF(1.2e-12)*fix_no3                  // RF[20]: NO3(F6) (Uses F6 now)
+                              + TF(2.0)*rconst25*fix_ro2;            // RF[25]: RO2(F5) - Quadratic
 
                         fix_ro2 = (l_ro2 > TF(1e-30)) ? p_ro2 / l_ro2 : TF(0);
 
@@ -263,19 +263,19 @@ namespace
                               + rconst4*var_h2o2*fix_oh                 // RF[4]: H2O2(V1) + OH(F3)
                               + rconst5*fix_oh                      // RF[5]: OH(F3)
                               + rconst19*fix_ro2*var_no                // RF[19]: RO2(F5) + NO(V8)
-                              + 1.2e-12*fix_no3*fix_ro2                // RF[20]: NO3(F6) + RO2(F5)
+                              + TF(1.2e-12)*fix_no3*fix_ro2            // RF[20]: NO3(F6) + RO2(F5)
                               + rconst22*var_hcho*fix_oh                // RF[22]: HCHO(V3) + OH(F3)
                               + rconst24*var_co*fix_oh                // RF[24]: CO(V2) + OH(F3)
-                              + 0.74*rconst25*fix_ro2*fix_ro2           // RF[25]: RO2(F5)^2
-                              + 0.19*rconst26*var_rh*var_o3           // RF[26]: RH(V5) + O3(V7)
+                              + TF(0.74)*rconst25*fix_ro2*fix_ro2      // RF[25]: RO2(F5)^2
+                              + TF(0.19)*rconst26*var_rh*var_o3       // RF[26]: RH(V5) + O3(V7)
                               + jval[Jval::ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
-                              + 2.0*jval[Jval::ch2or]*var_hcho;          // RF[35]: HCHO(V3)
+                              + TF(2.0)*jval[Jval::ch2or]*var_hcho;     // RF[35]: HCHO(V3)
                         // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
                         l_ho2 = rconst1*var_o3                      // RF[1]: O3(V7)
                               + rconst2*fix_oh                      // RF[2]: OH(F3)
-                              + 2.0*rconst3*fix_ho2                  // RF[3]: HO2(F4)
+                              + TF(2.0)*rconst3*fix_ho2              // RF[3]: HO2(F4)
                               + rconst11*var_no                     // RF[11]: NO(V8)
-                              + 4.0e-12*fix_no3                     // RF[13]: NO3(F6) (Uses F6 now)
+                              + TF(4.0e-12)*fix_no3                  // RF[13]: NO3(F6) (Uses F6 now)
                               + rconst17*fix_ro2                     // RF[17]: RO2(F5)
                               + rconst18*fix_ro2;                    // RF[18]: RO2(F5)
 
@@ -285,10 +285,10 @@ namespace
                         //       ROOH+hv(A33), H2O2+hv(2*A36)
                         p_oh = rconst1*var_o3*fix_ho2                  // RF[1]: O3(V7) + HO2(F4)
                              + rconst11*fix_ho2*var_no                 // RF[11]: HO2(F4) + NO(V8)
-                             + 0.33*rconst26*var_rh*var_o3            // RF[26]: RH(V5) + O3(V7)
-                             + 2.0*rconst29*var_o3                  // RF[29]: O3(V7)
+                             + TF(0.33)*rconst26*var_rh*var_o3        // RF[26]: RH(V5) + O3(V7)
+                             + TF(2.0)*rconst29*var_o3              // RF[29]: O3(V7)
                              + jval[Jval::ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
-                             + 2.0*jval[Jval::h2o2]*var_h2o2;           // RF[36]: H2O2(V1)
+                             + TF(2.0)*jval[Jval::h2o2]*var_h2o2;     // RF[36]: H2O2(V1)
 
 
                         // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
@@ -300,7 +300,7 @@ namespace
                              + rconst12*var_no2                      // RF[12]: NO2(V6)
                              + rconst14*var_hno3                      // RF[14]: HNO3(V0)
                              + rconst16*fix_ch4                      // RF[16]: CH4(F0)
-                             + 0.6*rconst21*var_rooh                  // RF[21]: ROOH(V4)
+                             + TF(0.6)*rconst21*var_rooh              // RF[21]: ROOH(V4)
                              + rconst22*var_hcho                      // RF[22]: HCHO(V3)
                              + rconst24*var_co                      // RF[24]: CO(V2)
                              + rconst27*var_rh;                     // RF[27]: RH(V5)

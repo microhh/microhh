@@ -29,6 +29,9 @@
 #  define CUDA_MACRO
 #endif
 
+#include "fast_math.h"
+namespace fm = Fast_math;
+
 template<typename TF>
 CUDA_MACRO inline TF epr(
         const TF a1, const TF c1,
@@ -57,7 +60,7 @@ CUDA_MACRO inline TF troe_no2oh(
     const TF k0t   = (kzero * pow((TF(300)/temp), mzero)) * mn2;
     const TF kinft = kinf;
     const TF znn   = TF(0.75) - (TF(1.27) * log10(TF(0.41)));
-    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, (log10(TF(0.41)) / (TF(1) + pow((log10(k0t/kinft))/znn, 2))));
+    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, (log10(TF(0.41)) / (TF(1) + fm::pow2((log10(k0t/kinft))/znn))));
 }
 
 template<typename TF>
@@ -71,8 +74,8 @@ CUDA_MACRO inline TF troe_cooh(
     const TF kinft = kinf * pow((TF(300)/temp), minf);
     const TF kval3 = k3 * pow((TF(300)/temp), c3);
     const TF kval4 = (k4 * pow((TF(300)/temp), c4)) / mn2;
-    const TF kcooh = k0t / (TF(1) + k0t / kinft) * pow(fmulti, TF(1) / (TF(1) + pow(log10(k0t/kinft), 2)));
-    return kcooh + (kval3 / (TF(1) + kval3 / kval4) * pow(fmulti, TF(1) / (TF(1) + pow(log10(kval3/kval4), 2))));
+    const TF kcooh = k0t / (TF(1) + k0t / kinft) * pow(fmulti, TF(1) / (TF(1) + fm::pow2(log10(k0t/kinft))));
+    return kcooh + (kval3 / (TF(1) + kval3 / kval4) * pow(fmulti, TF(1) / (TF(1) + fm::pow2(log10(kval3/kval4)))));
 }
 
 template<typename TF>
@@ -83,7 +86,7 @@ CUDA_MACRO inline TF troe_ifs(
     const TF k0t   = (kzero * pow((temp/TF(300)), mzero)) * mn2;
     const TF kinft = kinf * pow((temp/TF(300)), minf);
     const TF znn_b = TF(0.75) - (TF(1.27) * log10(TF(0.35)));
-    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, log10(TF(0.35)) / (TF(1) + pow(log10(k0t/kinft)/znn_b, 2)));
+    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, log10(TF(0.35)) / (TF(1) + fm::pow2(log10(k0t/kinft)/znn_b)));
 }
 
 template<typename TF>
@@ -95,7 +98,7 @@ CUDA_MACRO inline TF troe_ifs2(
     const TF k0t   = (kzero * pow((temp/TF(300)), mzero)) * mn2 * exp(c1 / temp);
     const TF kinft = kinf * pow((temp/TF(300)), minf) * exp(c2 / temp);
     const TF znn_b = TF(0.75) - (TF(1.27) * log10(TF(0.35)));
-    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, log10(TF(0.35)) / (TF(1) + pow(log10(k0t/kinft)/znn_b, 2)));
+    return (k0t * kinft) / (k0t + kinft) * pow(fmulti, log10(TF(0.35)) / (TF(1) + fm::pow2(log10(k0t/kinft)/znn_b)));
 }
 
 template<typename TF>
@@ -106,7 +109,7 @@ CUDA_MACRO inline TF k3rd_iupac(
 {
     const TF k0t   = (kzero * pow((temp/TF(300)), mzero)) * mn2;
     const TF kinft = kinf * pow((temp/TF(300)), minf);
-    return (k0t / (TF(1) + (k0t/kinft))) * pow(fmulti, TF(1) / (TF(1) + pow((log10(k0t/kinft)/nm), 2)));
+    return (k0t / (TF(1) + (k0t/kinft))) * pow(fmulti, TF(1) / (TF(1) + fm::pow2(log10(k0t/kinft)/nm)));
 }
 
 template<typename TF>
