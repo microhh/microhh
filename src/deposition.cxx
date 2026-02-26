@@ -126,7 +126,6 @@ namespace
                 if (water_mask[ij] == 1)
                 {
                     const TF rb = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl;
-
                     fld[ij] = TF(1) / (ra[ij] + rb + rwat);
                 }
             }
@@ -345,7 +344,8 @@ void Deposition<TF>::init(Input& inputin)
     }
 
     // Change diff_scl to diff_scl^(2/3) for use in rb calculation
-    for (int i=0; i<7; i++) diff_scl[i] = pow(diff_scl[i], TF(2)/TF(3));
+    for (int i=0; i<7; i++)
+        diff_scl[i] = pow(diff_scl[i], TF(2)/TF(3));
 
     for (auto& tile : deposition_tiles)
     {
@@ -366,7 +366,7 @@ void Deposition<TF>::create(Stats<TF>& stats, Cross<TF>& cross)
     if (!sw_deposition)
         return;
 
-    // add cross-sections
+    // Add cross-sections.
     if (cross.get_switch())
     {
         std::vector<std::string> allowed_crossvars = {
@@ -381,6 +381,7 @@ void Deposition<TF>::create(Stats<TF>& stats, Cross<TF>& cross)
 }
 
 
+#ifndef USECUDA
 template <typename TF>
 void Deposition<TF>::update_time_dependent(
         Timeloop<TF>& timeloop,
@@ -424,30 +425,41 @@ void Deposition<TF>::update_time_dependent(
                 tile.second.ra.data(),
                 tile.second.ustar.data(),
                 tile.second.fraction.data(),
-                rmes.data(), rsoil.data(), rcut.data(),
-                rws.data(), rwat.data(), diff_scl.data(),   // pass as constant....
+                rmes.data(),
+                rsoil.data(),
+                rcut.data(),
+                rws.data(),
+                rwat.data(),
+                diff_scl.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
     }
 
-    // Calculate tile-mean deposition for chemistry
-    get_tiled_mean(vdo3,"o3",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdno,"no",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdno2,"no2",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdhno3,"hno3",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdh2o2,"h2o2",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdrooh,"rooh",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdhcho,"hcho",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    // Calculate tile-mean deposition and apply water correction per species.
+    auto calc_vd = [&](TF* vd, const std::string& name)
+    {
+        get_tiled_mean(vd, name, TF(1),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data());
 
-    // cmk: we use the wet-tile info for u* and ra, since these are calculated in lsm with f_wet = 100%
-    update_vd_water(vdo3,"o3",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdno,"no",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdno2,"no2",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdhno3,"hno3",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdh2o2,"h2o2",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdrooh,"rooh",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
-    update_vd_water(vdhcho,"hcho",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
+        // Use wet-tile u* and ra: calculated in lsm with f_wet = 100%.
+        update_vd_water(vd, name,
+                tiles.at("wet").ra.data(),
+                tiles.at("wet").ustar.data(),
+                water_mask.data(),
+                diff_scl.data(),
+                rwat.data());
+    };
+
+    calc_vd(vdo3,  "o3");
+    calc_vd(vdno,  "no");
+    calc_vd(vdno2, "no2");
+    calc_vd(vdhno3,"hno3");
+    calc_vd(vdh2o2,"h2o2");
+    calc_vd(vdrooh,"rooh");
+    calc_vd(vdhcho,"hcho");
 
     spatial_avg_vd(vdo3);
     spatial_avg_vd(vdno);
@@ -457,6 +469,7 @@ void Deposition<TF>::update_time_dependent(
     spatial_avg_vd(vdrooh);
     spatial_avg_vd(vdhcho);
 }
+#endif
 
 
 template<typename TF>

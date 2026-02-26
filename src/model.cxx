@@ -614,22 +614,22 @@ void Model<TF>::prepare_gpu()
 {
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
-    grid     ->prepare_device();
-    soil_grid->prepare_device();
-    fields   ->prepare_device();
-    buffer   ->prepare_device();
-    thermo   ->prepare_device();
-    boundary ->prepare_device(*thermo);
-    diff     ->prepare_device(*boundary);
-    force    ->prepare_device();
-    ib       ->prepare_device();
-    microphys->prepare_device();
-    radiation->prepare_device();
-    column   ->prepare_device();
-    canopy   ->prepare_device();
-    aerosol  ->prepare_device();
-    source   ->prepare_device();
-    chemistry->prepare_device();
+    grid      ->prepare_device();
+    soil_grid ->prepare_device();
+    fields    ->prepare_device();
+    buffer    ->prepare_device();
+    thermo    ->prepare_device();
+    boundary  ->prepare_device(*thermo);
+    diff      ->prepare_device(*boundary);
+    force     ->prepare_device();
+    ib        ->prepare_device();
+    microphys ->prepare_device();
+    radiation ->prepare_device();
+    column    ->prepare_device();
+    canopy    ->prepare_device();
+    aerosol   ->prepare_device();
+    source    ->prepare_device();
+    chemistry ->prepare_device();
 
     // Prepare pressure last, for memory check
     pres     ->prepare_device();

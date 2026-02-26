@@ -48,14 +48,24 @@ template<typename TF>
 struct Deposition_tile
 {
     std::string long_name;    // Descriptive name of tile
-    // Land surface
-    std::vector<TF> vdo3;     // deposition velocity of ozone (m s-1)
-    std::vector<TF> vdno;     // deposition velocity of no (m s-1)
-    std::vector<TF> vdno2;    // deposition velocity of no2 (m s-1)
-    std::vector<TF> vdhno3;   // deposition velocity of hno3 (m s-1)
-    std::vector<TF> vdh2o2;   // deposition velocity of h2o2 (m s-1)
-    std::vector<TF> vdrooh;   // deposition velocity of rooh (m s-1)
-    std::vector<TF> vdhcho;   // deposition velocity of hcho (m s-1)
+
+    std::vector<TF> vdo3;     // Deposition velocity of ozone (m s-1)
+    std::vector<TF> vdno;     // Deposition velocity of no (m s-1)
+    std::vector<TF> vdno2;    // Deposition velocity of no2 (m s-1)
+    std::vector<TF> vdhno3;   // Deposition velocity of hno3 (m s-1)
+    std::vector<TF> vdh2o2;   // Deposition velocity of h2o2 (m s-1)
+    std::vector<TF> vdrooh;   // Deposition velocity of rooh (m s-1)
+    std::vector<TF> vdhcho;   // Deposition velocity of hcho (m s-1)
+
+    #ifdef USECUDA
+    cuda_vector<TF> vdo3_g;
+    cuda_vector<TF> vdno_g;
+    cuda_vector<TF> vdno2_g;
+    cuda_vector<TF> vdhno3_g;
+    cuda_vector<TF> vdh2o2_g;
+    cuda_vector<TF> vdrooh_g;
+    cuda_vector<TF> vdhcho_g;
+    #endif
 };
 
 template<typename TF>
@@ -77,7 +87,11 @@ class Deposition
         void get_tiled_mean(TF*, const std::string&, TF, const TF*, const TF*, const TF*);
         void update_vd_water(TF*, const std::string&, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
-        void spatial_avg_vd(TF*);                           //MAQ_AV_21042022+ added spatial_avg_vd
+        void spatial_avg_vd(TF*);
+
+        #ifdef USECUDA
+        void prepare_device();
+        #endif
 
     protected:
         std::vector<std::string> cross_list;         // List of active cross variables
@@ -96,7 +110,7 @@ class Deposition
         TF rsoil_so2;
         TF rwat_so2;
         TF rws_so2;
-        //TF lai;
+
         std::vector<TF> rmes;
         std::vector<TF> rsoil;
         std::vector<TF> rcut;
@@ -107,7 +121,25 @@ class Deposition
         std::vector<TF> henry;
         std::vector<TF> f0;
 
-        TF vd_o3,vd_no,vd_no2,vd_hno3,vd_h2o2,vd_rooh,vd_hcho;
+        #ifdef USECUDA
+        cuda_vector<TF> rmes_g;
+        cuda_vector<TF> rsoil_g;
+        cuda_vector<TF> rcut_g;
+        cuda_vector<TF> rws_g;
+        cuda_vector<TF> rwat_g;
+        cuda_vector<TF> diff_g;
+        cuda_vector<TF> diff_scl_g;
+        cuda_vector<TF> henry_g;
+        cuda_vector<TF> f0_g;
+        #endif
+
+        TF vd_o3;
+        TF vd_no;
+        TF vd_no2;
+        TF vd_hno3;
+        TF vd_h2o2;
+        TF vd_rooh;
+        TF vd_hcho;
 
         std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
         Deposition_tile_map<TF> deposition_tiles;

@@ -24,11 +24,13 @@
 #include <iostream>
 
 #include "chemistry.h"
+#include "chemistry_plume_kernels.h"
+#include "deposition.h"
+
 #include "tools.h"
 #include "fields.h"
 #include "thermo.h"
 #include "constants.h"
-#include "chemistry_plume_kernels.h"
 
 namespace
 {
@@ -468,6 +470,9 @@ void Chemistry<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(vdh2o2_g,  vdh2o2.data(),  memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(vdrooh_g,  vdrooh.data(),  memsize_ij, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(vdhcho_g,  vdhcho.data(),  memsize_ij, cudaMemcpyHostToDevice));
+
+    // Prepare deposition.
+    deposition->prepare_device();
 }
 
 template<typename TF>
