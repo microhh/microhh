@@ -80,8 +80,8 @@ namespace
             const int icells)
     {
         //Calculate sum and count
-        TF n_dep = (TF)0.0;
-        TF sum_dep = (TF)0.0;
+        TF n_dep = TF(0);
+        TF sum_dep = TF(0);
 
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
@@ -129,9 +129,9 @@ namespace
             if (water_mask[ij] == 1)
             {
                 const TF ckarman = 0.4;
-                const TF rb = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl;
+                const TF rb = TF(1) / (ckarman * ustar[ij]) * diff_scl;
 
-                fld[ij] = (TF)1.0 / (ra[ij] + rb + rwat);
+                fld[ij] = TF(1) / (ra[ij] + rb + rwat);
             }
 
         }
@@ -167,8 +167,8 @@ namespace
     {
 
         const int ntrac_vd = 7;
-        const TF ckarman = (TF)0.4;
-        const TF hc = (TF)10.0; // constant for now...
+        const TF ckarman = TF(0.4);
+        const TF hc = TF(10); // constant for now...
 
         if (lu_type == "veg")
         {
@@ -177,8 +177,8 @@ namespace
             // because otherwise rb and rc vectors must be allocated for the entire grid instead of for
             // the number of tracers. Also, it avoids the use of if statements (e.g. "if (t==0) vdo3[ij] = ...")
             std::vector<TF> rmes_local = {rmes[0], rmes[1], rmes[2], rmes[3], rmes[4], rmes[5], rmes[6]};
-            std::vector<TF> rb(ntrac_vd, (TF)0.0);
-            std::vector<TF> rc(ntrac_vd, (TF)0.0);
+            std::vector<TF> rb(ntrac_vd, TF(0));
+            std::vector<TF> rc(ntrac_vd, TF(0));
 
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i) {
@@ -186,33 +186,33 @@ namespace
                     const int ij = i + j*jj;
 
                     //Do not proceed in loop if tile fraction is small
-                    if (fraction[ij] < (TF)1e-12)
+                    if (fraction[ij] < TF(1e-12))
                         continue;
 
                     //rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995)
                     rmes_local[1] = rmes[1] * rs[ij];
                     rmes_local[2] = rmes[2] * rs[ij];
-                    const TF ra_inc = (TF)14. * hc * lai[ij] / ustar[ij];
+                    const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
 
                     for (int t=0; t<ntrac_vd; ++t)
                     {
-                        rb[t] = TF(2.0) / (ckarman * ustar[ij]) * diff_scl[t];
-                        rc[t] = TF(1.0) / ((TF)1.0 / (diff_scl[t] + rs[ij] + rmes_local[t]) + (TF)1.0 / rcut[t] + (TF)1.0 / (ra_inc + rsoil[t]));
+                        rb[t] = TF(2) / (ckarman * ustar[ij]) * diff_scl[t];
+                        rc[t] = TF(1) / (TF(1) / (diff_scl[t] + rs[ij] + rmes_local[t]) + TF(1) / rcut[t] + TF(1) / (ra_inc + rsoil[t]));
                     }
 
-                    vdo3[ij]   = (TF)1.0 / (ra[ij] + rb[0] + rc[0]);
-                    vdno[ij]   = (TF)1.0 / (ra[ij] + rb[1] + rc[1]);
-                    vdno2[ij]  = (TF)1.0 / (ra[ij] + rb[2] + rc[2]);
-                    vdhno3[ij] = (TF)1.0 / (ra[ij] + rb[3] + rc[3]);
-                    vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rc[4]);
-                    vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rc[5]);
-                    vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rc[6]);
+                    vdo3[ij]   = TF(1) / (ra[ij] + rb[0] + rc[0]);
+                    vdno[ij]   = TF(1) / (ra[ij] + rb[1] + rc[1]);
+                    vdno2[ij]  = TF(1) / (ra[ij] + rb[2] + rc[2]);
+                    vdhno3[ij] = TF(1) / (ra[ij] + rb[3] + rc[3]);
+                    vdh2o2[ij] = TF(1) / (ra[ij] + rb[4] + rc[4]);
+                    vdrooh[ij] = TF(1) / (ra[ij] + rb[5] + rc[5]);
+                    vdhcho[ij] = TF(1) / (ra[ij] + rb[6] + rc[6]);
                 }
 
         }
         else if (lu_type == "soil")
         {
-            std::vector<TF> rb(ntrac_vd, (TF)0.0);
+            std::vector<TF> rb(ntrac_vd, TF(0));
 
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i) {
@@ -220,27 +220,27 @@ namespace
                     const int ij = i + j*jj;
 
                     //Do not proceed in loop if tile fraction is small
-                    if (fraction[ij] < (TF)1e-12) continue;
+                    if (fraction[ij] < TF(1e-12)) continue;
 
                     for (int t=0; t<ntrac_vd; ++t)
                     {
-                        rb[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
+                        rb[t] = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
                     }
 
-                    vdo3[ij]   = (TF)1.0 / (ra[ij] + rb[0] + rsoil[0]);
-                    vdno[ij]   = (TF)1.0 / (ra[ij] + rb[1] + rsoil[1]);
-                    vdno2[ij]  = (TF)1.0 / (ra[ij] + rb[2] + rsoil[2]);
-                    vdhno3[ij] = (TF)1.0 / (ra[ij] + rb[3] + rsoil[3]);
-                    vdh2o2[ij] = (TF)1.0 / (ra[ij] + rb[4] + rsoil[4]);
-                    vdrooh[ij] = (TF)1.0 / (ra[ij] + rb[5] + rsoil[5]);
-                    vdhcho[ij] = (TF)1.0 / (ra[ij] + rb[6] + rsoil[6]);
+                    vdo3[ij]   = TF(1) / (ra[ij] + rb[0] + rsoil[0]);
+                    vdno[ij]   = TF(1) / (ra[ij] + rb[1] + rsoil[1]);
+                    vdno2[ij]  = TF(1) / (ra[ij] + rb[2] + rsoil[2]);
+                    vdhno3[ij] = TF(1) / (ra[ij] + rb[3] + rsoil[3]);
+                    vdh2o2[ij] = TF(1) / (ra[ij] + rb[4] + rsoil[4]);
+                    vdrooh[ij] = TF(1) / (ra[ij] + rb[5] + rsoil[5]);
+                    vdhcho[ij] = TF(1) / (ra[ij] + rb[6] + rsoil[6]);
                 }
         }
         else if (lu_type == "wet")
         {
-            std::vector<TF> rb_veg(ntrac_vd, (TF)0.0);
-            std::vector<TF> rb_soil(ntrac_vd, (TF)0.0);
-            std::vector<TF> rc(ntrac_vd, (TF)0.0);
+            std::vector<TF> rb_veg(ntrac_vd, TF(0));
+            std::vector<TF> rb_soil(ntrac_vd, TF(0));
+            std::vector<TF> rc(ntrac_vd, TF(0));
             std::vector<TF> rmes_local = {rmes[0], rmes[1], rmes[2], rmes[3], rmes[4], rmes[5], rmes[6]};
 
             for (int j=jstart; j<jend; ++j)
@@ -249,30 +249,29 @@ namespace
                     const int ij = i + j*jj;
 
                     // Do not proceed in loop if tile fraction is small
-                    if (fraction[ij] < (TF)1e-12) continue;
+                    if (fraction[ij] < TF(1e-12)) continue;
 
                     // rmes for NO and NO2 requires multiplication with rs, according to Ganzeveld et al. (1995)
-                    // rmes_local[0] =
                     rmes_local[1] = rmes[1] * rs[ij];
                     rmes_local[2] = rmes[2] * rs[ij];
-                    const TF ra_inc = (TF)14. * hc * lai[ij] / ustar[ij];
+                    const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
 
                     //Note that in rc calculation, rcut is replaced by rws for calculating wet skin uptake
                     for (int t=0; t<ntrac_vd; ++t)
                     {
-                        rb_veg[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
-                        rb_soil[t] = (TF)1.0 / (ckarman * ustar[ij]) * diff_scl[t];
-                        rc[t] = TF(1.0) / ((TF)1.0 / (diff_scl[t] + rs_veg[ij] + rmes_local[t]) + (TF)1.0 / rws[t] + (TF)1.0 / (ra_inc + rsoil[t]));
+                        rb_veg[t]  = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
+                        rb_soil[t] = TF(1) / (ckarman * ustar[ij]) * diff_scl[t];
+                        rc[t] = TF(1) / (TF(1) / (diff_scl[t] + rs_veg[ij] + rmes_local[t]) + TF(1) / rws[t] + TF(1) / (ra_inc + rsoil[t]));
                     }
 
                     // Calculate vd for wet skin tile as the weighted average of vd to wet soil and to wet vegetation
-                    vdo3[ij]   = c_veg[ij] / (ra[ij] + rb_veg[0] + rc[0]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[0] + rsoil[0]);
-                    vdno[ij]   = c_veg[ij] / (ra[ij] + rb_veg[1] + rc[1]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[1] + rsoil[1]);
-                    vdno2[ij]  = c_veg[ij] / (ra[ij] + rb_veg[2] + rc[2]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[2] + rsoil[2]);
-                    vdhno3[ij] = c_veg[ij] / (ra[ij] + rb_veg[3] + rc[3]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[3] + rsoil[3]);
-                    vdh2o2[ij] = c_veg[ij] / (ra[ij] + rb_veg[4] + rc[4]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[4] + rsoil[4]);
-                    vdrooh[ij] = c_veg[ij] / (ra[ij] + rb_veg[5] + rc[5]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[5] + rsoil[5]);
-                    vdhcho[ij] = c_veg[ij] / (ra[ij] + rb_veg[6] + rc[6]) + ((TF)1.0 - c_veg[ij]) / (ra[ij] + rb_soil[6] + rsoil[6]);
+                    vdo3[ij]   = c_veg[ij] / (ra[ij] + rb_veg[0] + rc[0]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[0] + rsoil[0]);
+                    vdno[ij]   = c_veg[ij] / (ra[ij] + rb_veg[1] + rc[1]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[1] + rsoil[1]);
+                    vdno2[ij]  = c_veg[ij] / (ra[ij] + rb_veg[2] + rc[2]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[2] + rsoil[2]);
+                    vdhno3[ij] = c_veg[ij] / (ra[ij] + rb_veg[3] + rc[3]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[3] + rsoil[3]);
+                    vdh2o2[ij] = c_veg[ij] / (ra[ij] + rb_veg[4] + rc[4]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[4] + rsoil[4]);
+                    vdrooh[ij] = c_veg[ij] / (ra[ij] + rb_veg[5] + rc[5]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[5] + rsoil[5]);
+                    vdhcho[ij] = c_veg[ij] / (ra[ij] + rb_veg[6] + rc[6]) + (TF(1) - c_veg[ij]) / (ra[ij] + rb_soil[6] + rsoil[6]);
                 }
         }
     }
@@ -297,13 +296,13 @@ void Deposition<TF>::init(Input& inputin)
 {
     // Always read the default deposition velocities. They are needed by 
     // chemistry, even if deposition is disabled.
-    vd_o3   = inputin.get_item<TF>("deposition", "vdo3", "", (TF)0.005);
-    vd_no   = inputin.get_item<TF>("deposition", "vdno", "", (TF)0.002);
-    vd_no2  = inputin.get_item<TF>("deposition", "vdno2", "", (TF)0.005);
-    vd_hno3 = inputin.get_item<TF>("deposition", "vdhno3", "", (TF)0.040);
-    vd_h2o2 = inputin.get_item<TF>("deposition", "vdh2o2", "", (TF)0.018);
-    vd_rooh = inputin.get_item<TF>("deposition", "vdrooh", "", (TF)0.008);
-    vd_hcho = inputin.get_item<TF>("deposition", "vdhcho", "", (TF)0.0033);
+    vd_o3   = inputin.get_item<TF>("deposition", "vdo3", "", TF(0.005));
+    vd_no   = inputin.get_item<TF>("deposition", "vdno", "", TF(0.002));
+    vd_no2  = inputin.get_item<TF>("deposition", "vdno2", "", TF(0.005));
+    vd_hno3 = inputin.get_item<TF>("deposition", "vdhno3", "", TF(0.040));
+    vd_h2o2 = inputin.get_item<TF>("deposition", "vdh2o2", "", TF(0.018));
+    vd_rooh = inputin.get_item<TF>("deposition", "vdrooh", "", TF(0.008));
+    vd_hcho = inputin.get_item<TF>("deposition", "vdhcho", "", TF(0.0033));
 
     if (!sw_deposition)
         return;
@@ -329,36 +328,36 @@ void Deposition<TF>::init(Input& inputin)
     deposition_tiles.at("veg" ).long_name = "vegetation";
     deposition_tiles.at("soil").long_name = "bare soil";
     deposition_tiles.at("wet" ).long_name = "wet skin";
-    deposition_var = inputin.get_item<TF>("deposition", "deposition_var","", (TF)1e5);
+    deposition_var = inputin.get_item<TF>("deposition", "deposition_var","", TF(1e5));
 
-    henry_so2 = inputin.get_item<TF>("deposition", "henry_so2", "", (TF)1e5);
-    rsoil_so2 = inputin.get_item<TF>("deposition", "rsoil_so2", "", (TF)250.0);
-    rwat_so2 = inputin.get_item<TF>("deposition", "rwat_so2", "", (TF)1.0);
-    rws_so2 = inputin.get_item<TF>("deposition", "rws_so2", "", (TF)100.0);
+    henry_so2 = inputin.get_item<TF>("deposition", "henry_so2", "", TF(1e5));
+    rsoil_so2 = inputin.get_item<TF>("deposition", "rsoil_so2", "", TF(250));
+    rwat_so2  = inputin.get_item<TF>("deposition", "rwat_so2", "", TF(1));
+    rws_so2   = inputin.get_item<TF>("deposition", "rws_so2", "", TF(100));
 
     // Note: rmes for NO and NO2 (indices 1 and 2) will still be scaled with rs
-    rmes     = {(TF)1.0, (TF)5.0, (TF)0.5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-    rsoil    = {(TF)400.0, (TF)1e5, (TF)600.0, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-    rcut     = {(TF)1e5, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-    rws      = {(TF)2000.0, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-    rwat     = {(TF)2000.0, (TF)1e5, (TF)1e5, (TF)0.0, (TF)0.0, (TF)0.0, (TF)0.0};
-    diff     = {(TF)0.13, (TF)0.16, (TF)0.13, (TF)0.11, (TF)0.15, (TF)0.13, (TF)0.16};
-    diff_scl = {(TF)1.6, (TF)1.3, (TF)1.6, (TF)1.9, (TF)1.4, (TF)1.6, (TF)1.3};
-    henry    = {(TF)0.01, (TF)2e-3, (TF)0.01, (TF)1e14, (TF)1e5, (TF)240., (TF)6e3};
-    f0       = {(TF)1.0, (TF)0.0, (TF)0.1, (TF)0.0, (TF)1.0, (TF)0.1, (TF)0.0};
+    rmes     = {TF(1),    TF(5),   TF(0.5), TF(0),   TF(0),   TF(0),   TF(0)};
+    rsoil    = {TF(400),  TF(1e5), TF(600), TF(0),   TF(0),   TF(0),   TF(0)};
+    rcut     = {TF(1e5),  TF(1e5), TF(1e5), TF(0),   TF(0),   TF(0),   TF(0)};
+    rws      = {TF(2000), TF(1e5), TF(1e5), TF(0),   TF(0),   TF(0),   TF(0)};
+    rwat     = {TF(2000), TF(1e5), TF(1e5), TF(0),   TF(0),   TF(0),   TF(0)};
+    diff     = {TF(0.13), TF(0.16),TF(0.13),TF(0.11),TF(0.15),TF(0.13),TF(0.16)};
+    diff_scl = {TF(1.6),  TF(1.3), TF(1.6), TF(1.9), TF(1.4), TF(1.6), TF(1.3)};
+    henry    = {TF(0.01), TF(2e-3),TF(0.01),TF(1e14),TF(1e5), TF(240), TF(6e3)};
+    f0       = {TF(1),    TF(0),   TF(0.1), TF(0),   TF(1),   TF(0.1), TF(0)};
 
     // Define uninitialized resistance values by scaling with O3 and SO2 resistances (Wesely 1989)
     for (int i=3; i<7; i++)
     {
-        rmes[i]  = (TF)1.0 / (henry[i] / (TF)3000.0 + (TF)100.0 * f0[i]);
-        rsoil[i] = (TF)1.0 / (henry[i] / (henry_so2 + rsoil_so2) + f0[i] / rsoil[0]);
-        rcut[i]  = (TF)1.0 / (henry[i] / henry_so2  + f0[i]) * rcut[0];
-        rws[i]   = (TF)1.0 / (TF(1.0) / ((TF)3.0*rws_so2) + (TF)1e-7 * henry[i] + f0[i] / rws[0]);
-        rwat[i]  = (TF)1.0 / (henry[i] / (henry_so2 + rwat_so2)  + f0[i] / rwat[0]);
+        rmes[i]  = TF(1) / (henry[i] / TF(3000) + TF(100) * f0[i]);
+        rsoil[i] = TF(1) / (henry[i] / (henry_so2 + rsoil_so2) + f0[i] / rsoil[0]);
+        rcut[i]  = TF(1) / (henry[i] / henry_so2 + f0[i]) * rcut[0];
+        rws[i]   = TF(1) / (TF(1) / (TF(3) * rws_so2) + TF(1e-7) * henry[i] + f0[i] / rws[0]);
+        rwat[i]  = TF(1) / (henry[i] / (henry_so2 + rwat_so2) + f0[i] / rwat[0]);
     }
 
     // Change diff_scl to diff_scl^(2/3) for use in rb calculation
-    for (int i=0; i<7; i++) diff_scl[i] = pow(diff_scl[i], (TF)2.0/(TF)3.0);
+    for (int i=0; i<7; i++) diff_scl[i] = pow(diff_scl[i], TF(2)/TF(3));
 
     for (auto& tile : deposition_tiles)
     {
@@ -445,13 +444,13 @@ void Deposition<TF>::update_time_dependent(
     }
 
     // Calculate tile-mean deposition for chemistry
-    get_tiled_mean(vdo3,"o3",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdno,"no",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdno2,"no2",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdhno3,"hno3",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdh2o2,"h2o2",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdrooh,"rooh",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
-    get_tiled_mean(vdhcho,"hcho",(TF) 1.0,tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdo3,"o3",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdno,"no",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdno2,"no2",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdhno3,"hno3",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdh2o2,"h2o2",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdrooh,"rooh",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
+    get_tiled_mean(vdhcho,"hcho",TF(1), tiles.at("veg").fraction.data(), tiles.at("soil").fraction.data(), tiles.at("wet").fraction.data());
 
     // cmk: we use the wet-tile info for u* and ra, since these are calculated in lsm with f_wet = 100%
     update_vd_water(vdo3,"o3",tiles.at("wet").ra.data(),tiles.at("wet").ustar.data(),water_mask.data(),diff_scl.data(),rwat.data());
