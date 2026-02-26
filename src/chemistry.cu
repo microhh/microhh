@@ -438,6 +438,9 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
 template<typename TF>
 void Chemistry<TF>::prepare_device()
 {
+    if (!sw_chemistry)
+        return;
+
     auto& gd = grid.get_grid_data();
 
     const int time_size = time.size();
@@ -470,6 +473,8 @@ void Chemistry<TF>::prepare_device()
 template<typename TF>
 void Chemistry<TF>::clear_device()
 {
+    if (!sw_chemistry)
+        return;
 }
 #endif
 
