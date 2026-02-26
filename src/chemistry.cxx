@@ -158,13 +158,6 @@ namespace
 
             const TF fix_ch4 = TF(1800e-9) * cfactor;   // methane concentration
 
-            // Results from QSSA iteration below.
-            TF fix_oh   = TF(0);
-            TF fix_ho2  = TF(0);
-            TF fix_ro2  = TF(0);
-            TF fix_no3  = TF(0);
-            TF fix_n2o5 = TF(0);
-
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -197,6 +190,13 @@ namespace
                     TF p_ro2, l_ro2;
                     TF p_no3, l_no3;
                     TF p_n2o5, l_n2o5;
+
+                    // Reset QSSA iteration for each grid point. Otherwise this causes a race condition in vectorised or GPU code.
+                    TF fix_oh   = TF(0);
+                    TF fix_ho2  = TF(0);
+                    TF fix_ro2  = TF(0);
+                    TF fix_no3  = TF(0);
+                    TF fix_n2o5 = TF(0);
 
                     // =========================================================================
                     // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
