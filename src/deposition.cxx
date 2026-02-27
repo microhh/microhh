@@ -400,10 +400,10 @@ void Deposition<TF>::update_time_dependent(
 
     auto& gd = grid.get_grid_data();
 
-    // get information from lsm:
+    // Get information from the land-surface model:
     auto& tiles = boundary.get_tiles();
-    auto& lai = boundary.get_lai();
     auto& water_mask = boundary.get_water_mask();
+    auto& lai = boundary.get_lai();
     auto& c_veg = boundary.get_c_veg();
 
     // calculate deposition per tile:

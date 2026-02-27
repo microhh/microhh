@@ -44,6 +44,14 @@ void Deposition<TF>::update_time_dependent(
     if (!sw_deposition)
         return;
 
+    auto& gd = grid.get_grid_data();
+
+    // Get information from the land-surface model:
+    auto& tiles = boundary.get_tiles();
+    int* water_mask_g = boundary.get_water_mask_g();
+    TF* lai_g = boundary.get_lai_g();
+    TF* c_veg_g = boundary.get_c_veg_g();
+
     // TODO
 }
 

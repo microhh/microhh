@@ -112,10 +112,12 @@ class Boundary
         virtual const std::vector<TF>& get_dudz() const;
         virtual const std::vector<TF>& get_dvdz() const;
         virtual const std::vector<TF>& get_dbdz() const;
-        virtual const std::vector<TF>& get_lai() const;
-        virtual const std::vector<int>& get_water_mask() const;
-        virtual const std::vector<TF>& get_c_veg() const;
-        virtual const Tile_map<TF>& get_tiles() const;
+
+        // These are only implemented by the land-surface model, so throw by default.
+        virtual const Tile_map<TF>& get_tiles()          const { throw std::runtime_error("Function get_tiles() not implemented"); }
+        virtual const std::vector<TF>& get_lai()         const { throw std::runtime_error("Function get_lai() not implemented"); }
+        virtual const std::vector<int>& get_water_mask() const { throw std::runtime_error("Function get_water_mask() not implemented"); }
+        virtual const std::vector<TF>& get_c_veg()       const { throw std::runtime_error("Function get_c_veg() not implemented"); }
 
         std::string get_switch();
 
@@ -124,6 +126,11 @@ class Boundary
         virtual cuda_vector<TF>& get_dudz_g();
         virtual cuda_vector<TF>& get_dvdz_g();
         virtual cuda_vector<TF>& get_dbdz_g();
+
+        // These are only implemented by the land-surface model, so throw by default.
+        virtual TF*  get_lai_g()        { throw std::runtime_error("Function get_lai_g() not implemented"); }
+        virtual int* get_water_mask_g() { throw std::runtime_error("Function get_water_mask_g() not implemented"); }
+        virtual TF*  get_c_veg_g()      { throw std::runtime_error("Function get_c_veg_g() not implemented"); }
 
         virtual void prepare_device(Thermo<TF>&);
         virtual void forward_device(Thermo<TF>&);

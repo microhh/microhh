@@ -71,6 +71,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
         cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
         cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
+
+        TF*  get_lai_g()         { return lai_g; }
+        int* get_water_mask_g() { return water_mask_g; }
+        TF*  get_c_veg_g()       { return c_veg_g; }
         #endif
 
     protected:
