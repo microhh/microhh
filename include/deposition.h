@@ -51,13 +51,7 @@ struct Deposition_tile
     std::map<std::string, std::vector<TF>> vd;   // Deposition velocities keyed by species name (m s-1)
 
     #ifdef USECUDA
-    cuda_vector<TF> vdo3_g;
-    cuda_vector<TF> vdno_g;
-    cuda_vector<TF> vdno2_g;
-    cuda_vector<TF> vdhno3_g;
-    cuda_vector<TF> vdh2o2_g;
-    cuda_vector<TF> vdrooh_g;
-    cuda_vector<TF> vdhcho_g;
+    std::map<std::string, cuda_vector<TF>> vd_g;  // Deposition velocities keyed by species name (m s-1)
     #endif
 };
 

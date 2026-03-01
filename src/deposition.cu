@@ -274,13 +274,13 @@ void Deposition<TF>::update_time_dependent(
     auto& dep_wet  = deposition_tiles.at("wet");
 
     calc_deposition_veg_g<TF><<<grid_gpu, block_gpu>>>(
-            dep_veg.vdo3_g,
-            dep_veg.vdno_g,
-            dep_veg.vdno2_g,
-            dep_veg.vdhno3_g,
-            dep_veg.vdh2o2_g,
-            dep_veg.vdrooh_g,
-            dep_veg.vdhcho_g,
+            dep_veg.vd_g.at("o3"),
+            dep_veg.vd_g.at("no"),
+            dep_veg.vd_g.at("no2"),
+            dep_veg.vd_g.at("hno3"),
+            dep_veg.vd_g.at("h2o2"),
+            dep_veg.vd_g.at("rooh"),
+            dep_veg.vd_g.at("hcho"),
             lai_g,
             tiles.at("veg").rs_g,
             tiles.at("veg").ra_g,
@@ -296,13 +296,13 @@ void Deposition<TF>::update_time_dependent(
     cuda_check_error();
 
     calc_deposition_soil_g<TF><<<grid_gpu, block_gpu>>>(
-            dep_soil.vdo3_g,
-            dep_soil.vdno_g,
-            dep_soil.vdno2_g,
-            dep_soil.vdhno3_g,
-            dep_soil.vdh2o2_g,
-            dep_soil.vdrooh_g,
-            dep_soil.vdhcho_g,
+            dep_soil.vd_g.at("o3"),
+            dep_soil.vd_g.at("no"),
+            dep_soil.vd_g.at("no2"),
+            dep_soil.vd_g.at("hno3"),
+            dep_soil.vd_g.at("h2o2"),
+            dep_soil.vd_g.at("rooh"),
+            dep_soil.vd_g.at("hcho"),
             tiles.at("soil").ra_g,
             tiles.at("soil").ustar_g,
             tiles.at("soil").fraction_g,
@@ -314,13 +314,13 @@ void Deposition<TF>::update_time_dependent(
     cuda_check_error();
 
     calc_deposition_wet_g<TF><<<grid_gpu, block_gpu>>>(
-            dep_wet.vdo3_g,
-            dep_wet.vdno_g,
-            dep_wet.vdno2_g,
-            dep_wet.vdhno3_g,
-            dep_wet.vdh2o2_g,
-            dep_wet.vdrooh_g,
-            dep_wet.vdhcho_g,
+            dep_wet.vd_g.at("o3"),
+            dep_wet.vd_g.at("no"),
+            dep_wet.vd_g.at("no2"),
+            dep_wet.vd_g.at("hno3"),
+            dep_wet.vd_g.at("h2o2"),
+            dep_wet.vd_g.at("rooh"),
+            dep_wet.vd_g.at("hcho"),
             lai_g,
             c_veg_g,
             tiles.at("wet").rs_g,
@@ -348,16 +348,17 @@ void Deposition<TF>::update_time_dependent(
                 frac_veg, frac_soil, frac_wet,
                 TF(1), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
         cuda_check_error();
+
         // TODO: calc_vd_water, spatial_avg_vd.
     };
 
-    calc_vd_g(vdo3_g,  dep_veg.vdo3_g,  dep_soil.vdo3_g,  dep_wet.vdo3_g);
-    calc_vd_g(vdno_g,  dep_veg.vdno_g,  dep_soil.vdno_g,  dep_wet.vdno_g);
-    calc_vd_g(vdno2_g, dep_veg.vdno2_g, dep_soil.vdno2_g, dep_wet.vdno2_g);
-    calc_vd_g(vdhno3_g,dep_veg.vdhno3_g,dep_soil.vdhno3_g,dep_wet.vdhno3_g);
-    calc_vd_g(vdh2o2_g,dep_veg.vdh2o2_g,dep_soil.vdh2o2_g,dep_wet.vdh2o2_g);
-    calc_vd_g(vdrooh_g,dep_veg.vdrooh_g,dep_soil.vdrooh_g,dep_wet.vdrooh_g);
-    calc_vd_g(vdhcho_g,dep_veg.vdhcho_g,dep_soil.vdhcho_g,dep_wet.vdhcho_g);
+    calc_vd_g(vdo3_g,  dep_veg.vd_g.at("o3"),   dep_soil.vd_g.at("o3"),   dep_wet.vd_g.at("o3"));
+    calc_vd_g(vdno_g,  dep_veg.vd_g.at("no"),   dep_soil.vd_g.at("no"),   dep_wet.vd_g.at("no"));
+    calc_vd_g(vdno2_g, dep_veg.vd_g.at("no2"),  dep_soil.vd_g.at("no2"),  dep_wet.vd_g.at("no2"));
+    calc_vd_g(vdhno3_g,dep_veg.vd_g.at("hno3"), dep_soil.vd_g.at("hno3"), dep_wet.vd_g.at("hno3"));
+    calc_vd_g(vdh2o2_g,dep_veg.vd_g.at("h2o2"), dep_soil.vd_g.at("h2o2"), dep_wet.vd_g.at("h2o2"));
+    calc_vd_g(vdrooh_g,dep_veg.vd_g.at("rooh"), dep_soil.vd_g.at("rooh"), dep_wet.vd_g.at("rooh"));
+    calc_vd_g(vdhcho_g,dep_veg.vd_g.at("hcho"), dep_soil.vd_g.at("hcho"), dep_wet.vd_g.at("hcho"));
 }
 
 template <typename TF>
@@ -370,15 +371,8 @@ void Deposition<TF>::prepare_device()
 
     // Allocate GPU arrays.
     for (auto& tile : deposition_tiles)
-    {
-        tile.second.vdo3_g.allocate(gd.ijcells);
-        tile.second.vdno_g.allocate(gd.ijcells);
-        tile.second.vdno2_g.allocate(gd.ijcells);
-        tile.second.vdhno3_g.allocate(gd.ijcells);
-        tile.second.vdh2o2_g.allocate(gd.ijcells);
-        tile.second.vdrooh_g.allocate(gd.ijcells);
-        tile.second.vdhcho_g.allocate(gd.ijcells);
-    }
+        for (auto& [sp, idx] : species_idx)
+            tile.second.vd_g[sp].allocate(gd.ijcells);
 
     const int size = rmes.size();
     rmes_g.allocate(size);
@@ -396,15 +390,8 @@ void Deposition<TF>::prepare_device()
     const int memsize_res = size * sizeof(TF);
 
     for (auto& tile : deposition_tiles)
-    {
-        cuda_safe_call(cudaMemcpy(tile.second.vdo3_g,  tile.second.vdo3.data(),  memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdno_g,  tile.second.vdno.data(),  memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdno2_g, tile.second.vdno2.data(), memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdhno3_g,tile.second.vdhno3.data(),memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdh2o2_g,tile.second.vdh2o2.data(),memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdrooh_g,tile.second.vdrooh.data(),memsize_ij, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.second.vdhcho_g,tile.second.vdhcho.data(),memsize_ij, cudaMemcpyHostToDevice));
-    }
+        for (auto& [sp, idx] : species_idx)
+            cuda_safe_call(cudaMemcpy(tile.second.vd_g.at(sp), tile.second.vd.at(sp).data(), memsize_ij, cudaMemcpyHostToDevice));
 
     cuda_safe_call(cudaMemcpy(rmes_g,    rmes.data(),    memsize_res, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(rsoil_g,   rsoil.data(),   memsize_res, cudaMemcpyHostToDevice));
