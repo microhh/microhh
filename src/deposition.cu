@@ -209,6 +209,34 @@ namespace
 
 
     template<typename TF> __global__
+    void calc_vd_water_g(
+            TF* const __restrict__ fld,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ ustar,
+            const int* const __restrict__ water_mask,
+            const TF diff_scl,
+            const TF rwat,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*jstride;
+
+            if (water_mask[ij] == 1)
+            {
+                const TF rb = TF(1) / (Constants::kappa<TF> * ustar[ij]) * diff_scl;
+                fld[ij] = TF(1) / (ra[ij] + rb + rwat);
+            }
+        }
+    }
+
+
+    template<typename TF> __global__
     void calc_tiled_mean_g(
             TF* const __restrict__ fld_mean,
             const TF* const __restrict__ fld_veg,
@@ -217,7 +245,6 @@ namespace
             const TF* const __restrict__ tile_frac_veg,
             const TF* const __restrict__ tile_frac_soil,
             const TF* const __restrict__ tile_frac_wet,
-            const TF fac,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int icells)
@@ -232,7 +259,7 @@ namespace
             fld_mean[ij] = (
                 tile_frac_veg [ij] * fld_veg [ij] +
                 tile_frac_soil[ij] * fld_soil[ij] +
-                tile_frac_wet [ij] * fld_wet [ij] ) * fac;
+                tile_frac_wet [ij] * fld_wet [ij] );
         }
     }
 }
@@ -337,28 +364,44 @@ void Deposition<TF>::update_time_dependent(
             gd.icells);
     cuda_check_error();
 
-    const TF* frac_veg  = tiles.at("veg").fraction_g;
-    const TF* frac_soil = tiles.at("soil").fraction_g;
-    const TF* frac_wet  = tiles.at("wet").fraction_g;
-
-    auto calc_vd_g = [&](TF* vd, TF* vd_veg, TF* vd_soil, TF* vd_wet)
+    auto calc_vd_g = [&](TF* vd, const std::string& sp)
     {
         calc_tiled_mean_g<TF><<<grid_gpu, block_gpu>>>(
-                vd, vd_veg, vd_soil, vd_wet,
-                frac_veg, frac_soil, frac_wet,
-                TF(1), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+                vd,
+                dep_veg.vd_g.at(sp),
+                dep_soil.vd_g.at(sp),
+                dep_wet.vd_g.at(sp),
+                tiles.at("veg").fraction_g,
+                tiles.at("soil").fraction_g,
+                tiles.at("wet").fraction_g,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
         cuda_check_error();
 
-        // TODO: calc_vd_water, spatial_avg_vd.
+        // Use wet-tile u* and ra: calculated in lsm with f_wet = 100%.
+        const int s = species_idx.at(sp);
+        calc_vd_water_g<TF><<<grid_gpu, block_gpu>>>(
+                vd,
+                tiles.at("wet").ra_g,
+                tiles.at("wet").ustar_g,
+                water_mask_g,
+                diff_scl[s], rwat[s],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
+        cuda_check_error();
+
+        // TODO: spatial_avg_vd.
     };
 
-    calc_vd_g(vdo3_g,  dep_veg.vd_g.at("o3"),   dep_soil.vd_g.at("o3"),   dep_wet.vd_g.at("o3"));
-    calc_vd_g(vdno_g,  dep_veg.vd_g.at("no"),   dep_soil.vd_g.at("no"),   dep_wet.vd_g.at("no"));
-    calc_vd_g(vdno2_g, dep_veg.vd_g.at("no2"),  dep_soil.vd_g.at("no2"),  dep_wet.vd_g.at("no2"));
-    calc_vd_g(vdhno3_g,dep_veg.vd_g.at("hno3"), dep_soil.vd_g.at("hno3"), dep_wet.vd_g.at("hno3"));
-    calc_vd_g(vdh2o2_g,dep_veg.vd_g.at("h2o2"), dep_soil.vd_g.at("h2o2"), dep_wet.vd_g.at("h2o2"));
-    calc_vd_g(vdrooh_g,dep_veg.vd_g.at("rooh"), dep_soil.vd_g.at("rooh"), dep_wet.vd_g.at("rooh"));
-    calc_vd_g(vdhcho_g,dep_veg.vd_g.at("hcho"), dep_soil.vd_g.at("hcho"), dep_wet.vd_g.at("hcho"));
+    calc_vd_g(vdo3_g,  "o3");
+    calc_vd_g(vdno_g,  "no");
+    calc_vd_g(vdno2_g, "no2");
+    calc_vd_g(vdhno3_g,"hno3");
+    calc_vd_g(vdh2o2_g,"h2o2");
+    calc_vd_g(vdrooh_g,"rooh");
+    calc_vd_g(vdhcho_g,"hcho");
 }
 
 template <typename TF>
