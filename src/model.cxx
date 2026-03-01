@@ -47,6 +47,7 @@
 #include "radiation.h"
 #include "microphys.h"
 #include "decay.h"
+#include "chemistry.h"
 #include "limiter.h"
 #include "stats.h"
 #include "budget.h"
@@ -57,6 +58,8 @@
 #include "source.h"
 #include "aerosol.h"
 #include "background_profs.h"
+#include "trajectory.h"
+#include "canopy.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -135,25 +138,35 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         thermo    = Thermo<TF>   ::factory(master, *grid, *fields, *input, sim_mode);
         microphys = Microphys<TF>::factory(master, *grid, *fields, *input);
         radiation = Radiation<TF>::factory(master, *grid, *fields, *input);
+        source    = Source<TF>   ::factory(master, *grid, *fields, *input);
 
-        force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
-        buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
-        limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
-        source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
-        aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
-        background= std::make_shared<Background<TF>>(master, *grid, *fields, *input);
-
+        force        = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
+        buffer       = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
+        decay        = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        limiter      = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
+        aerosol      = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
+        background   = std::make_shared<Background<TF>>(master, *grid, *fields, *input);
         particle_bin = std::make_shared<Particle_bin<TF>>(master, *grid, *fields, *input);
+        ib           = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+        chemistry    = std::make_shared<Chemistry<TF>>(master, *grid, *fields, *input);
+        canopy       = std::make_shared<Canopy   <TF>>(master, *grid, *fields, *input);
 
-        ib        = std::make_shared<Immersed_boundary<TF>>(master, *grid, *fields, *input);
+        stats        = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
+        column       = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
+        dump         = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
+        cross        = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
 
-        stats     = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
-        column    = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump      = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross     = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
 
-        budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+        // Keep this after `stats` constructor.
+        budget    = Budget<TF>   ::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
+
+        stats      = std::make_shared<Stats     <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
+        column     = std::make_shared<Column    <TF>>(master, *grid, *fields, *input);
+        dump       = std::make_shared<Dump      <TF>>(master, *grid, *fields, *input);
+        cross      = std::make_shared<Cross     <TF>>(master, *grid, *soil_grid, *fields, *input);
+        trajectory = std::make_shared<Trajectory<TF>>(master, *grid, *fields, *input);
+
+        budget     = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
         add_statistics_masks();
@@ -202,8 +215,10 @@ void Model<TF>::init()
     microphys->init();
     radiation->init(*timeloop);
     decay->init(*input);
+    chemistry-> init(*input);
     budget->init();
     source->init();
+    canopy->init();
     aerosol->init();
     background->init(*input_nc);
 
@@ -211,6 +226,7 @@ void Model<TF>::init()
     column->init();
     cross->init();
     dump->init();
+    trajectory->init();
 }
 
 template<typename TF>
@@ -249,6 +265,7 @@ void Model<TF>::load()
     // Initialize the statistics file to open the possiblity to add profiles in other routines
     stats->create(*timeloop, sim_name);
     column->create(*input, *timeloop, sim_name);
+    trajectory->create(*input, *input_nc, *timeloop, sim_name);
 
     // Load the fields, and create the field statistics
     fields->load(timeloop->get_iotime());
@@ -269,7 +286,8 @@ void Model<TF>::load()
     ib->create();
     buffer->create(*input, *input_nc, *stats);
     force->create(*input, *input_nc, *stats);
-    source->create(*input, *input_nc);
+    source->create(*input, *timeloop, *input_nc);
+    canopy->create(*input, *input_nc, *stats);
     particle_bin->create(*timeloop);
     aerosol->create(*input, *input_nc, *stats);
     background->create(*input, *input_nc, *stats);
@@ -278,7 +296,9 @@ void Model<TF>::load()
 
     // Radiation needs to be created after thermo as it needs base profiles.
     radiation->create(*input, *input_nc, *thermo, *stats, *column, *cross, *dump);
+
     decay->create(*input, *stats);
+    chemistry->create(*timeloop, sim_name, *input_nc, *stats, *cross);
     limiter->create(*stats);
 
     // Cross and dump both need to be called at/near the
@@ -291,7 +311,6 @@ void Model<TF>::load()
     pres->create(*stats);
     advec->create(*stats);
     diff->create(*stats, false);
-
     thermo->create_stats(*stats);
     budget->create(*stats);
 }
@@ -348,6 +367,7 @@ void Model<TF>::exec()
         #endif
     #endif
 
+
     #pragma omp parallel num_threads(nthreads_out)
     {
         #pragma omp master
@@ -363,6 +383,8 @@ void Model<TF>::exec()
                 radiation ->update_time_dependent(*timeloop);
                 aerosol   ->update_time_dependent(*timeloop);
                 background->update_time_dependent(*timeloop);
+                source    ->update_time_dependent(*timeloop);
+                chemistry ->update_time_dependent(*timeloop, *boundary);
 
                 // Set the cyclic BCs of the prognostic 3D fields.
                 boundary->set_prognostic_cyclic_bcs();
@@ -419,11 +441,17 @@ void Model<TF>::exec()
                 // Apply the scalar decay.
                 decay->exec(timeloop->get_sub_time_step(), *stats);
 
-                // Add point and line sources of scalars.
-                source->exec(*timeloop);
-
                 // Gravitational settling of binned dust types.
                 particle_bin->exec(*stats);
+
+                // Add point and line sources of scalars.
+                source->exec(*thermo, *timeloop);
+
+                // Canopy drag.
+                canopy->exec();
+
+                // KPP chemistry.
+                chemistry->exec(*thermo, timeloop->get_sub_time_step(), timeloop->get_dt());
 
                 // Apply the large scale forcings. Keep this one always right before the pressure.
                 force->exec(timeloop->get_sub_time_step(), *thermo, *stats);
@@ -459,7 +487,7 @@ void Model<TF>::exec()
                         radiation->exec_individual_column_stats(*column, *thermo, *microphys, *timeloop, *stats, *aerosol, *background);
                     }
 
-                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt))
+                    if (stats->do_statistics(itime) || cross->do_cross(itime) || dump->do_dump(itime, idt) || trajectory->do_trajectory(itime))
                     {
                         #ifdef USECUDA
                         #pragma omp taskwait
@@ -468,6 +496,7 @@ void Model<TF>::exec()
                         boundary ->backward_device(*thermo);
                         thermo   ->backward_device();
                         microphys->backward_device();
+                        chemistry->backward_device();
                         #endif
 
                         radiation->exec_all_stats(
@@ -526,6 +555,7 @@ void Model<TF>::exec()
                             boundary ->backward_device(*thermo);
                             thermo   ->backward_device();
                             microphys->backward_device();
+                            chemistry->backward_device();
                         }
                         #endif
 
@@ -572,9 +602,10 @@ void Model<TF>::exec()
 
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
-    fields  ->backward_device();
-    boundary->backward_device(*thermo);
-    thermo  ->backward_device();
+    fields   ->backward_device();
+    boundary ->backward_device(*thermo);
+    thermo   ->backward_device();
+    chemistry->backward_device();
 
     clear_gpu();
     #endif
@@ -586,19 +617,23 @@ void Model<TF>::prepare_gpu()
 {
     // Load all the necessary data to the GPU.
     master.print_message("Preparing the GPU\n");
-    grid     ->prepare_device();
-    soil_grid->prepare_device();
-    fields   ->prepare_device();
-    buffer   ->prepare_device();
-    thermo   ->prepare_device();
-    boundary ->prepare_device(*thermo);
-    diff     ->prepare_device(*boundary);
-    force    ->prepare_device();
-    ib       ->prepare_device();
-    microphys->prepare_device();
-    radiation->prepare_device();
-    column   ->prepare_device();
-    aerosol  ->prepare_device();
+    grid      ->prepare_device();
+    soil_grid ->prepare_device();
+    fields    ->prepare_device();
+    buffer    ->prepare_device();
+    thermo    ->prepare_device();
+    boundary  ->prepare_device(*thermo);
+    diff      ->prepare_device(*boundary);
+    force     ->prepare_device();
+    ib        ->prepare_device();
+    microphys ->prepare_device();
+    radiation ->prepare_device();
+    column    ->prepare_device();
+    canopy    ->prepare_device();
+    aerosol   ->prepare_device();
+    source    ->prepare_device();
+    chemistry ->prepare_device();
+
     // Prepare pressure last, for memory check
     pres     ->prepare_device();
 }
@@ -618,7 +653,9 @@ void Model<TF>::clear_gpu()
     microphys->clear_device();
     radiation->clear_device();
     column   ->clear_device();
+    canopy   ->clear_device();
     aerosol  ->clear_device();
+    chemistry->clear_device();
 
     // Clear pressure last, for memory check
     pres     ->clear_device();
@@ -638,14 +675,15 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         if (!stats->do_tendency())
             calc_masks();
 
-        grid     ->exec_stats(*stats);
-        fields   ->exec_stats(*stats);
-        thermo   ->exec_stats(*stats);
-        background ->exec_stats(*stats);
-        microphys->exec_stats(*stats, *thermo, dt);
-        diff     ->exec_stats(*stats, *thermo);
-        budget   ->exec_stats(*stats);
-        boundary ->exec_stats(*stats);
+        grid      ->exec_stats(*stats);
+        fields    ->exec_stats(*stats);
+        thermo    ->exec_stats(*stats);
+        background->exec_stats(*stats);
+        microphys ->exec_stats(*stats, *thermo, dt);
+        diff      ->exec_stats(*stats, *thermo);
+        budget    ->exec_stats(*stats);
+        boundary  ->exec_stats(*stats);
+        chemistry ->exec_stats(iteration, time, *stats);
     }
 
     // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -658,6 +696,7 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         microphys->exec_cross(*cross, iotime);
         ib       ->exec_cross(*cross, iotime);
         boundary ->exec_cross(*cross, iotime);
+        chemistry->exec_cross(*cross, iotime);
     }
 
     // Save the 3d dumps to disk.
@@ -669,6 +708,10 @@ void Model<TF>::calculate_statistics(int iteration, double time, unsigned long i
         thermo   ->exec_dump(*dump, iotime);
         microphys->exec_dump(*dump, iotime);
     }
+
+    // Save the trajectories.
+    if (trajectory->do_trajectory(itime))
+        trajectory->exec(*timeloop, time, itime);
 
     if (stats->do_statistics(itime))
     {
@@ -694,6 +737,7 @@ void Model<TF>::setup_stats()
             boundary ->backward_device(*thermo);
             thermo   ->backward_device();
             microphys->backward_device();
+            chemistry->backward_device();
         }
         #endif
 
@@ -775,11 +819,13 @@ void Model<TF>::set_time_step()
     timeloop->set_time_step_limit(thermo       ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(microphys    ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
     timeloop->set_time_step_limit(radiation    ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(particle_bin ->get_time_limit());
+
     timeloop->set_time_step_limit(stats        ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(cross        ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(dump         ->get_time_limit(timeloop->get_itime()));
     timeloop->set_time_step_limit(column       ->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(particle_bin->get_time_limit());
+    timeloop->set_time_step_limit(trajectory   ->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();

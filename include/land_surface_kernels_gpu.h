@@ -25,6 +25,7 @@
 
 #include "tools.h"
 #include "constants.h"
+#include "surface_tile.h"
 #include "boundary_surface_kernels_gpu.h"
 #include "thermo_moist_functions.h"
 #include "monin_obukhov.h"

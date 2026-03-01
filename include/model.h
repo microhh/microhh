@@ -53,14 +53,17 @@ template<typename> class Radiation;
 template<typename> class Land_surface;
 
 template<typename> class Decay;
+template<typename> class Chemistry;
 template<typename> class Limiter;
 template<typename> class Source;
+template<typename> class Canopy;
 
 template<typename> class Stats;
 template<typename> class Budget;
 template<typename> class Column;
 template<typename> class Cross;
 template<typename> class Dump;
+template<typename> class Trajectory;
 
 enum class Sim_mode;
 
@@ -105,8 +108,10 @@ class Model
         std::shared_ptr<Land_surface<TF>> lsm;
 
         std::shared_ptr<Decay<TF>> decay;
+        std::shared_ptr<Chemistry<TF>> chemistry;
         std::shared_ptr<Limiter<TF>> limiter;
         std::shared_ptr<Source<TF>> source;
+        std::shared_ptr<Canopy<TF>> canopy;
 
         std::shared_ptr<Particle_bin<TF>> particle_bin;
 
@@ -115,6 +120,7 @@ class Model
         std::shared_ptr<Column<TF>> column;
         std::shared_ptr<Cross<TF>> cross;
         std::shared_ptr<Dump<TF>> dump;
+        std::shared_ptr<Trajectory<TF>> trajectory;
 
         Sim_mode sim_mode;
         std::string sim_name;
