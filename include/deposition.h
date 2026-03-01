@@ -47,15 +47,8 @@ enum class Deposition_type {disabled, enabled, simple, average};
 template<typename TF>
 struct Deposition_tile
 {
-    std::string long_name;    // Descriptive name of tile
-
-    std::vector<TF> vdo3;     // Deposition velocity of ozone (m s-1)
-    std::vector<TF> vdno;     // Deposition velocity of no (m s-1)
-    std::vector<TF> vdno2;    // Deposition velocity of no2 (m s-1)
-    std::vector<TF> vdhno3;   // Deposition velocity of hno3 (m s-1)
-    std::vector<TF> vdh2o2;   // Deposition velocity of h2o2 (m s-1)
-    std::vector<TF> vdrooh;   // Deposition velocity of rooh (m s-1)
-    std::vector<TF> vdhcho;   // Deposition velocity of hcho (m s-1)
+    std::string long_name;                        // Descriptive name of tile
+    std::map<std::string, std::vector<TF>> vd;   // Deposition velocities keyed by species name (m s-1)
 
     #ifdef USECUDA
     cuda_vector<TF> vdo3_g;
@@ -84,8 +77,6 @@ class Deposition
              TF*, TF*, TF*, TF*, TF*, TF*, TF*); ///< Update the time dependent deposition parameters.
 
         const TF get_vd(const std::string&) const;                  ///< get the standard vd value (o3, no, no2, ..)
-        void get_tiled_mean(TF*, const std::string&, TF, const TF*, const TF*, const TF*);
-        void update_vd_water(TF*, const std::string&, const TF*, const TF*, const int*, const TF*, const TF*);
         void exec_cross(Cross<TF>&, unsigned long);
         void spatial_avg_vd(TF*);
 
@@ -141,7 +132,11 @@ class Deposition
         TF vd_rooh;
         TF vd_hcho;
 
-        std::vector<std::string> deposition_tile_names {"veg", "soil" ,"wet"};
+        const std::map<std::string, int> species_idx {
+            {"o3", 0}, {"no", 1}, {"no2", 2}, {"hno3", 3},
+            {"h2o2", 4}, {"rooh", 5}, {"hcho", 6}};
+
+        std::vector<std::string> deposition_tile_names {"veg", "soil", "wet"};
         Deposition_tile_map<TF> deposition_tiles;
 
         const std::string tend_name = "deposition";

@@ -344,16 +344,8 @@ void Deposition<TF>::init(Input& inputin)
         deposition_tiles.emplace(name, Deposition_tile<TF>{});
 
     for (auto& tile : deposition_tiles)
-    {
-        tile.second.vdo3.resize(gd.ijcells);
-        tile.second.vdno.resize(gd.ijcells);
-        tile.second.vdno2.resize(gd.ijcells);
-        tile.second.vdno2.resize(gd.ijcells);
-        tile.second.vdhno3.resize(gd.ijcells);
-        tile.second.vdh2o2.resize(gd.ijcells);
-        tile.second.vdrooh.resize(gd.ijcells);
-        tile.second.vdhcho.resize(gd.ijcells);
-    }
+        for (auto& [sp, idx] : species_idx)
+            tile.second.vd[sp].resize(gd.ijcells);
 
     deposition_tiles.at("veg" ).long_name = "vegetation";
     deposition_tiles.at("soil").long_name = "bare soil";
@@ -390,16 +382,13 @@ void Deposition<TF>::init(Input& inputin)
     for (int i=0; i<7; i++)
         diff_scl[i] = pow(diff_scl[i], TF(2)/TF(3));
 
+    const std::map<std::string, TF> vd_defaults = {
+        {"o3", vd_o3}, {"no", vd_no}, {"no2", vd_no2}, {"hno3", vd_hno3},
+        {"h2o2", vd_h2o2}, {"rooh", vd_rooh}, {"hcho", vd_hcho}};
+
     for (auto& tile : deposition_tiles)
-    {
-        std::fill(tile.second.vdo3.begin(),tile.second.vdo3.end(), vd_o3);
-        std::fill(tile.second.vdno.begin(),tile.second.vdno.end(), vd_no);
-        std::fill(tile.second.vdno2.begin(),tile.second.vdno2.end(), vd_no2);
-        std::fill(tile.second.vdhno3.begin(),tile.second.vdhno3.end(), vd_hno3);
-        std::fill(tile.second.vdh2o2.begin(),tile.second.vdh2o2.end(), vd_h2o2);
-        std::fill(tile.second.vdrooh.begin(),tile.second.vdrooh.end(), vd_rooh);
-        std::fill(tile.second.vdhcho.begin(),tile.second.vdhcho.end(), vd_hcho);
-    }
+        for (auto& [sp, vd_default] : vd_defaults)
+            std::fill(tile.second.vd[sp].begin(), tile.second.vd[sp].end(), vd_default);
 }
 
 
@@ -455,13 +444,13 @@ void Deposition<TF>::update_time_dependent(
     auto& dep_wet  = deposition_tiles.at("wet");
 
     calc_deposition_veg(
-            dep_veg.vdo3.data(),
-            dep_veg.vdno.data(),
-            dep_veg.vdno2.data(),
-            dep_veg.vdhno3.data(),
-            dep_veg.vdh2o2.data(),
-            dep_veg.vdrooh.data(),
-            dep_veg.vdhcho.data(),
+            dep_veg.vd.at("o3").data(),
+            dep_veg.vd.at("no").data(),
+            dep_veg.vd.at("no2").data(),
+            dep_veg.vd.at("hno3").data(),
+            dep_veg.vd.at("h2o2").data(),
+            dep_veg.vd.at("rooh").data(),
+            dep_veg.vd.at("hcho").data(),
             lai.data(),
             tiles.at("veg").rs.data(),
             tiles.at("veg").ra.data(),
@@ -476,13 +465,13 @@ void Deposition<TF>::update_time_dependent(
             gd.icells);
 
     calc_deposition_soil(
-            dep_soil.vdo3.data(),
-            dep_soil.vdno.data(),
-            dep_soil.vdno2.data(),
-            dep_soil.vdhno3.data(),
-            dep_soil.vdh2o2.data(),
-            dep_soil.vdrooh.data(),
-            dep_soil.vdhcho.data(),
+            dep_soil.vd.at("o3").data(),
+            dep_soil.vd.at("no").data(),
+            dep_soil.vd.at("no2").data(),
+            dep_soil.vd.at("hno3").data(),
+            dep_soil.vd.at("h2o2").data(),
+            dep_soil.vd.at("rooh").data(),
+            dep_soil.vd.at("hcho").data(),
             tiles.at("soil").ra.data(),
             tiles.at("soil").ustar.data(),
             tiles.at("soil").fraction.data(),
@@ -493,13 +482,13 @@ void Deposition<TF>::update_time_dependent(
             gd.icells);
 
     calc_deposition_wet(
-            dep_wet.vdo3.data(),
-            dep_wet.vdno.data(),
-            dep_wet.vdno2.data(),
-            dep_wet.vdhno3.data(),
-            dep_wet.vdh2o2.data(),
-            dep_wet.vdrooh.data(),
-            dep_wet.vdhcho.data(),
+            dep_wet.vd.at("o3").data(),
+            dep_wet.vd.at("no").data(),
+            dep_wet.vd.at("no2").data(),
+            dep_wet.vd.at("hno3").data(),
+            dep_wet.vd.at("h2o2").data(),
+            dep_wet.vd.at("rooh").data(),
+            dep_wet.vd.at("hcho").data(),
             lai.data(),
             c_veg.data(),
             tiles.at("wet").rs.data(),
@@ -518,18 +507,30 @@ void Deposition<TF>::update_time_dependent(
     // Calculate tile-mean deposition and apply water correction per species.
     auto calc_vd = [&](TF* vd, const std::string& name)
     {
-        get_tiled_mean(vd, name, TF(1),
+        calc_tiled_mean(
+                vd,
                 tiles.at("veg").fraction.data(),
                 tiles.at("soil").fraction.data(),
-                tiles.at("wet").fraction.data());
+                tiles.at("wet").fraction.data(),
+                deposition_tiles.at("veg").vd.at(name).data(),
+                deposition_tiles.at("soil").vd.at(name).data(),
+                deposition_tiles.at("wet").vd.at(name).data(),
+                TF(1),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
 
         // Use wet-tile u* and ra: calculated in lsm with f_wet = 100%.
-        update_vd_water(vd, name,
+        const int s = species_idx.at(name);
+        calc_vd_water(
+                vd,
                 tiles.at("wet").ra.data(),
                 tiles.at("wet").ustar.data(),
                 water_mask.data(),
-                diff_scl.data(),
-                rwat.data());
+                diff_scl[s], rwat[s],
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.icells);
     };
 
     calc_vd(vdo3,  "o3");
@@ -564,47 +565,47 @@ void Deposition<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
     for (auto& name : cross_list)
     {
         if (name == "vdo3_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdo3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("o3").data(), no_offset, name, iotime);
         else if (name == "vdno_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdno.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("no").data(), no_offset, name, iotime);
         else if (name == "vdno2_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdno2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("no2").data(), no_offset, name, iotime);
         else if (name == "vdhno3_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdhno3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("hno3").data(), no_offset, name, iotime);
         else if (name == "vdh2o2_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdh2o2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("h2o2").data(), no_offset, name, iotime);
         else if (name == "vdrooh_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdrooh.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("rooh").data(), no_offset, name, iotime);
         else if (name == "vdhcho_veg")
-            cross.cross_plane(deposition_tiles.at("veg").vdhcho.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("veg").vd.at("hcho").data(), no_offset, name, iotime);
         else if (name == "vdo3_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdo3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("o3").data(), no_offset, name, iotime);
         else if (name == "vdno_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdno.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("no").data(), no_offset, name, iotime);
         else if (name == "vdno2_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdno2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("no2").data(), no_offset, name, iotime);
         else if (name == "vdhno3_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdhno3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("hno3").data(), no_offset, name, iotime);
         else if (name == "vdh2o2_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdh2o2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("h2o2").data(), no_offset, name, iotime);
         else if (name == "vdrooh_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdrooh.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("rooh").data(), no_offset, name, iotime);
         else if (name == "vdhcho_soil")
-            cross.cross_plane(deposition_tiles.at("soil").vdhcho.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("soil").vd.at("hcho").data(), no_offset, name, iotime);
         else if (name == "vdo3_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdo3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("o3").data(), no_offset, name, iotime);
         else if (name == "vdno_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdno.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("no").data(), no_offset, name, iotime);
         else if (name == "vdno2_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdno2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("no2").data(), no_offset, name, iotime);
         else if (name == "vdhno3_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdhno3.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("hno3").data(), no_offset, name, iotime);
         else if (name == "vdh2o2_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdh2o2.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("h2o2").data(), no_offset, name, iotime);
         else if (name == "vdrooh_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdrooh.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("rooh").data(), no_offset, name, iotime);
         else if (name == "vdhcho_wet")
-            cross.cross_plane(deposition_tiles.at("wet").vdhcho.data(), no_offset, name, iotime);
+            cross.cross_plane(deposition_tiles.at("wet").vd.at("hcho").data(), no_offset, name, iotime);
     }
 }
 
@@ -631,149 +632,6 @@ const TF Deposition<TF>::get_vd(const std::string& name) const
         std::string error = "Deposition::get_vd() can't return \"" + name + "\"";
         throw std::runtime_error(error);
     }
-}
-
-
-template<typename TF>
-void Deposition<TF>::get_tiled_mean(
-    TF* const restrict fld_out,
-    const std::string& name,
-    const TF fac,
-    const TF* const restrict fveg,
-    const TF* const restrict fsoil,
-    const TF* const restrict fwet)
-{
-    auto& gd = grid.get_grid_data();
-
-    const TF* fld_veg;
-    const TF* fld_soil;
-    const TF* fld_wet;
-
-    // Yikes..
-    if (name == "o3")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdo3.data();
-        fld_soil = deposition_tiles.at("soil").vdo3.data();
-        fld_wet  = deposition_tiles.at("wet").vdo3.data();
-    }
-    else if (name == "no")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdno.data();
-        fld_soil = deposition_tiles.at("soil").vdno.data();
-        fld_wet  = deposition_tiles.at("wet").vdno.data();
-    }
-    else if (name == "no2")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdno2.data();
-        fld_soil = deposition_tiles.at("soil").vdno2.data();
-        fld_wet  = deposition_tiles.at("wet").vdno2.data();
-    }
-    else if (name == "hno3")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdhno3.data();
-        fld_soil = deposition_tiles.at("soil").vdhno3.data();
-        fld_wet  = deposition_tiles.at("wet").vdhno3.data();
-    }
-    else if (name == "h2o2")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdh2o2.data();
-        fld_soil = deposition_tiles.at("soil").vdh2o2.data();
-        fld_wet  = deposition_tiles.at("wet").vdh2o2.data();
-    }
-    else if (name == "rooh")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdrooh.data();
-        fld_soil = deposition_tiles.at("soil").vdrooh.data();
-        fld_wet  = deposition_tiles.at("wet").vdrooh.data();
-    }
-    else if (name == "hcho")
-    {
-        fld_veg  = deposition_tiles.at("veg").vdhcho.data();
-        fld_soil = deposition_tiles.at("soil").vdhcho.data();
-        fld_wet  = deposition_tiles.at("wet").vdhcho.data();
-    }
-    else
-        throw std::runtime_error("Cannot calculate tiled mean for variable \"" + name + "\"\\n");
-
-    calc_tiled_mean(
-            fld_out,
-            fveg,
-            fsoil,
-            fwet,
-            fld_veg,
-            fld_soil,
-            fld_wet,
-            fac,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.icells);
-}
-
-
-template<typename TF>
-void Deposition<TF>::update_vd_water(
-        TF* const restrict fld_out,
-        const std::string& name,
-        const TF* const restrict ra,
-        const TF* const restrict ustar,
-        const int* const restrict water_mask,
-        const TF* const restrict diff_scl,
-        const TF* const restrict rwat)
-{
-    auto& gd = grid.get_grid_data();
-
-    TF diff_scl_val;
-    TF rwat_val;
-
-    // Yikes...
-    if (name == "o3")
-    {
-        diff_scl_val = diff_scl[0];
-        rwat_val = rwat[0];
-    }
-    else if (name == "no")
-    {
-        diff_scl_val = diff_scl[1];
-        rwat_val = rwat[1];
-    }
-    else if (name == "no2")
-    {
-        diff_scl_val = diff_scl[2];
-        rwat_val = rwat[2];
-    }
-    else if (name == "hno3")
-    {
-        diff_scl_val = diff_scl[3];
-        rwat_val = rwat[3];
-    }
-    else if (name == "h2o2")
-    {
-        diff_scl_val = diff_scl[4];
-        rwat_val = rwat[4];
-    }
-    else if (name == "rooh")
-    {
-        diff_scl_val = diff_scl[5];
-        rwat_val = rwat[5];
-    }
-    else if (name == "hcho")
-    {
-        diff_scl_val = diff_scl[6];
-        rwat_val = rwat[6];
-    }
-    else
-        throw std::runtime_error("Cannot update vd to water for variable \"" + name + "\"\\n");
-
-    calc_vd_water(
-        fld_out,
-        ra,
-        ustar,
-        water_mask,
-        diff_scl_val,
-        rwat_val,
-        gd.istart, gd.iend,
-        gd.jstart, gd.jend,
-        gd.icells);
 }
 
 
