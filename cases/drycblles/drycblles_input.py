@@ -1,11 +1,8 @@
-import matplotlib.pyplot as pl
 import numpy as np
 import netCDF4 as nc
 
 float_type = "f8"
 # float_type = "f4"
-
-np_dtype = np.float64 if float_type == "f8" else np.float32
 
 # Get number of vertical levels and size from .ini file
 with open('drycblles.ini') as f:
@@ -21,7 +18,7 @@ dthetadz = 0.003
 
 # set the height
 z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
-u  = np.ones(np.size(z))*5
+u  = np.zeros(np.size(z))
 v  = np.zeros(np.size(z))
 th = np.zeros(np.size(z))
 
@@ -62,25 +59,3 @@ nc_v [:] = v [:]
 nc_th[:] = th[:]
 
 nc_file.close()
-
-# Create time varying surface fields.
-endtime = 10800
-dt = 3600
-nt = int((endtime / dt)+1)
-
-itot = 64
-jtot = 32
-
-th_sbot = np.zeros((nt, jtot, itot), dtype=np_dtype)
-s1_sbot = np.zeros((nt, jtot, itot), dtype=np_dtype)
-
-th_sbot[:] = 0.1
-th_sbot[:, 11:22, 11:22] = 0.3
-
-s1_sbot[:] = 0.0
-s1_sbot[:, 11:22, 11:22] = 1
-
-# Write as binary input files for MicroHH
-for t in range(nt):
-    th_sbot[t,:].tofile('th_bot_in.{0:07d}'.format(t*dt))
-    s1_sbot[t,:].tofile('s1_bot_in.{0:07d}'.format(t*dt))
