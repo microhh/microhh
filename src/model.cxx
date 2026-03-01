@@ -496,6 +496,7 @@ void Model<TF>::exec()
                         boundary ->backward_device(*thermo);
                         thermo   ->backward_device();
                         microphys->backward_device();
+                        chemistry->backward_device();
                         #endif
 
                         radiation->exec_all_stats(
@@ -554,6 +555,7 @@ void Model<TF>::exec()
                             boundary ->backward_device(*thermo);
                             thermo   ->backward_device();
                             microphys->backward_device();
+                            chemistry->backward_device();
                         }
                         #endif
 
@@ -600,9 +602,10 @@ void Model<TF>::exec()
 
     #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
-    fields  ->backward_device();
-    boundary->backward_device(*thermo);
-    thermo  ->backward_device();
+    fields   ->backward_device();
+    boundary ->backward_device(*thermo);
+    thermo   ->backward_device();
+    chemistry->backward_device();
 
     clear_gpu();
     #endif
@@ -734,6 +737,7 @@ void Model<TF>::setup_stats()
             boundary ->backward_device(*thermo);
             thermo   ->backward_device();
             microphys->backward_device();
+            chemistry->backward_device();
         }
         #endif
 

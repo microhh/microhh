@@ -446,6 +446,19 @@ void Deposition<TF>::prepare_device()
     cuda_safe_call(cudaMemcpy(henry_g,   henry.data(),   memsize_res, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(f0_g,      f0.data(),      memsize_res, cudaMemcpyHostToDevice));
 }
+
+template <typename TF>
+void Deposition<TF>::backward_device()
+{
+    if (!sw_deposition)
+        return;
+
+    auto& gd = grid.get_grid_data();
+
+    for (auto& tile : deposition_tiles)
+        for (auto& [sp, idx] : species_idx)
+            cuda_safe_call(cudaMemcpy(tile.second.vd.at(sp).data(), tile.second.vd_g.at(sp), gd.ijcells * sizeof(TF), cudaMemcpyDeviceToHost));
+}
 #endif
 
 #ifdef FLOAT_SINGLE

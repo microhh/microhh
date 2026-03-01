@@ -76,6 +76,7 @@ class Deposition
 
         #ifdef USECUDA
         void prepare_device();
+        void backward_device();
         #endif
 
     protected:

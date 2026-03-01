@@ -476,6 +476,15 @@ void Chemistry<TF>::prepare_device()
 }
 
 template<typename TF>
+void Chemistry<TF>::backward_device()
+{
+    if (!sw_chemistry)
+        return;
+
+    deposition->backward_device();
+}
+
+template<typename TF>
 void Chemistry<TF>::clear_device()
 {
     if (!sw_chemistry)

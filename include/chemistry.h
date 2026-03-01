@@ -74,8 +74,9 @@ class Chemistry
         void exec_cross(Cross<TF>&, unsigned long);                                             ///< Execute cross-sections.
 
         #ifdef USECUDA
-        void prepare_device();  ///< Allocate and copy data to GPU.
-        void clear_device();    ///< Deallocate all arrays on GPU.
+        void prepare_device();   ///< Allocate and copy data to GPU.
+        void backward_device();  ///< Copy results back to CPU.
+        void clear_device();     ///< Deallocate all arrays on GPU.
         #endif
 
     protected:
