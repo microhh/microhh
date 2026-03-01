@@ -22,11 +22,13 @@
 
 #include "tools.h"
 #include "constants.h"
+#include "land_surface_kernels_gpu.h"
 
 #include "deposition.h"
 #include "deposition_kernels.cuh"
 
-namespace dkg = Deposition_kernels_g;
+namespace dkg  = Deposition_kernels_g;
+namespace lskg = Land_surface_kernels_g;
 
 
 #ifdef USECUDA
@@ -131,7 +133,7 @@ void Deposition<TF>::update_time_dependent(
 
     auto calc_vd_g = [&](TF* vd, const std::string& sp)
     {
-        dkg::calc_tiled_mean<TF><<<grid_gpu, block_gpu>>>(
+        lskg::calc_tiled_mean_g<TF><<<grid_gpu, block_gpu>>>(
                 vd,
                 dep_veg.vd_g.at(sp),
                 dep_soil.vd_g.at(sp),
@@ -139,6 +141,7 @@ void Deposition<TF>::update_time_dependent(
                 tiles.at("veg").fraction_g,
                 tiles.at("soil").fraction_g,
                 tiles.at("wet").fraction_g,
+                TF(1),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);

@@ -28,34 +28,6 @@
 namespace Deposition_kernels
 {
     template<typename TF>
-    void calc_tiled_mean(
-            TF* const restrict fld,
-            const TF* const restrict f_veg,
-            const TF* const restrict f_soil,
-            const TF* const restrict f_wet,
-            const TF* const restrict fld_veg,
-            const TF* const restrict fld_soil,
-            const TF* const restrict fld_wet,
-            const TF fac,
-            const int istart, const int iend,
-            const int jstart, const int jend,
-            const int jstride)
-    {
-        for (int j=jstart; j<jend; ++j)
-            #pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ij = i + j*jstride;
-
-                fld[ij] = (
-                    f_veg [ij] * fld_veg [ij] +
-                    f_soil[ij] * fld_soil[ij] +
-                    f_wet [ij] * fld_wet [ij] ) * fac;
-            }
-    }
-
-
-    template<typename TF>
     void calc_spatial_avg_deposition(
             TF* const restrict fld,
             const int istart, const int iend,

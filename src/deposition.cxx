@@ -36,14 +36,17 @@
 #include "netcdf_interface.h"
 #include "constants.h"
 #include "timeloop.h"
-#include "boundary_surface_lsm.h"
-#include "boundary.h"
 #include "cross.h"
+
+#include "boundary.h"
+#include "boundary_surface_lsm.h"
+#include "land_surface_kernels.h"
 
 #include "deposition.h"
 #include "deposition_kernels.h"
 
-namespace dk = Deposition_kernels;
+namespace dk  = Deposition_kernels;
+namespace lsk = Land_surface_kernels;
 
 
 template<typename TF>
@@ -244,15 +247,14 @@ void Deposition<TF>::update_time_dependent(
     // Calculate tile-mean deposition and apply water correction per species.
     auto calc_vd = [&](TF* vd, const std::string& name)
     {
-        dk::calc_tiled_mean(
+        lsk::calc_tiled_mean(
                 vd,
-                tiles.at("veg").fraction.data(),
-                tiles.at("soil").fraction.data(),
-                tiles.at("wet").fraction.data(),
                 deposition_tiles.at("veg").vd.at(name).data(),
                 deposition_tiles.at("soil").vd.at(name).data(),
                 deposition_tiles.at("wet").vd.at(name).data(),
-                TF(1),
+                tiles.at("veg").fraction.data(),
+                tiles.at("soil").fraction.data(),
+                tiles.at("wet").fraction.data(),
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
                 gd.icells);
