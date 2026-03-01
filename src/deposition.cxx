@@ -168,31 +168,31 @@ namespace
 
                 // Rmes for NO and NO2 requires multiplication with rs (Ganzeveld et al. 1995).
                 const TF rb_o3 = rb_fac * diff_scl[0];
-                const TF rc_o3 = TF(1) / (TF(1) / (diff_scl[0] + rs[ij] + rmes[0])          + TF(1) / rcut[0] + TF(1) / (ra_inc + rsoil[0]));
-                vdo3[ij] = TF(1) / (ra[ij] + rb_o3  + rc_o3);
+                const TF rc_o3 = TF(1) / (TF(1) / (diff_scl[0] + rs[ij] + rmes[0]) + TF(1) / rcut[0] + TF(1) / (ra_inc + rsoil[0]));
+                vdo3[ij] = TF(1) / (ra[ij] + rb_o3 + rc_o3);
 
                 const TF rb_no = rb_fac * diff_scl[1];
-                const TF rc_no = TF(1) / (TF(1) / (diff_scl[1] + rs[ij] + rmes[1]*rs[ij])   + TF(1) / rcut[1] + TF(1) / (ra_inc + rsoil[1]));
-                vdno[ij] = TF(1) / (ra[ij] + rb_no  + rc_no);
+                const TF rc_no = TF(1) / (TF(1) / (diff_scl[1] + rs[ij] + rmes[1]*rs[ij]) + TF(1) / rcut[1] + TF(1) / (ra_inc + rsoil[1]));
+                vdno[ij] = TF(1) / (ra[ij] + rb_no + rc_no);
 
                 const TF rb_no2 = rb_fac * diff_scl[2];
-                const TF rc_no2 = TF(1) / (TF(1) / (diff_scl[2] + rs[ij] + rmes[2]*rs[ij])   + TF(1) / rcut[2] + TF(1) / (ra_inc + rsoil[2]));
+                const TF rc_no2 = TF(1) / (TF(1) / (diff_scl[2] + rs[ij] + rmes[2]*rs[ij]) + TF(1) / rcut[2] + TF(1) / (ra_inc + rsoil[2]));
                 vdno2[ij] = TF(1) / (ra[ij] + rb_no2 + rc_no2);
 
                 const TF rb_hno3 = rb_fac * diff_scl[3];
-                const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs[ij] + rmes[3])          + TF(1) / rcut[3] + TF(1) / (ra_inc + rsoil[3]));
+                const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs[ij] + rmes[3]) + TF(1) / rcut[3] + TF(1) / (ra_inc + rsoil[3]));
                 vdhno3[ij] = TF(1) / (ra[ij] + rb_hno3 + rc_hno3);
 
                 const TF rb_h2o2 = rb_fac * diff_scl[4];
-                const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs[ij] + rmes[4])          + TF(1) / rcut[4] + TF(1) / (ra_inc + rsoil[4]));
+                const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs[ij] + rmes[4]) + TF(1) / rcut[4] + TF(1) / (ra_inc + rsoil[4]));
                 vdh2o2[ij] = TF(1) / (ra[ij] + rb_h2o2 + rc_h2o2);
 
                 const TF rb_rooh = rb_fac * diff_scl[5];
-                const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs[ij] + rmes[5])          + TF(1) / rcut[5] + TF(1) / (ra_inc + rsoil[5]));
+                const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs[ij] + rmes[5]) + TF(1) / rcut[5] + TF(1) / (ra_inc + rsoil[5]));
                 vdrooh[ij] = TF(1) / (ra[ij] + rb_rooh + rc_rooh);
 
                 const TF rb_hcho = rb_fac * diff_scl[6];
-                const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs[ij] + rmes[6])          + TF(1) / rcut[6] + TF(1) / (ra_inc + rsoil[6]));
+                const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs[ij] + rmes[6]) + TF(1) / rcut[6] + TF(1) / (ra_inc + rsoil[6]));
                 vdhcho[ij] = TF(1) / (ra[ij] + rb_hcho + rc_hcho);
             }
     }
@@ -226,9 +226,9 @@ namespace
 
                 const TF rb_fac = TF(1) / (Constants::kappa<TF> * ustar[ij]);
 
-                vdo3[ij]   = TF(1) / (ra[ij] + rb_fac * diff_scl[0] + rsoil[0]);
-                vdno[ij]   = TF(1) / (ra[ij] + rb_fac * diff_scl[1] + rsoil[1]);
-                vdno2[ij]  = TF(1) / (ra[ij] + rb_fac * diff_scl[2] + rsoil[2]);
+                vdo3[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[0] + rsoil[0]);
+                vdno[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[1] + rsoil[1]);
+                vdno2[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[2] + rsoil[2]);
                 vdhno3[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[3] + rsoil[3]);
                 vdh2o2[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[4] + rsoil[4]);
                 vdrooh[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[5] + rsoil[5]);
@@ -271,39 +271,39 @@ namespace
                 if (fraction[ij] < TF(1e-12))
                     continue;
 
-                const TF ra_inc  = TF(14) * hc * lai[ij] / ustar[ij];
-                const TF rb_fac  = TF(1) / (Constants::kappa<TF> * ustar[ij]);
-                const TF cveg    = c_veg[ij];
+                const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
+                const TF rb_fac = TF(1) / (Constants::kappa<TF> * ustar[ij]);
+                const TF cveg = c_veg[ij];
                 const TF one_min_cveg = TF(1) - cveg;
 
                 // rcut replaced by rws for wet skin uptake. rb_veg == rb_soil, merged into rb.
                 // Rmes for NO and NO2 requires multiplication with rs_wet (Ganzeveld et al. 1995).
-                const TF rb_o3   = rb_fac * diff_scl[0];
-                const TF rc_o3   = TF(1) / (TF(1) / (diff_scl[0] + rs_veg[ij] + rmes[0])        + TF(1) / rws[0] + TF(1) / (ra_inc + rsoil[0]));
-                vdo3[ij]   = cveg / (ra[ij] + rb_o3 + rc_o3)  + one_min_cveg / (ra[ij] + rb_o3 + rsoil[0]);
+                const TF rb_o3 = rb_fac * diff_scl[0];
+                const TF rc_o3 = TF(1) / (TF(1) / (diff_scl[0] + rs_veg[ij] + rmes[0]) + TF(1) / rws[0] + TF(1) / (ra_inc + rsoil[0]));
+                vdo3[ij] = cveg / (ra[ij] + rb_o3 + rc_o3) + one_min_cveg / (ra[ij] + rb_o3 + rsoil[0]);
 
-                const TF rb_no   = rb_fac * diff_scl[1];
-                const TF rc_no   = TF(1) / (TF(1) / (diff_scl[1] + rs_veg[ij] + rmes[1]*rs_wet[ij]) + TF(1) / rws[1] + TF(1) / (ra_inc + rsoil[1]));
-                vdno[ij]   = cveg / (ra[ij] + rb_no + rc_no)  + one_min_cveg / (ra[ij] + rb_no + rsoil[1]);
+                const TF rb_no = rb_fac * diff_scl[1];
+                const TF rc_no = TF(1) / (TF(1) / (diff_scl[1] + rs_veg[ij] + rmes[1]*rs_wet[ij]) + TF(1) / rws[1] + TF(1) / (ra_inc + rsoil[1]));
+                vdno[ij] = cveg / (ra[ij] + rb_no + rc_no) + one_min_cveg / (ra[ij] + rb_no + rsoil[1]);
 
-                const TF rb_no2  = rb_fac * diff_scl[2];
-                const TF rc_no2  = TF(1) / (TF(1) / (diff_scl[2] + rs_veg[ij] + rmes[2]*rs_wet[ij]) + TF(1) / rws[2] + TF(1) / (ra_inc + rsoil[2]));
-                vdno2[ij]  = cveg / (ra[ij] + rb_no2 + rc_no2) + one_min_cveg / (ra[ij] + rb_no2 + rsoil[2]);
+                const TF rb_no2 = rb_fac * diff_scl[2];
+                const TF rc_no2 = TF(1) / (TF(1) / (diff_scl[2] + rs_veg[ij] + rmes[2]*rs_wet[ij]) + TF(1) / rws[2] + TF(1) / (ra_inc + rsoil[2]));
+                vdno2[ij] = cveg / (ra[ij] + rb_no2 + rc_no2) + one_min_cveg / (ra[ij] + rb_no2 + rsoil[2]);
 
                 const TF rb_hno3 = rb_fac * diff_scl[3];
-                const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs_veg[ij] + rmes[3])        + TF(1) / rws[3] + TF(1) / (ra_inc + rsoil[3]));
+                const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs_veg[ij] + rmes[3]) + TF(1) / rws[3] + TF(1) / (ra_inc + rsoil[3]));
                 vdhno3[ij] = cveg / (ra[ij] + rb_hno3 + rc_hno3) + one_min_cveg / (ra[ij] + rb_hno3 + rsoil[3]);
 
                 const TF rb_h2o2 = rb_fac * diff_scl[4];
-                const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs_veg[ij] + rmes[4])        + TF(1) / rws[4] + TF(1) / (ra_inc + rsoil[4]));
+                const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs_veg[ij] + rmes[4]) + TF(1) / rws[4] + TF(1) / (ra_inc + rsoil[4]));
                 vdh2o2[ij] = cveg / (ra[ij] + rb_h2o2 + rc_h2o2) + one_min_cveg / (ra[ij] + rb_h2o2 + rsoil[4]);
 
                 const TF rb_rooh = rb_fac * diff_scl[5];
-                const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs_veg[ij] + rmes[5])        + TF(1) / rws[5] + TF(1) / (ra_inc + rsoil[5]));
+                const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs_veg[ij] + rmes[5]) + TF(1) / rws[5] + TF(1) / (ra_inc + rsoil[5]));
                 vdrooh[ij] = cveg / (ra[ij] + rb_rooh + rc_rooh) + one_min_cveg / (ra[ij] + rb_rooh + rsoil[5]);
 
                 const TF rb_hcho = rb_fac * diff_scl[6];
-                const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs_veg[ij] + rmes[6])        + TF(1) / rws[6] + TF(1) / (ra_inc + rsoil[6]));
+                const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs_veg[ij] + rmes[6]) + TF(1) / rws[6] + TF(1) / (ra_inc + rsoil[6]));
                 vdhcho[ij] = cveg / (ra[ij] + rb_hcho + rc_hcho) + one_min_cveg / (ra[ij] + rb_hcho + rsoil[6]);
             }
     }

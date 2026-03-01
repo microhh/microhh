@@ -425,16 +425,16 @@ void Chemistry<TF>::update_time_dependent(Timeloop<TF>& timeloop, Boundary<TF>& 
 
     cuda_safe_call(cudaMemcpy(jval_g, jval.data(), n_jval*sizeof(TF), cudaMemcpyHostToDevice));
 
-    //deposition->update_time_dependent(
-    //        timeloop,
-    //        boundary,
-    //        vdo3.data(),
-    //        vdno.data(),
-    //        vdno2.data(),
-    //        vdhno3.data(),
-    //        vdh2o2.data(),
-    //        vdrooh.data(),
-    //        vdhcho.data());
+    deposition->update_time_dependent(
+            timeloop,
+            boundary,
+            vdo3_g,
+            vdno_g,
+            vdno2_g,
+            vdhno3_g,
+            vdh2o2_g,
+            vdrooh_g,
+            vdhcho_g);
 }
 
 template<typename TF>

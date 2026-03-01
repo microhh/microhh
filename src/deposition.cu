@@ -22,9 +22,219 @@
 
 #include "deposition.h"
 #include "tools.h"
+#include "constants.h"
 
 namespace
 {
+    template<typename TF> __global__
+    void calc_deposition_veg_g(
+            TF* const __restrict__ vdo3,
+            TF* const __restrict__ vdno,
+            TF* const __restrict__ vdno2,
+            TF* const __restrict__ vdhno3,
+            TF* const __restrict__ vdh2o2,
+            TF* const __restrict__ vdrooh,
+            TF* const __restrict__ vdhcho,
+            const TF* const __restrict__ lai,
+            const TF* const __restrict__ rs,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ fraction,
+            const TF* const __restrict__ rmes,
+            const TF* const __restrict__ rsoil,
+            const TF* const __restrict__ rcut,
+            const TF* const __restrict__ diff_scl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*jstride;
+
+            if (fraction[ij] < TF(1e-12))
+                return;
+
+            const TF hc = TF(10);
+            const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
+            const TF rb_fac = TF(2) / (Constants::kappa<TF> * ustar[ij]);
+
+            // Rmes for NO and NO2 requires multiplication with rs (Ganzeveld et al. 1995).
+            const TF rb_o3 = rb_fac * diff_scl[0];
+            const TF rc_o3 = TF(1) / (TF(1) / (diff_scl[0] + rs[ij] + rmes[0]) + TF(1) / rcut[0] + TF(1) / (ra_inc + rsoil[0]));
+            vdo3[ij] = TF(1) / (ra[ij] + rb_o3 + rc_o3);
+
+            const TF rb_no = rb_fac * diff_scl[1];
+            const TF rc_no = TF(1) / (TF(1) / (diff_scl[1] + rs[ij] + rmes[1]*rs[ij]) + TF(1) / rcut[1] + TF(1) / (ra_inc + rsoil[1]));
+            vdno[ij] = TF(1) / (ra[ij] + rb_no + rc_no);
+
+            const TF rb_no2 = rb_fac * diff_scl[2];
+            const TF rc_no2 = TF(1) / (TF(1) / (diff_scl[2] + rs[ij] + rmes[2]*rs[ij]) + TF(1) / rcut[2] + TF(1) / (ra_inc + rsoil[2]));
+            vdno2[ij] = TF(1) / (ra[ij] + rb_no2 + rc_no2);
+
+            const TF rb_hno3 = rb_fac * diff_scl[3];
+            const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs[ij] + rmes[3]) + TF(1) / rcut[3] + TF(1) / (ra_inc + rsoil[3]));
+            vdhno3[ij] = TF(1) / (ra[ij] + rb_hno3 + rc_hno3);
+
+            const TF rb_h2o2 = rb_fac * diff_scl[4];
+            const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs[ij] + rmes[4]) + TF(1) / rcut[4] + TF(1) / (ra_inc + rsoil[4]));
+            vdh2o2[ij] = TF(1) / (ra[ij] + rb_h2o2 + rc_h2o2);
+
+            const TF rb_rooh = rb_fac * diff_scl[5];
+            const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs[ij] + rmes[5]) + TF(1) / rcut[5] + TF(1) / (ra_inc + rsoil[5]));
+            vdrooh[ij] = TF(1) / (ra[ij] + rb_rooh + rc_rooh);
+
+            const TF rb_hcho = rb_fac * diff_scl[6];
+            const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs[ij] + rmes[6]) + TF(1) / rcut[6] + TF(1) / (ra_inc + rsoil[6]));
+            vdhcho[ij] = TF(1) / (ra[ij] + rb_hcho + rc_hcho);
+        }
+    }
+
+
+    template<typename TF> __global__
+    void calc_deposition_soil_g(
+            TF* const __restrict__ vdo3,
+            TF* const __restrict__ vdno,
+            TF* const __restrict__ vdno2,
+            TF* const __restrict__ vdhno3,
+            TF* const __restrict__ vdh2o2,
+            TF* const __restrict__ vdrooh,
+            TF* const __restrict__ vdhcho,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ fraction,
+            const TF* const __restrict__ rsoil,
+            const TF* const __restrict__ diff_scl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*jstride;
+
+            if (fraction[ij] < TF(1e-12))
+                return;
+
+            const TF rb_fac = TF(1) / (Constants::kappa<TF> * ustar[ij]);
+
+            vdo3[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[0] + rsoil[0]);
+            vdno[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[1] + rsoil[1]);
+            vdno2[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[2] + rsoil[2]);
+            vdhno3[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[3] + rsoil[3]);
+            vdh2o2[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[4] + rsoil[4]);
+            vdrooh[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[5] + rsoil[5]);
+            vdhcho[ij] = TF(1) / (ra[ij] + rb_fac * diff_scl[6] + rsoil[6]);
+        }
+    }
+
+
+    template<typename TF> __global__
+    void calc_deposition_wet_g(
+            TF* const __restrict__ vdo3,
+            TF* const __restrict__ vdno,
+            TF* const __restrict__ vdno2,
+            TF* const __restrict__ vdhno3,
+            TF* const __restrict__ vdh2o2,
+            TF* const __restrict__ vdrooh,
+            TF* const __restrict__ vdhcho,
+            const TF* const __restrict__ lai,
+            const TF* const __restrict__ c_veg,
+            const TF* const __restrict__ rs_wet,
+            const TF* const __restrict__ rs_veg,
+            const TF* const __restrict__ ra,
+            const TF* const __restrict__ ustar,
+            const TF* const __restrict__ fraction,
+            const TF* const __restrict__ rmes,
+            const TF* const __restrict__ rsoil,
+            const TF* const __restrict__ rws,
+            const TF* const __restrict__ diff_scl,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*jstride;
+
+            if (fraction[ij] < TF(1e-12))
+                return;
+
+            const TF hc = TF(10);
+            const TF ra_inc = TF(14) * hc * lai[ij] / ustar[ij];
+            const TF rb_fac = TF(1) / (Constants::kappa<TF> * ustar[ij]);
+            const TF cveg = c_veg[ij];
+            const TF one_min_cveg = TF(1) - cveg;
+
+            // rcut replaced by rws for wet skin uptake. rb_veg == rb_soil, merged into rb.
+            // Rmes for NO and NO2 requires multiplication with rs_wet (Ganzeveld et al. 1995).
+            const TF rb_o3 = rb_fac * diff_scl[0];
+            const TF rc_o3 = TF(1) / (TF(1) / (diff_scl[0] + rs_veg[ij] + rmes[0]) + TF(1) / rws[0] + TF(1) / (ra_inc + rsoil[0]));
+            vdo3[ij] = cveg / (ra[ij] + rb_o3 + rc_o3) + one_min_cveg / (ra[ij] + rb_o3 + rsoil[0]);
+
+            const TF rb_no = rb_fac * diff_scl[1];
+            const TF rc_no = TF(1) / (TF(1) / (diff_scl[1] + rs_veg[ij] + rmes[1]*rs_wet[ij]) + TF(1) / rws[1] + TF(1) / (ra_inc + rsoil[1]));
+            vdno[ij] = cveg / (ra[ij] + rb_no + rc_no) + one_min_cveg / (ra[ij] + rb_no + rsoil[1]);
+
+            const TF rb_no2 = rb_fac * diff_scl[2];
+            const TF rc_no2 = TF(1) / (TF(1) / (diff_scl[2] + rs_veg[ij] + rmes[2]*rs_wet[ij]) + TF(1) / rws[2] + TF(1) / (ra_inc + rsoil[2]));
+            vdno2[ij] = cveg / (ra[ij] + rb_no2 + rc_no2) + one_min_cveg / (ra[ij] + rb_no2 + rsoil[2]);
+
+            const TF rb_hno3 = rb_fac * diff_scl[3];
+            const TF rc_hno3 = TF(1) / (TF(1) / (diff_scl[3] + rs_veg[ij] + rmes[3]) + TF(1) / rws[3] + TF(1) / (ra_inc + rsoil[3]));
+            vdhno3[ij] = cveg / (ra[ij] + rb_hno3 + rc_hno3) + one_min_cveg / (ra[ij] + rb_hno3 + rsoil[3]);
+
+            const TF rb_h2o2 = rb_fac * diff_scl[4];
+            const TF rc_h2o2 = TF(1) / (TF(1) / (diff_scl[4] + rs_veg[ij] + rmes[4]) + TF(1) / rws[4] + TF(1) / (ra_inc + rsoil[4]));
+            vdh2o2[ij] = cveg / (ra[ij] + rb_h2o2 + rc_h2o2) + one_min_cveg / (ra[ij] + rb_h2o2 + rsoil[4]);
+
+            const TF rb_rooh = rb_fac * diff_scl[5];
+            const TF rc_rooh = TF(1) / (TF(1) / (diff_scl[5] + rs_veg[ij] + rmes[5]) + TF(1) / rws[5] + TF(1) / (ra_inc + rsoil[5]));
+            vdrooh[ij] = cveg / (ra[ij] + rb_rooh + rc_rooh) + one_min_cveg / (ra[ij] + rb_rooh + rsoil[5]);
+
+            const TF rb_hcho = rb_fac * diff_scl[6];
+            const TF rc_hcho = TF(1) / (TF(1) / (diff_scl[6] + rs_veg[ij] + rmes[6]) + TF(1) / rws[6] + TF(1) / (ra_inc + rsoil[6]));
+            vdhcho[ij] = cveg / (ra[ij] + rb_hcho + rc_hcho) + one_min_cveg / (ra[ij] + rb_hcho + rsoil[6]);
+        }
+    }
+
+
+    template<typename TF> __global__
+    void calc_tiled_mean_g(
+            TF* const __restrict__ fld_mean,
+            const TF* const __restrict__ fld_veg,
+            const TF* const __restrict__ fld_soil,
+            const TF* const __restrict__ fld_wet,
+            const TF* const __restrict__ tile_frac_veg,
+            const TF* const __restrict__ tile_frac_soil,
+            const TF* const __restrict__ tile_frac_wet,
+            const TF fac,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij = i + j*icells;
+
+            fld_mean[ij] = (
+                tile_frac_veg [ij] * fld_veg [ij] +
+                tile_frac_soil[ij] * fld_soil[ij] +
+                tile_frac_wet [ij] * fld_wet [ij] ) * fac;
+        }
+    }
 }
 
 #ifdef USECUDA
@@ -32,13 +242,13 @@ template <typename TF>
 void Deposition<TF>::update_time_dependent(
         Timeloop<TF>& timeloop,
         Boundary<TF>& boundary,
-        TF* restrict vdo3,
-        TF* restrict vdno,
-        TF* restrict vdno2,
-        TF* restrict vdhno3,
-        TF* restrict vdh2o2,
-        TF* restrict vdrooh,
-        TF* restrict vdhcho
+        TF* restrict vdo3_g,
+        TF* restrict vdno_g,
+        TF* restrict vdno2_g,
+        TF* restrict vdhno3_g,
+        TF* restrict vdh2o2_g,
+        TF* restrict vdrooh_g,
+        TF* restrict vdhcho_g
         )
 {
     if (!sw_deposition)
@@ -52,7 +262,102 @@ void Deposition<TF>::update_time_dependent(
     TF* lai_g = boundary.get_lai_g();
     TF* c_veg_g = boundary.get_c_veg_g();
 
-    // TODO
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+    dim3 grid_gpu (gridi,  gridj,  1);
+    dim3 block_gpu(blocki, blockj, 1);
+
+    auto& dep_veg  = deposition_tiles.at("veg");
+    auto& dep_soil = deposition_tiles.at("soil");
+    auto& dep_wet  = deposition_tiles.at("wet");
+
+    calc_deposition_veg_g<TF><<<grid_gpu, block_gpu>>>(
+            dep_veg.vdo3_g,
+            dep_veg.vdno_g,
+            dep_veg.vdno2_g,
+            dep_veg.vdhno3_g,
+            dep_veg.vdh2o2_g,
+            dep_veg.vdrooh_g,
+            dep_veg.vdhcho_g,
+            lai_g,
+            tiles.at("veg").rs_g,
+            tiles.at("veg").ra_g,
+            tiles.at("veg").ustar_g,
+            tiles.at("veg").fraction_g,
+            rmes_g,
+            rsoil_g,
+            rcut_g,
+            diff_scl_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    calc_deposition_soil_g<TF><<<grid_gpu, block_gpu>>>(
+            dep_soil.vdo3_g,
+            dep_soil.vdno_g,
+            dep_soil.vdno2_g,
+            dep_soil.vdhno3_g,
+            dep_soil.vdh2o2_g,
+            dep_soil.vdrooh_g,
+            dep_soil.vdhcho_g,
+            tiles.at("soil").ra_g,
+            tiles.at("soil").ustar_g,
+            tiles.at("soil").fraction_g,
+            rsoil_g,
+            diff_scl_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    calc_deposition_wet_g<TF><<<grid_gpu, block_gpu>>>(
+            dep_wet.vdo3_g,
+            dep_wet.vdno_g,
+            dep_wet.vdno2_g,
+            dep_wet.vdhno3_g,
+            dep_wet.vdh2o2_g,
+            dep_wet.vdrooh_g,
+            dep_wet.vdhcho_g,
+            lai_g,
+            c_veg_g,
+            tiles.at("wet").rs_g,
+            tiles.at("veg").rs_g,
+            tiles.at("wet").ra_g,
+            tiles.at("wet").ustar_g,
+            tiles.at("wet").fraction_g,
+            rmes_g,
+            rsoil_g,
+            rws_g,
+            diff_scl_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.icells);
+    cuda_check_error();
+
+    const TF* frac_veg  = tiles.at("veg").fraction_g;
+    const TF* frac_soil = tiles.at("soil").fraction_g;
+    const TF* frac_wet  = tiles.at("wet").fraction_g;
+
+    auto calc_vd_g = [&](TF* vd, TF* vd_veg, TF* vd_soil, TF* vd_wet)
+    {
+        calc_tiled_mean_g<TF><<<grid_gpu, block_gpu>>>(
+                vd, vd_veg, vd_soil, vd_wet,
+                frac_veg, frac_soil, frac_wet,
+                TF(1), gd.istart, gd.iend, gd.jstart, gd.jend, gd.icells);
+        cuda_check_error();
+        // TODO: calc_vd_water, spatial_avg_vd.
+    };
+
+    calc_vd_g(vdo3_g,  dep_veg.vdo3_g,  dep_soil.vdo3_g,  dep_wet.vdo3_g);
+    calc_vd_g(vdno_g,  dep_veg.vdno_g,  dep_soil.vdno_g,  dep_wet.vdno_g);
+    calc_vd_g(vdno2_g, dep_veg.vdno2_g, dep_soil.vdno2_g, dep_wet.vdno2_g);
+    calc_vd_g(vdhno3_g,dep_veg.vdhno3_g,dep_soil.vdhno3_g,dep_wet.vdhno3_g);
+    calc_vd_g(vdh2o2_g,dep_veg.vdh2o2_g,dep_soil.vdh2o2_g,dep_wet.vdh2o2_g);
+    calc_vd_g(vdrooh_g,dep_veg.vdrooh_g,dep_soil.vdrooh_g,dep_wet.vdrooh_g);
+    calc_vd_g(vdhcho_g,dep_veg.vdhcho_g,dep_soil.vdhcho_g,dep_wet.vdhcho_g);
 }
 
 template <typename TF>
