@@ -55,9 +55,11 @@ namespace Soil_kernels_g
     }
 
     template<typename TF> __global__
-    void calc_root_weighted_mean_theta_g(
+    void calc_root_weighted_mean_values_g(
             TF* const __restrict__ theta_mean,
+            TF* const __restrict__ t_mean,
             const TF* const __restrict__ theta,
+            const TF* const __restrict__ t,
             const int* const __restrict__ soil_index,
             const TF* const __restrict__ root_fraction,
             const TF* const __restrict__ theta_wp,
@@ -84,6 +86,8 @@ namespace Soil_kernels_g
                 const TF theta_lim = fmax(theta[ijk], theta_wp[si]);
                 theta_mean[ij] += root_fraction[ijk]
                         * (theta_lim - theta_wp[si]) / (theta_fc[si] - theta_wp[si]);
+
+                t_mean[ij] += root_fraction[ijk] * t[ijk];
             }
         }
     }

@@ -25,6 +25,7 @@ def create_case_input(
         start_date,
         end_date,
         use_htessel,
+        use_ags,
         use_rrtmgp,
         use_rt,
         use_aerosols,
@@ -129,6 +130,11 @@ def create_case_input(
     if use_htessel:
         ini['boundary']['swboundary'] = 'surface_lsm'
         ini['boundary']['sbcbot'] = 'dirichlet'
+
+        ini['land_surface']['swags'] = use_ags
+        if use_ags:
+            ini['fields']['slist'] = 'co2'
+            ini['boundary']['sbcbot[co2]'] = 'flux'
     else:
         ini['boundary']['swboundary'] = 'surface'
         ini['boundary']['sbcbot'] = 'flux'
@@ -213,6 +219,8 @@ def create_case_input(
     nc_init = nc.createGroup('init')
     add_nc_var('thl', ('z'), nc_init, ls2d_z.thl[0,:])
     add_nc_var('qt', ('z'), nc_init, ls2d_z.qt[0,:])
+    if use_ags:
+        add_nc_var('co2', ('z'), nc_init, cams_z.co2[0,:])
     add_nc_var('u', ('z'), nc_init, ls2d_z.u[0,:])
     add_nc_var('v', ('z'), nc_init, ls2d_z.v[0,:])
     add_nc_var('nudgefac', ('z'), nc_init, np.ones(ktot)/10800)
@@ -221,8 +229,8 @@ def create_case_input(
     Time varying forcings
     """
     nc_tdep = nc.createGroup('timedep')
-    add_nc_dim('time_surface', ls2d_z.dims['time'], nc_tdep)
-    add_nc_dim('time_ls', ls2d_z.dims['time'], nc_tdep)
+    add_nc_dim('time_surface', ls2d_z.sizes['time'], nc_tdep)
+    add_nc_dim('time_ls', ls2d_z.sizes['time'], nc_tdep)
 
     add_nc_var('time_surface', ('time_surface'), nc_tdep, ls2d_z.time_sec)
     add_nc_var('time_ls', ('time_surface'), nc_tdep, ls2d_z.time_sec)
@@ -257,8 +265,8 @@ def create_case_input(
     """
     if use_rrtmgp:
         nc_rad = nc.createGroup('radiation')
-        add_nc_dim('lay', ls2d_z.dims['lay'], nc_rad)
-        add_nc_dim('lev', ls2d_z.dims['lev'], nc_rad)
+        add_nc_dim('lay', ls2d_z.sizes['lay'], nc_rad)
+        add_nc_dim('lev', ls2d_z.sizes['lev'], nc_rad)
 
         # Radiation variables on LES grid.
         xm_air = 28.97; xm_h2o = 18.01528; eps = xm_h2o / xm_air
@@ -289,11 +297,11 @@ def create_case_input(
 
         if use_tdep_background or use_tdep_aerosols or use_tdep_gasses:
             # NOTE: bit cheap, but ERA and CAMS are at the same time period/interval here.
-            add_nc_dim('time_rad', ls2d_z.dims['time'], nc_tdep)
+            add_nc_dim('time_rad', ls2d_z.sizes['time'], nc_tdep)
             add_nc_var('time_rad', ('time_rad'), nc_tdep, ls2d_z.time_sec)
 
-            add_nc_dim('lay', ls2d_z.dims['lay'], nc_tdep)
-            add_nc_dim('lev', ls2d_z.dims['lev'], nc_tdep)
+            add_nc_dim('lay', ls2d_z.sizes['lay'], nc_tdep)
+            add_nc_dim('lev', ls2d_z.sizes['lev'], nc_tdep)
 
         if use_tdep_gasses:
             add_nc_var('o3',  ('time_rad', 'z'), nc_tdep, ls2d_z.o3*1e-6)
@@ -369,7 +377,7 @@ def create_case_input(
     """
     if use_htessel:
         nc_soil = nc.createGroup('soil')
-        nc_soil.createDimension('z', ls2d_z.dims['zs'])
+        nc_soil.createDimension('z', ls2d_z.sizes['zs'])
         add_nc_var('z', ('z'), nc_soil, ls2d.zs[::-1])
 
         add_nc_var('theta_soil', ('z'), nc_soil, theta_soil)
@@ -489,6 +497,7 @@ if __name__ == '__main__':
     """
     TF = np.float64              # Switch between double (float64) and single (float32) precision.
     use_htessel = True           # False = prescribed surface H+LE fluxes from ERA5.
+    use_ags = False              # False = Jarvis-Stewart, True = A-Gs.
     use_rrtmgp = True            # False = prescribed surface radiation from ERA5.
     use_rt = False               # False = 2stream solver for shortwave down, True = raytracer.
     use_homogeneous_z0 = True    # False = checkerboard pattern roughness lengths.
@@ -518,17 +527,18 @@ if __name__ == '__main__':
     zsize = 4000
     ktot = 160
 
-    itot = 512
-    jtot = 512
+    itot = 8
+    jtot = 8
 
-    xsize = 25600
-    ysize = 25600
+    xsize = 1600
+    ysize = 1600
 
     # Create input files.
     create_case_input(
             start_date,
             end_date,
             use_htessel,
+            use_ags,
             use_rrtmgp,
             use_rt,
             use_aerosols,
