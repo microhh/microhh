@@ -6,20 +6,30 @@ import microhh_tools as mht
 """
 Settings
 """
-float_type = 'f8'
+# sw_source = gaussian is the old method where Gaussian blobs are prescribed through .ini settings.
+# sw_source = 3d is a new method with sources prescribed through 3D binaries.
+#             The new method requires `microhhpy` (`pip install microhhpy`).
+# This script supports both methods as a demonstration, which should give identical results.
+sw_source = 'gaussian'
+
+float_type = np.float32
 scalars = ['s1', 's2']     # All scalars.
 scalars_outflow = ['s1']   # Scalars with non-periodic lateral BCs.
 swtimedep_outflow = False  # Time depedent lateral outflow profiles.
 
-xsize = 12800
+xsize = 6400
 ysize = 4800
 zsize = 3200
 
-itot = 256
+itot = 128
 jtot = 96
 ktot = 64
 
-endtime = 43200
+endtime = 7200
+
+dx = xsize / itot
+dy = ysize / jtot
+dz = zsize / ktot
 
 """
 Source settings.
@@ -45,7 +55,11 @@ strength = 1
 Define vertical grid and input profiles.
 """
 dz = zsize / ktot
+
+x  = np.arange(0.5*dx, xsize, dx)
+y  = np.arange(0.5*dy, ysize, dy)
 z  = np.arange(0.5*dz, zsize, dz)
+
 u  = np.zeros_like(z)
 th = np.zeros_like(z)
 s  = np.zeros_like(z)
@@ -105,18 +119,46 @@ def const_list(value):
     value = int(value) if isinstance(value, bool) else value
     return len(scalars)*[value]
 
-ini['source']['sourcelist'] = scalars
-ini['source']['source_x0'] = const_list(source_x0) 
-ini['source']['source_y0'] = const_list(source_y0) 
-ini['source']['source_z0'] = const_list(source_z0) 
-ini['source']['sigma_x'] = const_list(sigma_x)
-ini['source']['sigma_y'] = const_list(sigma_y)
-ini['source']['sigma_z'] = const_list(sigma_z)
-ini['source']['strength'] = const_list(strength)
-ini['source']['swvmr'] = const_list(sw_vmr)
-#ini['source']['line_x'] = const_list(0)
-#ini['source']['line_y'] = const_list(0)
-#ini['source']['line_z'] = const_list(0)
+if sw_source == 'gaussian':
+    ini['source']['swsource'] = 'gaussian'
+    ini['source']['sourcelist'] = scalars
+    ini['source']['source_x0'] = const_list(source_x0)
+    ini['source']['source_y0'] = const_list(source_y0)
+    ini['source']['source_z0'] = const_list(source_z0)
+    ini['source']['sigma_x'] = const_list(sigma_x)
+    ini['source']['sigma_y'] = const_list(sigma_y)
+    ini['source']['sigma_z'] = const_list(sigma_z)
+    ini['source']['strength'] = const_list(strength)
+    ini['source']['swvmr'] = const_list(sw_vmr)
+    ini['source']['line_x'] = const_list(0)
+    ini['source']['line_y'] = const_list(0)
+    ini['source']['line_z'] = const_list(0)
+
+elif sw_source == '3d':
+    from microhhpy.thermo import calc_dry_basestate
+    from microhhpy.chem import Emission_input
+
+    bs = calc_dry_basestate(th, 1e5, z, zsize, float_type)
+
+    # Create emission input instance.
+    times = [0]
+    emiss = Emission_input(scalars, times, x, y, z, np.full(ktot, dz), bs['rho'], float_type)
+
+    # Add sources.
+    for scalar in scalars:
+        emiss.add_gaussian(scalar, strength, times[0], source_x0, source_y0, source_z0, sigma_x, sigma_y, sigma_z, sw_vmr)
+
+    # Clip to required vertical extent.
+    emiss.clip()
+
+    # Save emissions as binary input files for MicroHH.
+    emiss.to_binary(path='.')
+
+    # Update .ini file.
+    ini['source']['swsource'] = '3d'
+    ini['source']['sourcelist'] = scalars
+    ini['source']['ktot'] = emiss.kmax
+
 
 # Statistics/crosses/...
 scalar_crosses = scalars + [s+'_path' for s in scalars]

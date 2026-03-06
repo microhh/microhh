@@ -102,4 +102,5 @@ void Master::max(double* var, int datasize) {}
 void Master::max(float* var, int datasize) {}
 void Master::min(double* var, int datasize) {}
 void Master::min(float* var, int datasize) {}
+int Master::calc_mpiid(const int mpicoordx, const int mpicoordy) {return 0;}
 #endif

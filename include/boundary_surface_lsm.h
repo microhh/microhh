@@ -32,55 +32,6 @@ template<typename> class Diff;
 enum class Soil_interpolation_type {Mean, Max, Harmonic_mean};
 
 template<typename TF>
-struct Surface_tile
-{
-    std::string long_name;    // Descriptive name of tile
-
-    // Shared
-    std::vector<TF> fraction; // Grid point fraction tile (-)
-    std::vector<TF> thl_bot;  // Skin (liquid water) potential temperature (K)
-    std::vector<TF> qt_bot;   // Skin specific humidity (kg kg-1)
-
-    // Surface layer
-    std::vector<TF> obuk;     // Obukhov length (m)
-    std::vector<TF> ustar;    // Friction velocity (m s-1)
-    std::vector<TF> bfluxbot; // Friction velocity (m s-1)
-    std::vector<int> nobuk;   // Index in LUT
-    std::vector<TF> ra;       // Aerodynamic resistance (s m-1)
-
-    // Land surface
-    std::vector<TF> rs;       // Surface resistance (canopy or soil, s m-1)
-    std::vector<TF> H;        // Sensible heat flux (W m-2)
-    std::vector<TF> LE;       // Latent heat flux (W m-2)
-    std::vector<TF> G;        // Soil heat flux (W m-2)
-    std::vector<TF> S;        // Storage flux (W m-2)
-
-    #ifdef USECUDA
-    // Shared
-    TF* fraction_g; // Grid point fraction tile (-)
-    TF* thl_bot_g;  // Skin (liquid water) potential temperature (K)
-    TF* qt_bot_g;   // Skin specific humidity (kg kg-1)
-
-    // Surface layer
-    TF* obuk_g;     // Obukhov length (m)
-    TF* ustar_g;    // Friction velocity (m s-1)
-    TF* bfluxbot_g; // Friction velocity (m s-1)
-    int* nobuk_g;   // Index in LUT
-    TF* ra_g;       // Aerodynamic resistance (s m-1)
-
-    // Land surface
-    TF* rs_g;       // Surface resistance (canopy or soil, s m-1)
-    TF* H_g;        // Sensible heat flux (W m-2)
-    TF* LE_g;       // Latent heat flux (W m-2)
-    TF* G_g;        // Soil heat flux (W m-2)
-    TF* S_g;        // Storage flux (W m-2)
-    #endif
-};
-
-template<typename TF>
-using Tile_map = std::map<std::string, Surface_tile<TF>>;
-
-template<typename TF>
 class Boundary_surface_lsm : public Boundary<TF>
 {
     public:
@@ -92,10 +43,14 @@ class Boundary_surface_lsm : public Boundary<TF>
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Timeloop<TF>&);
         void set_values();
 
-        const std::vector<TF>& get_z0m()  const { return z0m; };
+        const std::vector<TF>& get_z0m() const { return z0m; };
         const std::vector<TF>& get_dudz() const { return dudz_mo; }
         const std::vector<TF>& get_dvdz() const { return dvdz_mo; }
         const std::vector<TF>& get_dbdz() const { return dbdz_mo; }
+        const std::vector<TF>& get_lai() const { return lai; }
+        const std::vector<int>& get_water_mask() const { return water_mask; }
+        const std::vector<TF>& get_c_veg() const { return c_veg; }
+        const Tile_map<TF>& get_tiles() const { return tiles; }
 
         void exec(Thermo<TF>&, Radiation<TF>&, Microphys<TF>&, Timeloop<TF>&);
         void exec_stats(Stats<TF>&);
@@ -116,6 +71,10 @@ class Boundary_surface_lsm : public Boundary<TF>
         cuda_vector<TF>& get_dudz_g() { return dudz_mo_g; };
         cuda_vector<TF>& get_dvdz_g() { return dvdz_mo_g; };
         cuda_vector<TF>& get_dbdz_g() { return dbdz_mo_g; };
+
+        TF*  get_lai_g()         { return lai_g; }
+        int* get_water_mask_g() { return water_mask_g; }
+        TF*  get_c_veg_g()       { return c_veg_g; }
         #endif
 
     protected:
@@ -190,7 +149,7 @@ class Boundary_surface_lsm : public Boundary<TF>
         std::vector<TF> lambda_unstable; // Skin conductivity unstable conditions (W m-2 K-1)
         std::vector<TF> cs_veg;          // Heat capacity skin layer (J K-1 m-2)
         std::vector<int> water_mask;     // Mask for open water (-)
-        std::vector<TF> t_bot_water;
+        std::vector<TF> t_bot_water;     // Water (rivers/lakes/sea) temperature (K)
 
         std::vector<TF> interception;   // Interception rain/dew by surface (m s-1)
         std::vector<TF> throughfall;    // Throughfall rain/dew onto soil (m s-1)

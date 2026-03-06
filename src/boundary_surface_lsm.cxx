@@ -961,7 +961,6 @@ void Boundary_surface_lsm<TF>::init(Input& inputin, Thermo<TF>& thermo, const Si
         inputin.flag_as_used("boundary", "swtimedep", "");
         inputin.flag_as_used("boundary", "timedeplist", "");
     }
-
 }
 
 template<typename TF>
