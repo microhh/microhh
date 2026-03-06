@@ -416,16 +416,19 @@ if (sw_land_surface and sw_chemistry):
         for t in ['soil', 'wet', 'veg']:
             crosslist.append(f'vd{s}_{t}')
 
+
+# Default scalar boundary conditions is flux=0 for scalars.
+ini['boundary']['sbcbot'] = 'flux'
+
 if (sw_land_surface):
     ini['boundary']['swboundary'] = 'surface_lsm'
-    ini['boundary']['sbcbot'] = 'dirichlet'
+    ini['boundary']['sbcbot[thl]'] = 'dirichlet'
+    ini['boundary']['sbcbot[qt]'] = 'dirichlet'
     ini['boundary']['swtimedep'] = False
     ini['boundary']['timedeplist'] = 'empty'
-
     ini['radiation']['swradiation'] = 'prescribed'
 else:
     ini['boundary']['swboundary'] = 'surface'
-    ini['boundary']['sbcbot'] = 'flux'
     ini['boundary']['swtimedep'] = True
     ini['boundary']['timedeplist'] = ['thl_sbot', 'qt_sbot']
 
