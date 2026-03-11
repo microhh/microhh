@@ -339,7 +339,7 @@ nc_yh[:] = grid_yh
 nc_zh = nc_out.createVariable("zh", TF, ("zh",))
 nc_zh[:] = grid_zh
 
-nc_zlay = nc_out.createVariable("zlay", TF, ("lay"))
+nc_zlay = nc_out.createVariable("z_lay", TF, ("lay"))
 nc_zlev = nc_out.createVariable("z_lev", TF, ("lev"))
 nc_zlay[:] = zlay
 nc_zlev[:] = zlev
@@ -455,12 +455,12 @@ if swaerosol:
         nc_out.createVariable(aerosol, TF, ("lay", "y", "x"))
         nc_out[aerosol][:] = np.tile(np.append(aermr[:], aermr_bg[zmin_idx:])[:, None, None], (1, jtot, itot))
 
-    # relative humidity
-    q = nc_h2o[:] * eps / (1 + nc_h2o[:] * eps)
-    qs = qsat(nc_play[:, :, :], nc_tlay[:])
-    rh = np.maximum(np.minimum(q / qs, 1), 0)
-    nc_out.createVariable("rh", TF, ("lay", "y", "x"))
-    nc_out['rh'][:] = rh
+# relative humidity
+q = nc_h2o[:] * eps / (1 + nc_h2o[:] * eps)
+qs = qsat(nc_play[:, :, :], nc_tlay[:])
+rh = np.maximum(np.minimum(q / qs, 1), 0)
+nc_out.createVariable("rh", TF, ("lay", "y", "x"))
+nc_out['rh'][:] = rh
 
 # size of null-collision grid
 nc_ng_x = nc_out.createVariable("ngrid_x", TF)
