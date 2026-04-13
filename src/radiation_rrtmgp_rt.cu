@@ -40,9 +40,9 @@
 #include "column.h"
 #include "tools.h"
 
-#include "Array.h"
-#include "Fluxes.h"
-#include "Fluxes_rt.h"
+#include "array.h"
+#include "fluxes.h"
+#include "fluxes_rt.h"
 
 #include "raytracer_definitions.h"
 #include "subset_kernels_cuda.h"
@@ -1739,6 +1739,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     ciwp,
                     rel,
                     rei,
+                    true, // scattering
                     *cloud_optical_props);
 
             if (sw_delta_cloud)
@@ -1762,6 +1763,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     band,
                     *aerosol_concs_gpu,
                     rh, p_lev,
+                    false, // no independent column
                     *aerosol_optical_props);
 
             if (sw_delta_aer)
@@ -1780,7 +1782,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         }
 
         std::unique_ptr<Fluxes_broadband_rt> fluxes =
-                std::make_unique<Fluxes_broadband_rt>(gd.imax, gd.jmax, n_lev);
+                std::make_unique<Fluxes_broadband_rt>(gd.imax, gd.jmax, n_lev, n_lev);
 
         sw_flux_dn_dir_inc_local.fill(sw_flux_dn_dir_inc({1, igpt}));
         sw_flux_dn_dif_inc_local.fill(sw_flux_dn_dif_inc({1, igpt}));
@@ -1820,6 +1822,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
             const Int qrng_offset = Int(igpt - 1) + this->time_idx * Int(n_gpt);
             raytracer.trace_rays(
                     igpt,
+                    false, //no independent column
                     this->rays_per_pixel,
                     grid_cells, grid_d, kn_grid,
                     mie_cdfs_sub,

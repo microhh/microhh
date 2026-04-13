@@ -48,16 +48,16 @@
 #include "timedep.h"
 
 // RRTMGP headers.
-#include "Array.h"
-#include "Optical_props.h"
-#include "Gas_optics_rrtmgp.h"
-#include "Gas_concs.h"
-#include "Fluxes.h"
-#include "Rte_lw.h"
-#include "Rte_sw.h"
-#include "Source_functions.h"
-#include "Cloud_optics.h"
-#include "Aerosol_optics.h"
+#include "array.h"
+#include "optical_props.h"
+#include "gas_optics_rrtmgp.h"
+#include "gas_concs.h"
+#include "fluxes.h"
+#include "rte_lw.h"
+#include "rte_sw.h"
+#include "source_functions.h"
+#include "cloud_optics.h"
+#include "aerosol_optics.h"
 
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP which defines
@@ -435,7 +435,7 @@ namespace
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
-    
+
     Aerosol_optics load_and_init_aerosol_optics(
             Master& master,
             const std::string& coef_file)
@@ -678,7 +678,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_homogenize_hr_lw = inputin.get_item<bool>("radiation", "swhomogenizehr_lw", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
-    
+
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     // Read representative values for the surface properties that are used in the column calcs.
@@ -1658,7 +1658,7 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, 
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();

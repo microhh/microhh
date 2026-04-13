@@ -39,7 +39,7 @@
 // #endif
 #include "radiation_prescribed.h"
 
-#include "Optical_props.h"
+#include "optical_props.h"
 
 template<typename TF>
 Radiation<TF>::Radiation(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :

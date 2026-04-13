@@ -36,8 +36,8 @@
 #include "cross.h"
 #include "column.h"
 
-#include "Array.h"
-#include "Fluxes.h"
+#include "array.h"
+#include "fluxes.h"
 #include "subset_kernels_cuda.h"
 
 using namespace Radiation_rrtmgp_functions;
