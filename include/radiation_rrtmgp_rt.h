@@ -43,6 +43,7 @@
 #include "rte_lw_rt.h"
 #include "rte_sw_rt.h"
 #include "raytracer_sw.h"
+#include "raytracer_lw.h"
 // #include <curand_kernel.h>
 
 
@@ -191,6 +192,18 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
+        void exec_longwave_rt(
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,3>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const bool, const bool);
+
         void exec_shortwave(
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
@@ -205,6 +218,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const bool, const bool);
         #endif
@@ -243,6 +257,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         unsigned long idt_rad;
 
         Int rays_per_pixel;
+        Int rays_count_power;
         int kngrid_i;
         int kngrid_j;
         int kngrid_k;
@@ -343,11 +358,21 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<Float> sw_flux_tod_up_rt;
         std::vector<Float> sw_flux_tod_dn_rt;
 
+        std::vector<Float> lw_flux_sfc_dn_rt;
+        std::vector<Float> lw_flux_sfc_up_rt;
+        std::vector<Float> lw_flux_tod_up_rt;
+        std::vector<Float> lw_flux_tod_dn_rt;
+
         Float* sw_flux_sfc_dir_rt_g;
         Float* sw_flux_sfc_dif_rt_g;
         Float* sw_flux_sfc_up_rt_g;
         Float* sw_flux_tod_up_rt_g;
         Float* sw_flux_tod_dn_rt_g;
+
+        Float* lw_flux_sfc_dn_rt_g;
+        Float* lw_flux_sfc_up_rt_g;
+        Float* lw_flux_tod_up_rt_g;
+        Float* lw_flux_tod_dn_rt_g;
 
         // timedependent gases
         std::map<std::string, Timedep<TF>*> tdep_gases;
@@ -357,8 +382,11 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
+
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
+        std::unique_ptr<Aerosol_optics_gpu> aerosol_lw_gpu;
+
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
@@ -373,7 +401,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;
 
-        Raytracer raytracer;
+        Raytracer raytracer_sw;
+        Raytracer_lw raytracer_lw;
 
         //std::unique_ptr<Gas_concs_rt> gas_concs_rt;
         //std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
@@ -381,6 +410,10 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Gas_optics_rt> kdist_sw_rt;
         std::unique_ptr<Cloud_optics_rt> cloud_sw_rt;
         std::unique_ptr<Aerosol_optics_rt> aerosol_sw_rt;
+
+        std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
+        std::unique_ptr<Cloud_optics_rt> cloud_lw_rt;
+        std::unique_ptr<Aerosol_optics_rt> aerosol_lw_rt;
 
         Rte_lw_rt rte_lw_rt;
         Rte_sw_rt rte_sw_rt;
