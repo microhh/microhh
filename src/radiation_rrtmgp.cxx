@@ -2384,7 +2384,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             // Compute the effective droplet radius.
             Array<Float,2> rel({n_col_in, n_lay});
-            Array<Float,2> rei({n_col_in, n_lay});
+            Array<Float,2> dei({n_col_in, n_lay});
 
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
@@ -2411,11 +2411,11 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
+                    Float dei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
+                    dei({icol, ilay}) = std::max(Float(10.), std::min(dei_value, Float(180.)));
                 }
             }
 
@@ -2428,7 +2428,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             cloud_lw->cloud_optics(
                     clwp_subset, ciwp_subset,
-                    rel, rei,
+                    rel, dei,
                     *cloud_optical_props_in);
 
             // Add the cloud optical props to the gas optical properties.
@@ -2606,7 +2606,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             // Compute the effective droplet radius.
             Array<Float,2> rel({n_col_in, n_lay});
-            Array<Float,2> rei({n_col_in, n_lay});
+            Array<Float,2> dei({n_col_in, n_lay});
 
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
@@ -2633,11 +2633,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
+                    Float dei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
+                    dei({icol, ilay}) = std::max(Float(10.), std::min(dei_value, Float(180.)));
                 }
             }
 
@@ -2650,7 +2650,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             cloud_sw->cloud_optics(
                     clwp_subset, ciwp_subset,
-                    rel, rei,
+                    rel, dei,
                     *cloud_optical_props_in);
 
             if (sw_delta_cloud)

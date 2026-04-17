@@ -189,7 +189,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
         void exec_longwave_rt(
@@ -208,7 +210,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
         void exec_shortwave_rt(

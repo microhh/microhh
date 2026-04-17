@@ -319,7 +319,7 @@ namespace
 
     __global__
     void effective_radius_and_ciwp_to_gm2(
-            Float* __restrict__ rel, Float* __restrict__ rei,
+            Float* __restrict__ rel, Float* __restrict__ dei,
             Float* __restrict__ clwp, Float* __restrict__ ciwp,
             const Float* __restrict__ dz,
             const int ncol, const int nlay, const int kstart,
@@ -335,10 +335,10 @@ namespace
             const int idx = icol + ilay*ncol;
             const int idx_z = ilay + kstart;
             const Float rel_local = clwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(clwp[idx] / dz[idx_z] / four_third_pi_N0_rho_w, Float(1.)/Float(3.)) : Float(0.);
-            const Float rei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
+            const Float dei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
 
             rel[idx] = max(Float(2.5), min(rel_local, Float(21.5)));
-            rei[idx] = max(Float(10.), min(rei_local, Float(180.)));
+            dei[idx] = max(Float(10.), min(dei_local, Float(180.)));
 
             clwp[idx] *= Float(1.e3);
             ciwp[idx] *= Float(1.e3);
@@ -1241,7 +1241,9 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
         Thermo<TF>& thermo, Microphys<TF>& microphys, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Array_gpu<Float,2>& flux_up, Array_gpu<Float,2>& flux_dn, Array_gpu<Float,2>& flux_net,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
-        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const Array_gpu<Float,2>& h2o,
+        const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const Array_gpu<Float,2>& rel, const Array_gpu<Float,2>& dei,
         const bool compute_clouds)
 {
     constexpr int n_col_block = 1024;
@@ -1288,16 +1290,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
     Array_gpu<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
-    // Constants for computation of liquid and ice droplet effective radius
-    const Float sig_g = 1.34;
-    const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
-
-    const TF Nc0 = microphys.get_Nc0();
-    const TF Ni0 = microphys.get_Ni0();
-
-    const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-    const Float four_third_pi_N0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
-
     const int block_col = 16;
     const int block_lay = 16;
     const int grid_col  = n_col_block/block_col + (n_col_block%block_col > 0);
@@ -1338,21 +1330,14 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
         {
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
-            Array_gpu<Float,2> rel({n_col_in, n_lay});
-            Array_gpu<Float,2> rei({n_col_in, n_lay});
-
-            effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                    rel.ptr(), rei.ptr(),
-                    clwp_subset.ptr(), ciwp_subset.ptr(),
-                    gd.dz_g,
-                    n_col_in, n_lay, gd.kstart,
-                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_i, fac);
+            auto rel_subset = rel.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            auto dei_subset = dei.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
 
             cloud_lw_gpu->cloud_optics(
                     clwp_subset,
                     ciwp_subset,
                     rel,
-                    rei,
+                    dei,
                     *cloud_optical_props_subset_in);
 
             // Add the cloud optical props to the gas optical properties.
@@ -1445,7 +1430,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
         Array_gpu<Float,2>& clwp, Array_gpu<Float,2>& ciwp,
-        Array_gpu<Float,2>& rel, Array_gpu<Float,2>& rei,
+        Array_gpu<Float,2>& rel, Array_gpu<Float,2>& dei,
         const bool compute_clouds, const bool run_raytracer)
 {
     auto& gd = grid.get_grid_data();
@@ -1623,7 +1608,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                         clwp,
                         ciwp,
                         rel,
-                        rei,
+                        dei,
                         false, // no scattering (yet)
                         *cloud_optical_props);
 
@@ -1770,6 +1755,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
         const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
+        const Array_gpu<Float,2>& rel, const Array_gpu<Float,2>& dei,
         const bool compute_clouds)
 {
     constexpr int n_col_block = 1024;
@@ -1824,16 +1810,6 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
     Array_gpu<Float,2> col_dry({n_col, n_lay});
     Gas_optics_rrtmgp_gpu::get_col_dry(col_dry, gas_concs_gpu->get_vmr("h2o"), p_lev.subset({{ {1, n_col}, {1, n_lev} }}));
 
-    // Constants for computation of liquid and ice droplet effective radius
-    const Float sig_g = 1.34;
-    const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
-
-    const TF Nc0 = microphys.get_Nc0();
-    const TF Ni0 = microphys.get_Ni0();
-
-    const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-    const Float four_third_pi_N0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
-
     const int block_col = 16;
     const int block_lay = 16;
     const int grid_col  = n_col_block/block_col + (n_col_block%block_col > 0);
@@ -1875,21 +1851,14 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
         {
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
-            Array_gpu<Float,2> rel({n_col_in, n_lay});
-            Array_gpu<Float,2> rei({n_col_in, n_lay});
-
-            effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                    rel.ptr(), rei.ptr(),
-                    clwp_subset.ptr(), ciwp_subset.ptr(),
-                    gd.dz_g,
-                    n_col_in, n_lay, gd.kstart,
-                    four_third_pi_N0_rho_w, four_third_pi_N0_rho_i, fac);
+            auto rel_subset = rel.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
+            auto dei_subset = dei.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
 
             cloud_sw_gpu->cloud_optics(
                     clwp_subset,
                     ciwp_subset,
-                    rel,
-                    rei,
+                    rel_subset,
+                    dei_subset,
                     *cloud_optical_props_subset_in);
 
             if (sw_delta_cloud)
@@ -2023,7 +1992,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev,
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
         Array_gpu<Float,2>& clwp, Array_gpu<Float,2>& ciwp,
-        Array_gpu<Float,2>& rel, Array_gpu<Float,2>& rei,
+        Array_gpu<Float,2>& rel, Array_gpu<Float,2>& dei,
         const bool compute_clouds, const bool run_raytracer)
 {
     auto& gd = grid.get_grid_data();
@@ -2168,7 +2137,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     clwp,
                     ciwp,
                     rel,
-                    rei,
+                    dei,
                     true, // scattering
                     *cloud_optical_props);
 
@@ -2361,7 +2330,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
 
         // compute cloud eff radius and convert ice/liquid water path to g/m2
         Array_gpu<Float,2> rel({gd.imax*gd.jmax, gd.ktot});
-        Array_gpu<Float,2> rei({gd.imax*gd.jmax, gd.ktot});
+        Array_gpu<Float,2> dei({gd.imax*gd.jmax, gd.ktot});
 
         // Constants for computation of liquid and ice droplet effective radius
         const Float sig_g = 1.34;
@@ -2382,7 +2351,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
         dim3 blockGPU_re (block_col, block_lay, 1);
 
         effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                rel.ptr(), rei.ptr(),
+                rel.ptr(), dei.ptr(),
                 clwp_a.ptr(), ciwp_a.ptr(),
                 gd.dz_g,
                 gd.imax*gd.jmax, gd.ktot, gd.kstart,
@@ -2435,7 +2404,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         rt_lw_flux_sfc_dn, rt_lw_flux_sfc_up,
                         rt_lw_flux_abs,
                         t_lay_a, t_lev_a, t_sfc_a, rh_a, h2o_a, clwp_a, ciwp_a,
-                        rel, rei,
+                        rel, dei,
                         compute_clouds, run_raytracer);
                 cuda_check_error();
 
@@ -2597,7 +2566,8 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         exec_longwave(
                                 thermo, microphys, timeloop, stats,
                                 flux_up, flux_dn, flux_net,
-                                t_lay_a, t_lev_a, t_sfc_a, h2o_a, clwp_a, ciwp_a,
+                                t_lay_a, t_lev_a, t_sfc_a, h2o_a,
+                                clwp_a, ciwp_a, rel, dei,
                                 !compute_clouds);
 
                         do_gcs(*fields.sd.at("lw_flux_up_clear"), flux_up);
@@ -2689,7 +2659,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                             rt_flux_tod_dn, rt_flux_tod_up, rt_flux_sfc_dir, rt_flux_sfc_dif,
                             rt_flux_sfc_up, rt_flux_abs_dir, rt_flux_abs_dif,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
-                            rel, rei, compute_clouds, run_raytracer);
+                            rel, dei, compute_clouds, run_raytracer);
                     cuda_check_error();
 
                     if (sw_homogenize_hr_sw)
@@ -2889,7 +2859,8 @@ void Radiation_rrtmgp_rt<TF>::exec(
                             exec_shortwave(
                                     thermo, microphys, timeloop, stats,
                                     flux_up, flux_dn, flux_dn_dir, flux_net,
-                                    t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
+                                    t_lay_a, t_lev_a, h2o_a, rh_a,
+                                    clwp_a, ciwp_a, rel, dei,
                                     !compute_clouds);
                         }
                         do_gcs(*fields.sd.at("sw_flux_up_clear"), flux_up);
