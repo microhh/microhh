@@ -1179,10 +1179,13 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&lw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&lw_flux_up_sfc_g, nsfcsize));
 
-        cuda_safe_call(cudaMalloc(&lw_flux_sfc_dn_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&lw_flux_sfc_up_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&lw_flux_tod_dn_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&lw_flux_tod_up_rt_g, nsfcsize));
+        if (sw_longwave_3d)
+        {
+            cuda_safe_call(cudaMalloc(&lw_flux_sfc_dn_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&lw_flux_sfc_up_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&lw_flux_tod_dn_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&lw_flux_tod_up_rt_g, nsfcsize));
+        }
 
         const int ncolgptsize = n_col*kdist_lw_gpu->get_ngpt()*sizeof(Float);
         cuda_safe_call(cudaMalloc(&lw_flux_dn_inc_g, ncolgptsize));
@@ -1218,11 +1221,14 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
         cuda_safe_call(cudaMalloc(&sw_flux_dn_sfc_g, nsfcsize));
         cuda_safe_call(cudaMalloc(&sw_flux_up_sfc_g, nsfcsize));
 
-        cuda_safe_call(cudaMalloc(&sw_flux_sfc_dir_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&sw_flux_sfc_dif_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&sw_flux_sfc_up_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&sw_flux_tod_dn_rt_g, nsfcsize));
-        cuda_safe_call(cudaMalloc(&sw_flux_tod_up_rt_g, nsfcsize));
+        if (sw_shortwave_3d)
+        {
+            cuda_safe_call(cudaMalloc(&sw_flux_sfc_dir_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&sw_flux_sfc_dif_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&sw_flux_sfc_up_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&sw_flux_tod_dn_rt_g, nsfcsize));
+            cuda_safe_call(cudaMalloc(&sw_flux_tod_up_rt_g, nsfcsize));
+        }
 
         const int ncolgptsize = n_col*kdist_sw_rt->get_ngpt()*sizeof(Float);
         cuda_safe_call(cudaMalloc(&sw_flux_dn_dir_inc_g, ncolgptsize));
@@ -1502,7 +1508,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
     Float lw_tod_tot = 0;
     for (int igpt=1; igpt<=n_gpt; ++igpt)
     {
-        //printf("lw %d \n",igpt);
         int band = 0;
         for (int ibnd=1; ibnd<=n_bnd; ++ibnd)
         {
@@ -1687,7 +1692,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
             lw_tod_tot += lw_flux_dn_inc({1, igpt});
             if (raytrace_gpoint)
             {
-                printf("lw %d \n",igpt);
                 raytracer_lw.trace_rays(
                         igpt,
                         false, // no independent column
@@ -2311,7 +2315,8 @@ void Radiation_rrtmgp_rt<TF>::exec(
         const Float iwp_max = calc_max_nogc(ciwp->fld_g, gd.imax, gd.jmax, gd.ktot);
         Float liwp_max = lwp_max + iwp_max;
 
-        const bool run_raytracer = (liwp_max > 0 || !sw_2str_when_no_clouds) ? true : false;
+        const bool run_raytracer_sw = (liwp_max > 0 || !sw_1d_when_no_clouds) ? sw_shortwave_3d : false;
+        const bool run_raytracer_lw = (liwp_max > 0 || !sw_1d_when_no_clouds) ? sw_longwave_3d : false;
 
         const int nmaxh = gd.imax*gd.jmax*(gd.ktot+1);
         const int ijmax = gd.imax*gd.jmax;
@@ -2324,7 +2329,6 @@ void Radiation_rrtmgp_rt<TF>::exec(
         Array_gpu<Float,2> rh_a(rh->fld_g, {gd.imax*gd.jmax, gd.ktot});
         Array_gpu<Float,2> clwp_a(clwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
         Array_gpu<Float,2> ciwp_a(ciwp->fld_g, {gd.imax*gd.jmax, gd.ktot});
-
 
         const bool compute_clouds = true;
 
@@ -2405,7 +2409,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         rt_lw_flux_abs,
                         t_lay_a, t_lev_a, t_sfc_a, rh_a, h2o_a, clwp_a, ciwp_a,
                         rel, dei,
-                        compute_clouds, run_raytracer);
+                        compute_clouds, run_raytracer_lw);
                 cuda_check_error();
 
                 if (sw_homogenize_hr_lw)
@@ -2413,7 +2417,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     auto thlt = fields.get_tmp_g();
                     cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
 
-                    if (run_raytracer)
+                    if (run_raytracer_lw)
                     {
                         calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                                 thlt->fld_g,
@@ -2458,7 +2462,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 }
                 else
                 {
-                    if (run_raytracer)
+                    if (run_raytracer_lw)
                     {
                         calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                                 fields.sd.at("thlt_rad")->fld_g,
@@ -2489,7 +2493,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     }
                 }
 
-                if (run_raytracer)
+                if (run_raytracer_lw)
                 {
                     store_surface_fluxes_rt<<<gridGPU_2d, blockGPU_2d>>>(
                             lw_flux_up_sfc_g, lw_flux_dn_sfc_g,
@@ -2553,12 +2557,15 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     do_gcs(*fields.sd.at("lw_flux_up"), flux_up);
                     do_gcs(*fields.sd.at("lw_flux_dn"), flux_dn);
 
-                    do_gcs_rt(*fields.sd.at("lw_heat_rt"), rt_lw_flux_abs);
+                    if (sw_longwave_3d)
+                    {
+                        do_gcs_rt(*fields.sd.at("lw_heat_rt"), rt_lw_flux_abs);
 
-                    do_gcs_2d(lw_flux_sfc_dn_rt_g, rt_lw_flux_sfc_dn);
-                    do_gcs_2d(lw_flux_sfc_up_rt_g, rt_lw_flux_sfc_up);
-                    do_gcs_2d(lw_flux_tod_dn_rt_g, rt_lw_flux_tod_dn);
-                    do_gcs_2d(lw_flux_tod_up_rt_g, rt_lw_flux_tod_up);
+                        do_gcs_2d(lw_flux_sfc_dn_rt_g, rt_lw_flux_sfc_dn);
+                        do_gcs_2d(lw_flux_sfc_up_rt_g, rt_lw_flux_sfc_up);
+                        do_gcs_2d(lw_flux_tod_dn_rt_g, rt_lw_flux_tod_dn);
+                        do_gcs_2d(lw_flux_tod_up_rt_g, rt_lw_flux_tod_up);
+                    }
 
                     // clear sky
                     if (sw_clear_sky_stats)
@@ -2659,7 +2666,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                             rt_flux_tod_dn, rt_flux_tod_up, rt_flux_sfc_dir, rt_flux_sfc_dif,
                             rt_flux_sfc_up, rt_flux_abs_dir, rt_flux_abs_dif,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
-                            rel, dei, compute_clouds, run_raytracer);
+                            rel, dei, compute_clouds, run_raytracer_sw);
                     cuda_check_error();
 
                     if (sw_homogenize_hr_sw)
@@ -2667,7 +2674,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         auto thlt = fields.get_tmp_g();
                         cudaMemset(thlt->fld_g, 0, gd.ncells*sizeof(Float));
 
-                        if (run_raytracer)
+                        if (run_raytracer_sw)
                         {
                             calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                                     thlt->fld_g,
@@ -2710,7 +2717,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     }
                     else
                     {
-                        if (run_raytracer)
+                        if (run_raytracer_sw)
                         {
                             calc_tendency_rt<<<gridGPU_3d, blockGPU_3d>>>(
                                     fields.sd.at("thlt_rad")->fld_g,
@@ -2742,7 +2749,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         }
                     }
 
-                    if (run_raytracer)
+                    if (run_raytracer_sw)
                     {
                         store_surface_fluxes_rt<<<gridGPU_2d, blockGPU_2d>>>(
                                 sw_flux_up_sfc_g, sw_flux_dn_sfc_g,
@@ -2827,7 +2834,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
                         flux_dn.fill(Float(0.));
                         flux_dn_dir.fill(Float(0.));
                     }
-                    if (!is_day(this->mu0) || !run_raytracer)
+                    if (!is_day(this->mu0) || !run_raytracer_sw)
                     {
                         rt_flux_abs_dir.fill(Float(0.));
                         rt_flux_abs_dif.fill(Float(0.));
@@ -2842,14 +2849,17 @@ void Radiation_rrtmgp_rt<TF>::exec(
                     do_gcs(*fields.sd.at("sw_flux_dn"), flux_dn);
                     do_gcs(*fields.sd.at("sw_flux_dn_dir"), flux_dn_dir);
 
-                    do_gcs_rt(*fields.sd.at("sw_heat_dir_rt"), rt_flux_abs_dir);
-                    do_gcs_rt(*fields.sd.at("sw_heat_dif_rt"), rt_flux_abs_dif);
+                    if (sw_shortwave_3d)
+                    {
+                        do_gcs_rt(*fields.sd.at("sw_heat_dir_rt"), rt_flux_abs_dir);
+                        do_gcs_rt(*fields.sd.at("sw_heat_dif_rt"), rt_flux_abs_dif);
 
-                    do_gcs_2d(sw_flux_sfc_dir_rt_g,rt_flux_sfc_dir);
-                    do_gcs_2d(sw_flux_sfc_dif_rt_g,rt_flux_sfc_dif);
-                    do_gcs_2d(sw_flux_sfc_up_rt_g,rt_flux_sfc_up);
-                    do_gcs_2d(sw_flux_tod_dn_rt_g,rt_flux_tod_dn);
-                    do_gcs_2d(sw_flux_tod_up_rt_g,rt_flux_tod_up);
+                        do_gcs_2d(sw_flux_sfc_dir_rt_g,rt_flux_sfc_dir);
+                        do_gcs_2d(sw_flux_sfc_dif_rt_g,rt_flux_sfc_dif);
+                        do_gcs_2d(sw_flux_sfc_up_rt_g,rt_flux_sfc_up);
+                        do_gcs_2d(sw_flux_tod_dn_rt_g,rt_flux_tod_dn);
+                        do_gcs_2d(sw_flux_tod_up_rt_g,rt_flux_tod_up);
+                    }
 
                     // clear sky
                     if (sw_clear_sky_stats)
@@ -2961,16 +2971,22 @@ void Radiation_rrtmgp_rt<TF>::clear_device()
     for (auto& it : gasprofs_g)
         cuda_safe_call(cudaFree(it.second));
 
-    cuda_safe_call(cudaFree(sw_flux_sfc_dir_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_sfc_dif_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_sfc_up_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_tod_dn_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_tod_up_rt_g));
+    if (sw_shortwave_3d)
+    {
+        cuda_safe_call(cudaFree(sw_flux_sfc_dir_rt_g));
+        cuda_safe_call(cudaFree(sw_flux_sfc_dif_rt_g));
+        cuda_safe_call(cudaFree(sw_flux_sfc_up_rt_g));
+        cuda_safe_call(cudaFree(sw_flux_tod_dn_rt_g));
+        cuda_safe_call(cudaFree(sw_flux_tod_up_rt_g));
+    }
 
-    cuda_safe_call(cudaFree(lw_flux_sfc_dn_rt_g));
-    cuda_safe_call(cudaFree(lw_flux_sfc_up_rt_g));
-    cuda_safe_call(cudaFree(lw_flux_tod_dn_rt_g));
-    cuda_safe_call(cudaFree(lw_flux_tod_up_rt_g));
+    if (sw_longwave_3d)
+    {
+        cuda_safe_call(cudaFree(lw_flux_sfc_dn_rt_g));
+        cuda_safe_call(cudaFree(lw_flux_sfc_up_rt_g));
+        cuda_safe_call(cudaFree(lw_flux_tod_dn_rt_g));
+        cuda_safe_call(cudaFree(lw_flux_tod_up_rt_g));
+    }
 
     cuda_safe_call(cudaFree(lw_flux_dn_inc_g));
     cuda_safe_call(cudaFree(sw_flux_dn_dir_inc_g));
@@ -3023,6 +3039,12 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         save_stats_and_cross(*fields.sd.at("lw_flux_up"), "lw_flux_up", gd.wloc);
         save_stats_and_cross(*fields.sd.at("lw_flux_dn"), "lw_flux_dn", gd.wloc);
 
+        if (sw_longwave_3d)
+        {
+            save_stats_and_cross(*fields.sd.at("lw_heat_rt"), "lw_heat_dir_rt", gd.sloc);
+            save_stats_and_cross(*fields.sd.at("lw_heat_rt"), "lw_heat_dif_rt", gd.sloc);
+        }
+
         if (sw_clear_sky_stats)
         {
             save_stats_and_cross(*fields.sd.at("lw_flux_up_clear"), "lw_flux_up_clear", gd.wloc);
@@ -3042,8 +3064,11 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         save_stats_and_cross(*fields.sd.at("sw_flux_dn"), "sw_flux_dn", gd.wloc);
         save_stats_and_cross(*fields.sd.at("sw_flux_dn_dir"), "sw_flux_dn_dir", gd.wloc);
 
-        save_stats_and_cross(*fields.sd.at("sw_heat_dir_rt"), "sw_heat_dir_rt", gd.sloc);
-        save_stats_and_cross(*fields.sd.at("sw_heat_dif_rt"), "sw_heat_dif_rt", gd.sloc);
+        if (sw_shortwave_3d)
+        {
+            save_stats_and_cross(*fields.sd.at("sw_heat_dir_rt"), "sw_heat_dir_rt", gd.sloc);
+            save_stats_and_cross(*fields.sd.at("sw_heat_dif_rt"), "sw_heat_dif_rt", gd.sloc);
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -3076,52 +3101,70 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
         }
 
         const int nsfcsize = gd.ijcells*sizeof(Float);
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dir_rt.data(), sw_flux_sfc_dir_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_dif_rt.data(), sw_flux_sfc_dif_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_sfc_up_rt.data(), sw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_tod_dn_rt.data(), sw_flux_tod_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(sw_flux_tod_up_rt.data(), sw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
 
-        cuda_safe_call(cudaMemcpy(lw_flux_sfc_dn_rt.data(), lw_flux_sfc_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(lw_flux_sfc_up_rt.data(), lw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(lw_flux_tod_dn_rt.data(), lw_flux_tod_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(lw_flux_tod_up_rt.data(), lw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        if (sw_shortwave_3d)
+        {
+            cuda_safe_call(cudaMemcpy(sw_flux_sfc_dir_rt.data(), sw_flux_sfc_dir_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(sw_flux_sfc_dif_rt.data(), sw_flux_sfc_dif_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(sw_flux_sfc_up_rt.data(), sw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(sw_flux_tod_dn_rt.data(), sw_flux_tod_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(sw_flux_tod_up_rt.data(), sw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        }
+
+        if (sw_longwave_3d)
+        {
+            cuda_safe_call(cudaMemcpy(lw_flux_sfc_dn_rt.data(), lw_flux_sfc_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(lw_flux_sfc_up_rt.data(), lw_flux_sfc_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(lw_flux_tod_dn_rt.data(), lw_flux_tod_dn_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+            cuda_safe_call(cudaMemcpy(lw_flux_tod_up_rt.data(), lw_flux_tod_up_rt_g, nsfcsize, cudaMemcpyDeviceToHost));
+        }
 
         if (do_stats)
         {
-            stats.calc_stats_2d("sw_flux_sfc_dir_rt", sw_flux_sfc_dir_rt, no_offset);
-            stats.calc_stats_2d("sw_flux_sfc_dif_rt", sw_flux_sfc_dif_rt, no_offset);
-            stats.calc_stats_2d("sw_flux_sfc_up_rt", sw_flux_sfc_up_rt, no_offset);
-            stats.calc_stats_2d("sw_flux_tod_dn_rt", sw_flux_tod_dn_rt, no_offset);
-            stats.calc_stats_2d("sw_flux_tod_up_rt", sw_flux_tod_up_rt, no_offset);
-
-            stats.calc_stats_2d("lw_flux_sfc_dn_rt", lw_flux_sfc_dn_rt, no_offset);
-            stats.calc_stats_2d("lw_flux_sfc_up_rt", lw_flux_sfc_up_rt, no_offset);
-            stats.calc_stats_2d("lw_flux_tod_dn_rt", lw_flux_tod_dn_rt, no_offset);
-            stats.calc_stats_2d("lw_flux_tod_up_rt", lw_flux_tod_up_rt, no_offset);
+            if (sw_shortwave_3d)
+            {
+                stats.calc_stats_2d("sw_flux_sfc_dir_rt", sw_flux_sfc_dir_rt, no_offset);
+                stats.calc_stats_2d("sw_flux_sfc_dif_rt", sw_flux_sfc_dif_rt, no_offset);
+                stats.calc_stats_2d("sw_flux_sfc_up_rt", sw_flux_sfc_up_rt, no_offset);
+                stats.calc_stats_2d("sw_flux_tod_dn_rt", sw_flux_tod_dn_rt, no_offset);
+                stats.calc_stats_2d("sw_flux_tod_up_rt", sw_flux_tod_up_rt, no_offset);
+            }
+            if (sw_longwave_3d)
+            {
+                stats.calc_stats_2d("lw_flux_sfc_dn_rt", lw_flux_sfc_dn_rt, no_offset);
+                stats.calc_stats_2d("lw_flux_sfc_up_rt", lw_flux_sfc_up_rt, no_offset);
+                stats.calc_stats_2d("lw_flux_tod_dn_rt", lw_flux_tod_dn_rt, no_offset);
+                stats.calc_stats_2d("lw_flux_tod_up_rt", lw_flux_tod_up_rt, no_offset);
+            }
         }
 
         if (do_cross)
         {
-            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dir_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_dir_rt.data(), no_offset, "sw_flux_sfc_dir_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dif_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_dif_rt.data(), no_offset, "sw_flux_sfc_dif_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_up_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_sfc_up_rt.data(), no_offset, "sw_flux_sfc_up_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_dn_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_tod_dn_rt.data(), no_offset, "sw_flux_tod_dn_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_up_rt") != crosslist.end())
-                cross.cross_plane(sw_flux_tod_up_rt.data(), no_offset, "sw_flux_tod_up_rt", iotime);
+            if (sw_shortwave_3d)
+            {
+                if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dir_rt") != crosslist.end())
+                    cross.cross_plane(sw_flux_sfc_dir_rt.data(), no_offset, "sw_flux_sfc_dir_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_dif_rt") != crosslist.end())
+                    cross.cross_plane(sw_flux_sfc_dif_rt.data(), no_offset, "sw_flux_sfc_dif_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_sfc_up_rt") != crosslist.end())
+                    cross.cross_plane(sw_flux_sfc_up_rt.data(), no_offset, "sw_flux_sfc_up_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_dn_rt") != crosslist.end())
+                    cross.cross_plane(sw_flux_tod_dn_rt.data(), no_offset, "sw_flux_tod_dn_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "sw_flux_tod_up_rt") != crosslist.end())
+                    cross.cross_plane(sw_flux_tod_up_rt.data(), no_offset, "sw_flux_tod_up_rt", iotime);
+            }
 
-            if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_sfc_dn_rt") != crosslist.end())
-                cross.cross_plane(lw_flux_sfc_dn_rt.data(), no_offset, "lw_flux_sfc_dn_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_sfc_up_rt") != crosslist.end())
-                cross.cross_plane(lw_flux_sfc_up_rt.data(), no_offset, "lw_flux_sfc_up_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_tod_dn_rt") != crosslist.end())
-                cross.cross_plane(lw_flux_tod_dn_rt.data(), no_offset, "lw_flux_tod_dn_rt", iotime);
-            if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_tod_up_rt") != crosslist.end())
-                cross.cross_plane(lw_flux_tod_up_rt.data(), no_offset, "lw_flux_tod_up_rt", iotime);
+            if (sw_longwave_3d)
+            {
+                if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_sfc_dn_rt") != crosslist.end())
+                    cross.cross_plane(lw_flux_sfc_dn_rt.data(), no_offset, "lw_flux_sfc_dn_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_sfc_up_rt") != crosslist.end())
+                    cross.cross_plane(lw_flux_sfc_up_rt.data(), no_offset, "lw_flux_sfc_up_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_tod_dn_rt") != crosslist.end())
+                    cross.cross_plane(lw_flux_tod_dn_rt.data(), no_offset, "lw_flux_tod_dn_rt", iotime);
+                if (std::find(crosslist.begin(), crosslist.end(), "lw_flux_tod_up_rt") != crosslist.end())
+                    cross.cross_plane(lw_flux_tod_up_rt.data(), no_offset, "lw_flux_tod_up_rt", iotime);
+            }
         }
     }
 

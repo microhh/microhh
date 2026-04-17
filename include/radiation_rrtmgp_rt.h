@@ -238,12 +238,14 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         bool sw_longwave;
         bool sw_shortwave;
+        bool sw_longwave_3d;
+        bool sw_shortwave_3d;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
         bool sw_aerosol;
         bool sw_delta_cloud;
         bool sw_delta_aer;
-        bool sw_2str_when_no_clouds;
+        bool sw_1d_when_no_clouds;
 
         bool swtimedep_background;
         bool swtimedep_aerosol;

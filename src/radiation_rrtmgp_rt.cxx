@@ -490,11 +490,13 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     sw_longwave      = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
+    sw_longwave_3d   = inputin.get_item<bool>("radiation", "swlongwave3d" , "", true);
+    sw_shortwave_3d  = inputin.get_item<bool>("radiation", "swshortwave3d", "", true);
     sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_aerosol      = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
     sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
-    sw_2str_when_no_clouds = inputin.get_item<bool>("radiation", "sw2strwhennoclouds", "", false);
+    sw_1d_when_no_clouds = inputin.get_item<bool>("radiation", "sw1dwhennoclouds", "", false);
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
     swtimedep_background = inputin.get_item<bool>("radiation", "swtimedep_background", "", false);
@@ -563,7 +565,10 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     fields.init_diagnostic_field("lw_flux_up", "Longwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("lw_flux_dn", "Longwave downwelling flux", "W m-2", "radiation", gd.wloc);
 
-    fields.init_diagnostic_field("lw_heat_rt", "Heating rates from raytraced radiation", "K s-1", "radiation", gd.sloc);
+    if (sw_longwave_3d)
+    {
+        fields.init_diagnostic_field("lw_heat_rt", "Heating rates from raytraced radiation", "K s-1", "radiation", gd.sloc);
+    }
 
     if (sw_clear_sky_stats)
     {
@@ -575,9 +580,11 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     fields.init_diagnostic_field("sw_flux_dn", "Shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
 
-    fields.init_diagnostic_field("sw_heat_dir_rt", "Heating rates from direct raytraced radiation", "K s-1", "radiation", gd.sloc);
-    fields.init_diagnostic_field("sw_heat_dif_rt", "Heating rates from diffuse raytraced radiation", "k s-1", "radiation", gd.sloc);
-
+    if (sw_shortwave_3d)
+    {
+        fields.init_diagnostic_field("sw_heat_dir_rt", "Heating rates from direct raytraced radiation", "K s-1", "radiation", gd.sloc);
+        fields.init_diagnostic_field("sw_heat_dif_rt", "Heating rates from diffuse raytraced radiation", "k s-1", "radiation", gd.sloc);
+    }
     if (sw_clear_sky_stats)
     {
         fields.init_diagnostic_field("sw_flux_up_clear", "Clear-sky shortwave upwelling flux", "W m-2", "radiation", gd.wloc);
@@ -710,19 +717,21 @@ void Radiation_rrtmgp_rt<TF>::create(
         stats.add_time_series("tsi_scaling", "tsi scaling", "W/m2", group_name);
         stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
 
-        stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
-        stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
-
+        if (sw_shortwave_3d)
+        {
+            stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
+            stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
+        }
         if (sw_aerosol)
         {
             stats.add_time_series("AOD550", "Aerosol optical depth at 550nm", "-", group_name);
         }
     }
 
-    if (stats.get_switch() && sw_longwave)
+    if (stats.get_switch() && sw_longwave_3d)
     {
         const std::string group_name = "radiation";
         stats.add_time_series("lw_flux_sfc_dn_rt", "raytraced longwave downwelling direct flux at the surface", "W m-2", group_name);
@@ -741,14 +750,17 @@ void Radiation_rrtmgp_rt<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_dn");
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
 
-        allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
-        allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
+        if (sw_shortwave_3d)
+        {
+            allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
+            allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
 
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -763,12 +775,15 @@ void Radiation_rrtmgp_rt<TF>::create(
         allowed_crossvars_radiation.push_back("lw_flux_up");
         allowed_crossvars_radiation.push_back("lw_flux_dn");
 
-        allowed_crossvars_radiation.push_back("lw_heat_rt");
+        if (sw_longwave_3d)
+        {
+            allowed_crossvars_radiation.push_back("lw_heat_rt");
 
-        allowed_crossvars_radiation.push_back("lw_flux_sfc_dn_rt");
-        allowed_crossvars_radiation.push_back("lw_flux_sfc_up_rt");
-        allowed_crossvars_radiation.push_back("lw_flux_tod_dn_rt");
-        allowed_crossvars_radiation.push_back("lw_flux_tod_up_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_sfc_dn_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_sfc_up_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_tod_dn_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_tod_up_rt");
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -1269,7 +1284,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver_longwave(
         stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh", group_name);
         stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh", group_name);
 
-        stats.add_prof("lw_heat_rt", "Raytraced heating rates radiation" , "K s-1", "z", group_name);
+        if (sw_longwave_3d)
+            stats.add_prof("lw_heat_rt", "Raytraced heating rates radiation" , "K s-1", "z", group_name);
 
         if (sw_clear_sky_stats)
         {
@@ -1284,7 +1300,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver_longwave(
         column.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
         column.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
 
-        column.add_prof("lw_heat_rt", "Raytraced heating rates from radiation", "K s-1", "zh");
+        if (sw_longwave_3d)
+            column.add_prof("lw_heat_rt", "Raytraced heating rates from radiation", "K s-1", "zh");
 
         if (sw_clear_sky_stats)
         {
@@ -1336,8 +1353,11 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
 
-        stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
-        stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
+        if (sw_shortwave_3d)
+        {
+            stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
+            stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -1354,8 +1374,11 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         column.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         column.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
 
-        column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
-        column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
+        if (sw_shortwave_3d)
+        {
+            column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
+            column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
+        }
 
         if (sw_clear_sky_stats)
         {
