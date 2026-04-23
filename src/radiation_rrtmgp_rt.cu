@@ -1434,7 +1434,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
         Array_gpu<Float,2>& rt_flux_sfc_dn, Array_gpu<Float,2>& rt_flux_sfc_up,
         Array_gpu<Float,3>& rt_flux_abs,
         const Array_gpu<Float,2>& t_lay, const Array_gpu<Float,2>& t_lev, const Array_gpu<Float,1>& t_sfc,
-        const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& rh,
+        const Array_gpu<Float,2>& rh, const Array_gpu<Float,2>& h2o,
         Array_gpu<Float,2>& clwp, Array_gpu<Float,2>& ciwp,
         Array_gpu<Float,2>& rel, Array_gpu<Float,2>& dei,
         const bool compute_clouds, const bool run_raytracer)
@@ -1488,7 +1488,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
 
     // // Make TOD flux arrays
     Array_gpu<Float,1> lw_flux_dn_inc_local({n_col});// = Array_gpu<Float,2>(sw_flux_dn_dif_inc_g, {1, n_gpt});
-
     gas_concs_gpu->set_vmr("h2o", h2o);
 
     // plev and play need column dimension
@@ -1551,7 +1550,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                     t_lay,
                     t_lev,
                     t_sfc,
-                    gas_concs,
+                    *gas_concs_gpu,
                     optical_props,
                     *sources,
                     col_dry);
@@ -2110,7 +2109,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     p_lay,
                     p_lev,
                     t_lay,
-                    gas_concs,
+                    *gas_concs_gpu,
                     optical_props,
                     toa_src_temp,
                     col_dry);
@@ -2166,7 +2165,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     band,
                     *aerosol_concs_gpu,
                     rh, p_lev,
-                    false, // no independent column
+                    true, // scattering
                     *aerosol_optical_props);
 
             if (sw_delta_aer)
@@ -2189,7 +2188,6 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
 
         sw_flux_dn_dir_inc_local.fill(sw_flux_dn_dir_inc({1, igpt}));
         sw_flux_dn_dif_inc_local.fill(sw_flux_dn_dif_inc({1, igpt}));
-
         rte_sw_rt.rte_sw(
                 optical_props,
                 top_at_1,
@@ -2660,14 +2658,27 @@ void Radiation_rrtmgp_rt<TF>::exec(
                 }
                 if (is_day(this->mu0) || !sw_is_tuned)
                 {
-                    exec_shortwave_rt(
+                    if (run_raytracer_sw)
+                    {
+                        exec_shortwave_rt(
                             thermo, microphys, timeloop, stats,
                             flux_up, flux_dn, flux_dn_dir, flux_net,
                             rt_flux_tod_dn, rt_flux_tod_up, rt_flux_sfc_dir, rt_flux_sfc_dif,
                             rt_flux_sfc_up, rt_flux_abs_dir, rt_flux_abs_dif,
                             t_lay_a, t_lev_a, h2o_a, rh_a, clwp_a, ciwp_a,
                             rel, dei, compute_clouds, run_raytracer_sw);
-                    cuda_check_error();
+                        cuda_check_error();
+                    }
+                    else
+                    {
+                        exec_shortwave(
+                                thermo, microphys, timeloop, stats,
+                                flux_up, flux_dn, flux_dn_dir, flux_net,
+                                t_lay_a, t_lev_a, h2o_a, rh_a,
+                                clwp_a, ciwp_a, rel, dei,
+                                compute_clouds);
+                        cuda_check_error();
+                    }
 
                     if (sw_homogenize_hr_sw)
                     {
