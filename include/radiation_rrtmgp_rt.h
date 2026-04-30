@@ -246,6 +246,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         bool sw_delta_cloud;
         bool sw_delta_aer;
         bool sw_1d_when_no_clouds;
+        bool sw_lw_scattering;
 
         bool swtimedep_background;
         bool swtimedep_aerosol;
@@ -280,6 +281,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         Float lat; // Latitude (degrees)
         Float lon; // Longitude (degrees)
+
+        // threshold ratio between minimum gasous mean free path and horizontal grid to decide whether to use longwave raytracing or 1D solution for g-point
+        Float min_mfp_grid_ratio = Float(1.0);
 
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;

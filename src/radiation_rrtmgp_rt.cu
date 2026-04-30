@@ -1455,7 +1455,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
     const Vector<int> kn_grid = {kngrid_i, kngrid_j, kngrid_k};
 
     const Float grid_d_xy_min = min(gd.dx, gd.dy);
-    constexpr Float min_mfp_grid_ratio = Float(1.0); //hardcoded now, make input variable later
 
     // initiate flux & heating rate arrays to 0
     Gas_optics_rrtmgp_kernels_cuda_rt::zero_array(gd.jmax, gd.imax, rt_flux_tod_dn.ptr());
@@ -1613,7 +1612,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                         ciwp,
                         rel,
                         dei,
-                        false, // no scattering (yet)
+                        sw_lw_scattering,
                         *cloud_optical_props);
 
                 if (sw_delta_cloud)
@@ -1639,7 +1638,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                         band,
                         *aerosol_concs_gpu,
                         rh, p_lev,
-                        false, // no independent column
+                        sw_lw_scattering,
                         *aerosol_optical_props);
 
                 if (sw_delta_aer)
@@ -1667,7 +1666,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
         rte_lw_rt.rte_lw(
                 optical_props,
                 top_at_1,
-                false, //no scattering (yet)
+                sw_lw_scattering,
                 *sources,
                 emis_sfc_g.subset({{ {band, band}, {1, n_col}}}),
                 lw_flux_dn_inc_local,
@@ -1718,7 +1717,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
             Gpt_combine_kernels_cuda_rt::add_from_gpoint(
                       gd.imax, gd.jmax, rt_flux_tod_dn.ptr(), rt_flux_tod_up.ptr(), rt_flux_sfc_dn.ptr(), rt_flux_sfc_up.ptr(),
                       fluxes->get_flux_tod_dn().ptr(), fluxes->get_flux_tod_up().ptr(), fluxes->get_flux_sfc_dif().ptr(), fluxes->get_flux_sfc_up().ptr());
-            //rt_flux_sfc_dn.dump("lwflux_"+std::to_string(this->time_idx)+"_"+std::to_string(igpt));
 
             Gpt_combine_kernels_cuda_rt::add_from_gpoint(
                       n_col, n_lay, rt_flux_abs.ptr(), fluxes->get_flux_abs_dif().ptr());
@@ -1849,7 +1847,6 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
                 toa_src_dummy,
                 col_dry.subset({{ {col_s_in, col_e_in}, {1, n_lay} }}) );
 
-
         if (compute_clouds)
         {
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
@@ -1897,6 +1894,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
         Array_gpu<Float,3> gpt_flux_up({n_col_in, n_lev, n_gpt});
         Array_gpu<Float,3> gpt_flux_dn({n_col_in, n_lev, n_gpt});
         Array_gpu<Float,3> gpt_flux_dn_dir({n_col_in, n_lev, n_gpt});
+
 
         rte_sw_gpu.rte_sw(
                 optical_props_subset_in,
