@@ -46,7 +46,7 @@ from copy import deepcopy
 def _int_or_float_or_str(value):
     """ Helper function: convert a string to int/float/str """
     try:
-        if ('.' in value):
+        if ('.' in value or 'e' in value.lower()):
             return float(value)
         else:
             return int(float(value))

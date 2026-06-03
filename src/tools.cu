@@ -216,7 +216,7 @@ namespace Tools_g
     }
 
     template<typename TF> __global__
-    void set_to_val(TF* __restrict__ a, int nsize, TF val)
+    void set_to_val_kernel(TF* __restrict__ a, int nsize, TF val)
     {
         const int n = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -224,13 +224,31 @@ namespace Tools_g
             a[n] = val;
     }
 
+    template<typename TF>
+    void set_to_val(TF* __restrict__ a, int nsize, TF val)
+    {
+        const int nblock = 256;
+        const int ngrid  = nsize/nblock + (nsize%nblock > 0);
+        set_to_val_kernel<TF><<<ngrid, nblock>>>(a, nsize, val);
+        cuda_check_error();
+    }
+
     template<typename TF> __global__
-    void mult_by_val(TF* __restrict__ a, int nsize, TF val)
+    void mult_by_val_kernel(TF* __restrict__ a, int nsize, TF val)
     {
         const int n = blockIdx.x*blockDim.x + threadIdx.x;
 
         if (n < nsize)
             a[n] *= val;
+    }
+
+    template<typename TF>
+    void mult_by_val(TF* __restrict__ a, int nsize, TF val)
+    {
+        const int nblock = 256;
+        const int ngrid  = nsize/nblock + (nsize%nblock > 0);
+        mult_by_val_kernel<TF><<<ngrid, nblock>>>(a, nsize, val);
+        cuda_check_error();
     }
 
     int next_pow_of_2(unsigned int x)
@@ -343,7 +361,7 @@ template void Tools_g::reduce_interior<double>(const double*, double*, int, int,
 template void Tools_g::reduce_interior<float>(const float*, float*, int, int, int, int, int, int, int, int, int, int, Tools_g::Reduce_type);
 template void Tools_g::reduce_all<double>(const double*, double*, int, int, int, Tools_g::Reduce_type, double);
 template void Tools_g::reduce_all<float>(const float*, float*, int, int, int, Tools_g::Reduce_type, float);
-template  __global__ void Tools_g::set_to_val(double* __restrict__, int, double);
-template  __global__ void Tools_g::set_to_val(float* __restrict__, int, float);
-template  __global__ void Tools_g::mult_by_val(double* __restrict__, int, double);
-template  __global__ void Tools_g::mult_by_val(float* __restrict__, int, float);
+template void Tools_g::set_to_val<double>(double* __restrict__, int, double);
+template void Tools_g::set_to_val<float>(float* __restrict__, int, float);
+template void Tools_g::mult_by_val<double>(double* __restrict__, int, double);
+template void Tools_g::mult_by_val<float>(float* __restrict__, int, float);

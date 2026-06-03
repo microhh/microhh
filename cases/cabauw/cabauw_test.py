@@ -101,7 +101,6 @@ if __name__ == '__main__':
     modes = ['gpu', 'cpu', 'cpumpi']
     precs = ['dp', 'sp']
 
-    executables = []
     for mode in modes:
         for prec in precs:
             executable = '../../build_{}_{}/microhh'.format(prec, mode)
