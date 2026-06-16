@@ -138,7 +138,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input, *thermo);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
@@ -417,7 +417,7 @@ void Model<TF>::exec()
                 buffer->exec(*stats);
 
                 // Apply the scalar decay.
-                decay->exec(timeloop->get_sub_time_step(), *stats);
+                decay->exec(timeloop->get_sub_time_step(), *stats, *thermo);
 
                 // Add point and line sources of scalars.
                 source->exec(*timeloop);
