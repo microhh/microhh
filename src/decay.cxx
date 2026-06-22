@@ -155,6 +155,7 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats, Thermo<TF>& thermo)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
             // stats.calc_tend(*fields.st.at(it.first), tend_name);
+            fields.release_tmp(ql);
         }
     }
 }
