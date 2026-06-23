@@ -155,8 +155,6 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
-        // Parse the statistics masks
-        add_statistics_masks();
     }
     catch (std::exception& e)
     {
@@ -211,6 +209,9 @@ void Model<TF>::init()
     column->init();
     cross->init();
     dump->init();
+
+    // Parse the statistics masks
+    add_statistics_masks();
 }
 
 template<typename TF>
@@ -699,7 +700,12 @@ void Model<TF>::setup_stats()
 
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
-
+std::cout<<"Available masks: ";
+        for (const auto& mask : mask_list)
+        {
+            std::cout<<mask<<" ";
+        }
+        std::cout<<std::endl;
         stats->initialize_masks();
         for (auto& mask_name : mask_list)
         {
@@ -708,15 +714,13 @@ void Model<TF>::setup_stats()
                 fields->get_mask(*stats, mask_name);
             else if (thermo->has_mask(mask_name))
                 thermo->get_mask(*stats, mask_name);
-            else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
             else if (ib->has_mask(mask_name))
                 ib->get_mask(*stats, mask_name);
             else
             {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                std::string error_message = "Cannot calculate mask for \"" + mask_name + "\"";
                 throw std::runtime_error(error_message);
             }
         }
@@ -746,15 +750,13 @@ void Model<TF>::calc_masks()
             fields->get_mask(*stats, mask_name);
         else if (thermo->has_mask(mask_name))
             thermo->get_mask(*stats, mask_name);
-        else if (microphys->has_mask(mask_name))
-            microphys->get_mask(*stats, mask_name);
         else if (decay->has_mask(mask_name))
             decay->get_mask(*stats, mask_name);
         else if (ib->has_mask(mask_name))
             ib->get_mask(*stats, mask_name);
         else
         {
-            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            std::string error_message = "Cannot calculate mask for \"" + mask_name + "\"";
             throw std::runtime_error(error_message);
         }
     }
@@ -799,8 +801,6 @@ void Model<TF>::add_statistics_masks()
         else if (fields->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (thermo->has_mask(mask_name))
-            stats->add_mask(mask_name);
-        else if (microphys->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (decay->has_mask(mask_name))
             stats->add_mask(mask_name);

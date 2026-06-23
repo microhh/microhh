@@ -44,7 +44,7 @@
 #include "diff.h"
 #include "fast_math.h"
 
-   
+
 namespace
 {
     template<typename TF>
@@ -428,7 +428,7 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
     n_tmp_fields = 4;
 
     // Specify the masks that fields can provide / calculate
-    available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
+    available_masks.insert(available_masks.end(), {"default"});
 
     // Add user specified XY masks as available masks
     xymasklist = input.get_list<std::string>("stats", "xymasklist", "", std::vector<std::string>());
@@ -510,6 +510,16 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     // Allocate user XY masks
     for (auto& mask : xymasklist)
         xymasks.emplace(mask, std::vector<TF>(gd.ijcells));
+
+    // Specify the masks that fields can provide / calculate
+    for (auto& it : mp)
+        available_masks.insert(available_masks.end(), {it.first + "plus", it.first + "min"});
+
+    for (auto& it : sp)
+        available_masks.insert(available_masks.end(), {it.first + "plus", it.first + "min"});
+
+    for (auto& it : sd)
+        available_masks.insert(available_masks.end(), {it.first + "plus", it.first + "min"});
 
     // Set up output classes
     create_dump(dump);
@@ -739,18 +749,91 @@ void Fields<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
     }
     else
     {
-        // Interpolate w to full level:
-        auto wf = get_tmp();
-        grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+        // Check if the mask has a threshold in it
+        std::vector<std::string> strings;
+        boost::split(strings, mask_name, boost::is_any_of("_"));
+        std::string threshold_str = "0.";
+        if (strings.size() > 1)
+        {
+            // Process the threshold value
+            threshold_str = strings[1];
+        }
+        const TF threshold = std::stof(threshold_str);
 
-        // Calculate masks
-        const TF threshold = 0;
-        if (mask_name == "wplus")
-            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Plus);
-        else if (mask_name == "wmin")
-            stats.set_mask_thres(mask_name, *mp.at("w"), *wf, threshold, Stats_mask_type::Min);
+        std::string mask_type = "plus";
+        size_t pos = strings[0].find("plus");
+        if (pos == std::string::npos)
+        {
+            mask_type = "min";
+            pos = strings[0].find("min");
+            if (pos == std::string::npos)
+                throw std::runtime_error("Cannot calculate mask for \"" + mask_name + "\"");
+        }
 
-        release_tmp(wf);
+        std::string varname = strings[0].substr(0, pos);
+        if (varname == "u")
+        {
+            // Interpolate u to cell center:
+            auto uf = get_tmp();
+            grid.interpolate_2nd(uf->fld.data(), mp.at("u")->fld.data(), gd.uloc.data(), gd.sloc.data());
+            auto uh = get_tmp();
+            grid.interpolate_2nd(uh->fld.data(), uh->fld.data(), gd.sloc.data(), gd.wloc.data());
+
+            // Calculate masks
+            if (mask_type == "plus")
+                stats.set_mask_thres(mask_name, *uf, *uh, threshold - gd.utrans, Stats_mask_type::Plus);
+            else if (mask_type == "min")
+                stats.set_mask_thres(mask_name, *uf, *uh, threshold - gd.utrans, Stats_mask_type::Min);
+
+            release_tmp(uf);
+            release_tmp(uh);
+        }
+        if (varname == "v")
+        {
+            // Interpolate u to cell center:
+            auto vf = get_tmp();
+            grid.interpolate_2nd(vf->fld.data(), mp.at("v")->fld.data(), gd.vloc.data(), gd.sloc.data());
+            auto vh = get_tmp();
+            grid.interpolate_2nd(vh->fld.data(), vh->fld.data(), gd.sloc.data(), gd.wloc.data());
+
+            // Calculate masks
+            if (mask_type == "plus")
+                stats.set_mask_thres(mask_name, *vf, *vh, threshold - gd.vtrans, Stats_mask_type::Plus);
+            else if (mask_type == "min")
+                stats.set_mask_thres(mask_name, *vf, *vh, threshold - gd.vtrans, Stats_mask_type::Min);
+
+            release_tmp(vf);
+            release_tmp(vh);
+        }
+        if (varname == "w")
+        {
+            // Interpolate w to full level:
+            auto wf = get_tmp();
+            grid.interpolate_2nd(wf->fld.data(), mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+
+            // Calculate masks
+            if (mask_type == "plus")
+                stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Plus);
+            else if (mask_type == "min")
+                stats.set_mask_thres(mask_name, *wf, *mp.at("w"), threshold, Stats_mask_type::Min);
+
+            release_tmp(wf);
+        }
+        else
+        {
+            // Interpolate scalar to half level:
+            auto sh = get_tmp();
+            grid.interpolate_2nd(sh->fld.data(), sp.at(varname)->fld.data(), gd.sloc.data(), gd.wloc.data());
+
+            // Calculate masks
+            if (mask_type == "plus")
+                stats.set_mask_thres(mask_name, *sp.at(varname), *sh, threshold, Stats_mask_type::Plus);
+            else if (mask_type == "min")
+                stats.set_mask_thres(mask_name, *sp.at(varname), *sh, threshold, Stats_mask_type::Min);
+
+            release_tmp(sh);
+
+        }
     }
 }
 
@@ -792,7 +875,7 @@ void Fields<TF>::exec_stats(Stats<TF>& stats)
 
     auto& masks = stats.get_masks();
 
-    // The loop over masks inside of budget is necessary, because the mask mean is 
+    // The loop over masks inside of budget is necessary, because the mask mean is
     // required in order to compute the budget terms.
     for (auto& m : masks)
     {
@@ -902,7 +985,7 @@ void Fields<TF>::init_prognostic_field(
 
     // Record whether a WARNING needs to be thrown if the field does not exist in the input
     required_read[fldname] = required;
-    
+
 }
 
 template<typename TF>
@@ -1478,7 +1561,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = gd.vtrans;
         else
             offset = no_offset;
-        
+
         cross.cross_simple(a.at(it)->fld.data(), offset, a.at(it)->name, iotime, a.at(it)->loc);
     }
     for (auto& it : cross_lngrad)
@@ -1511,7 +1594,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
             offset = no_offset;
         cross.cross_plane(a.at(it)->fld_top.data(), offset, a.at(it)->name+"_top", iotime);
     }
-    
+
     for (auto& it : cross_path)
         cross.cross_path(a.at(it)->fld.data(), a.at(it)->name+"_path", iotime);
 }
@@ -1547,7 +1630,10 @@ void Fields<TF>::exec_column(Column<TF>& column)
 template<typename TF>
 bool Fields<TF>::has_mask(std::string mask_name)
 {
-    if (std::find(available_masks.begin(), available_masks.end(), mask_name) != available_masks.end())
+    std::vector<std::string> strings;
+    boost::split(strings, mask_name, boost::is_any_of("_"));
+
+    if (std::find(available_masks.begin(), available_masks.end(), strings[0]) != available_masks.end())
         return true;
     else
         return false;

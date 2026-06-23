@@ -53,8 +53,6 @@ class Microphys_disabled : public Microphys<TF>
         void exec_column(Column<TF>&) {};
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_cross(Cross<TF>&, unsigned long) {};
-        void get_mask(Stats<TF>&, std::string) {};
-        bool has_mask(std::string) {return false;};
 
         void get_surface_rain_rate(std::vector<TF>&);
 
