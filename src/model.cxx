@@ -700,12 +700,7 @@ void Model<TF>::setup_stats()
 
         // Prepare all the masks.
         const std::vector<std::string>& mask_list = stats->get_mask_list();
-std::cout<<"Available masks: ";
-        for (const auto& mask : mask_list)
-        {
-            std::cout<<mask<<" ";
-        }
-        std::cout<<std::endl;
+
         stats->initialize_masks();
         for (auto& mask_name : mask_list)
         {
