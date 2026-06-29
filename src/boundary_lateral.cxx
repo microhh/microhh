@@ -1569,7 +1569,7 @@ void Boundary_lateral<TF>::exec_lateral_sponge(
     {
         const bool sw_recycle_fld = in_list<std::string>(fld, recycle_list);
 
-        if (md.mpicoordx == 0)
+        if (md.mpicoordx == 0 && sw_recycle[Lbc_location::West])
         {
             if (sw_recycle_fld && sw_recycle[Lbc_location::West])
                 sponge_layer_wrapper.template operator()<Lbc_location::West, true>(lbc_w, fld);
