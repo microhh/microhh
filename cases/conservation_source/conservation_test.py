@@ -201,7 +201,12 @@ def test_conservation(sw_thermo, sw_basestate, sw_source, executable, precision)
     return status
 
 
-def run_conservation_test(modes, precs, sources, thermos, bases):
+def run_conservation_test(
+        modes,
+        precs,
+        sources=['gaussian', '3d'],
+        thermos=['dry', 'moist'],
+        bases=['anelastic']):
 
     status = 0
 
