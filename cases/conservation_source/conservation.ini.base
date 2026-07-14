@@ -61,7 +61,7 @@ strength=1
 swvmr=false
 
 [time]
-endtime=600
+endtime=200
 dt=6.
 dtmax=60.
 savetime=100

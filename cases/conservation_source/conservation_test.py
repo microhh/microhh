@@ -223,20 +223,14 @@ def run_conservation_test(modes, precs, sources, thermos, bases):
 
 if __name__ == '__main__':
     """
-    Run full conservation test including GPU.
+    Run full conservation test.
     """
 
-    #modes = ['cpu', 'cpumpi', 'gpu']
-    #precs = ['sp', 'dp']
-    #sources = ['gaussian', '3d']
-    #thermos = ['dry', 'moist']
-    #bases = ['boussinesq', 'anelastic']
-
-    modes = ['cpu']
-    precs = ['dp']
-    sources = ['3d']
-    thermos = ['dry']
-    bases = ['anelastic']
+    modes = ['cpu', 'cpumpi', 'gpu']
+    precs = ['sp', 'dp']
+    sources = ['gaussian', '3d']
+    thermos = ['dry', 'moist']
+    bases = ['boussinesq', 'anelastic']
 
     status = run_conservation_test(modes, precs, sources, thermos, bases)
 
