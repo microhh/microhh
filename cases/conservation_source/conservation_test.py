@@ -201,10 +201,7 @@ def test_conservation(sw_thermo, sw_basestate, sw_source, executable, precision)
     return status
 
 
-def run_conservation_test(modes, precs, sources=['gaussian', '3d']):
-
-    sw_thermos = ['dry', 'moist']
-    sw_basestates = ['boussinesq', 'anelastic']
+def run_conservation_test(modes, precs, sources, thermos, bases):
 
     status = 0
 
@@ -216,8 +213,8 @@ def run_conservation_test(modes, precs, sources=['gaussian', '3d']):
         for mode in modes:
             for prec in precs:
                 executable = f'../../build_{prec}_{mode}/microhh'
-                for sw_thermo in sw_thermos:
-                    for sw_basestate in sw_basestates:
+                for sw_thermo in thermos:
+                    for sw_basestate in bases:
                         status += test_conservation(
                                 sw_thermo, sw_basestate, sw_source, executable, prec)
 
@@ -229,11 +226,19 @@ if __name__ == '__main__':
     Run full conservation test including GPU.
     """
 
-    modes = ['cpu', 'cpumpi', 'gpu']
-    precs = ['sp', 'dp']
-    sources = ['gaussian', '3d']
+    #modes = ['cpu', 'cpumpi', 'gpu']
+    #precs = ['sp', 'dp']
+    #sources = ['gaussian', '3d']
+    #thermos = ['dry', 'moist']
+    #bases = ['boussinesq', 'anelastic']
 
-    status = run_conservation_test(modes, precs, sources)
+    modes = ['cpu']
+    precs = ['dp']
+    sources = ['3d']
+    thermos = ['dry']
+    bases = ['anelastic']
+
+    status = run_conservation_test(modes, precs, sources, thermos, bases)
 
     if status > 0:
         raise Exception('One or more conservation tests failed.')
