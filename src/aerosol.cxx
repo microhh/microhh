@@ -33,8 +33,8 @@
 #include "thermo.h"
 #include "fields.h"
 #include "timedep.h"
-#include "Gas_concs.h"
-#include "Array.h"
+#include "gas_concs.h"
+#include "array.h"
 
 using Aerosol_concs = Gas_concs;
 

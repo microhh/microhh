@@ -36,8 +36,8 @@
 #include "cross.h"
 #include "column.h"
 
-#include "Array.h"
-#include "Fluxes.h"
+#include "array.h"
+#include "fluxes.h"
 #include "subset_kernels_cuda.h"
 
 using namespace Radiation_rrtmgp_functions;
@@ -141,7 +141,7 @@ namespace
 
     __global__
     void effective_radius_and_ciwp_to_gm2(
-            Float* __restrict__ rel, Float* __restrict__ rei,
+            Float* __restrict__ rel, Float* __restrict__ dei,
             Float* __restrict__ clwp, Float* __restrict__ ciwp,
             const Float* __restrict__ dz,
             const int ncol, const int nlay, const int kstart,
@@ -157,10 +157,10 @@ namespace
             const int idx = icol + ilay*ncol;
             const int idx_z = ilay + kstart;
             const Float rel_local = clwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(clwp[idx] / dz[idx_z] / four_third_pi_N0_rho_w, Float(1.)/Float(3.)) : Float(0.);
-            const Float rei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
+            const Float dei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
 
             rel[idx] = max(Float(2.5), min(rel_local, Float(21.5)));
-            rei[idx] = max(Float(10.), min(rei_local, Float(180.)));
+            dei[idx] = max(Float(10.), min(dei_local, Float(180.)));
 
             clwp[idx] *= Float(1.e3);
             ciwp[idx] *= Float(1.e3);
@@ -491,30 +491,28 @@ namespace
         // Read look-up table constants.
         Float radliq_lwr = coef_nc.get_variable<Float>("radliq_lwr");
         Float radliq_upr = coef_nc.get_variable<Float>("radliq_upr");
-        Float radliq_fac = coef_nc.get_variable<Float>("radliq_fac");
 
-        Float radice_lwr = coef_nc.get_variable<Float>("radice_lwr");
-        Float radice_upr = coef_nc.get_variable<Float>("radice_upr");
-        Float radice_fac = coef_nc.get_variable<Float>("radice_fac");
+        Float diamice_lwr = coef_nc.get_variable<Float>("diamice_lwr");
+        Float diamice_upr = coef_nc.get_variable<Float>("diamice_upr");
 
         Array<Float,2> lut_extliq(
-                coef_nc.get_variable<Float>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_ssaliq(
-                coef_nc.get_variable<Float>("lut_ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_asyliq(
-                coef_nc.get_variable<Float>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
 
         Array<Float,3> lut_extice(
-                coef_nc.get_variable<Float>("lut_extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_ssaice(
-                coef_nc.get_variable<Float>("lut_ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_asyice(
-                coef_nc.get_variable<Float>("lut_asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
 
         return Cloud_optics_gpu(
                 band_lims_wvn,
-                radliq_lwr, radliq_upr, radliq_fac,
-                radice_lwr, radice_upr, radice_fac,
+                radliq_lwr, radliq_upr,
+                diamice_lwr, diamice_upr,
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
@@ -527,7 +525,7 @@ namespace
         Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
 
         // Read look-up table coefficient dimensions
-        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_band     = coef_nc.get_dimension_size("band");
         int n_hum      = coef_nc.get_dimension_size("relative_humidity");
         int n_philic = coef_nc.get_dimension_size("hydrophilic");
         int n_phobic = coef_nc.get_dimension_size("hydrophobic");
@@ -535,18 +533,18 @@ namespace
         Array<Float,2> band_lims_wvn({2, n_band});
 
         Array<Float,2> mext_phobic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> ssa_phobic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("ssa_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> g_phobic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
 
         Array<Float,3> mext_philic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> ssa_philic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("ssa_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> g_philic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
 
         Array<Float,1> rh_upper(
                 coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
@@ -655,7 +653,7 @@ void Radiation_rrtmgp<TF>::prepare_device()
         if (sw_aerosol)
         {
             this->aerosol_sw_gpu = std::make_unique<Aerosol_optics_gpu>(
-                    load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+                    load_and_init_aerosol_optics(master, "aerosol_optics_sw.nc"));
             cuda_safe_call(cudaMalloc(&aod550_g, gd.imax*gd.jmax*sizeof(Float)));
         }
 
@@ -734,7 +732,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
     const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+    const Float four_third_pi_N0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
     const int block_col = 16;
     const int block_lay = 16;
@@ -777,10 +775,10 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             Array_gpu<Float,2> rel({n_col_in, n_lay});
-            Array_gpu<Float,2> rei({n_col_in, n_lay});
+            Array_gpu<Float,2> dei({n_col_in, n_lay});
 
             effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                    rel.ptr(), rei.ptr(),
+                    rel.ptr(), dei.ptr(),
                     clwp_subset.ptr(), ciwp_subset.ptr(),
                     gd.dz_g,
                     n_col_in, n_lay, gd.kstart,
@@ -790,7 +788,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     clwp_subset,
                     ciwp_subset,
                     rel,
-                    rei,
+                    dei,
                     *cloud_optical_props_subset_in);
 
             // Add the cloud optical props to the gas optical properties.
@@ -942,7 +940,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     const TF Ni0 = microphys.get_Ni0();
 
     const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-    const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+    const Float four_third_pi_N0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
     const int block_col = 16;
     const int block_lay = 16;
@@ -986,10 +984,10 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             auto clwp_subset = clwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             auto ciwp_subset = ciwp.subset({{ {col_s_in, col_e_in}, {1, n_lay} }});
             Array_gpu<Float,2> rel({n_col_in, n_lay});
-            Array_gpu<Float,2> rei({n_col_in, n_lay});
+            Array_gpu<Float,2> dei({n_col_in, n_lay});
 
             effective_radius_and_ciwp_to_gm2<<<gridGPU_re, blockGPU_re>>>(
-                    rel.ptr(), rei.ptr(),
+                    rel.ptr(), dei.ptr(),
                     clwp_subset.ptr(), ciwp_subset.ptr(),
                     gd.dz_g,
                     n_col_in, n_lay, gd.kstart,
@@ -999,7 +997,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     clwp_subset,
                     ciwp_subset,
                     rel,
-                    rei,
+                    dei,
                     *cloud_optical_props_subset_in);
 
             if (sw_delta_cloud)

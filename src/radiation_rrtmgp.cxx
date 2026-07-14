@@ -48,16 +48,16 @@
 #include "timedep.h"
 
 // RRTMGP headers.
-#include "Array.h"
-#include "Optical_props.h"
-#include "Gas_optics_rrtmgp.h"
-#include "Gas_concs.h"
-#include "Fluxes.h"
-#include "Rte_lw.h"
-#include "Rte_sw.h"
-#include "Source_functions.h"
-#include "Cloud_optics.h"
-#include "Aerosol_optics.h"
+#include "array.h"
+#include "optical_props.h"
+#include "gas_optics_rrtmgp.h"
+#include "gas_concs.h"
+#include "fluxes.h"
+#include "rte_lw.h"
+#include "rte_sw.h"
+#include "source_functions.h"
+#include "cloud_optics.h"
+#include "aerosol_optics.h"
 
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP which defines
@@ -408,34 +408,32 @@ namespace
         // Read look-up table constants.
         Float radliq_lwr = coef_nc.get_variable<Float>("radliq_lwr");
         Float radliq_upr = coef_nc.get_variable<Float>("radliq_upr");
-        Float radliq_fac = coef_nc.get_variable<Float>("radliq_fac");
 
-        Float radice_lwr = coef_nc.get_variable<Float>("radice_lwr");
-        Float radice_upr = coef_nc.get_variable<Float>("radice_upr");
-        Float radice_fac = coef_nc.get_variable<Float>("radice_fac");
+        Float diamice_lwr = coef_nc.get_variable<Float>("diamice_lwr");
+        Float diamice_upr = coef_nc.get_variable<Float>("diamice_upr");
 
         Array<Float,2> lut_extliq(
-                coef_nc.get_variable<Float>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_ssaliq(
-                coef_nc.get_variable<Float>("lut_ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_asyliq(
-                coef_nc.get_variable<Float>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
 
         Array<Float,3> lut_extice(
-                coef_nc.get_variable<Float>("lut_extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_ssaice(
-                coef_nc.get_variable<Float>("lut_ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_asyice(
-                coef_nc.get_variable<Float>("lut_asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
 
         return Cloud_optics(
                 band_lims_wvn,
-                radliq_lwr, radliq_upr, radliq_fac,
-                radice_lwr, radice_upr, radice_fac,
+                radliq_lwr, radliq_upr,
+                diamice_lwr, diamice_upr,
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
-    
+
     Aerosol_optics load_and_init_aerosol_optics(
             Master& master,
             const std::string& coef_file)
@@ -444,7 +442,7 @@ namespace
         Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
 
         // Read look-up table coefficient dimensions
-        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_band     = coef_nc.get_dimension_size("band");
         int n_hum      = coef_nc.get_dimension_size("relative_humidity");
         int n_philic = coef_nc.get_dimension_size("hydrophilic");
         int n_phobic = coef_nc.get_dimension_size("hydrophobic");
@@ -452,18 +450,18 @@ namespace
         Array<Float,2> band_lims_wvn({2, n_band});
 
         Array<Float,2> mext_phobic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> ssa_phobic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("ssa_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> g_phobic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
 
         Array<Float,3> mext_philic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> ssa_philic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("ssa_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> g_philic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
 
         Array<Float,1> rh_upper(
                 coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
@@ -678,7 +676,7 @@ Radiation_rrtmgp<TF>::Radiation_rrtmgp(
     sw_homogenize_hr_lw = inputin.get_item<bool>("radiation", "swhomogenizehr_lw", "", false);
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
-    
+
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     // Read representative values for the surface properties that are used in the column calcs.
@@ -1502,12 +1500,12 @@ void Radiation_rrtmgp<TF>::create_solver_shortwave(
 
     if (sw_aerosol) {
         aerosol_sw = std::make_unique<Aerosol_optics>(
-                load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+                load_and_init_aerosol_optics(master, "aerosol_optics_sw.nc"));
 
         // determine the band that contains 550nm, to calculate AOD550
-        Netcdf_file coef_nc(master, "aerosol_optics.nc", Netcdf_mode::Read);
-        int n_bnd = coef_nc.get_dimension_size("band_sw");
-        Array<Float, 1> band_lims_upper((coef_nc.get_variable<Float>("wavenumber2_sw", {n_bnd})), {n_bnd});
+        Netcdf_file coef_nc(master, "aerosol_optics_sw.nc", Netcdf_mode::Read);
+        int n_bnd = coef_nc.get_dimension_size("band");
+        Array<Float, 1> band_lims_upper((coef_nc.get_variable<Float>("wavenumber2", {n_bnd})), {n_bnd});
 
         ibnd_550 = 1;
         int upper_limit = band_lims_upper({ibnd_550});
@@ -1658,7 +1656,7 @@ void Radiation_rrtmgp<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 #ifndef USECUDA
 template<typename TF>
 void Radiation_rrtmgp<TF>::exec(
-        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats, 
+        Thermo<TF>& thermo, const double time, Timeloop<TF>& timeloop, Stats<TF>& stats,
         Aerosol<TF>& aerosol, Background<TF>& background, Microphys<TF>& microphys)
 {
     auto& gd = grid.get_grid_data();
@@ -2386,7 +2384,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             // Compute the effective droplet radius.
             Array<Float,2> rel({n_col_in, n_lay});
-            Array<Float,2> rei({n_col_in, n_lay});
+            Array<Float,2> dei({n_col_in, n_lay});
 
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
@@ -2395,7 +2393,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
             const TF Ni0 = microphys.get_Ni0();
 
             const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-            const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+            const Float four_third_pi_Ni0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
@@ -2413,11 +2411,11 @@ void Radiation_rrtmgp<TF>::exec_longwave(
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
+                    Float dei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
+                    dei({icol, ilay}) = std::max(Float(10.), std::min(dei_value, Float(180.)));
                 }
             }
 
@@ -2430,7 +2428,7 @@ void Radiation_rrtmgp<TF>::exec_longwave(
 
             cloud_lw->cloud_optics(
                     clwp_subset, ciwp_subset,
-                    rel, rei,
+                    rel, dei,
                     *cloud_optical_props_in);
 
             // Add the cloud optical props to the gas optical properties.
@@ -2608,7 +2606,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             // Compute the effective droplet radius.
             Array<Float,2> rel({n_col_in, n_lay});
-            Array<Float,2> rei({n_col_in, n_lay});
+            Array<Float,2> dei({n_col_in, n_lay});
 
             const Float sig_g = 1.34;
             const Float fac = std::exp(std::log(sig_g)*std::log(sig_g)); // no conversion to micron yet.
@@ -2617,7 +2615,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
             const TF Ni0 = microphys.get_Ni0();
 
             const Float four_third_pi_Nc0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-            const Float four_third_pi_Ni0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+            const Float four_third_pi_Ni0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
             for (int ilay=1; ilay<=n_lay; ++ilay)
             {
@@ -2635,11 +2633,11 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
                     rel({icol, ilay}) = std::max(Float(2.5), std::min(rel_value, Float(21.5)));
 
                     // Calculate the effective radius of ice from the mass and the number concentration.
-                    Float rei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
+                    Float dei_value = ciwp_subset({icol, ilay}) > Float(0.) ?
                         1.e6 * std::pow((ciwp_subset({icol, ilay})/layer_thickness) / four_third_pi_Ni0_rho_i, (1./3.)) : Float(0.);
 
                     // Limit the values between 10. and 180 (limits of cloud optics lookup table).
-                    rei({icol, ilay}) = std::max(Float(10.), std::min(rei_value, Float(180.)));
+                    dei({icol, ilay}) = std::max(Float(10.), std::min(dei_value, Float(180.)));
                 }
             }
 
@@ -2652,7 +2650,7 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
 
             cloud_sw->cloud_optics(
                     clwp_subset, ciwp_subset,
-                    rel, rei,
+                    rel, dei,
                     *cloud_optical_props_in);
 
             if (sw_delta_cloud)

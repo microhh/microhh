@@ -42,26 +42,26 @@
 #include "timedep.h"
 
 // RRTMGP headers.
-#include "Array.h"
-#include "Optical_props.h"
-#include "Gas_optics_rrtmgp.h"
-#include "Gas_concs.h"
-#include "Fluxes.h"
-#include "Rte_lw.h"
-#include "Rte_sw.h"
-#include "Source_functions.h"
-#include "Cloud_optics.h"
-#include "Aerosol_optics.h"
+#include "array.h"
+#include "optical_props.h"
+#include "gas_optics_rrtmgp.h"
+#include "gas_concs.h"
+#include "fluxes.h"
+#include "rte_lw.h"
+#include "rte_sw.h"
+#include "source_functions.h"
+#include "cloud_optics.h"
+#include "aerosol_optics.h"
 
 // RRTMGP RT headers.
-#include "Optical_props_rt.h"
-#include "Gas_optics_rrtmgp_rt.h"
-#include "Fluxes_rt.h"
-#include "Rte_lw_rt.h"
-#include "Rte_sw_rt.h"
-#include "Source_functions_rt.h"
-#include "Cloud_optics_rt.h"
-#include "Aerosol_optics_rt.h"
+#include "optical_props_rt.h"
+#include "gas_optics_rrtmgp_rt.h"
+#include "fluxes_rt.h"
+#include "rte_lw_rt.h"
+#include "rte_sw_rt.h"
+#include "source_functions_rt.h"
+#include "cloud_optics_rt.h"
+#include "aerosol_optics_rt.h"
 
 
 // IMPORTANT: The RTE+RRTMGP code sets the precision using a compiler flag RTE_USE_SP, which defines
@@ -413,30 +413,28 @@ namespace
         // Read look-up table constants.
         Float radliq_lwr = coef_nc.get_variable<Float>("radliq_lwr");
         Float radliq_upr = coef_nc.get_variable<Float>("radliq_upr");
-        Float radliq_fac = coef_nc.get_variable<Float>("radliq_fac");
 
-        Float radice_lwr = coef_nc.get_variable<Float>("radice_lwr");
-        Float radice_upr = coef_nc.get_variable<Float>("radice_upr");
-        Float radice_fac = coef_nc.get_variable<Float>("radice_fac");
+        Float diamice_lwr = coef_nc.get_variable<Float>("diamice_lwr");
+        Float diamice_upr = coef_nc.get_variable<Float>("diamice_upr");
 
         Array<Float,2> lut_extliq(
-                coef_nc.get_variable<Float>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_ssaliq(
-                coef_nc.get_variable<Float>("lut_ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("ssaliq", {n_band, n_size_liq}), {n_size_liq, n_band});
         Array<Float,2> lut_asyliq(
-                coef_nc.get_variable<Float>("lut_asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
+                coef_nc.get_variable<Float>("asyliq", {n_band, n_size_liq}), {n_size_liq, n_band});
 
         Array<Float,3> lut_extice(
-                coef_nc.get_variable<Float>("lut_extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("extice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_ssaice(
-                coef_nc.get_variable<Float>("lut_ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("ssaice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
         Array<Float,3> lut_asyice(
-                coef_nc.get_variable<Float>("lut_asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
+                coef_nc.get_variable<Float>("asyice", {n_rghice, n_band, n_size_ice}), {n_size_ice, n_band, n_rghice});
 
         return Cloud_optics(
                 band_lims_wvn,
-                radliq_lwr, radliq_upr, radliq_fac,
-                radice_lwr, radice_upr, radice_fac,
+                radliq_lwr, radliq_upr,
+                diamice_lwr, diamice_upr,
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
@@ -450,7 +448,7 @@ namespace
         Netcdf_file coef_nc(master, coef_file, Netcdf_mode::Read);
 
         // Read look-up table coefficient dimensions
-        int n_band     = coef_nc.get_dimension_size("band_sw");
+        int n_band     = coef_nc.get_dimension_size("band");
         int n_hum      = coef_nc.get_dimension_size("relative_humidity");
         int n_philic = coef_nc.get_dimension_size("hydrophilic");
         int n_phobic = coef_nc.get_dimension_size("hydrophobic");
@@ -458,18 +456,18 @@ namespace
         Array<Float,2> band_lims_wvn({2, n_band});
 
         Array<Float,2> mext_phobic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> ssa_phobic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("ssa_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
         Array<Float,2> g_phobic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophobic", {n_phobic, n_band}), {n_band, n_phobic});
 
         Array<Float,3> mext_philic(
-                coef_nc.get_variable<Float>("mass_ext_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("mass_ext_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> ssa_philic(
-                coef_nc.get_variable<Float>("ssa_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("ssa_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
         Array<Float,3> g_philic(
-                coef_nc.get_variable<Float>("asymmetry_sw_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
+                coef_nc.get_variable<Float>("asymmetry_hydrophilic", {n_philic, n_hum, n_band}), {n_band, n_hum, n_philic});
 
         Array<Float,1> rh_upper(
                 coef_nc.get_variable<Float>("relative_humidity2", {n_hum}), {n_hum});
@@ -492,11 +490,14 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     sw_longwave      = inputin.get_item<bool>("radiation", "swlongwave" , "", true);
     sw_shortwave     = inputin.get_item<bool>("radiation", "swshortwave", "", true);
+    sw_longwave_3d   = inputin.get_item<bool>("radiation", "swlongwave3d" , "", true);
+    sw_shortwave_3d  = inputin.get_item<bool>("radiation", "swshortwave3d", "", true);
     sw_fixed_sza     = inputin.get_item<bool>("radiation", "swfixedsza", "", true);
     sw_aerosol      = inputin.get_item<bool>("aerosol", "swaerosol", "", false);
     sw_delta_cloud   = inputin.get_item<bool>("radiation", "swdeltacloud", "", false);
     sw_delta_aer     = inputin.get_item<bool>("radiation", "swdeltaaer", "", false);
-    sw_2str_when_no_clouds = inputin.get_item<bool>("radiation", "sw2strwhennoclouds", "", false);
+    sw_1d_when_no_clouds = inputin.get_item<bool>("radiation", "sw1dwhennoclouds", "", false);
+    sw_lw_scattering = inputin.get_item<bool>("radiation", "swlwscattering", "", false);
     sw_clear_sky_stats = inputin.get_item<bool>("radiation", "swclearskystats", "", false);
 
     swtimedep_background = inputin.get_item<bool>("radiation", "swtimedep_background", "", false);
@@ -511,6 +512,8 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
+    min_mfp_grid_ratio = inputin.get_item<Float>("radiation", "min_mfp_grid_ratio", "", Float(1.));
+
     // Read representative values for the surface properties that are used in the column calcs.
     // CvH: how to deal with this for heterogeneous surfaces?
     emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
@@ -518,6 +521,8 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
 
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
+    rays_count_power = inputin.get_item<Float>("radiation", "rays_count_power", "");
+
     kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "");
     kngrid_j = inputin.get_item<Float>("radiation", "kngrid_j", "");
     kngrid_k = inputin.get_item<Float>("radiation", "kngrid_k", "");
@@ -563,6 +568,11 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     fields.init_diagnostic_field("lw_flux_up", "Longwave upwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("lw_flux_dn", "Longwave downwelling flux", "W m-2", "radiation", gd.wloc);
 
+    if (sw_longwave_3d)
+    {
+        fields.init_diagnostic_field("lw_heat_rt", "Heating rates from raytraced radiation", "K s-1", "radiation", gd.sloc);
+    }
+
     if (sw_clear_sky_stats)
     {
         fields.init_diagnostic_field("lw_flux_up_clear", "Clear-sky longwave upwelling flux", "W m-2", "radiation", gd.wloc);
@@ -573,9 +583,11 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     fields.init_diagnostic_field("sw_flux_dn", "Shortwave downwelling flux", "W m-2", "radiation", gd.wloc);
     fields.init_diagnostic_field("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "radiation", gd.wloc);
 
-    fields.init_diagnostic_field("sw_heat_dir_rt", "Heating rates from direct raytraced radiation", "K s-1", "radiation", gd.sloc);
-    fields.init_diagnostic_field("sw_heat_dif_rt", "Heating rates from diffuse raytraced radiation", "k s-1", "radiation", gd.sloc);
-
+    if (sw_shortwave_3d)
+    {
+        fields.init_diagnostic_field("sw_heat_dir_rt", "Heating rates from direct raytraced radiation", "K s-1", "radiation", gd.sloc);
+        fields.init_diagnostic_field("sw_heat_dif_rt", "Heating rates from diffuse raytraced radiation", "k s-1", "radiation", gd.sloc);
+    }
     if (sw_clear_sky_stats)
     {
         fields.init_diagnostic_field("sw_flux_up_clear", "Clear-sky shortwave upwelling flux", "W m-2", "radiation", gd.wloc);
@@ -608,6 +620,12 @@ void Radiation_rrtmgp_rt<TF>::init(Timeloop<TF>& timeloop)
     sw_flux_sfc_up_rt.resize(gd.ijcells);
     sw_flux_tod_dn_rt.resize(gd.ijcells);
     sw_flux_tod_up_rt.resize(gd.ijcells);
+
+    lw_flux_sfc_dn_rt.resize(gd.ijcells);
+    lw_flux_sfc_up_rt.resize(gd.ijcells);
+    lw_flux_tod_dn_rt.resize(gd.ijcells);
+    lw_flux_tod_up_rt.resize(gd.ijcells);
+
 
     // initialize timedependent gasses
     for (auto& it : gaslist)
@@ -702,16 +720,28 @@ void Radiation_rrtmgp_rt<TF>::create(
         stats.add_time_series("tsi_scaling", "tsi scaling", "W/m2", group_name);
         stats.add_time_series("sw_flux_dn_toa", "shortwave downwelling flux at toa", "W m-2", group_name);
 
-        stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
-        stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
-        stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
-
+        if (sw_shortwave_3d)
+        {
+            stats.add_time_series("sw_flux_sfc_dir_rt", "raytraced shortwave downwelling direct flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_sfc_dif_rt", "raytraced shortwave downwelling diffuse flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_sfc_up_rt",  "raytraced shortwave upwelling flux at the surface", "W m-2", group_name);
+            stats.add_time_series("sw_flux_tod_dn_rt",  "raytraced shortwave downwelling flux at toa", "W m-2", group_name);
+            stats.add_time_series("sw_flux_tod_up_rt",  "raytraced shortwave upwelling flux at toa", "W m-2", group_name);
+        }
         if (sw_aerosol)
         {
             stats.add_time_series("AOD550", "Aerosol optical depth at 550nm", "-", group_name);
         }
+    }
+
+    if (stats.get_switch() && sw_longwave_3d)
+    {
+        const std::string group_name = "radiation";
+        stats.add_time_series("lw_flux_sfc_dn_rt", "raytraced longwave downwelling direct flux at the surface", "W m-2", group_name);
+        stats.add_time_series("lw_flux_sfc_up_rt", "raytraced longwave upwelling flux at the surface", "W m-2", group_name);
+        stats.add_time_series("lw_flux_tod_dn_rt", "raytraced longwave downwelling flux at toa", "W m-2", group_name);
+        stats.add_time_series("lw_flux_tod_up_rt", "raytraced longwave upwelling flux at toa", "W m-2", group_name);
+
     }
 
     // Get the allowed cross sections from the cross list
@@ -723,14 +753,17 @@ void Radiation_rrtmgp_rt<TF>::create(
         allowed_crossvars_radiation.push_back("sw_flux_dn");
         allowed_crossvars_radiation.push_back("sw_flux_dn_dir");
 
-        allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
-        allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
+        if (sw_shortwave_3d)
+        {
+            allowed_crossvars_radiation.push_back("sw_heat_dir_rt");
+            allowed_crossvars_radiation.push_back("sw_heat_dif_rt");
 
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
-        allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_dir_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_dif_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_sfc_up_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_tod_dn_rt");
+            allowed_crossvars_radiation.push_back("sw_flux_tod_up_rt");
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -744,6 +777,16 @@ void Radiation_rrtmgp_rt<TF>::create(
     {
         allowed_crossvars_radiation.push_back("lw_flux_up");
         allowed_crossvars_radiation.push_back("lw_flux_dn");
+
+        if (sw_longwave_3d)
+        {
+            allowed_crossvars_radiation.push_back("lw_heat_rt");
+
+            allowed_crossvars_radiation.push_back("lw_flux_sfc_dn_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_sfc_up_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_tod_dn_rt");
+            allowed_crossvars_radiation.push_back("lw_flux_tod_up_rt");
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -1244,6 +1287,9 @@ void Radiation_rrtmgp_rt<TF>::create_solver_longwave(
         stats.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh", group_name);
         stats.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh", group_name);
 
+        if (sw_longwave_3d)
+            stats.add_prof("lw_heat_rt", "Raytraced heating rates radiation" , "K s-1", "z", group_name);
+
         if (sw_clear_sky_stats)
         {
             stats.add_prof("lw_flux_up_clear", "Clear-sky longwave upwelling flux"  , "W m-2", "zh", group_name);
@@ -1256,6 +1302,9 @@ void Radiation_rrtmgp_rt<TF>::create_solver_longwave(
     {
         column.add_prof("lw_flux_up", "Longwave upwelling flux"  , "W m-2", "zh");
         column.add_prof("lw_flux_dn", "Longwave downwelling flux", "W m-2", "zh");
+
+        if (sw_longwave_3d)
+            column.add_prof("lw_heat_rt", "Raytraced heating rates from radiation", "K s-1", "zh");
 
         if (sw_clear_sky_stats)
         {
@@ -1283,12 +1332,12 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
 
     if (sw_aerosol){
         aerosol_sw = std::make_unique<Aerosol_optics>(
-                load_and_init_aerosol_optics(master, "aerosol_optics.nc"));
+                load_and_init_aerosol_optics(master, "aerosol_optics_sw.nc"));
 
         // determine the band that contains 550nm, to calculate AOD550
-        Netcdf_file coef_nc(master, "aerosol_optics.nc", Netcdf_mode::Read);
-        int n_bnd = coef_nc.get_dimension_size("band_sw");
-        Array<Float, 1> band_lims_upper((coef_nc.get_variable<Float>("wavenumber2_sw", {n_bnd})), {n_bnd});
+        Netcdf_file coef_nc(master, "aerosol_optics_sw.nc", Netcdf_mode::Read);
+        int n_bnd = coef_nc.get_dimension_size("band");
+        Array<Float, 1> band_lims_upper((coef_nc.get_variable<Float>("wavenumber2", {n_bnd})), {n_bnd});
 
         ibnd_550 = 1;
         int upper_limit = band_lims_upper({ibnd_550});
@@ -1307,8 +1356,11 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
 
-        stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
-        stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
+        if (sw_shortwave_3d)
+        {
+            stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
+            stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
+        }
 
         if (sw_clear_sky_stats)
         {
@@ -1325,8 +1377,11 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         column.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         column.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
 
-        column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
-        column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
+        if (sw_shortwave_3d)
+        {
+            column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
+            column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
+        }
 
         if (sw_clear_sky_stats)
         {
