@@ -29,6 +29,7 @@ def test_restart(
         architecture,
         precision,
         use_htessel = False,
+        use_ags = False,
         use_rrtmgp = False,
         use_homogeneous_z0 = True,
         use_homogeneous_ls = True,
@@ -43,7 +44,7 @@ def test_restart(
     name = f'build_{precision}_{architecture}'
     TF = np.float32 if precision=='sp' else np.float64
 
-    print(f'Testing {name:>16s}, htessel={use_htessel:1}, rrtmgp={use_rrtmgp:1}, rt={use_rt:1}, homog_z0={use_homogeneous_z0:1} homog_ls={use_homogeneous_ls:1}, aerosols={use_aerosols:1}, tdep_aer={use_tdep_aerosols:1}, tdep_gas={use_tdep_gasses:1}, tdep_bg={use_tdep_background:1}', end='')
+    print(f'Testing {name:>16s}, htessel={use_htessel:1}, ags={use_ags:1}, rrtmgp={use_rrtmgp:1}, rt={use_rt:1}, homog_z0={use_homogeneous_z0:1} homog_ls={use_homogeneous_ls:1}, aerosols={use_aerosols:1}, tdep_aer={use_tdep_aerosols:1}, tdep_gas={use_tdep_gasses:1}, tdep_bg={use_tdep_background:1}', end='')
 
     itot = 4
     jtot = 4
@@ -70,6 +71,9 @@ def test_restart(
             'dudz_mo', 'dvdz_mo', 'dbdz_mo',
             'thermo_basestate', 'time']
 
+    if use_ags:
+        restart_files += ['co2']
+
     if sw_micro == '2mom_warm':
         restart_files += ['qr', 'nr']
     elif sw_micro == 'nsw6':
@@ -94,11 +98,7 @@ def test_restart(
             restart_files.append('qr_gradbot', 'qs_gradbot', 'qg_gradbot')
 
     if not use_homogeneous_z0:
-        if use_htessel:
-            for tile in ['soil', 'veg', 'wet']:
-                restart_files.append(f'obuk_{tile}')
-        else:
-            restart_files.append('obuk')
+        restart_files.append('obuk')
 
 
     """
@@ -117,6 +117,7 @@ def test_restart(
             start_date,
             end_date,
             use_htessel,
+            use_ags,
             use_rrtmgp,
             use_rt,
             use_aerosols,
@@ -212,6 +213,7 @@ def test_permutations(
         archictecture_opts,
         precision_opts,
         htessel_opts = [False],
+        ags_opts = [False],
         rrtmgp_opts = [False],
         homogeneous_z0_opts = [True],
         homogeneous_ls_opts = [True],
@@ -239,6 +241,7 @@ def test_permutations(
             permutation[8],
             permutation[9],
             permutation[10],
+            permutation[11],
             sw_micro='0')
 
 
@@ -250,6 +253,17 @@ def test_base():
             precision_opts = ['sp', 'dp'],
             htessel_opts = [True, False],
             rrtmgp_opts = [True, False])
+
+
+def test_ags():
+    print('--- Testing heterogeneous land-surface options ---')
+
+    test_permutations(
+            archictecture_opts = ['gpu', 'cpu', 'cpumpi'],
+            precision_opts = ['sp', 'dp'],
+            htessel_opts = [True],
+            ags_opts = [True],
+            rrtmgp_opts = [True])
 
 
 def test_heterogeneous_surface():
@@ -301,6 +315,7 @@ if __name__ == '__main__':
     silent = True   # Suppress MicroHH stdout/err.
 
     test_base()
+    #test_ags()
     test_heterogeneous_surface()
     test_aerosols_and_bg()
     test_rt()
