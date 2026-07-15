@@ -273,12 +273,24 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         unsigned long iiotimeprec = timeloop.get_iiotimeprec();
         const unsigned long iotime_next = int(iloadtime_next / iiotimeprec);
 
-        // Swap next -> prev field, and read new time.
-        for (auto& specie : sourcelist)
+        auto swap_and_load = [&](const std::string& specie)
         {
             emission_prev.at(specie) = emission_next.at(specie);
             load_emission(emission_next.at(specie), specie, iotime_next);
-        }
+        };
+
+        // Swap next -> prev field, and read new time.
+        for (auto& specie : sourcelist)
+            swap_and_load(specie);
+
+        if (sw_heat || sw_moisture)
+            swap_and_load("me");
+
+        if (sw_heat)
+            swap_and_load("te");
+
+        if (sw_moisture)
+            swap_and_load("qe");
     }
 
     // Interpolate emissions in time.
