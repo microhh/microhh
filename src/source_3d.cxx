@@ -40,10 +40,18 @@ template<typename TF>
 Source_3d<TF>::Source_3d(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
     Source<TF>(masterin, gridin, fieldsin, inputin)
 {
-    sourcelist = inputin.get_list<std::string>("source", "sourcelist", "");
-    ktot       = inputin.get_item<int>("source", "ktot", "");
-    sw_timedep = inputin.get_item<bool>("source", "swtimedep", "", false);
-    sw_heat    = inputin.get_item<bool>("source", "swheat", "", false);
+    sourcelist  = inputin.get_list<std::string>("source", "sourcelist", "");
+    ktot        = inputin.get_item<int>("source", "ktot", "");
+    sw_timedep  = inputin.get_item<bool>("source", "swtimedep", "", false);
+    sw_heat     = inputin.get_item<bool>("source", "swheat", "", false);
+    sw_moisture = inputin.get_item<bool>("source", "swmoisture", "", false);
+
+    if (sw_moisture)
+    {
+        const std::string swthermo = inputin.get_item<std::string>("thermo", "swthermo", "", "0");
+        if (swthermo != "moist")
+            throw std::runtime_error("Source_3d with swmoisture requires moist thermo!");
+    }
 
     if (sw_timedep)
     {
@@ -75,24 +83,36 @@ void Source_3d<TF>::init()
             emission_next.emplace(specie, std::vector<TF>(size));
         }
 
+        if (sw_heat || sw_moisture)
+        {
+            emission_prev.emplace("me", std::vector<TF>(size));
+            emission_next.emplace("me", std::vector<TF>(size));
+        }
+
         if (sw_heat)
         {
             emission_prev.emplace("te", std::vector<TF>(size));
             emission_next.emplace("te", std::vector<TF>(size));
+        }
 
-            emission_prev.emplace("me", std::vector<TF>(size));
-            emission_next.emplace("me", std::vector<TF>(size));
+        if (sw_moisture)
+        {
+            emission_prev.emplace("qe", std::vector<TF>(size));
+            emission_next.emplace("qe", std::vector<TF>(size));
         }
     }
 
     for (auto& specie : sourcelist)
         emission.emplace(specie, std::vector<TF>(size));
 
-    if (sw_heat)
-    {
-        emission.emplace("te", std::vector<TF>(size));
+    if (sw_heat || sw_moisture)
         emission.emplace("me", std::vector<TF>(size));
-    }
+
+    if (sw_heat)
+        emission.emplace("te", std::vector<TF>(size));
+
+    if (sw_moisture)
+        emission.emplace("qe", std::vector<TF>(size));
 }
 
 
@@ -122,13 +142,22 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
             load_emission(emission_next.at(specie), specie, iotime_next);
         }
 
+        if (sw_heat || sw_moisture)
+        {
+            load_emission(emission_prev.at("me"), "me", iotime_prev);
+            load_emission(emission_next.at("me"), "me", iotime_next);
+        }
+
         if (sw_heat)
         {
             load_emission(emission_prev.at("te"), "te", iotime_prev);
             load_emission(emission_next.at("te"), "te", iotime_next);
+        }
 
-            load_emission(emission_prev.at("me"), "me", iotime_prev);
-            load_emission(emission_next.at("me"), "me", iotime_next);
+        if (sw_moisture)
+        {
+            load_emission(emission_prev.at("qe"), "qe", iotime_prev);
+            load_emission(emission_next.at("qe"), "qe", iotime_next);
         }
     }
     else
@@ -137,11 +166,14 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
         for (auto& specie : sourcelist)
             load_emission(emission.at(specie), specie, itime);
 
-        if (sw_heat)
-        {
-            load_emission(emission.at("te"), "te", itime);
+        if (sw_heat || sw_moisture)
             load_emission(emission.at("me"), "me", itime);
-        }
+
+        if (sw_heat)
+            load_emission(emission.at("te"), "te", itime);
+
+        if (sw_moisture)
+            load_emission(emission.at("qe"), "qe", itime);
     }
 }
 
@@ -162,41 +194,62 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
             gd.kstart, gd.kstart + this->ktot,
             gd.icells, gd.ijcells);
 
-    if (sw_heat)
+    if (sw_heat || sw_moisture)
     {
         const TF subdti = TF(1) / timeloop.get_sub_time_step();
 
-        auto tmp = fields.get_tmp();
-        thermo.get_thermo_field(*tmp, "T", false, false);
+        if (sw_heat)
+        {
+            auto tmp = fields.get_tmp();
+            thermo.get_thermo_field(*tmp, "T", false, false);
 
-        const std::vector<TF>& exnref = thermo.get_basestate_vector("exner");
+            const std::vector<TF>& exnref = thermo.get_basestate_vector("exner");
 
-        // YIKES^3... Create a `thermo.get_temperature_var()` function?
-        std::string th_var;
-        if (thermo.get_switch() == Thermo_type::Dry)
-            th_var = "th";
-        else if (thermo.get_switch() == Thermo_type::Moist)
-            th_var = "thl";
-        else
-            throw std::runtime_error("No temperature field found.");
+            // YIKES^3... Create a `thermo.get_temperature_var()` function?
+            std::string th_var;
+            if (thermo.get_switch() == Thermo_type::Dry)
+                th_var = "th";
+            else if (thermo.get_switch() == Thermo_type::Moist)
+                th_var = "thl";
+            else
+                throw std::runtime_error("No temperature field found.");
 
-        s3k::add_source_tend_heat(
-            fields.st.at(th_var)->fld.data(),
-            emission.at("te").data(),
-            emission.at("me").data(),
-            tmp->fld.data(),
-            fields.rhoref.data(),
-            gd.dz.data(),
-            exnref.data(),
-            gd.dx,
-            gd.dy,
-            subdti,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kstart + this->ktot,
-            gd.icells, gd.ijcells);
+            s3k::add_source_tend_heat(
+                fields.st.at(th_var)->fld.data(),
+                emission.at("te").data(),
+                emission.at("me").data(),
+                tmp->fld.data(),
+                fields.rhoref.data(),
+                gd.dz.data(),
+                exnref.data(),
+                gd.dx,
+                gd.dy,
+                subdti,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kstart + this->ktot,
+                gd.icells, gd.ijcells);
 
-        fields.release_tmp(tmp);
+            fields.release_tmp(tmp);
+        }
+
+        if (sw_moisture)
+        {
+            s3k::add_source_tend_moisture(
+                fields.st.at("qt")->fld.data(),
+                emission.at("qe").data(),
+                emission.at("me").data(),
+                fields.sp.at("qt")->fld.data(),
+                fields.rhoref.data(),
+                gd.dz.data(),
+                gd.dx,
+                gd.dy,
+                subdti,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kstart + this->ktot,
+                gd.icells, gd.ijcells);
+        }
     }
 }
 
@@ -253,11 +306,14 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     for (auto& specie : sourcelist)
         interpolate(specie);
 
-    if (sw_heat)
-    {
-        interpolate("te");
+    if (sw_heat || sw_moisture)
         interpolate("me");
-    }
+
+    if (sw_heat)
+        interpolate("te");
+
+    if (sw_moisture)
+        interpolate("qe");
 }
 #endif
 

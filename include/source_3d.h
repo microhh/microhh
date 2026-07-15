@@ -65,7 +65,8 @@ class Source_3d : public Source<TF>
         std::map<std::string, std::vector<TF>> emission_next;
 
         bool sw_timedep;    // Switch for time dependent 3D input.
-        bool sw_heat;       // Switch for emission of heat, input through emission temperature and volume flux.
+        bool sw_heat;       // Switch for emission of heat, input through emission temperature and mass flux.
+        bool sw_moisture;   // Switch for emission of moisture, input through emission specific humidity and mass flux.
         int ktot;           // Number of vertical levels with emissions.
 
         #ifdef USECUDA

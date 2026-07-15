@@ -86,6 +86,41 @@ namespace Source_3d_kernels_g
 
 
     template<typename TF> __global__
+    void add_source_tend_moisture_g(
+            TF* const __restrict__ qt_tend,
+            const TF* const __restrict__ qe,      // Specific humidity of emission (kg kg-1).
+            const TF* const __restrict__ Me,      // Emission mass flux (kg s-1).
+            const TF* const __restrict__ qt,      // Specific humidity LES.
+            const TF* const __restrict__ rhoref,  // Base state density (kg m-3).
+            const TF* const __restrict__ dz,
+            const TF dx,
+            const TF dy,
+            const TF subdti,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jstride, const int kstride)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk_in = i + j*jstride + (k-kstart)*kstride;
+            const int ijk = i + j*jstride + k*kstride;
+
+            const TF mi = TF(1) / (rhoref[k] * dx * dy * dz[k]);
+
+            const TF f = Me[ijk_in] * mi;
+            const TF fac = min(TF(1), subdti / max(f, TF(Constants::dtiny)));
+
+            qt_tend[ijk] += fac * f * (qe[ijk_in] - qt[ijk]);
+        }
+    }
+
+
+    template<typename TF> __global__
     void interpolate_emission_g(
             TF* const __restrict__ emission_out,
             const TF* const __restrict__ emission_prev,

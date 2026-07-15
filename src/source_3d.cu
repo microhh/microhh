@@ -58,40 +58,60 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
             gd.icells, gd.ijcells);
     cuda_check_error();
 
-    if (sw_heat)
+    if (sw_heat || sw_moisture)
     {
         const TF subdti = TF(1) / timeloop.get_sub_time_step();
 
-        auto tmp = fields.get_tmp_g();
-        thermo.get_thermo_field_g(*tmp, "T", false);
+        if (sw_heat)
+        {
+            auto tmp = fields.get_tmp_g();
+            thermo.get_thermo_field_g(*tmp, "T", false);
 
-        TF* exnref_g = thermo.get_basestate_fld_g("exner");
+            TF* exnref_g = thermo.get_basestate_fld_g("exner");
 
-        // YIKES^3... Create a `thermo.get_temperature_var()` function?
-        std::string th_var;
-        if (thermo.get_switch() == Thermo_type::Dry)
-            th_var = "th";
-        else if (thermo.get_switch() == Thermo_type::Moist)
-            th_var = "thl";
-        else
-            throw std::runtime_error("No temperature field found.");
+            // YIKES^3... Create a `thermo.get_temperature_var()` function?
+            std::string th_var;
+            if (thermo.get_switch() == Thermo_type::Dry)
+                th_var = "th";
+            else if (thermo.get_switch() == Thermo_type::Moist)
+                th_var = "thl";
+            else
+                throw std::runtime_error("No temperature field found.");
 
-        s3k::add_source_tend_heat_g<TF><<<gridGPU, blockGPU>>>(
-            fields.st.at(th_var)->fld_g,
-            emission_g.at("te"),
-            emission_g.at("me"),
-            tmp->fld_g,
-            fields.rhoref_g,
-            gd.dz_g,
-            exnref_g,
-            gd.dx, gd.dy,
-            subdti,
-            gd.istart, gd.iend,
-            gd.jstart, gd.jend,
-            gd.kstart, gd.kstart + this->ktot,
-            gd.icells, gd.ijcells);
+            s3k::add_source_tend_heat_g<TF><<<gridGPU, blockGPU>>>(
+                fields.st.at(th_var)->fld_g,
+                emission_g.at("te"),
+                emission_g.at("me"),
+                tmp->fld_g,
+                fields.rhoref_g,
+                gd.dz_g,
+                exnref_g,
+                gd.dx, gd.dy,
+                subdti,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kstart + this->ktot,
+                gd.icells, gd.ijcells);
 
-        fields.release_tmp_g(tmp);
+            fields.release_tmp_g(tmp);
+        }
+
+        if (sw_moisture)
+        {
+            s3k::add_source_tend_moisture_g<TF><<<gridGPU, blockGPU>>>(
+                fields.st.at("qt")->fld_g,
+                emission_g.at("qe"),
+                emission_g.at("me"),
+                fields.sp.at("qt")->fld_g,
+                fields.rhoref_g,
+                gd.dz_g,
+                gd.dx, gd.dy,
+                subdti,
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kstart + this->ktot,
+                gd.icells, gd.ijcells);
+        }
     }
 }
 
@@ -131,11 +151,14 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
         for (auto& specie : sourcelist)
             swap_and_load(specie);
 
-        if (sw_heat)
-        {
+        if (sw_heat || sw_moisture)
             swap_and_load("me");
+
+        if (sw_heat)
             swap_and_load("te");
-        }
+
+        if (sw_moisture)
+            swap_and_load("qe");
     }
 
     // Interpolate emissions in time.
@@ -172,11 +195,14 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     for (auto& specie : sourcelist)
         interpolate(specie);
 
-    if (sw_heat)
-    {
+    if (sw_heat || sw_moisture)
         interpolate("me");
+
+    if (sw_heat)
         interpolate("te");
-    }
+
+    if (sw_moisture)
+        interpolate("qe");
 }
 
 
@@ -207,11 +233,14 @@ void Source_3d<TF>::prepare_device()
     for (auto& specie : sourcelist)
         add_emission(specie);
 
-    if (sw_heat)
-    {
+    if (sw_heat || sw_moisture)
         add_emission("me");
+
+    if (sw_heat)
         add_emission("te");
-    }
+
+    if (sw_moisture)
+        add_emission("qe");
 }
 #endif
 
