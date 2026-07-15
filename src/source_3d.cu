@@ -79,8 +79,9 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
         s3k::add_source_tend_heat_g<TF><<<gridGPU, blockGPU>>>(
             fields.st.at(th_var)->fld_g,
             emission_g.at("te"),
-            emission_g.at("qe"),
+            emission_g.at("me"),
             tmp->fld_g,
+            fields.rhoref_g,
             gd.dz_g,
             exnref_g,
             gd.dx, gd.dy,
@@ -132,7 +133,7 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
         if (sw_heat)
         {
-            swap_and_load("qe");
+            swap_and_load("me");
             swap_and_load("te");
         }
     }
@@ -173,7 +174,7 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
 
     if (sw_heat)
     {
-        interpolate("qe");
+        interpolate("me");
         interpolate("te");
     }
 }
@@ -208,7 +209,7 @@ void Source_3d<TF>::prepare_device()
 
     if (sw_heat)
     {
-        add_emission("qe");
+        add_emission("me");
         add_emission("te");
     }
 }

@@ -80,8 +80,8 @@ void Source_3d<TF>::init()
             emission_prev.emplace("te", std::vector<TF>(size));
             emission_next.emplace("te", std::vector<TF>(size));
 
-            emission_prev.emplace("qe", std::vector<TF>(size));
-            emission_next.emplace("qe", std::vector<TF>(size));
+            emission_prev.emplace("me", std::vector<TF>(size));
+            emission_next.emplace("me", std::vector<TF>(size));
         }
     }
 
@@ -91,7 +91,7 @@ void Source_3d<TF>::init()
     if (sw_heat)
     {
         emission.emplace("te", std::vector<TF>(size));
-        emission.emplace("qe", std::vector<TF>(size));
+        emission.emplace("me", std::vector<TF>(size));
     }
 }
 
@@ -127,8 +127,8 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
             load_emission(emission_prev.at("te"), "te", iotime_prev);
             load_emission(emission_next.at("te"), "te", iotime_next);
 
-            load_emission(emission_prev.at("qe"), "qe", iotime_prev);
-            load_emission(emission_next.at("qe"), "qe", iotime_next);
+            load_emission(emission_prev.at("me"), "me", iotime_prev);
+            load_emission(emission_next.at("me"), "me", iotime_next);
         }
     }
     else
@@ -140,7 +140,7 @@ void Source_3d<TF>::create(Input& input, Timeloop<TF>& timeloop, Netcdf_handle& 
         if (sw_heat)
         {
             load_emission(emission.at("te"), "te", itime);
-            load_emission(emission.at("qe"), "qe", itime);
+            load_emission(emission.at("me"), "me", itime);
         }
     }
 }
@@ -183,8 +183,9 @@ void Source_3d<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop)
         s3k::add_source_tend_heat(
             fields.st.at(th_var)->fld.data(),
             emission.at("te").data(),
-            emission.at("qe").data(),
+            emission.at("me").data(),
             tmp->fld.data(),
+            fields.rhoref.data(),
             gd.dz.data(),
             exnref.data(),
             gd.dx,
@@ -255,7 +256,7 @@ void Source_3d<TF>::update_time_dependent(Timeloop<TF>& timeloop)
     if (sw_heat)
     {
         interpolate("te");
-        interpolate("qe");
+        interpolate("me");
     }
 }
 #endif

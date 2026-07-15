@@ -21,6 +21,8 @@
 #ifndef SOURCE_GAUSSIAN_KERNELS_G_H
 #define SOURCE_GAUSSIAN_KERNELS_G_H
 
+#include "constants.h"
+
 namespace Source_3d_kernels_g
 {
     template<typename TF> __global__
@@ -45,18 +47,13 @@ namespace Source_3d_kernels_g
         }
     }
 
-    template <typename TF>
-    __device__ TF copysign2(const TF x, const TF y)
-    {
-        return (y >= 0) ? fabs(x) : -fabs(x);
-    }
-
     template<typename TF> __global__
     void add_source_tend_heat_g(
             TF* const __restrict__ th_tend,
-            const TF* const __restrict__ Te,    // Absolute emission temperature (K).
-            const TF* const __restrict__ Qe,    // Volume flux (m3 s-1).
-            const TF* const __restrict__ T,     // Absolute temperature LES (K).
+            const TF* const __restrict__ Te,      // Absolute emission temperature (K).
+            const TF* const __restrict__ Me,      // Emission mass flux (kg s-1).
+            const TF* const __restrict__ T,       // Absolute temperature LES (K).
+            const TF* const __restrict__ rhoref,  // Base state density (kg m-3).
             const TF* const __restrict__ dz,
             const TF* const __restrict__ exner,
             const TF dx,
@@ -76,14 +73,14 @@ namespace Source_3d_kernels_g
             const int ijk_in = i + j*jstride + (k-kstart)*kstride;
             const int ijk = i + j*jstride + k*kstride;
 
-            const TF Vi = TF(1) / (dx * dy * dz[k]);
+            const TF mi = TF(1) / (rhoref[k] * dx * dy * dz[k]);
             const TF exneri = TF(1) / exner[k];
 
             // Prevent over- or under shooting the emission temperature.
-            const TF dTdt = Qe[ijk_in] * (Te[ijk_in] - T[ijk]) * Vi;
-            const TF dTdt_lim = copysign2(min(fabs(dTdt), fabs(Te[ijk_in] - T[ijk]) * subdti), dTdt);
+            const TF f = Me[ijk_in] * mi;
+            const TF fac = min(TF(1), subdti / max(f, TF(Constants::dtiny)));
 
-            th_tend[ijk] += dTdt_lim * exneri;
+            th_tend[ijk] += fac * f * (Te[ijk_in] - T[ijk]) * exneri;
         }
     }
 
