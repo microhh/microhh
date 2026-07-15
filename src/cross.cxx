@@ -86,7 +86,7 @@ namespace
         // interior
         for (int k=kstart+1; k<kend-1; k++)
             for (int j=jstart; j<jend; j++)
-    #pragma ivdep
+                #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj1 + k*kk1;
@@ -175,26 +175,27 @@ namespace
             int jstart, int jend,
             int kstart, int kend)
     {
-    // Path is integrated in first full level, set to zero first
-    for (int j=jstart; j<jend; j++)
-        #pragma ivdep
-        for (int i=istart; i<iend; i++)
-        {
-            const int ijk = i + j*jj + kstart*kk;
-            tmp[ijk] = 0.;
-        }
-
-    // Integrate with height
-    for (int k=kstart; k<kend; k++)
+        // Path is integrated in first full level, set to zero first
         for (int j=jstart; j<jend; j++)
-        #pragma ivdep
+            #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
-                const int ijk1 = i + j*jj + kstart*kk;
-                const int ijk  = i + j*jj + k*kk;
-                tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                const int ijk = i + j*jj + kstart*kk;
+                tmp[ijk] = 0.;
             }
+
+        // Integrate with height
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk1 = i + j*jj + kstart*kk;
+                    const int ijk  = i + j*jj + k*kk;
+                    tmp[ijk1] += rhoref[k] * data[ijk] * dz[k];
+                }
     }
+
 
     template<typename TF>
     void calc_cross_height_threshold(
@@ -216,7 +217,6 @@ namespace
 
         if(upward) // Find lowest grid level where data > threshold
         {
-
             for (int j=jstart; j<jend; j++)
                 for (int i=istart; i<iend; i++)
                     for (int k=kstart; k<kend; k++)
@@ -717,7 +717,6 @@ int Cross<TF>::cross_lngrad(TF* restrict a, std::string name, int iotime)
 template<typename TF>
 int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
 {
-
     int nerror = 0;
     TF no_offset = 0.;
     auto tmpfld = fields.get_tmp();
@@ -735,6 +734,7 @@ int Cross<TF>::cross_path(TF* restrict data, std::string name, int iotime)
     fields.release_tmp(tmpfld);
     return nerror;
 }
+
 
 /**
  * This routine calculates the lowest or highest height where data > threshold,
