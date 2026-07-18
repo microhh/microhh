@@ -162,9 +162,6 @@ class Microphys_2mom_warm : public Microphys<TF>
         void exec_dump(Dump<TF>&, unsigned long) {};
         void exec_cross(Cross<TF>&, unsigned long);
 
-        void get_mask(Stats<TF>&, std::string);
-        bool has_mask(std::string);
-
         void get_surface_rain_rate(std::vector<TF>&);
 
         TF get_Nc0() { return this->Nc0; }

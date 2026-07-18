@@ -384,7 +384,7 @@ namespace
                           / std::pow(lambda_r, TF(0.5) * (TF(5.) + d_r<TF>)) );
 
                     // Tomita Eq. 60. Negative for sublimation, positive for deposition.
-                    const TF P_sdep_ssub = 
+                    const TF P_sdep_ssub =
                         TF(2.)*pi<TF> * N_0s<TF> * (S_i - TF(1.)) * G_i / rho[k]
                         * ( f_1s<TF> * std::tgamma(TF(2.)) / pow2(lambda_s)
                           + f_2s<TF> * std::sqrt(c_s<TF> * rho0_rho_sqrt / nu<TF>)
@@ -392,7 +392,7 @@ namespace
                           / std::pow(lambda_s, TF(0.5) * (TF(5.) + d_s<TF>)) );
 
                     // Tomita Eq. 51
-                    const TF P_gdep_gsub = 
+                    const TF P_gdep_gsub =
                         TF(2.)*pi<TF> * N_0g<TF> * (S_i - TF(1.)) * G_i / rho[k]
                         * ( f_1g<TF> * std::tgamma(TF(2.)) / pow2(lambda_g)
                           + f_2g<TF> * std::sqrt(c_g<TF> * rho0_rho_sqrt / nu<TF>)
@@ -665,8 +665,8 @@ namespace
         constexpr TF m_i50 = TF(4.8e-10);
         constexpr TF R_i50 = TF(5.e-5);
 
-        // constexpr TF a1 = 
-        // constexpr TF a2 = 
+        // constexpr TF a1 =
+        // constexpr TF a2 =
 
         // constexpr TF delta_t1 =
         //     ( std::pow(m_i50, TF(1.) - a_2) - std::pow(m_i40, TF(1.) - a_2) )
@@ -1176,19 +1176,6 @@ unsigned long Microphys_nsw6<TF>::get_time_limit(unsigned long idt, const double
     return idt * this->cflmax / cfl;
 }
 #endif
-
-template<typename TF>
-bool Microphys_nsw6<TF>::has_mask(std::string name)
-{
-    return false;
-}
-
-template<typename TF>
-void Microphys_nsw6<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
-{
-    std::string message = "NSW6 microphysics scheme can not provide mask: \"" + mask_name +"\"";
-    throw std::runtime_error(message);
-}
 
 template<typename TF>
 void Microphys_nsw6<TF>::get_surface_rain_rate(std::vector<TF>& field)

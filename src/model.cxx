@@ -138,7 +138,7 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         force     = std::make_shared<Force  <TF>>(master, *grid, *fields, *input);
         buffer    = std::make_shared<Buffer <TF>>(master, *grid, *fields, *input);
-        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input);
+        decay     = std::make_shared<Decay  <TF>>(master, *grid, *fields, *input, *thermo);
         limiter   = std::make_shared<Limiter<TF>>(master, *grid, *fields, *diff, *input);
         source    = std::make_shared<Source <TF>>(master, *grid, *fields, *input);
         aerosol   = std::make_shared<Aerosol<TF>>(master, *grid, *fields, *input);
@@ -155,8 +155,6 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
 
         budget    = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
-        // Parse the statistics masks
-        add_statistics_masks();
     }
     catch (std::exception& e)
     {
@@ -211,6 +209,9 @@ void Model<TF>::init()
     column->init();
     cross->init();
     dump->init();
+
+    // Parse the statistics masks
+    add_statistics_masks();
 }
 
 template<typename TF>
@@ -417,7 +418,7 @@ void Model<TF>::exec()
                 buffer->exec(*stats);
 
                 // Apply the scalar decay.
-                decay->exec(timeloop->get_sub_time_step(), *stats);
+                decay->exec(timeloop->get_sub_time_step(), *stats, *thermo);
 
                 // Add point and line sources of scalars.
                 source->exec(*timeloop);
@@ -708,15 +709,13 @@ void Model<TF>::setup_stats()
                 fields->get_mask(*stats, mask_name);
             else if (thermo->has_mask(mask_name))
                 thermo->get_mask(*stats, mask_name);
-            else if (microphys->has_mask(mask_name))
-                microphys->get_mask(*stats, mask_name);
             else if (decay->has_mask(mask_name))
                 decay->get_mask(*stats, mask_name);
             else if (ib->has_mask(mask_name))
                 ib->get_mask(*stats, mask_name);
             else
             {
-                std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+                std::string error_message = "Cannot calculate mask for \"" + mask_name + "\"";
                 throw std::runtime_error(error_message);
             }
         }
@@ -746,15 +745,13 @@ void Model<TF>::calc_masks()
             fields->get_mask(*stats, mask_name);
         else if (thermo->has_mask(mask_name))
             thermo->get_mask(*stats, mask_name);
-        else if (microphys->has_mask(mask_name))
-            microphys->get_mask(*stats, mask_name);
         else if (decay->has_mask(mask_name))
             decay->get_mask(*stats, mask_name);
         else if (ib->has_mask(mask_name))
             ib->get_mask(*stats, mask_name);
         else
         {
-            std::string error_message = "Can not calculate mask for \"" + mask_name + "\"";
+            std::string error_message = "Cannot calculate mask for \"" + mask_name + "\"";
             throw std::runtime_error(error_message);
         }
     }
@@ -799,8 +796,6 @@ void Model<TF>::add_statistics_masks()
         else if (fields->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (thermo->has_mask(mask_name))
-            stats->add_mask(mask_name);
-        else if (microphys->has_mask(mask_name))
             stats->add_mask(mask_name);
         else if (decay->has_mask(mask_name))
             stats->add_mask(mask_name);

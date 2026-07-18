@@ -983,40 +983,6 @@ unsigned long Microphys_2mom_warm<TF>::get_time_limit(unsigned long idt, const d
 #endif
 
 template<typename TF>
-bool Microphys_2mom_warm<TF>::has_mask(std::string name)
-{
-    if (std::find(available_masks.begin(), available_masks.end(), name) != available_masks.end())
-        return true;
-    else
-        return false;
-}
-
-template<typename TF>
-void Microphys_2mom_warm<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
-{
-    auto& gd = grid.get_grid_data();
-
-    if (mask_name == "qr")
-    {
-        TF threshold = 1e-6;
-
-        // Interpolate qr to half level:
-        auto qrh = fields.get_tmp();
-        grid.interpolate_2nd(qrh->fld.data(), fields.sp.at("qr")->fld.data(), gd.sloc.data(), gd.wloc.data());
-
-        // Calculate masks
-        stats.set_mask_thres(mask_name, *fields.sp.at("qr"), *qrh, threshold, Stats_mask_type::Plus);
-
-        fields.release_tmp(qrh);
-    }
-    else
-    {
-        std::string message = "Double moment warm microphysics can not provide mask: \"" + mask_name +"\"";
-        throw std::runtime_error(message);
-    }
-}
-
-template<typename TF>
 void Microphys_2mom_warm<TF>::get_surface_rain_rate(std::vector<TF>& field)
 {
     // Make a hard copy of the surface precipitation field

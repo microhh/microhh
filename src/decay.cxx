@@ -27,6 +27,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "thermo.h"
 #include "stats.h"
 #include "decay.h"
 
@@ -49,11 +50,28 @@ namespace
                     tend[ijk] -= rate * var[ijk];
                 }
     }
+
+    template<typename TF>
+    void enforce_reset_ql(
+            TF* restrict fld, const TF* ql,
+            const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if (ql[ijk] > 0.)
+                        fld[ijk] = 1.;
+                }
+    }
 }
 
 template<typename TF>
-Decay<TF>::Decay(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
-    master(masterin), grid(gridin), fields(fieldsin)
+Decay<TF>::Decay(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin, Thermo<TF>& thermoin):
+    master(masterin), grid(gridin), fields(fieldsin), thermo(thermoin)
 {
 }
 
@@ -85,6 +103,24 @@ void Decay<TF>::init(Input& inputin)
     // Read the setting only if map is not empty.
     if (!dmap.empty())
         nstd_couvreux = inputin.get_item<TF>("decay", "nstd_couvreux", "", 1.);
+
+    for (auto& it : fields.st)
+    {
+        const std::string type = inputin.get_item<std::string>("decay", "swreset", it.first, "0");
+        if (type == "0")
+        {
+            // Cycle to avoid reading unneeded namelist options.
+            continue;
+        }
+        else if (type == "ql")
+        {
+            dmap[it.first].reset_type= Reset_type::ql;
+        }
+        else
+            throw std::runtime_error("Invalid option for \"reset type\"");
+    }
+
+
 }
 
 template <typename TF>
@@ -94,7 +130,7 @@ void Decay<TF>::create(Input& inputin, Stats<TF>& stats)
 
 #ifndef USECUDA
 template <typename TF>
-void Decay<TF>::exec(double dt, Stats<TF>& stats)
+void Decay<TF>::exec(double dt, Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     for (auto& it : dmap)
@@ -106,6 +142,20 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats)
                     gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
                     gd.icells, gd.ijcells);
             stats.calc_tend(*fields.st.at(it.first), tend_name);
+        }
+    }
+    for (auto& it : dmap)
+    {
+        if (it.second.reset_type == Reset_type::ql)
+        {
+            auto ql = fields.get_tmp();
+            thermo.get_thermo_field(*ql, "ql", true, false);
+            enforce_reset_ql<TF>(
+                    fields.sp.at(it.first)->fld.data(), ql,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+            // stats.calc_tend(*fields.st.at(it.first), tend_name);
+            fields.release_tmp(ql);
         }
     }
 }
@@ -179,6 +229,32 @@ void Decay<TF>::get_mask(Stats<TF>& stats, std::string mask_name)
         fields.release_tmp(couvreux);
         fields.release_tmp(couvreuxh);
     }
+    else if (mask_name == "cldshell" || mask_name == "cldshelldown")
+    {
+        auto shellh = fields.get_tmp();
+        grid.interpolate_2nd(shellh->fld.data(), fields.sp.at("shell")->fld.data(), gd.sloc.data(), gd.wloc.data());
+        stats.set_mask_thres(mask_name, *fields.sp.at("shell"), *shellh, 0.5, Stats_mask_type::Plus);
+        fields.release_tmp(shellh);
+
+        auto ql = fields.get_tmp();
+        auto qlh = fields.get_tmp();
+        thermo.get_thermo_field(*ql, "ql", true, false);
+        thermo.get_thermo_field(*qlh, "ql_h", true, false);
+
+        stats.set_mask_thres(mask_name, *ql, *qlh, 1e-10, Stats_mask_type::Min);
+
+        fields.release_tmp(ql);
+        fields.release_tmp(qlh);
+
+        if (mask_name == "cldshelldown")
+        {
+            auto wf = fields.get_tmp();
+            grid.interpolate_2nd(wf->fld.data(), fields.mp.at("w")->fld.data(), gd.wloc.data(), gd.sloc.data());
+            stats.set_mask_thres(mask_name, *wf, *fields.mp.at("w"), 0., Stats_mask_type::Min);
+            fields.release_tmp(wf);
+        }
+    }
+
     else
     {
         std::string message = "Decay cannot provide mask: \"" + mask_name +"\"";
