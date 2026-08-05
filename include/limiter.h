@@ -42,7 +42,8 @@ class Limiter
         ~Limiter();                                       // Destructor of the decay class.
 
         void create(Stats<TF>&); // Read the profiles of the forces from the input.
-        void exec(double, Stats<TF>&); // Add the tendencies belonging to the decay processes.
+        void limit_tendencies(double, Stats<TF>&); // Limit the tendency to keep the field near/above the minimum value.
+        void clip_fields(); // Hard clip the fields to guarantee they are at/above the minimum value.
 
     private:
         Master& master;
@@ -51,6 +52,7 @@ class Limiter
         Diff<TF>& diff;
 
         std::vector<std::string> limit_list;
+        std::vector<std::string> clip_list;
 
         const std::string tend_name = "limit";
         const std::string tend_longname = "Limiter";
