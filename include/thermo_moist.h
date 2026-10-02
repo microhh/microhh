@@ -168,6 +168,7 @@ class Thermo_moist : public Thermo<TF>
             std::vector<TF> exnrefh;
             std::vector<TF> rhoref;
             std::vector<TF> rhorefh;
+            std::vector<TF> qhm0;
 
             // GPU functions and variables
             TF* thl0_g;
