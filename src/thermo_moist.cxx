@@ -1438,7 +1438,7 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto qhm = fields.get_tmp();
     std::fill(qhm->fld.begin(), qhm->fld.end(), TF(0));
 
-    for (const std::string qhm_name : {"qh", "qi", "qs", "qg", "qr"})
+    for (const std::string qhm_name : {"qs", "qg", "qr"})
     {
         auto it = fields.sp.find(qhm_name);
         if (it != fields.sp.end())
@@ -1607,7 +1607,7 @@ void Thermo_moist<TF>::get_thermo_field(
 
     if (name == "b" || name == "b_h" || name == "thv")
     {
-        for (const std::string qhm_name : {"qh", "qi", "qs", "qg", "qr"})
+        for (const std::string qhm_name : {"qs", "qg", "qr"})
         {
             auto it = fields.sp.find(qhm_name);
             if (it != fields.sp.end())

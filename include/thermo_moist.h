@@ -173,6 +173,7 @@ class Thermo_moist : public Thermo<TF>
             // GPU functions and variables
             TF* thl0_g;
             TF* qt0_g;
+            TF* qhm0_g;
             TF* thvref_g;
             TF* thvrefh_g;
             TF* pref_g;
