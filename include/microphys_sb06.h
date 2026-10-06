@@ -36,6 +36,7 @@
 #include "microphys.h"
 #include "field3d_operators.h"
 #include "microphys_sb_budget.h"
+#include "thermo_moist.h"
 
 class Master;
 class Input;
@@ -236,6 +237,9 @@ struct Hydro_type
     TF* slice;
     TF* conversion_tend;
     TF* tmp1;
+
+    // integer to count negatives
+    int negatives;
 };
 
 template<typename TF>
@@ -317,9 +321,12 @@ class Microphys_sb06 : public Microphys<TF>
         bool has_mask(std::string);
 
         void get_surface_rain_rate(std::vector<TF>&);
+        void get_radiation_fields(Thermo<TF>&, Field3d<TF>&, Field3d<TF>&) const;
+        void get_radiation_columns(Thermo<TF>&, TF*, TF*, std::vector<int>&, std::vector<int>&) const;
 
         TF get_Nc0() { return this->Nc0; }
         TF get_Ni0() { return static_cast<TF>(1e5); }
+        Microphys_type get_swmicro() {return swmicrophys;}
 
         unsigned long get_time_limit(unsigned long, double);
 
@@ -342,10 +349,11 @@ class Microphys_sb06 : public Microphys<TF>
         void init_2mom_scheme_once();
 
         bool sw_ice;            // Switch to enable the ice/snow/graupel/hail part of SB06.
-        bool sw_prognostic_ice; // Switch between prognostic (calculated by SB06) or diagnostic (satadjust) ice.
         bool sw_microbudget;    // Output full microphysics budget terms
-        bool sw_debug;          // Print debug info.
-        bool sw_integrate;      // Pre-integrate water species in implicit solver.
+        bool sw_debug;          // Print debug info and check for water conservations and negative values after every process.
+        bool sw_check;          // Check for water conservations and negative values once per timestep
+        bool sw_thl_deep;       // Switch for thl formulation
+        Satadjust_type sw_satadjust;      // satadjust liquid, ice or both
 
         //const int cloud_type = 2673;
         const int cloud_type = 2603;
@@ -363,7 +371,8 @@ class Microphys_sb06 : public Microphys<TF>
 
         // NOTE: this switch is set to True in ICON, but produces discontinuities in Nr and qr profiles.
         // Disable the feature for now, and discuss later with the ICON people.
-        bool use_ql_sedi_rain = false;
+        // bool use_ql_sedi_rain = false;
+        bool use_ql_sedi_rain = true;
 
         std::vector<std::string> crosslist;     // Cross-sections handled by this class
         std::vector<std::string> crosslist_dBZ; // dBZ cross-sections handled by this class
@@ -442,7 +451,7 @@ class Microphys_sb06 : public Microphys<TF>
                 "rainSBB", // name
                 0.000000,  // nu
                 0.333333,  // mu
-                3.00E-06,  // x_max
+                6.50E-05,  // x_max
                 2.60E-10,  // x_min
                 1.24E-01,  // a_geo
                 0.333333,  // b_geo

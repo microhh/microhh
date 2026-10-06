@@ -1,6 +1,9 @@
 import numpy as np
 import netCDF4 as nc
 
+# Available in `microhh_root/python`:
+import microhh_tools as mht
+
 float_type = "f8"
 
 #T_0 = 295.
@@ -36,14 +39,14 @@ def calc_p_q_T_thl_o3(z):
 
     i_above_zt = np.where(z >= z_t)
     q[i_above_zt] = q_t
-    
+
     gamma = 6.7e-3
     Tv_0 = (1. + 0.608*q_0)*T_0
     Tv = Tv_0 - gamma*z
     Tv_t = Tv_0 - gamma*z_t
     Tv[i_above_zt] = Tv_t
     T = Tv / (1. + 0.608*q)
-    
+
     g = 9.79764
     Rd = 287.04
     cp = 1005.
@@ -52,10 +55,10 @@ def calc_p_q_T_thl_o3(z):
     print("q_sat at T_0 = ", q_sat(T_0, p0))
 
     p = p0 * (Tv / Tv_0)**(g/(Rd*gamma))
-    
+
     p_tmp = p0 * (Tv_t/Tv_0)**(g/(Rd*gamma)) \
           * np.exp( -( (g*(z-z_t)) / (Rd*Tv_t) ) )
-    
+
     p[i_above_zt] = p_tmp[i_above_zt]
 
     p00 = 1e5
@@ -72,6 +75,10 @@ def calc_p_q_T_thl_o3(z):
 nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 ### RADIATION INIT ###
+gpt_set = '128_112'
+linknotcopy = False
+
+mht.copy_radfiles(gpt=gpt_set, link=linknotcopy)
 # Radiation profiles.
 z_top = 70.e3
 dz = 500.

@@ -1,25 +1,8 @@
+#
 # Snellius @ SURFSara.
-
-# This is an example script that load the correct modules from 2022 stack.
-##!/bin/sh
-# module purge
-# module load 2022
-# module load CMake/3.23.1-GCCcore-11.3.0
-# 
-# # GCC
-# module load foss/2022a
-# module load netCDF/4.9.0-gompi-2022a
-# module load CUDA/11.8.0
-# module load Clang/13.0.1-GCCcore-11.3.0
-# 
-# # Python et al.
-# module load ncview/2.1.8-gompi-2022a
-# module load Python/3.10.4-GCCcore-11.3.0
-# module load IPython/8.5.0-GCCcore-11.3.0
-# module load NCO/5.1.0-foss-2022a
-# module load Tk/8.6.12-GCCcore-11.3.0
-# End example script
-
+# For instructions, best practices, and an overview of the required software modules, see:
+# https://microhh.readthedocs.io/en/latest/computing_systems/snellius.html
+#
 
 # Select correct compilers for GCC + parallel/serial:
 if(USEMPI)

@@ -6,14 +6,14 @@ import microhh_tools as mht
 #import taylorgreen.taylorgreenconv as tg
 #import conservation.run_conservation as conv
 
-modes = ['gpu']
-precs = ['dp']
+modes = ['cpu', 'cpumpi', 'gpu']
+precs = ['dp', 'sp']
 
 les_cases   = ['arm', 'bomex', 'drycblles', 'eady', 'gabls1', 'rico', 'sullivan2011', 'rcemip', 'dycoms']  # cabauw+lasso missing
-dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser600']    # prandtlslope missing
+dns_cases   = ['drycbl', 'ekman', 'drycblslope', 'moser180', 'moser590']    # prandtlslope missing
 
 # Cases which require an additional preprocessing script.
-additional_pre = {'rcemip': {'link_coefficients.py': None}}
+additional_pre = {}
 
 les_options = {
         'grid': {'itot': 16, 'jtot': 16, 'xsize': 1600, 'ysize': 1600},
@@ -32,7 +32,7 @@ for prec in precs:
     for mode in modes:
         # Likely MicroHH binary locations:
         ex1 = 'microhh_{}_{}'.format(prec, mode)
-        ex2 = '../build_{}_{}/microhh'.format(mode, prec)
+        ex2 = '../build_{}_{}/microhh'.format(prec, mode)
         print(ex2)
         if os.path.exists(ex1):
             microhh_exec = ex1
@@ -51,7 +51,7 @@ for prec in precs:
             failed += mht.run_case(case,
                     les_options, mpi_options,
                     microhh_exec, mode, case, experiment,
-                    additional_pre_py=pre)
+                    pre=pre)
 
         for case in dns_cases:
             failed += mht.run_case(case,

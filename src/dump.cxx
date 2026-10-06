@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -136,7 +136,7 @@ void Dump<TF>::save_dump(TF* data, const std::string& varname, int iotime)
     const double no_offset = 0.;
     char filename[256];
 
-    std::sprintf(filename, "%s.%07d", varname.c_str(), iotime);
+    std::snprintf(filename, 256, "%s.%07d", varname.c_str(), iotime);
     std::ifstream infile(filename);
 
     if (infile.good())

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -38,6 +38,7 @@ template<typename> class Timeloop;
 
 enum class Sim_mode;
 enum class Thermo_type {Buoy, Dry, Moist, Disabled};
+enum class Satadjust_type {Disabled, Liquid_ice, Liquid_shallow, Liquid_deep, Liquid_ice_deep};
 
 /**
  * Base class for the thermo scheme. This class is abstract and only
@@ -57,10 +58,11 @@ class Thermo
         virtual void init() = 0;
         virtual void create(
                 Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&) = 0;
-        virtual void create_basestate(Input&, Netcdf_handle&) = 0;
+        virtual void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
         virtual void load(const int) = 0;
         virtual void save(const int) = 0;
+        virtual void create_stats(Stats<TF>&) = 0;
 
         virtual void exec(const double, Stats<TF>&) = 0;
         virtual void exec_stats(Stats<TF>&) = 0; ///< Calculate the statistics
@@ -83,9 +85,10 @@ class Thermo
 
         virtual void get_radiation_fields(
                 Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const = 0;
-        virtual void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const = 0;
+        virtual void get_radiation_columns(TF*, TF*, TF*, TF*, TF*, TF*, TF*, std::vector<int>&, std::vector<int>&) const = 0;
         virtual void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&, std::vector<TF>&) = 0;
+        virtual Satadjust_type get_swsatadjust() = 0;
 
         virtual const std::vector<TF>& get_basestate_vector(std::string) const = 0;
         virtual TF get_db_ref() const = 0;

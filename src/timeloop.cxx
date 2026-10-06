@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -79,7 +79,8 @@ Timeloop<TF>::Timeloop(
         // NOTE: the following fields are NOT set by `strptime()`, which can lead to undefined behaviour.
         tm_utc_start.tm_isdst = 0;      // no daylight saving offset.
         tm_utc_start.tm_gmtoff = 0;     // no offset from UTC.
-        tm_utc_start.tm_zone = "utc";   // time zone = UTC.
+        char utc_string[] = "utc";
+        tm_utc_start.tm_zone = utc_string; // time zone = UTC.
     }
 
     if (sim_mode == Sim_mode::Post)
@@ -234,7 +235,7 @@ void Timeloop<TF>::set_time_step()
 
     if (adaptivestep)
     {
-        if (idt == 0)
+        if (idt == 0 || idtlim == 0)
         {
             std::string msg = "Required time step less than precision " + std::to_string(1./ifactor) + " of the time stepping";
             throw std::runtime_error(msg);
@@ -449,7 +450,7 @@ void Timeloop<TF>::save(int starttime, unsigned long itime_in, unsigned long idt
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "time.%07d", starttime);
+        std::snprintf(filename, 256, "time.%07d", starttime);
 
         master.print_message("Saving \"%s\" ... ", filename);
 
@@ -487,7 +488,7 @@ void Timeloop<TF>::load(int starttime)
     if (master.get_mpiid() == 0)
     {
         char filename[256];
-        std::sprintf(filename, "time.%07d", starttime);
+        std::snprintf(filename, 256, "time.%07d", starttime);
 
         master.print_message("Loading \"%s\" ... ", filename);
 

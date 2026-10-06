@@ -1,8 +1,10 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
+ * Copyright (c) 2020-2024 Menno Veerman
+ * Copyright (c) 2022-2024 Mirjam Tijhuis
  *
  * This file is part of MicroHH
  *
@@ -165,12 +167,14 @@ class Radiation_rrtmgp : public Radiation<TF>
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,1>&,
                 const Array<Float,2>&, const Array<Float,2>&, const Array<Float,2>&,
+                const Array<Float,2>&, const Array<Float,2>&,
                 const bool, const int);
 
         void exec_shortwave(
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array<Float,2>&, Array<Float,2>&, Array<Float,2>&, Array<Float,2>&,
                 Array<Float,1>&,
+                const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
                 const Array<Float,2>&, const Array<Float,2>&,
@@ -211,6 +215,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         bool sw_delta_aer;
 
         bool swtimedep_background;
+        bool swtimedep_basestate;
         bool swtimedep_aerosol;
 
         bool sw_homogenize_sfc_sw;
@@ -231,7 +236,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         Float tsi_scaling; // Total solar irradiance scaling factor.
         Float t_sfc;       // Surface absolute temperature in K.
         Float mu0;         // Cosine of solar zenith angle.
-        Float Nc0;         // Total droplet number concentration.
+        // Float Nc0;         // Total droplet number concentration.
 
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;
