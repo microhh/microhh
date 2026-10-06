@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -50,15 +50,15 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin,
         Thermo<TF>& thermoin, Diff<TF>& diffin, Advec<TF>& advecin, Force<TF>& forcein, Stats<TF>& statsin, Input& inputin)
 {
-    std::string swbudget = inputin.get_item<std::string>("budget", "swbudget", "", "0");
+    bool sw_budget = inputin.get_item<bool>("budget", "swbudget", "", false);
 
     // If the stats is disabled, also disable the budget stats.
     if (statsin.get_switch() == false)
-        swbudget = "0";
+        sw_budget = false;
 
-    if (swbudget == "0")
+    if (!sw_budget)
         return std::make_shared<Budget_disabled<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
-    else if (swbudget == "1")
+    else if (sw_budget)
     {
         if (gridin.get_spatial_order() == Grid_order::Second)
             return std::make_shared<Budget_2<TF>>(masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, inputin);
@@ -67,7 +67,7 @@ std::shared_ptr<Budget<TF>> Budget<TF>::factory(
     }
     else
     {
-        std::string error_message = swbudget + " is an illegal value for swbudget";
+        std::string error_message = std::to_string(sw_budget) + " is an illegal value for swbudget";
         throw std::runtime_error(error_message);
     }
 }

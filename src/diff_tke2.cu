@@ -1,8 +1,9 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
+ * Copyright (c) 2021-2024 Steven van der Linden
  *
  * This file is part of MicroHH
  *
@@ -73,6 +74,7 @@ namespace
         constexpr TF A_vandriest = TF(26.);
 
         TF fac;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ij = i + j*jj;
@@ -82,9 +84,14 @@ namespace
                 asm("trap;");
             else
             {
-                if (sw_mason) // Apply Mason's wall correction
-                    fac = pow(TF(1.)/(TF(1.)/pow(mlen0[k], n_mason) + TF(1.)/
-                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+                if constexpr (sw_mason) // Apply Mason's wall correction here
+                {
+                    if constexpr (n_mason == 2)
+                        fac = std::sqrt(TF(1.) / ( TF(1.)/fm::pow2(mlen0[k]) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                    else
+                        fac = std::pow(TF(1.) / (TF(1.)/std::pow(mlen0[k], TF(n_mason)) + TF(1.)/
+                                    (std::pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+                }
                 else
                     fac = mlen0[k];
 
@@ -126,9 +133,14 @@ namespace
 
             fac = mlen0[k];
 
-            if (sw_mason) // Apply Mason's wall correction here
-                fac = pow(TF(1.)/(TF(1.)/pow(mlen0[k], n_mason) + TF(1.)/
-                        (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), n_mason))), TF(1.)/n_mason);
+            if constexpr (sw_mason) // Apply Mason's wall correction here
+            {
+                if constexpr (n_mason == 2)
+                    fac = sqrt(TF(1.) / ( TF(1.)/fm::pow2(mlen0[k]) + TF(1.)/(fm::pow2(Constants::kappa<TF>*(z[k]+z0m[ij]))) ) );
+                else
+                    fac = pow(TF(1.) / (TF(1.)/std::pow(mlen0[k], TF(n_mason)) + TF(1.)/
+                                (pow(Constants::kappa<TF>*(z[k]+z0m[ij]), TF(n_mason)))), TF(1.)/TF(n_mason));
+            }
 
             // Calculate dissipation of SGS TKE based on Deardorff (1980)
             at[ijk] -= (ce1 + ce2 * fac / mlen0[k]) * pow(a[ijk], TF(3./2.)) / fac ;

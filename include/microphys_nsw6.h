@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -34,6 +34,7 @@
 
 #include "microphys.h"
 #include "field3d_operators.h"
+#include "thermo_moist.h"
 
 class Master;
 class Input;
@@ -73,6 +74,11 @@ class Microphys_nsw6 : public Microphys<TF>
 
         TF get_Nc0() { return this->Nc0; }
         TF get_Ni0() { return static_cast<TF>(1e5); } // CvH: this is a temporary fix with previous default value, Ni0 is 3D in tomita!
+        Microphys_type get_swmicro() {return swmicrophys;}
+        void get_radiation_fields(Thermo<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_columns(Thermo<TF>&, TF*, TF*, std::vector<int>&, std::vector<int>&) const
+        { throw std::runtime_error("Function get_radiation_columns not implemented"); }
 
         unsigned long get_time_limit(unsigned long, double);
 
@@ -91,6 +97,8 @@ class Microphys_nsw6 : public Microphys<TF>
         using Microphys<TF>::field3d_operators;
 
         bool swmicrobudget;     // Output full microphysics budget terms
+        bool sw_thl_deep;
+        Satadjust_type sw_satadjust;      // satadjust liquid, ice or both
         double cflmax;          // Max CFL number in microphysics sedimentation
 
         std::vector<std::string> crosslist; // Cross-sections handled by this class

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -48,7 +48,7 @@ void Grid<TF>::save_grid()
     // SAVE THE GRID
     FILE *pFile;
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "grid", 0);
+    std::snprintf(filename, 256, "%s.%07d", "grid", 0);
     pFile = fopen(filename, "wbx");
     master.print_message("Saving \"%s\" ... ", filename);
 
@@ -80,7 +80,7 @@ void Grid<TF>::load_grid()
     // LOAD THE GRID
     FILE *pFile;
     char filename[256];
-    std::sprintf(filename, "%s.%07d", "grid", 0);
+    std::snprintf(filename, 256, "%s.%07d", "grid", 0);
     pFile = fopen(filename, "rb");
     master.print_message("Loading \"%s\" ... ", filename);
 
