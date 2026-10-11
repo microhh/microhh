@@ -27,6 +27,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "thermo.h"
 #include "stats.h"
 #include "tools.h"
 #include "stats.h"
@@ -48,11 +49,27 @@ namespace
             tend[ijk] -= rate * var[ijk];
         }
     }
+
+    template<typename TF> __global__
+    void enforce_reset_ql_g(TF* const __restrict__ fld, TF* const __restrict__ ql,
+                           const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            if (ql[ijk] > 0.)
+                fld[ijk] = 1.;
+        }
+    }
 }
 
 #ifdef USECUDA
 template <typename TF>
-void Decay<TF>::exec(double dt, Stats<TF>& stats)
+void Decay<TF>::exec(double dt, Stats<TF>& stats, Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -75,6 +92,23 @@ void Decay<TF>::exec(double dt, Stats<TF>& stats)
 
             cudaDeviceSynchronize();
             stats.calc_tend(*fields.st.at(it.first), tend_name);
+        }
+    }
+
+    for (auto& it : dmap)
+    {
+        if (it.second.reset_type == Reset_type::ql)
+        {
+            auto ql = fields.get_tmp_g();
+            thermo.get_thermo_field_g(*ql, "ql", false);
+            enforce_reset_ql_g<TF><<<gridGPU, blockGPU>>>(
+                    fields.sp.at(it.first)->fld_g, ql->fld_g,
+                    gd.istart, gd.iend, gd.jstart, gd.jend, gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells);
+
+            cuda_check_error();
+            fields.release_tmp_g(ql);
+
         }
     }
 
