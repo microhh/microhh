@@ -513,29 +513,31 @@ namespace
                     // P_gmlt = 0;
                     // P_gfrz = 0;
 
+                    // MT: for the * T_pos and * T_neg I followed the table in the SCALE documentation.
+                    // I assumed that has_ice already guarantees negative temperatures.
                     TF vapor_to_snow = P_sdep;
                     TF vapor_to_graupel = P_gdep;
 
-                    TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
-                    TF cloud_to_graupel = P_gacw;
+                    TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut + P_gacw * T_pos;
+                    TF cloud_to_graupel = P_gacw * T_neg;
                     TF cloud_to_snow = P_sacw * T_neg;
 
                     TF rain_to_vapor = P_revp;
-                    TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                    TF rain_to_graupel = P_gacr * T_neg + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
                     TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
 
                     TF ice_to_snow = P_raci_s + P_saci + P_saut;
                     TF ice_to_graupel = P_raci_g + P_gaci;
 
-                    TF snow_to_graupel = P_gacs + P_racs + P_gaut;
-                    TF snow_to_rain = P_smlt;
+                    TF snow_to_graupel = P_gacs + P_racs * T_neg + P_gaut * T_neg;
+                    TF snow_to_rain = P_smlt * T_pos;
                     TF snow_to_vapor = P_ssub;
 
                     TF graupel_to_rain = P_gmlt * T_pos;
                     TF graupel_to_vapor = P_gsub;
 
                     const TF dqv_dt =
-                        - vapor_to_snow - vapor_to_graupel;
+                        - vapor_to_snow - vapor_to_graupel + snow_to_vapor + graupel_to_vapor + rain_to_vapor;
 
                     const TF dql_dt =
                         - cloud_to_rain - cloud_to_graupel - cloud_to_snow;
@@ -549,7 +551,7 @@ namespace
 
                     const TF dqs_dt =
                         + cloud_to_snow + ice_to_snow + vapor_to_snow
-                        - snow_to_graupel - snow_to_vapor - snow_to_rain;
+                        - snow_to_graupel - snow_to_vapor - snow_to_rain + rain_to_snow;
 
                     const TF dqg_dt =
                         + cloud_to_graupel + rain_to_graupel + ice_to_graupel
@@ -589,6 +591,15 @@ namespace
 
                     graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
                     graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
+
+                    // loss from vapor
+                    qtt[ijk] -= vapor_to_snow;
+                    qst[ijk] += vapor_to_snow;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * vapor_to_snow;
+
+                    qtt[ijk] -= vapor_to_graupel;
+                    qgt[ijk] += vapor_to_graupel;
+                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * vapor_to_graupel;
 
                     // Loss from cloud.
                     qtt[ijk] -= cloud_to_rain;
