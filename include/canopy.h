@@ -27,6 +27,7 @@
 #include <string>
 
 #include "boundary_cyclic.h"
+#include "cuda_buffer.h"
 
 class Master;
 class Input;
@@ -78,7 +79,7 @@ class Canopy
         std::vector<TF> pad;
 
         #ifdef USECUDA
-        TF* pad_g;
+        cuda_vector<TF> pad_g;
         #endif
 };
 #endif

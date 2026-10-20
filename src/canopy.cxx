@@ -179,13 +179,7 @@ Canopy<TF>::Canopy(
         cd = inputin.get_item<TF>("canopy", "cd", "");
 
         if (sw_3d_pad)
-        {
-            #ifdef USECUDA
-            throw std::runtime_error("3D plant area density is not yet implemented on GPU.");
-            #endif
-
             ktot_canopy = inputin.get_item<int>("canopy", "ktot_canopy", "");
-        }
     }
 }
 
