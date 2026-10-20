@@ -80,7 +80,7 @@ for k in range(ktot):
     else:
         th[k] = th0 + dth + dthetadz*(z[k]-(h+0.5*dthz))
 
-u[:] = 5
+#u[:] = 5
 
 # Outflow profiles
 if swtimedep_outflow:

@@ -26,72 +26,173 @@
 
 namespace Advec_monotonic
 {
-    // Implementation flux limiter according to Koren, 1993.
+//    // Implementation flux limiter according to Koren, 1993.
+//    template<typename TF>
+//    inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        if (u >= TF(0.))
+//        {
+//            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
+//            const TF two_r = TF(2.) * (sp1-sm1) / denom;
+//            const TF phi = std::max(
+//                    TF(0.),
+//                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+//            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+//        }
+//        else
+//        {
+//            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
+//            const TF two_r = TF(2.) * (sm1-sp1) / denom;
+//            const TF phi = std::max(
+//                    TF(0.),
+//                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+//            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
+//        }
+//    }
+//
+//    // Implementation flux limiter according to Koren, 1993.
+//    template<typename TF>
+//    inline TF flux_lim_bot(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        if (u >= TF(0.))
+//        {
+//            return u*sm1;
+//        }
+//        else
+//        {
+//            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
+//            const TF two_r = TF(2.) * (sm1-sp1) / denom;
+//            const TF phi = std::max(
+//                    TF(0.),
+//                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+//            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
+//        }
+//    }
+//
+//    // Implementation flux limiter according to Koren, 1993.
+//    template<typename TF>
+//    inline TF flux_lim_top(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        if (u >= TF(0.))
+//        {
+//            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
+//            const TF two_r = TF(2.) * (sp1-sm1) / denom;
+//            const TF phi = std::max(
+//                    TF(0.),
+//                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
+//            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
+//        }
+//        else
+//        {
+//            return u*sp1;
+//        }
+//    }
+
+
+//    template<typename TF>
+//    inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        const bool pos = (u >= TF(0.));
+//        const TF a = pos ? sm1 : sp1;
+//        const TF b = pos ? sm2 : sp2;
+//        const TF c = pos ? sp1 : sm1;
+//
+//        const TF denom = copysign(TF(1.), a - b) * std::max(std::abs(a - b), eps);
+//        const TF two_r = TF(2.) * (c - a) / denom;
+//        const TF phi   = std::max(
+//                TF(0.),
+//                std::min(two_r, std::min(TF(1./3.)*(TF(1.) + two_r), TF(2.))));
+//        return u * (a + TF(0.5) * phi * (a - b));
+//    }
+//
+//    template<typename TF>
+//    inline TF flux_lim_bot(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        const TF denom = copysign(TF(1.), sp1 - sp2) * std::max(std::abs(sp1 - sp2), eps);
+//        const TF two_r = TF(2.) * (sm1 - sp1) / denom;
+//        const TF phi   = std::max(
+//                TF(0.),
+//                std::min(two_r, std::min(TF(1./3.)*(TF(1.) + two_r), TF(2.))));
+//        const TF flux_neg = u * (sp1 + TF(0.5) * phi * (sp1 - sp2));
+//        const TF flux_pos = u * sm1;
+//
+//        return (u >= TF(0.)) ? flux_pos : flux_neg;
+//    }
+//
+//    template<typename TF>
+//    inline TF flux_lim_top(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
+//    {
+//        const TF eps = std::numeric_limits<TF>::epsilon();
+//
+//        const TF denom = copysign(TF(1.), sm1 - sm2) * std::max(std::abs(sm1 - sm2), eps);
+//        const TF two_r = TF(2.) * (sp1 - sm1) / denom;
+//        const TF phi   = std::max(
+//                TF(0.),
+//                std::min(two_r, std::min(TF(1./3.)*(TF(1.) + two_r), TF(2.))));
+//        const TF flux_pos = u * (sm1 + TF(0.5) * phi * (sm1 - sm2));
+//        const TF flux_neg = u * sp1;
+//
+//        return (u >= TF(0.)) ? flux_pos : flux_neg;
+//    }
+
     template<typename TF>
     inline TF flux_lim(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
     {
-        const TF eps = std::numeric_limits<TF>::epsilon();
+        const bool pos = (u >= TF(0.));
+        const TF a = pos ? sm1 : sp1;
+        const TF b = pos ? sm2 : sp2;
+        const TF c = pos ? sp1 : sm1;
 
-        if (u >= TF(0.))
-        {
-            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
-            const TF two_r = TF(2.) * (sp1-sm1) / denom;
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
-        }
-        else
-        {
-            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
-            const TF two_r = TF(2.) * (sm1-sp1) / denom;
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
-        }
+        const TF d1 = a - b;
+        const TF d2 = c - a;
+        const TF sgn = std::copysign(TF(1.), d1);
+
+        const TF t1 = sgn * (TF(2.) * d2);
+        const TF t2 = sgn * (d1 + TF(2.) * d2) * TF(1./3.);
+        const TF t3 = sgn * (TF(2.) * d1);
+        const TF lim = sgn * std::max(TF(0.), std::min(std::min(t1, t2), t3));
+
+        return u * (a + TF(0.5) * lim);
     }
 
-    // Implementation flux limiter according to Koren, 1993.
     template<typename TF>
     inline TF flux_lim_bot(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
     {
-        const TF eps = std::numeric_limits<TF>::epsilon();
+        const TF d1 = sp1 - sp2;
+        const TF d2 = sm1 - sp1;
+        const TF sgn = std::copysign(TF(1.), d1);
+        const TF lim = sgn * std::max(TF(0.),
+                std::min(std::min(sgn*(TF(2.)*d2), sgn*(d1 + TF(2.)*d2)*TF(1./3.)),
+                         sgn*(TF(2.)*d1)));
 
-        if (u >= TF(0.))
-        {
-            return u*sm1;
-        }
-        else
-        {
-            const TF denom = copysign(1, sp1-sp2) * std::max(std::abs(sp1-sp2), eps);
-            const TF two_r = TF(2.) * (sm1-sp1) / denom;
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sp1 + TF(0.5)*phi*(sp1 - sp2));
-        }
+        const TF flux_neg = u * (sp1 + TF(0.5)*lim);
+        const TF flux_pos = u * sm1;
+        return (u >= TF(0.)) ? flux_pos : flux_neg;
     }
 
-    // Implementation flux limiter according to Koren, 1993.
     template<typename TF>
     inline TF flux_lim_top(const TF u, const TF sm2, const TF sm1, const TF sp1, const TF sp2)
     {
-        const TF eps = std::numeric_limits<TF>::epsilon();
+        const TF d1 = sm1 - sm2;
+        const TF d2 = sp1 - sm1;
+        const TF sgn = std::copysign(TF(1.), d1);
+        const TF lim = sgn * std::max(TF(0.),
+                std::min(std::min(sgn*(TF(2.)*d2), sgn*(d1 + TF(2.)*d2)*TF(1./3.)),
+                         sgn*(TF(2.)*d1)));
 
-        if (u >= TF(0.))
-        {
-            const TF denom = copysign(1, sm1-sm2) * std::max(std::abs(sm1-sm2), eps);
-            const TF two_r = TF(2.) * (sp1-sm1) / denom;
-            const TF phi = std::max(
-                    TF(0.),
-                    std::min( two_r, std::min( TF(1./3.)*(TF(1.)+two_r), TF(2.)) ) );
-            return u*(sm1 + TF(0.5)*phi*(sm1 - sm2));
-        }
-        else
-        {
-            return u*sp1;
-        }
+        const TF flux_pos = u * (sm1 + TF(0.5)*lim);
+        const TF flux_neg = u * sp1;
+        return (u >= TF(0.)) ? flux_pos : flux_neg;
     }
 
     template<typename TF>
@@ -113,7 +214,12 @@ namespace Advec_monotonic
         const TF dxi = TF(1.)/dx;
         const TF dyi = TF(1.)/dy;
 
+        TF dzirhorefi;
+
         for (int k=kstart+2; k<kend-2; ++k)
+        {
+            dzirhorefi = dzi[k] / rhoref[k];
+
             for (int j=jstart; j<jend; ++j)
                 #pragma ivdep
                 for (int i=istart; i<iend; ++i)
@@ -127,10 +233,13 @@ namespace Advec_monotonic
                                - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                              - ( rhorefh[k+1] * flux_lim(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                               - rhorefh[k  ] * flux_lim(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                               - rhorefh[k  ] * flux_lim(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzirhorefi;
                 }
+        }
 
         int k = kstart;
+        dzirhorefi = dzi[k] / rhoref[k];
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -144,10 +253,12 @@ namespace Advec_monotonic
                            - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                          // No flux through bottom wall.
-                         - ( rhorefh[k+1] * flux_lim_bot(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) / rhoref[k] * dzi[k];
+                         - ( rhorefh[k+1] * flux_lim_bot(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])) * dzirhorefi;
             }
 
         k = kstart+1;
+        dzirhorefi = dzi[k] / rhoref[k];
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -161,10 +272,12 @@ namespace Advec_monotonic
                            - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                          - ( rhorefh[k+1] * flux_lim    (w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                           - rhorefh[k  ] * flux_lim_bot(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                           - rhorefh[k  ] * flux_lim_bot(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzirhorefi;
             }
 
         k = kend-2;
+        dzirhorefi = dzi[k] / rhoref[k];
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -179,10 +292,12 @@ namespace Advec_monotonic
 
                          // No flux through bottom wall.
                          - ( rhorefh[k+1] * flux_lim_top(w[ijk+kk1], s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                           - rhorefh[k  ] * flux_lim    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                           - rhorefh[k  ] * flux_lim    (w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzirhorefi;
             }
 
         k = kend-1;
+        dzirhorefi = dzi[k] / rhoref[k];
+
         for (int j=jstart; j<jend; ++j)
             #pragma ivdep
             for (int i=istart; i<iend; ++i)
@@ -196,7 +311,7 @@ namespace Advec_monotonic
                            - flux_lim(v[ijk    ], s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi
 
                          - ( // No flux through boundary
-                           - rhorefh[k  ] * flux_lim_top(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
+                           - rhorefh[k  ] * flux_lim_top(w[ijk    ], s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzirhorefi;
             }
     }
 
