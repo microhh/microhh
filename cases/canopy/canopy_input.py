@@ -5,7 +5,7 @@ from scipy.special import erf
 # Available in microhh/python
 import microhh_tools as mht
 
-float_type = 'f8'
+float_type = np.float32
 
 
 def pad_profile(z, dz, hc=10.0, pai=0.479, sigma=0.5):
@@ -20,9 +20,18 @@ def pad_profile(z, dz, hc=10.0, pai=0.479, sigma=0.5):
 
 ini = mht.Read_namelist('canopy.ini')
 
+# Switch between a horizontally homogeneous canopy (1D `pad` profile in the NetCDF input),
+# or a 3D `pad` field with a block of canopy in the center of the domain (binary `pad.0000000`).
+sw_3d_pad = ini['canopy']['sw_3d_pad']
+
 # Initial vertical profiles.
-zsize = ini['grid']['zsize']
+itot = ini['grid']['itot']
+jtot = ini['grid']['jtot']
 ktot = ini['grid']['ktot']
+
+xsize = ini['grid']['xsize']
+ysize = ini['grid']['ysize']
+zsize = ini['grid']['zsize']
 
 dz = zsize / ktot
 z = np.arange(dz/2, zsize, dz)
@@ -58,3 +67,26 @@ nc_v[:] = v[:]
 nc_pad[:] = pad[:]
 
 nc_file.close()
+
+
+if sw_3d_pad:
+    # Same vertical profile, but only in a block of 1/3 of the domain width in the center of the domain.
+    dx = xsize / itot
+    dy = ysize / jtot
+
+    x = np.arange(dx/2, xsize, dx)
+    y = np.arange(dy/2, ysize, dy)
+
+    mask_x = (x > xsize/3) & (x < 2*xsize/3)
+    mask_y = (y > ysize/3) & (y < 2*ysize/3)
+    mask_xy = mask_y[:,None] & mask_x[None,:]
+
+    # Vertical extent of the 3D field: up to the highest non-zero `pad`.
+    ktot_canopy = np.nonzero(pad)[0].max() + 1
+    mht.replace_namelist_value('ktot_canopy', ktot_canopy, group='canopy', namelist_file='canopy.ini')
+
+    pad_3d = np.zeros((ktot_canopy, jtot, itot), dtype=float_type)
+    pad_3d[:,:,:] = pad[:ktot_canopy,None,None] * mask_xy[None,:,:]
+
+    # NOTE: `float_type` has to match the precision of the MicroHH build.
+    pad_3d.tofile('pad.0000000')
