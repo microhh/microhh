@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -54,9 +54,11 @@ class Thermo_disabled : public Thermo<TF>
         // Interfacing functions to get buoyancy properties from other classes.
         void init() {};
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&) {};
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
+        void create_stats(Stats<TF>&) {};    ///< Initialization of the statistics.
+
         void exec(const double, Stats<TF>&) {};
         void exec_stats(Stats<TF>&) {};
         void exec_column(Column<TF>&) {};
@@ -105,8 +107,9 @@ class Thermo_disabled : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
+        void get_radiation_columns(TF*, TF*, TF*, TF*, TF*, TF*, TF*, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
+        Satadjust_type get_swsatadjust() {throw std::runtime_error("Function get_swsatadjust not implemented"); };
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)

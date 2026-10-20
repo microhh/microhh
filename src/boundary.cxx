@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -383,7 +383,7 @@ void Boundary<TF>::process_time_dependent(
                 TF* const restrict field, const std::string& name, const int time)
         {
             char filename[256];
-            std::sprintf(filename, "%s.%07d", name.c_str(), time);
+            std::snprintf(filename, 256, "%s.%07d", name.c_str(), time);
             master.print_message("Loading \"%s\" ... ", filename);
 
             if (field3d_io.load_xy_slice(
@@ -506,7 +506,7 @@ void Boundary<TF>::update_time_dependent(Timeloop<TF>& timeloop)
                 // Read new time step
                 char filename[256];
                 std::string name = fld + "_bot_in";
-                std::sprintf(filename, "%s.%07d", name.c_str(), iotime1);
+                std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime1);
                 master.print_message("Loading \"%s\" ... ", filename);
 
                 if (field3d_io.load_xy_slice(

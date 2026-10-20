@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -1338,7 +1338,7 @@ void Boundary_surface_lsm<TF>::create_stats(
 
     if (cross.get_switch())
     {
-        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl"};
+        const std::vector<std::string> allowed_crossvars = {"ustar", "obuk", "wl", "H", "LE", "G", "S"};
         cross_list = cross.get_enabled_variables(allowed_crossvars);
     }
 }
@@ -1361,7 +1361,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -1382,7 +1382,7 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_field3d(
@@ -1407,9 +1407,6 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     // Obukhov length restart files are only needed for the iterative solver
     if (!sw_constant_z0)
     {
-        // Read Obukhov length
-        load_2d_field(obuk.data(), "obuk", iotime);
-
         // Read spatial z0 fields
         load_2d_field(z0m.data(), "z0m", 0);
         load_2d_field(z0h.data(), "z0h", 0);
@@ -1426,6 +1423,9 @@ void Boundary_surface_lsm<TF>::load(const int iotime, Thermo<TF>& thermo)
     {
         load_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first, iotime);
         load_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first, iotime);
+
+        if (!sw_constant_z0)
+            load_2d_field(tile.second.obuk.data(), "obuk_" + tile.first, iotime);
     }
 
     // In case of heterogeneous land-surface, read spatial properties.
@@ -1487,7 +1487,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
 
         const int kslice = 0;
@@ -1505,7 +1505,7 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
     auto save_3d_field = [&](TF* const restrict field, const std::string& name)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), iotime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), iotime);
         master.print_message("Saving \"%s\" ... ", filename);
 
         if (field3d_io.save_field3d(
@@ -1526,10 +1526,6 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
     save_2d_field(dvdz_mo.data(), "dvdz_mo");
     save_2d_field(dbdz_mo.data(), "dbdz_mo");
 
-    // Obukhov length restart files are only needed for the iterative solver.
-    if (!sw_constant_z0)
-        save_2d_field(obuk.data(), "obuk");
-
     // Don't save the initial soil temperature/moisture for heterogeneous runs.
     if (sw_homogeneous || iotime > 0)
     {
@@ -1544,6 +1540,9 @@ void Boundary_surface_lsm<TF>::save(const int iotime, Thermo<TF>& thermo)
     {
         save_2d_field(tile.second.thl_bot.data(), "thl_bot_" + tile.first);
         save_2d_field(tile.second.qt_bot.data(),  "qt_bot_"  + tile.first);
+
+        if (!sw_constant_z0)
+            save_2d_field(tile.second.obuk.data(),  "obuk_"  + tile.first);
     }
 
     // Check for any failures.
@@ -1559,20 +1558,26 @@ template<typename TF>
 void Boundary_surface_lsm<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 {
     auto& gd = grid.get_grid_data();
-    auto tmp1 = fields.get_tmp();
+
+    auto tmp = fields.get_tmp();
     TF no_offset = 0.;
     
-    for (auto& it : cross_list)
+    for (auto& var : cross_list)
     {
-        if (it == "ustar")
-            cross.cross_plane(ustar.data(), no_offset, "ustar", iotime);
-        else if (it == "obuk")
-            cross.cross_plane(obuk.data(), no_offset, "obuk", iotime);
-        else if (it == "wl")
-            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, "wl", iotime);
+        if (var == "ustar")
+            cross.cross_plane(ustar.data(), no_offset, var, iotime);
+        else if (var == "obuk")
+            cross.cross_plane(obuk.data(), no_offset, var, iotime);
+        else if (var == "wl")
+            cross.cross_plane(fields.ap2d.at("wl")->fld.data(), no_offset, var, iotime);
+        else if (var == "H" || var == "LE" || var == "G" || var == "S")
+        {
+            get_tiled_mean(tmp->fld_bot, var, TF(1));
+            cross.cross_plane(tmp->fld_bot.data(), no_offset, var, iotime);
+        }
     }
 
-    fields.release_tmp(tmp1);
+    fields.release_tmp(tmp);
 }
 
 template<typename TF>

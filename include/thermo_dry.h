@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -57,8 +57,13 @@ class Thermo_dry : public Thermo<TF>
 
         void init();
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&);
         void exec(const double, Stats<TF>&); // Add the tendencies belonging to the buoyancy.
         unsigned long get_time_limit(unsigned long, double); // Compute the time limit (n/a for thermo_dry).
+        void create_stats(Stats<TF>&);   // Initialization of the statistics.
+
+        void load(const int);
+        void save(const int);
 
         void exec_stats(Stats<TF>&);
         void exec_cross(Cross<TF>&, unsigned long);
@@ -68,6 +73,7 @@ class Thermo_dry : public Thermo<TF>
         bool check_field_exists(std::string name);
         void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool);
+        Satadjust_type get_swsatadjust() {throw std::runtime_error("Function get_swsatadjust not implemented"); };
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, bool);
         void get_buoyancy_surf(std::vector<TF>&, std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_buoyancy_surf not implemented"); }
@@ -113,17 +119,12 @@ class Thermo_dry : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
+        void get_radiation_columns(TF*, TF*, TF*, TF*, TF*, TF*, TF*, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
                 std::vector<TF>&, std::vector<TF>&)
             { throw std::runtime_error("Function get_land_surface_fields not implemented"); }
-
-        // Empty functions that are allowed to pass.
-        void create_basestate(Input&, Netcdf_handle&) {};
-        void load(const int) {};
-        void save(const int) {};
 
         void get_mask(Stats<TF>&, std::string) {};
         bool has_mask(std::string) {return false;};
@@ -144,7 +145,6 @@ class Thermo_dry : public Thermo<TF>
         bool swcross_b;
         std::vector<std::string> dumplist;         // List with all 3d dumps from the ini file.
 
-        void create_stats(Stats<TF>&);   // Initialization of the statistics.
         void create_column(Column<TF>&); // Initialization of the single column output.
         void create_dump(Dump<TF>&);     // Initialization of the single column output.
         void create_cross(Cross<TF>&);   // Initialization of the single column output.
@@ -155,7 +155,7 @@ class Thermo_dry : public Thermo<TF>
             Basestate_type swbasestate;
 
             TF pbot;   // Surface pressure.
-            TF thref0; // Reference potential temperature in case of Boussinesq
+            TF thref0; // Reference potential temperature in case of Boussinesq.
 
             std::vector<TF> thref;
             std::vector<TF> threfh;
@@ -163,6 +163,8 @@ class Thermo_dry : public Thermo<TF>
             std::vector<TF> prefh;
             std::vector<TF> exnref;
             std::vector<TF> exnrefh;
+            std::vector<TF> rhoref;
+            std::vector<TF> rhorefh;
 
             // GPU functions and variables
             TF*  thref_g;
@@ -171,7 +173,10 @@ class Thermo_dry : public Thermo<TF>
             TF*  prefh_g;
             TF*  exnref_g;
             TF*  exnrefh_g;
+            TF*  rhoref_g;
+            TF*  rhorefh_g;
         };
+
         background_state bs;
         background_state bs_stats;
 

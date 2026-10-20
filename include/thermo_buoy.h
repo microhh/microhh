@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -54,6 +54,7 @@ class Thermo_buoy : public Thermo<TF>
         void exec(const double, Stats<TF>&); ///< Add the tendencies belonging to the buoyancy.
         void create(Input&, Netcdf_handle&, Stats<TF>&, Column<TF>&, Cross<TF>&, Dump<TF>&, Timeloop<TF>&);
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
+        void create_stats(Stats<TF>&) {};    ///< Initialization of the fields statistics.
 
         bool check_field_exists(std::string name);
 
@@ -63,6 +64,7 @@ class Thermo_buoy : public Thermo<TF>
         void get_prog_vars(std::vector<std::string>&);  ///< Retrieve a list of prognostic variables.
         void get_thermo_field(
                 Field3d<TF>&, const std::string&, const bool, const bool); ///< Compute the buoyancy for usage in another routine.
+        Satadjust_type get_swsatadjust() {throw std::runtime_error("Function get_swsatadjust not implemented"); };
         TF get_db_ref() const { return bs.n2; }
         int get_bl_depth();
         TF get_buoyancy_diffusivity();
@@ -76,7 +78,7 @@ class Thermo_buoy : public Thermo<TF>
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
         void get_radiation_fields(Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&, Field3d<TF>&) const
             { throw std::runtime_error("Function get_radiation_fields not implemented"); }
-        void get_radiation_columns(Field3d<TF>&, std::vector<int>&, std::vector<int>&) const
+        void get_radiation_columns(TF*, TF*, TF*, TF*, TF*, TF*, TF*, std::vector<int>&, std::vector<int>&) const
             { throw std::runtime_error("Function get_radiation_columns not implemented"); }
         void get_land_surface_fields(
                 std::vector<TF>&, std::vector<TF>&, std::vector<TF>&,
@@ -87,7 +89,7 @@ class Thermo_buoy : public Thermo<TF>
 
         // Empty functions that are allowed to pass.
         void init() {}
-        void create_basestate(Input&, Netcdf_handle&) {};
+        void create_basestate(Input&, Netcdf_handle&, Timeloop<TF>&) {};
         void load(const int) {};
         void save(const int) {};
         void exec_stats(Stats<TF>&) {};

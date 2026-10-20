@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,6 +31,9 @@ namespace Constants
     template<typename TF> constexpr TF Rd    = 287.04;        // Gas constant for dry air [J K-1 kg-1]
     template<typename TF> constexpr TF Rv    = 461.5;         // Gas constant for water vapor [J K-1 kg-1]
     template<typename TF> constexpr TF cp    = 1005;          // Specific heat of air at constant pressure [J kg-1 K-1]
+    template<typename TF> constexpr TF cpv    = 1885;         // Specific heat of water vapour at constant pressure [J kg-1 K-1]
+    template<typename TF> constexpr TF cl    = 4186;          // Specific heat of liquid water at constant pressure [J kg-1 K-1]
+    template<typename TF> constexpr TF ci    = 2106;          // Specific heat of ice water at constant pressure [J kg-1 K-1]
     template<typename TF> constexpr TF Lv    = 2.501e6;       // Latent heat of vaporization [J kg-1]
     template<typename TF> constexpr TF Lf    = 3.337e5;       // Latent heat of fusion [J kg-1]
     template<typename TF> constexpr TF Ls    = Lv<TF>+Lf<TF>; // Latent heat of sublimation [J kg-1]
@@ -42,7 +45,7 @@ namespace Constants
     template<typename TF> constexpr TF mu0_min = 1e-6;        // Minimum value used for cos(sza)
     template<typename TF> constexpr TF sigma_b = 5.67e-8;     // Boltzmann constant [W m-1 K-1]
     template<typename TF> constexpr TF xmair = 28.9647;       // Molar mass of dry air [kg kmol-1]
-    template<typename TF> constexpr TF xmh2o = 18.01528;      // Molar mass of h2o [kg kmol-1]    
+    template<typename TF> constexpr TF xmh2o = 18.01528;      // Molar mass of h2o [kg kmol-1]
     template<typename TF> constexpr TF pi = 3.14159265358979; // Pi
 
     // Soil / land-surface specific constants

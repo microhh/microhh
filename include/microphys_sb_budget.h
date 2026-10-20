@@ -37,7 +37,7 @@ class Micro_budget {
                     {"qv", "qc", "nc", "qi", "ni", "qr", "nr", "qs", "ns", "qg", "ng", "qh", "nh"};
 
             for (auto& specie : species)
-                this->prev_tendencies.emplace(specie, std::vector<TF>(kcells));
+                this->prev_humidities.emplace(specie, std::vector<TF>(kcells));
 
             this->nlev = kcells;
         }
@@ -55,7 +55,7 @@ class Micro_budget {
                 this->tendencies.emplace(full_name, std::vector<TF>(this->nlev));
 
                 // Register in statistics.
-                const std::string unit = full_name.at(0) == 'q' ? "kg kg-1 s" : "m-3 s";
+                const std::string unit = full_name.at(0) == 'q' ? "kg kg-1" : "kg-1";
                 stats.add_prof(full_name, "Tendency " + full_name, unit, "z" , group_name);
             }
         }
@@ -75,23 +75,32 @@ class Micro_budget {
         void set(
                 const std::string& process,
                 const std::string& specie,
-                const TF tendency,
-                const int k)
+                const TF humidity,
+                const int k,
+                const TF dt)
         {
             const std::string full_name = specie + "_" + process;
-            this->tendencies.at(full_name)[k] += tendency - this->prev_tendencies.at(specie)[k];
-            this->prev_tendencies.at(specie)[k] = tendency;
+            this->tendencies.at(full_name)[k] += (humidity - this->prev_humidities.at(specie)[k])/dt;
+            this->prev_humidities.at(specie)[k] = humidity;
         }
 
-        void reset_tendencies(const int k)
+//        void reset_tendencies(const int k)
+//        {
+//            for (auto& prof : this->prev_humidities)
+//                prof.second[k] = TF(0);
+//        }
+
+        void set_humidities(
+                const std::string& specie,
+                const TF humidity,
+                const int k)
         {
-            for (auto& prof : this->prev_tendencies)
-                prof.second[k] = TF(0);
+            this->prev_humidities.at(specie)[k] = humidity;
         }
 
     private:
         int nlev;
-        std::map<std::string, std::vector<TF>> prev_tendencies;
+        std::map<std::string, std::vector<TF>> prev_humidities;
         std::map<std::string, std::vector<TF>> tendencies;
 };
 #endif

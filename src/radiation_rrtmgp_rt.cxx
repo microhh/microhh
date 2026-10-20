@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -415,9 +415,9 @@ namespace
         Float radliq_upr = coef_nc.get_variable<Float>("radliq_upr");
         Float radliq_fac = coef_nc.get_variable<Float>("radliq_fac");
 
-        Float radice_lwr = coef_nc.get_variable<Float>("radice_lwr");
-        Float radice_upr = coef_nc.get_variable<Float>("radice_upr");
-        Float radice_fac = coef_nc.get_variable<Float>("radice_fac");
+        Float diamice_lwr = coef_nc.get_variable<Float>("diamice_lwr");
+        Float diamice_upr = coef_nc.get_variable<Float>("diamice_upr");
+        Float diamice_fac = coef_nc.get_variable<Float>("diamice_fac");
 
         Array<Float,2> lut_extliq(
                 coef_nc.get_variable<Float>("lut_extliq", {n_band, n_size_liq}), {n_size_liq, n_band});
@@ -436,7 +436,7 @@ namespace
         return Cloud_optics(
                 band_lims_wvn,
                 radliq_lwr, radliq_upr, radliq_fac,
-                radice_lwr, radice_upr, radice_fac,
+                diamice_lwr, diamice_upr, diamice_fac,
                 lut_extliq, lut_ssaliq, lut_asyliq,
                 lut_extice, lut_ssaice, lut_asyice);
     }
@@ -509,7 +509,6 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
 
     dt_rad = inputin.get_item<double>("radiation", "dt_rad", "");
 
-    t_sfc       = inputin.get_item<Float>("radiation", "t_sfc"      , "");
     tsi_scaling = inputin.get_item<Float>("radiation", "tsi_scaling", "", -999.);
 
     // Read representative values for the surface properties that are used in the column calcs.
@@ -1308,8 +1307,8 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         stats.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh", group_name);
         stats.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh", group_name);
 
-        stats.add_prof("sw_heat_dir_rt"    , "Raytraced heating rates from direct radiation"   , "K s-2", "z", group_name);
-        stats.add_prof("sw_heat_dif_rt"    , "Raytraced heating rates from diffuse radiation"  , "K s-2", "z", group_name);
+        stats.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation" , "K s-1", "z", group_name);
+        stats.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "z", group_name);
 
         if (sw_clear_sky_stats)
         {
@@ -1325,6 +1324,9 @@ void Radiation_rrtmgp_rt<TF>::create_solver_shortwave(
         column.add_prof("sw_flux_up"    , "Shortwave upwelling flux"         , "W m-2", "zh");
         column.add_prof("sw_flux_dn"    , "Shortwave downwelling flux"       , "W m-2", "zh");
         column.add_prof("sw_flux_dn_dir", "Shortwave direct downwelling flux", "W m-2", "zh");
+
+        column.add_prof("sw_heat_dir_rt", "Raytraced heating rates from direct radiation", "K s-1", "zh");
+        column.add_prof("sw_heat_dif_rt", "Raytraced heating rates from diffuse radiation", "K s-1", "zh");
 
         if (sw_clear_sky_stats)
         {

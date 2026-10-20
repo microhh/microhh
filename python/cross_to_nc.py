@@ -1,8 +1,8 @@
 #
 #  MicroHH
-#  Copyright (c) 2011-2023 Chiel van Heerwaarden
-#  Copyright (c) 2011-2023 Thijs Heus
-#  Copyright (c) 2014-2023 Bart van Stratum
+#  Copyright (c) 2011-2024 Chiel van Heerwaarden
+#  Copyright (c) 2011-2024 Thijs Heus
+#  Copyright (c) 2014-2024 Bart van Stratum
 #
 #  This file is part of MicroHH
 #
@@ -38,6 +38,7 @@ def convert_to_nc(variables):
         for mode in modes:
             try:
                 otime = int(round(starttime / 10**iotimeprec))
+
                 if os.path.isfile("{0}.xy.000.{1:07d}".format(variable, otime)):
                     if mode != 'xy':
                         continue
@@ -54,7 +55,7 @@ def convert_to_nc(variables):
                         indexes_local = indexes
 
                         files = glob.glob("{0:}.{1}.*.{2:05d}.{3:07d}".format(
-                                variable, mode, indexes_local[0], starttime))
+                                variable, mode, indexes_local[0], otime))
                         if len(files) == 0:
                             raise Exception('Cannot find any cross-section')
                         halflevel = files[0].split('.')[-3]

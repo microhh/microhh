@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -590,7 +590,7 @@ void Boundary_surface<TF>::load(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Loading \"%s\" ... ", filename);
 
         if (field3d_io.load_xy_slice(
@@ -652,7 +652,7 @@ void Boundary_surface<TF>::save(const int iotime, Thermo<TF>& thermo)
             TF* const restrict field, const std::string& name, const int itime)
     {
         char filename[256];
-        std::sprintf(filename, "%s.%07d", name.c_str(), itime);
+        std::snprintf(filename, 256, "%s.%07d", name.c_str(), itime);
         master.print_message("Saving \"%s\" ... ", filename);
 
         const int kslice = 0;

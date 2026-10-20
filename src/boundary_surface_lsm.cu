@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -507,13 +507,10 @@ void Boundary_surface_lsm<TF>::exec(
 
     if (sw_homogenize_sfc)
     {
-        const int blockGPU = 256;
-        const int gridGPU = gd.ijcells/blockGPU + (gd.ijcells%blockGPU > 0);
-
         auto homogenize = [&](TF* const __restrict__ field)
         {
             const TF mean_value = field3d_operators.calc_mean_2d_g(field);
-            Tools_g::set_to_val<<<gridGPU, blockGPU>>>(field, gd.ijcells, mean_value);
+            Tools_g::set_to_val<TF>(field, gd.ijcells, mean_value);
         };
 
         // Homogenize the surface fields which interact with the atmosphere.

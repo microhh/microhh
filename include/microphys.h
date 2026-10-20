@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -76,6 +76,9 @@ class Microphys
 
         virtual TF get_Nc0() = 0;
         virtual TF get_Ni0() = 0;
+        virtual Microphys_type get_swmicro() = 0;
+        virtual void get_radiation_fields(Thermo<TF>& thermo, Field3d<TF>&, Field3d<TF>&) const = 0;
+        virtual void get_radiation_columns(Thermo<TF>&, TF*, TF*, std::vector<int>&, std::vector<int>&) const = 0;
 
         // GPU functions and variables.
         #ifdef USECUDA

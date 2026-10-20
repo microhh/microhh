@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -163,6 +163,7 @@ class Stats
         void calc_stats_flux(const std::string&, const Field3d<TF>&, const TF);
         void calc_stats_grad(const std::string&, const Field3d<TF>&);
         void calc_stats_path(const std::string&, const Field3d<TF>&);
+        void calc_stats_max(const std::string&, const Field3d<TF>&);
         void calc_stats_cover(const std::string&, const Field3d<TF>&, const TF, const TF);
         void calc_stats_frac(const std::string&, const Field3d<TF>&, const TF, const TF);
 

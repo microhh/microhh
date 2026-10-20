@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -90,6 +90,7 @@ namespace
     template<typename TF> constexpr TF f_2g = 0.27; // First coefficient of ventilation factor for graupel.
 
     template<typename TF> constexpr TF E_ri = 1.;  // Collection efficiency of ice for rain.
+    template<typename TF> constexpr TF E_iw = 1.;  // Collection efficiency of ice for cloud water.
     template<typename TF> constexpr TF E_rw = 1.;  // Collection efficiency of rain for cloud water.
     template<typename TF> constexpr TF E_sw = 1.;  // Collection efficiency of snow for cloud water.
     template<typename TF> constexpr TF E_gw = 1.;  // Collection efficiency of graupel for cloud water.
@@ -112,6 +113,11 @@ namespace
     template<typename TF> constexpr TF gamma_gaut = 90.e-3;
 
     template<typename TF> constexpr TF nu = 1.5e-5; // Kinematic viscosity of air.
+
+//    template<typename TF> constexpr TF mi40 = 2.46e-10; // mass of a 40 micron ice crystal [kg]
+//    template<typename TF> constexpr TF mi50 = 4.80E-10; // mass of a 50 micron ice crystal [kg]
+//    template<typename TF> constexpr TF vti50 = 1.0; // terminal velocity of a 50 micron ice crystal [m/s]
+//    template<typename TF> constexpr TF Ri50 = 5.e-5; // radius of a 50 micron ice crystal [m]
 }
 
 namespace
@@ -120,6 +126,39 @@ namespace
     using namespace Thermo_moist_functions;
     using namespace Fast_math;
     using Micro_2mom_warm_functions::minmod;
+
+    template<typename TF>
+    void bergeron_param(
+            TF& a1, TF& a2, TF& ma2, const TF& T)
+    {
+        static constexpr TF a1_tab[] = {
+                TF(0.0001e-7), TF(0.7939e-7), TF(0.7841e-6), TF(0.3369e-5), TF(0.4336e-5),
+                TF(0.5285e-5), TF(0.3728e-5), TF(0.1852e-5), TF(0.2991e-6), TF(0.4248e-6),
+                TF(0.7434e-6), TF(0.1812e-5), TF(0.4394e-5), TF(0.9145e-5), TF(0.1725e-4),
+                TF(0.3348e-4), TF(0.1725e-4), TF(0.9175e-5), TF(0.4412e-5), TF(0.2252e-5),
+                TF(0.9115e-6), TF(0.4876e-6), TF(0.3473e-6), TF(0.4758e-6), TF(0.6306e-6),
+                TF(0.8573e-6), TF(0.7868e-6), TF(0.7192e-6), TF(0.6513e-6), TF(0.5956e-6),
+                TF(0.5333e-6), TF(0.4834e-6) };
+
+        static constexpr TF a2_tab[] = {
+                TF(0.0100), TF(0.4006), TF(0.4831), TF(0.5320), TF(0.5307),
+                TF(0.5319), TF(0.5249), TF(0.4888), TF(0.3849), TF(0.4047),
+                TF(0.4318), TF(0.4771), TF(0.5183), TF(0.5463), TF(0.5651),
+                TF(0.5813), TF(0.5655), TF(0.5478), TF(0.5203), TF(0.4906),
+                TF(0.4447), TF(0.4126), TF(0.3960), TF(0.4149), TF(0.4320),
+                TF(0.4506), TF(0.4483), TF(0.4460), TF(0.4433), TF(0.4413),
+                TF(0.4382), TF(0.4361) };
+
+        const TF temc = std::min(std::max(T - T0<TF>, TF(-30.99)), TF(0.));
+        const int itemc = static_cast<int>(-temc);
+        const TF fact = -(temc + static_cast<TF>(itemc));
+
+        a1 = (TF(1.) - fact) * a1_tab[itemc] + fact * a1_tab[itemc + 1];
+        a2 = (TF(1.) - fact) * a2_tab[itemc] + fact * a2_tab[itemc + 1];
+
+        ma2 = TF(1.) - a2;
+        a1 *= std::exp(std::log(TF(1.e-3)) * ma2);
+    }
 
     // Compute all microphysical tendencies.
     template<typename TF>
@@ -134,7 +173,7 @@ namespace
             const TF Nc0, const TF dt,
             const int istart, const int jstart, const int kstart,
             const int iend, const int jend, const int kend,
-            const int jj, const int kk)
+            const int jj, const int kk, const Satadjust_type sw_satadjust)
     {
         // Tomita Eq. 51. Nc0 is converted from SI units (m-3 instead of cm-3).
         const TF D_d = TF(0.146) - TF(5.964e-2)*std::log((Nc0*TF(1.e-6)) / TF(2.e3));
@@ -191,9 +230,32 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
-                    const TF T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
-                    const TF qv = qt[ijk] - ql[ijk] - qi[ijk];
+                    TF T;
+                    TF qv;
+                    if (sw_satadjust == Satadjust_type::Liquid_ice)
+                    {
+                        // Compute the T out of the known values of ql and qi, this saves memory and sat_adjust.
+                        T = exner[k]*thl[ijk] + Lv<TF>/cp<TF>*ql[ijk] + Ls<TF>/cp<TF>*qi[ijk];
+                        qv = qt[ijk] - ql[ijk] - qi[ijk];
+                    }
+                    else
+                    {
+                        // Compute T and qv from satadjust.
+                        // MT: with the satad instead of a hardcoded T formula here it is easier to switch between thl definitions manually
+
+                        auto calc_sat_adjust_wrapper = [&]<Satadjust_type sw_satadjust>()
+                        {
+                            Thermo_moist_functions::Struct_sat_adjust<TF> ssa = Thermo_moist_functions::sat_adjust<TF, sw_satadjust>(
+                                    thl[ijk],
+                                    qt[ijk], p[k],
+                                    exner[k]);
+
+                            qv = std::min(ssa.qs, qt[ijk]);
+                            T = ssa.t;
+                        };
+
+                        calc_sat_adjust_wrapper.template operator()<Satadjust_type::Liquid_ice_deep>();
+                    }
 
                     // Flag the sign of the absolute temperature.
                     const TF T_pos = TF(T >= T0<TF>);
@@ -341,15 +403,16 @@ namespace
                          : TF(0.);
 
                     // Seifert and Beheng autoconversion.
-                    // const TF x_star = TF(2.6e-10); // SB06, list of symbols, same as UCLA-LES
-                    // const TF k_cc = TF(9.44e9); // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
-                    // const TF nu_c = TF(1.); // SB06, Table 1., same as UCLA-LES
-                    // const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow2(nu_c+1);
-                    // const TF xc  = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
-                    // const TF tau = TF(1.) - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
-                    // const TF phi_au = TF(600.) * std::pow(tau, TF(0.68)) * pow3(TF(1.) - pow(tau, TF(0.68))); // UCLA-LES
-
-                    // TF P_raut = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) * (TF(1.) + phi_au / pow2(TF(1.)-tau)); // SB06, eq 4
+//                     const TF eps  = 1.00e-25;
+//                     const TF x_star = TF(2.6e-10); // SB06, list of symbols, same as UCLA-LES
+//                     const TF k_cc = TF(9.44e9); // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
+//                     const TF nu_c = TF(1.); // SB06, Table 1., same as UCLA-LES
+//                     const TF kccxs = k_cc / (TF(20.) * x_star) * (nu_c+2)*(nu_c+4) / pow2(nu_c+1);
+//                     const TF xc  = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
+//                     const TF tau = std::min(std::max(TF(1) - ql[ijk] / (ql[ijk] + qr[ijk] + eps), eps), TF(0.9));; // SB06, Eq 5
+//                     const TF phi_au = TF(600.) * std::pow(tau, TF(0.68)) * pow3(TF(1.) - pow(tau, TF(0.68))); // UCLA-LES
+//
+//                     TF P_raut = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) * (TF(1.) + phi_au / pow2(TF(1.)-tau)); // SB06, eq 4
 
                     // Tomita Eq. 52
                     TF P_saut = !(has_ice) ? TF(0.) :
@@ -440,6 +503,28 @@ namespace
                         TF(20.) * pi_2<TF> * B_prime * N_0r<TF> * rho_w<TF> / rho[k]
                         * (std::exp(A_prime * (T0<TF> - T)) - TF(1.)) / pow7(lambda_r);
 
+                    // Bergeron process
+                    // MT: the bergeron process is deactivated as the dt dependency makes the results time step dependent.
+                    // const bool has_bergeron = (T >= T0<TF> - TF(30.) && T <= T0<TF>);
+                    //
+                    // TF a1, a2, ma2;
+                    // bergeron_param(a1, a2, ma2, T);
+                    //
+                    // Tomita Eq. 73: time [s] for an ice particle to grow from 40 to 50 micron.
+                    // const TF dt1 = (std::pow(mi50<TF>, ma2) - std::pow(mi40<TF>, ma2)) / (a1 * ma2);
+                    //
+                    // Tomita Eq. 74: number of 50 micron ice particles generated this time step.
+                    // const TF Ni50 = qi[ijk] * dt / (mi50<TF> * dt1);
+                    //
+                    // Tomita Eq. 71
+                    // TF P_sfw = !(has_bergeron) ? TF(0.) :
+                    //            Ni50 * ( a1 * std::pow(mi50<TF>, a2)
+                    //                    + pi<TF> * E_iw<TF> * rho[k] * ql[ijk] * Ri50<TF>*Ri50<TF> * vti50<TF> );
+                    //
+                    // Tomita Eq. 72
+                    // TF P_sfi = !(has_bergeron) ? TF(0.) :
+                    //           qi[ijk] / dt1;
+
                     // COMPUTE THE TENDENCIES.
                     // Limit the production terms to avoid instability.
                     auto limit_tend = [&](TF& tend, const TF tend_limit)
@@ -486,6 +571,10 @@ namespace
                     limit_tend(P_gmlt, dqg_dt_max);
                     limit_tend(P_gfrz, dqr_dt_max);
 
+                    // limit bergeron
+                    // limit_tend(P_sfw  , dql_dt_max);
+                    // limit_tend(P_sfi  , dqi_dt_max);
+
                     // P_iacr_s = 0;
                     // P_iacr_g = 0;
                     // P_raci_s = 0;
@@ -514,29 +603,31 @@ namespace
                     // P_gmlt = 0;
                     // P_gfrz = 0;
 
+                    // MT: for the * T_pos and * T_neg I followed the table in the SCALE documentation.
+                    // I assumed that has_ice already guarantees negative temperatures.
                     TF vapor_to_snow = P_sdep;
                     TF vapor_to_graupel = P_gdep;
 
-                    TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut;
-                    TF cloud_to_graupel = P_gacw;
+                    TF cloud_to_rain = P_racw + P_sacw * T_pos + P_raut + P_gacw * T_pos;
+                    TF cloud_to_graupel = P_gacw * T_neg;
                     TF cloud_to_snow = P_sacw * T_neg;
 
                     TF rain_to_vapor = P_revp;
-                    TF rain_to_graupel = P_gacr + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
+                    TF rain_to_graupel = P_gacr * T_neg + P_iacr_g + P_sacr_g * T_neg + P_gfrz * T_neg;
                     TF rain_to_snow = P_sacr_s * T_neg + P_iacr_s;
 
                     TF ice_to_snow = P_raci_s + P_saci + P_saut;
                     TF ice_to_graupel = P_raci_g + P_gaci;
 
-                    TF snow_to_graupel = P_gacs + P_racs + P_gaut;
-                    TF snow_to_rain = P_smlt;
+                    TF snow_to_graupel = P_gacs + P_racs * T_neg + P_gaut * T_neg;
+                    TF snow_to_rain = P_smlt * T_pos;
                     TF snow_to_vapor = P_ssub;
 
                     TF graupel_to_rain = P_gmlt * T_pos;
                     TF graupel_to_vapor = P_gsub;
 
                     const TF dqv_dt =
-                        - vapor_to_snow - vapor_to_graupel;
+                        - vapor_to_snow - vapor_to_graupel + snow_to_vapor + graupel_to_vapor + rain_to_vapor;
 
                     const TF dql_dt =
                         - cloud_to_rain - cloud_to_graupel - cloud_to_snow;
@@ -550,7 +641,7 @@ namespace
 
                     const TF dqs_dt =
                         + cloud_to_snow + ice_to_snow + vapor_to_snow
-                        - snow_to_graupel - snow_to_vapor - snow_to_rain;
+                        - snow_to_graupel - snow_to_vapor - snow_to_rain + rain_to_snow;
 
                     const TF dqg_dt =
                         + cloud_to_graupel + rain_to_graupel + ice_to_graupel
@@ -591,96 +682,171 @@ namespace
                     graupel_to_rain  *= dqg_dt_fac * dqr_dt_fac;
                     graupel_to_vapor *= dqg_dt_fac * dqv_dt_fac;
 
+                    TF dqc = 0;
+                    TF dqi = 0;
+                    TF dqv = 0;
+
+                    // loss from vapor
+                    dqv -= vapor_to_snow;
+                    qst[ijk] += vapor_to_snow;
+
+                    dqv -= vapor_to_graupel;
+                    qgt[ijk] += vapor_to_graupel;
+
                     // Loss from cloud.
-                    qtt[ijk] -= cloud_to_rain;
+                    dqc -= cloud_to_rain;
                     qrt[ijk] += cloud_to_rain;
-                    thlt[ijk] += Lv<TF> / (cp<TF> * exner[k]) * cloud_to_rain;
 
-                    qtt[ijk] -= cloud_to_graupel;
+                    dqc -= cloud_to_graupel;
                     qgt[ijk] += cloud_to_graupel;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_graupel;
 
-                    qtt[ijk] -= cloud_to_snow;
+                    dqc -= cloud_to_snow;
                     qst[ijk] += cloud_to_snow;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * cloud_to_snow;
 
                     // Loss from rain.
                     qrt[ijk] -= rain_to_vapor;
-                    qtt[ijk] += rain_to_vapor;
-                    thlt[ijk] -= Lv<TF> / (cp<TF> * exner[k]) * rain_to_vapor;
+                    dqv += rain_to_vapor;
 
                     qrt[ijk] -= rain_to_graupel;
                     qgt[ijk] += rain_to_graupel;
-                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_graupel;
 
                     qrt[ijk] -= rain_to_snow;
                     qst[ijk] += rain_to_snow;
-                    thlt[ijk] += Lf<TF> / (cp<TF> * exner[k]) * rain_to_snow;
 
                     // Loss from ice.
-                    qtt[ijk] -= ice_to_snow;
+                    dqi -= ice_to_snow;
                     qst[ijk] += ice_to_snow;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_snow;
 
-                    qtt[ijk] -= ice_to_graupel;
+                    dqi -= ice_to_graupel;
                     qgt[ijk] += ice_to_graupel;
-                    thlt[ijk] += Ls<TF> / (cp<TF> * exner[k]) * ice_to_graupel;
 
                     // Loss from snow.
                     qst[ijk] -= snow_to_graupel;
                     qgt[ijk] += snow_to_graupel;
 
                     qst[ijk] -= snow_to_vapor;
-                    qtt[ijk] += snow_to_vapor;
-                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * snow_to_vapor;
+                    dqv += snow_to_vapor;
 
                     qst[ijk] -= snow_to_rain;
                     qrt[ijk] += snow_to_rain;
-                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * snow_to_rain;
 
                     // Loss from graupel.
                     qgt[ijk] -= graupel_to_rain;
                     qrt[ijk] += graupel_to_rain;
-                    thlt[ijk] -= Lf<TF> / (cp<TF> * exner[k]) * graupel_to_rain;
 
                     qgt[ijk] -= graupel_to_vapor;
-                    qtt[ijk] += graupel_to_vapor;
-                    thlt[ijk] -= Ls<TF> / (cp<TF> * exner[k]) * graupel_to_vapor;
+                    dqv += graupel_to_vapor;
+
+                    TF qc_end = ql[ijk] + dqc * dt;
+                    TF qi_end = qi[ijk] + dqi * dt;
+                    TF qv_end = qv + dqv * dt;
+                    TF qt_end = qc_end + qi_end + qv_end;
+
+                    TF thl_end;
+                    if (sw_satadjust == Satadjust_type::Liquid_ice)
+                    {
+                        const TF dT =   - Lv<TF> / cp<TF> * rain_to_vapor
+                                        - Ls<TF> / cp<TF> * snow_to_vapor
+                                        - Ls<TF> / cp<TF> * graupel_to_vapor
+                                        + Lf<TF> / cp<TF> * cloud_to_snow
+                                        + Lf<TF> / cp<TF> * cloud_to_graupel
+                                        - Lf<TF> / cp<TF> * snow_to_rain
+                                        - Lf<TF> / cp<TF> * graupel_to_rain
+                                        + Lf<TF> / cp<TF> * rain_to_snow
+                                        + Lf<TF> / cp<TF> * rain_to_graupel
+                                        + Ls<TF> / cp<TF> * vapor_to_graupel
+                                        + Ls<TF> / cp<TF> * vapor_to_snow;
+
+                        TF T_end = T + dT * dt;
+
+                        //MT: is this satad needed?
+                        Struct_sat_adjust<TF> ssa = sat_adjust_absolute_T_ice<TF>(T_end, qt_end, p[k], qc_end, qv_end, qi_end, Lv<TF>, Ls<TF>, cp<TF>);
+                        T_end = ssa.t;
+                        qc_end = ssa.ql;
+                        qi_end = ssa.qi;
+
+                        thl_end = T_end/exner[k] - Lv<TF>*qc_end/(cp<TF> * exner[k]) - Ls<TF>*qi_end/(cp<TF> * exner[k]);
+                    }
+                    else    // Satadjust_type::Liquid_ice_deep, with other options you should not reach this point
+                    {
+                        // constant Lv/Ls/Lf for thlE and thlF
+                        const TF dT =   - Lv<TF> / cp<TF> * rain_to_vapor
+                                        - Ls<TF> / cp<TF> * snow_to_vapor
+                                        - Ls<TF> / cp<TF> * graupel_to_vapor
+                                        + Lf<TF> / cp<TF> * cloud_to_snow
+                                        + Lf<TF> / cp<TF> * cloud_to_graupel
+                                        - Lf<TF> / cp<TF> * snow_to_rain
+                                        - Lf<TF> / cp<TF> * graupel_to_rain
+                                        + Lf<TF> / cp<TF> * rain_to_snow
+                                        + Lf<TF> / cp<TF> * rain_to_graupel
+                                        + Ls<TF> / cp<TF> * vapor_to_graupel
+                                        + Ls<TF> / cp<TF> * vapor_to_snow;
+
+                        TF T_end = T + dT * dt;
+
+                        Struct_sat_adjust<TF> ssa = sat_adjust_absolute_T_ice<TF>(T_end, qt_end, p[k], qc_end, qv_end, qi_end, Lv<TF>, Ls<TF>, cp<TF>);
+                        T_end = ssa.t;
+                        qc_end = ssa.ql;
+                        qi_end = ssa.qi;
+
+                        // thlE
+                        thl_end = T_end/exner[k] / (1   + Lv<TF>*qc_end/(cp<TF> * T_end)
+                                                    + Ls<TF>*qi_end/(cp<TF> * T_end));
+
+                        // thlF
+                        // thl_end = T_end/exner[k] / (1   + Lv<TF>*qc_end/(cp<TF> * std::max(T_end, TF(253)))
+                        //                                 + Ls<TF>*qi_end/(cp<TF> * std::max(T_end, TF(253))));
+
+
+                        // T-dependent Lv/Ls/Lf for thlG
+                        // MT: if we are going to use thlG, these constants can be moved to the constants.
+//                        const TF lv1 = Lv<TF> + (cl<TF> - cpv<TF>) * T0<TF>;
+//                        const TF lv2 = cl<TF> - cpv<TF>;
+//                        const TF ls1 = Ls<TF> + (ci<TF> - cpv<TF>) * T0<TF>;
+//                        const TF ls2 = ci<TF> - cpv<TF>;
+//
+//                        const TF Lv_T_start = lv1 - lv2 * T;
+//                        const TF Ls_T_start = ls1 - ls2 * T;
+//                        const TF Lf_T_start = Ls_T_start - Lv_T_start;
+//                        const TF cp_total = cp<TF> * (1-qt_end) + qv_end * cpv<TF> + qc_end * cl<TF> + qi_end * ci<TF>;
+//
+//                        const TF dT =   - Lv_T_start / cp_total * rain_to_vapor
+//                                        - Ls_T_start / cp_total * snow_to_vapor
+//                                        - Ls_T_start / cp_total * graupel_to_vapor
+//                                        + Lf_T_start / cp_total * cloud_to_snow
+//                                        + Lf_T_start / cp_total * cloud_to_graupel
+//                                        - Lf_T_start / cp_total * snow_to_rain
+//                                        - Lf_T_start / cp_total * graupel_to_rain
+//                                        + Lf_T_start / cp_total * rain_to_snow
+//                                        + Lf_T_start / cp_total * rain_to_graupel;
+//
+//                        TF T_end = T + dT * dt;
+//
+//                        const TF Lv_T_end = lv1 - lv2 * T_end;
+//                        const TF Ls_T_end = ls1 - ls2 * T_end;
+//
+//                        Struct_sat_adjust<TF> ssa = sat_adjust_absolute_T_ice<TF>(T_end, qt_end, p[k], qc_end, qv_end, qi_end, Lv_T_end, Ls_T_end, cp_total);
+//                        T_end = ssa.t;
+//                        qc_end = ssa.ql;
+//                        qi_end = ssa.qi;
+//
+//                        const TF chi = (Rd<TF> + Rv<TF> * qt_end) / (cp<TF> + cpv<TF> * qt_end);
+//                        const TF gamma = (Rv<TF> * qt_end) / (cp<TF> + cpv<TF> * qt_end);
+//                        const TF epsilon = Rd<TF> / Rv<TF>;
+//
+//                        thl_end = T_end * pow((p0<TF>/p[k]), chi)
+//                                        * pow((1 - (qc_end + qi_end) / (epsilon + qt_end)), chi)
+//                                        * pow((1 - (qc_end + qi_end) / qt_end), -gamma)
+//                                        * std::exp((-Lv_T_end * qc_end - Ls_T_end * qi_end) / ((cp<TF> + cpv<TF> * qt_end) * T_end));
+
+                    }
+
+                    TF dthl_from_dT = (thl_end - thl[ijk])/dt;
+                    qtt[ijk] += dqc + dqi + dqv;
+                    thlt[ijk] += dthl_from_dT;
+
                 }
         }
-    }
-
-    // Bergeron.
-    template<typename TF>
-    void bergeron(
-            TF* const restrict qst,
-            TF* const restrict qtt, TF* const restrict thlt,
-            const TF* const restrict ql, const TF* const restrict qi,
-            const TF* const restrict rho, const TF* const restrict exner,
-            const TF delta_t,
-            const int istart, const int jstart, const int kstart,
-            const int iend, const int jend, const int kend,
-            const int jj, const int kk)
-    {
-        constexpr TF m_i40 = TF(2.46e-10);
-        constexpr TF m_i50 = TF(4.8e-10);
-        constexpr TF R_i50 = TF(5.e-5);
-
-        // constexpr TF a1 = 
-        // constexpr TF a2 = 
-
-        // constexpr TF delta_t1 =
-        //     ( std::pow(m_i50, TF(1.) - a_2) - std::pow(m_i40, TF(1.) - a_2) )
-        //     / (a_1 * (TF(1.) - a_2));
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    // To be filled in.
-                }
     }
 
     // Sedimentation based on Stevens and Seifert (2008)
@@ -914,6 +1080,16 @@ Microphys_nsw6<TF>::Microphys_nsw6(Master& masterin, Grid<TF>& gridin, Fields<TF
     cflmax = inputin.get_item<TF>("micro", "cflmax", "", 1.2);
     Nc0 = inputin.get_item<TF>("micro", "Nc0", "");
 
+    // Option to disable saturation adjustment ql and qi
+    bool sw_satadjust_ql = inputin.get_item<bool>("thermo", "swsatadjust_ql", "", true);
+    bool sw_satadjust_qi = inputin.get_item<bool>("thermo", "swsatadjust_qi", "", true);
+
+    // Checks.
+    if (!sw_satadjust_qi)
+        throw std::runtime_error("NSW6 microphysics requires ice from saturation adjustment, so swsatadjust_qi=false is not allowed");
+    if (!sw_satadjust_ql)
+        throw std::runtime_error("NSW6 microphysics requires liquid water from saturation adjustment, so swsatadjust_ql=false is not allowed");
+
     // Initialize the qr (rain water specific humidity) and nr (droplot number concentration) fields
     const std::string group_name = "thermo";
 
@@ -984,7 +1160,8 @@ template<typename TF>
 void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<TF>& stats)
 {
     auto& gd = grid.get_grid_data();
-    const double dt = timeloop.get_sub_time_step();
+    // const double dt = timeloop.get_sub_time_step();
+    const double dt = timeloop.get_dt();
 
     // Get liquid water, ice and pressure variables before starting.
     auto ql = fields.get_tmp();
@@ -992,6 +1169,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
 
     thermo.get_thermo_field(*ql, "ql", false, false);
     thermo.get_thermo_field(*qi, "qi", false, false);
+    const Satadjust_type sw_satadjust = thermo.get_swsatadjust();
 
     const std::vector<TF>& p = thermo.get_basestate_vector("p");
     const std::vector<TF>& exner = thermo.get_basestate_vector("exner");
@@ -1007,7 +1185,7 @@ void Microphys_nsw6<TF>::exec(Thermo<TF>& thermo, Timeloop<TF>& timeloop, Stats<
             this->Nc0, TF(dt),
             gd.istart, gd.jstart, gd.kstart,
             gd.iend, gd.jend, gd.kend,
-            gd.icells, gd.ijcells);
+            gd.icells, gd.ijcells, sw_satadjust);
 
     fields.release_tmp(ql);
     fields.release_tmp(qi);

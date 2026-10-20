@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -46,6 +46,7 @@ template<typename> class Pres;
 template<typename> class Force;
 template<typename> class Aerosol;
 template<typename> class Background;
+template<typename> class Particle_bin;
 template<typename> class Thermo;
 template<typename> class Microphys;
 template<typename> class Radiation;
@@ -106,6 +107,8 @@ class Model
         std::shared_ptr<Decay<TF>> decay;
         std::shared_ptr<Limiter<TF>> limiter;
         std::shared_ptr<Source<TF>> source;
+
+        std::shared_ptr<Particle_bin<TF>> particle_bin;
 
         std::shared_ptr<Stats<TF>> stats;
         std::shared_ptr<Budget<TF>> budget;

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2023 Chiel van Heerwaarden
- * Copyright (c) 2011-2023 Thijs Heus
- * Copyright (c) 2014-2023 Bart van Stratum
+ * Copyright (c) 2011-2024 Chiel van Heerwaarden
+ * Copyright (c) 2011-2024 Thijs Heus
+ * Copyright (c) 2014-2024 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -59,10 +59,16 @@ class Microphys_disabled : public Microphys<TF>
         bool has_mask(std::string) {return false;};
 
         void get_surface_rain_rate(std::vector<TF>&);
+
         unsigned long get_time_limit(unsigned long, double);
 
         TF get_Nc0();
         TF get_Ni0();
+        Microphys_type get_swmicro() {return swmicrophys;}
+        void get_radiation_fields(Thermo<TF>&, Field3d<TF>&, Field3d<TF>&) const
+        { throw std::runtime_error("Function get_radiation_fields not implemented"); }
+        void get_radiation_columns(Thermo<TF>&, TF*, TF*, std::vector<int>&, std::vector<int>&) const
+        { throw std::runtime_error("Function get_radiation_columns not implemented"); }
 
         #ifdef USECUDA
         void get_surface_rain_rate_g(TF*);

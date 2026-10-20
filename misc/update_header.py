@@ -1,35 +1,71 @@
-import sys
+import glob
+import os
+import re
 
-if (len(sys.argv) == 2):
-    filename = sys.argv[1]
-else:
-    raise RuntimeError("Illegal number of arguments")
+new_year = 2024
 
-fileread = open(filename, "r")
-lines = fileread.readlines()
-fileread.close()
+# These names always get their end year ++'ed.
+active_developers = [
+        'Chiel van Heerwaarden',
+        'Thijs Heus',
+        'Bart van Stratum',
+        'Menno Veerman',
+        'Mirjam Tijhuis',
+        'Steven van der Linden']
 
-# Find the line number where the copyright info starts.
-nline = 0
-for n in lines:
-    # Store the commenting style, to make sure C++, Python and Cmake work.
-    npos = n.find('Copyright')
-    if (npos != -1):
-        left_of_copyright = n[0:npos]
-        break
-    nline += 1
+files = glob.glob('../main/*')
+files += glob.glob('../src/*')
+files += glob.glob('../include/*')
+files += glob.glob('../python/*')
+files += ['../CMakeLists.txt']
 
-# Delete the three lines of this header.
-del(lines[nline:nline + 3])
+for filename in files:
 
-newlines = ['{0}Copyright (c) 2011-2023 Chiel van Heerwaarden\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2011-2023 Thijs Heus\n'.format(left_of_copyright),
-            '{0}Copyright (c) 2014-2023 Bart van Stratum\n'.format(left_of_copyright)]
+    if not os.path.isdir(filename):
 
-# Insert the new header.
-lines[nline:nline] = newlines[:]
+        with open(filename, 'r') as f:
+            lines = f.readlines()
 
-# Save the output.
-filewrite = open(filename, "w")
-filewrite.writelines(lines)
-filewrite.close()
+        # Find the starting point of the copyright lines,
+        # and gather the copyright statements.
+        lines_in = []
+        start_line = None
+
+        for n,line in enumerate(lines):
+
+            if 'Copyright' in line:
+                lines_in.append(line)
+
+                if start_line is None:
+                    start_line = n
+
+        n_lines = len(lines_in)
+
+        if n_lines > 0:
+
+            # Delete old copyright lines.
+            del(lines[start_line : start_line + n_lines])
+
+            lines_out = []
+            for line in lines_in:
+                # Check if active contributer:
+                match = re.search(r'\d{4}-\d{4} (.+)$', line)
+                if match:
+                    name = match.group(1)
+                else:
+                    raise Exception(f'Cant extract name from {line} in {filename}')
+
+                if name in active_developers:
+                    lines_out.append( re.sub(r'(\d{4})-(\d{4})', rf'\1-{new_year}', line) )
+                else:
+                    lines_out.append( line )
+
+            # Insert the new header.
+            lines[start_line:start_line] = lines_out
+
+            # Save the output.
+            with open(filename, 'w') as f:
+                f.writelines(lines)
+
+        else:
+            print(f'WARNING: file {filename} does not have a copyright header, skipping...')

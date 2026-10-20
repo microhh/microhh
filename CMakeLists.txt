@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2023 Chiel van Heerwaarden
-#  Copyright (c) 2011-2023 Thijs Heus
-#  Copyright (c) 2014-2023 Bart van Stratum
+#  Copyright (c) 2011-2024 Chiel van Heerwaarden
+#  Copyright (c) 2011-2024 Thijs Heus
+#  Copyright (c) 2014-2024 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -150,6 +150,10 @@ if(USECUDA)
   else()
     message(STATUS "NVCC flags: " ${CMAKE_CUDA_FLAGS} " " ${CMAKE_CUDA_FLAGS_RELEASE})
   endif()
+endif()
+
+if (NOT EXISTS "${CMAKE_SOURCE_DIR}/rte-rrtmgp-cpp/src")
+    message(FATAL_ERROR "Git submodules are not initialized. Please run:\n git submodule update --init --recursive")
 endif()
 
 add_subdirectory(rte-rrtmgp-cpp/src_kernels)

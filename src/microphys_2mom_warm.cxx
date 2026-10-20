@@ -570,6 +570,12 @@ Microphys_2mom_warm<TF>::Microphys_2mom_warm(Master& masterin, Grid<TF>& gridin,
     // Load the viscosity for both fields.
     fields.sp.at("qr")->visc = inputin.get_item<TF>("fields", "svisc", "qr");
     fields.sp.at("nr")->visc = inputin.get_item<TF>("fields", "svisc", "nr");
+
+    // check if thldeep=0
+    const bool sw_thl_deep = inputin.get_item<bool>("thermo", "swthldeep", "", false);
+    if (sw_thl_deep)
+        throw std::runtime_error("2mom_warm microphysics has hardcode Betts thl, so deep convective thl (swthldeep=true) is not allowed");
+
 }
 
 template<typename TF>
