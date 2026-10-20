@@ -26,6 +26,8 @@
 #include <vector>
 #include <string>
 
+#include "boundary_cyclic.h"
+
 class Master;
 class Input;
 class Netcdf_handle;
@@ -60,6 +62,7 @@ class Canopy
         Fields<TF>& fields;
         Field3d_operators<TF> field3d_operators;
         Field3d_io<TF> field3d_io;
+        Boundary_cyclic<TF> boundary_cyclic;
 
         // Internal switches.
         bool sw_canopy;
@@ -70,13 +73,12 @@ class Canopy
         int kend_canopy;      // Vertical extent canopy (-).
         TF cd;                // Drag coeffient canopy (-).
 
-        // Vertical profiles
-        std::vector<TF> pad;   // Plant area density (m2 m-2)
-        std::vector<TF> padh;  // Plant area density (m2 m-2)
+        // Plant area density at full levels, as 1D profile or 3D field (m2 m-3).
+        // Interpolated to the u, v, and w locations in the drag kernels.
+        std::vector<TF> pad;
 
         #ifdef USECUDA
         TF* pad_g;
-        TF* padh_g;
         #endif
 };
 #endif

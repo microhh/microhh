@@ -30,7 +30,6 @@
 #include "grid.h"
 #include "netcdf_interface.h"
 #include "fast_math.h"
-#include "constants.h"
 #include "fields.h"
 #include "master.h"
 
@@ -62,14 +61,16 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const int i_pad = sw_pad_3d ? ijk : k;
+
+                    // Interpolate `pad` to `u` locations.
+                    const TF pad_u = sw_pad_3d ? TF(0.5) * (pad[ijk-ii] + pad[ijk]) : pad[k];
 
                     // Interpolate `v` and `w` to `u` locations.
                     const TF u_on_u = u[ijk] + utrans;
                     const TF v_on_u = TF(0.25) * (v[ijk] + v[ijk-ii] + v[ijk-ii+jj] + v[ijk+jj]) + vtrans;
                     const TF w_on_u = TF(0.25) * (w[ijk] + w[ijk-ii] + w[ijk-ii+kk] + w[ijk+kk]);
 
-                    const TF ftau = -cd * pad[i_pad] *
+                    const TF ftau = -cd * pad_u *
                         std::pow( fm::pow2(u_on_u) +
                                   fm::pow2(v_on_u) +
                                   fm::pow2(w_on_u), TF(0.5) );
@@ -102,14 +103,16 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const int i_pad = sw_pad_3d ? ijk : k;
+
+                    // Interpolate `pad` to `v` locations.
+                    const TF pad_v = sw_pad_3d ? TF(0.5) * (pad[ijk-jj] + pad[ijk]) : pad[k];
 
                     // Interpolate `u` and `w` to `v` locations.
-                    const TF u_on_v = TF(0.25) * (u[ijk] + u[ijk+ii] + u[ijk+ii-jj] + v[ijk-jj]) + utrans;
+                    const TF u_on_v = TF(0.25) * (u[ijk] + u[ijk+ii] + u[ijk+ii-jj] + u[ijk-jj]) + utrans;
                     const TF v_on_v = v[ijk] + vtrans;
-                    const TF w_on_v = TF(0.25) * (w[ijk] + w[ijk+kk] + w[ijk+kk-kk] + w[ijk-jj]);
+                    const TF w_on_v = TF(0.25) * (w[ijk] + w[ijk+kk] + w[ijk-jj] + w[ijk-jj+kk]);
 
-                    const TF ftau = -cd * pad[i_pad] *
+                    const TF ftau = -cd * pad_v *
                         std::pow( fm::pow2(u_on_v) +
                                   fm::pow2(v_on_v) +
                                   fm::pow2(w_on_v), TF(0.5) );
@@ -142,14 +145,16 @@ namespace
                 for (int i=istart; i<iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    const int i_pad = sw_pad_3d ? ijk : k;
+
+                    // Interpolate `pad` to `w` locations.
+                    const TF pad_w = sw_pad_3d ? TF(0.5) * (pad[ijk-kk] + pad[ijk]) : TF(0.5) * (pad[k-1] + pad[k]);
 
                     // Interpolate `u` and `v` to `w` locations.
-                    const TF u_on_w = TF(0.25) * (u[ijk] + u[ijk+ii] + u[ijk+ii-kk] + v[ijk-kk]) + utrans;
+                    const TF u_on_w = TF(0.25) * (u[ijk] + u[ijk+ii] + u[ijk+ii-kk] + u[ijk-kk]) + utrans;
                     const TF v_on_w = TF(0.25) * (v[ijk] + v[ijk+jj] + v[ijk+jj-kk] + v[ijk-kk]) + vtrans;
                     const TF w_on_w = w[ijk];
 
-                    const TF ftau = -cd * pad[i_pad] *
+                    const TF ftau = -cd * pad_w *
                         std::pow( fm::pow2(u_on_w) +
                                   fm::pow2(v_on_w) +
                                   fm::pow2(w_on_w), TF(0.5) );
@@ -163,7 +168,8 @@ template<typename TF>
 Canopy<TF>::Canopy(
         Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, Input& inputin) :
         master(masterin), grid(gridin), fields(fieldsin),
-        field3d_operators(masterin, gridin, fieldsin), field3d_io(masterin, gridin)
+        field3d_operators(masterin, gridin, fieldsin), field3d_io(masterin, gridin),
+        boundary_cyclic(masterin, gridin)
 {
     sw_canopy = inputin.get_item<bool>("canopy", "sw_canopy", "", false);
 
@@ -196,21 +202,21 @@ void Canopy<TF>::init()
 
     auto& gd = grid.get_grid_data();
 
-    if (sw_canopy)
+    if (sw_3d_pad)
     {
-        if (sw_3d_pad)
-        {
-            // NOTE: For 3D PAD (plant area density), the same
-            //       density is used for full and half levels...
-            kend_canopy = ktot_canopy + gd.kgc;
-            pad.resize(kend_canopy * gd.icells * gd.jcells);
-        }
-        else
-        {
-            pad.resize (gd.kcells);
-            padh.resize(gd.kcells);
-        }
+        if (ktot_canopy < 1 || ktot_canopy > gd.ktot)
+            throw std::runtime_error("Invalid ktot_canopy, should be between 1 and ktot.");
+
+        kend_canopy = gd.kstart + ktot_canopy;
+
+        // One extra (zero) level on top, required for the interpolation
+        // of `pad` to the `w` location at the top of the canopy.
+        pad.resize((kend_canopy+1) * gd.ijcells, TF(0));
+
+        boundary_cyclic.init();
     }
+    else
+        pad.resize(gd.kcells, TF(0));
 }
 
 template <typename TF>
@@ -250,23 +256,28 @@ void Canopy<TF>::create(
 
         fields.release_tmp(tmp1);
         fields.release_tmp(tmp2);
+
+        // Fill the horizontal ghost cells, required for the interpolation to the `u` and `v` locations.
+        for (int k=gd.kstart; k<kend_canopy; ++k)
+            boundary_cyclic.exec_2d(&pad[k*gd.ijcells]);
     }
     else
     {
-        // Read plant area density at half levels.
+        // Read plant area density at full levels.
         Netcdf_group& group_nc = input_nc.get_group("init");
-        group_nc.get_variable(padh, "padh", {0}, {gd.ktot+1});
-        std::rotate(padh.rbegin(), padh.rbegin() + gd.kstart, padh.rend());
 
-        // Interpolate plant area density to full levels.
-        for (int k=gd.kstart; k<gd.kend; k++)
-            pad[k] = TF(0.5)*(padh[k] + padh[k+1]);
+        if (!group_nc.variable_exists("pad") && group_nc.variable_exists("padh"))
+            throw std::runtime_error("Canopy: \"padh\" at half levels is no longer supported, provide \"pad\" at full levels.");
 
-        // Determine end of canopy.
-        for (int k=gd.kend-1; k>gd.kstart; k--)
-            if (pad[k] < Constants::dsmall && pad[k-1] >= Constants::dsmall)
+        group_nc.get_variable(pad, "pad", {0}, {gd.ktot});
+        std::rotate(pad.rbegin(), pad.rbegin() + gd.kstart, pad.rend());
+
+        // Determine end of canopy, as the first full level above the highest non-zero `pad`.
+        kend_canopy = gd.kstart;
+        for (int k=gd.kend-1; k>=gd.kstart; --k)
+            if (pad[k] > TF(0))
             {
-                kend_canopy = k;
+                kend_canopy = k+1;
                 break;
             }
     }
@@ -311,21 +322,21 @@ void Canopy<TF>::exec()
                 gd.kstart, kend_canopy,
                 gd.icells, gd.ijcells);
 
-        // Switch between half-level profile or full level 3D pad for `w`.
-        const TF* pad_w = sw_pad_3d ? pad.data() : padh.data();
+        // Include the half level at the top of the canopy, where `pad` interpolated to `w` is non-zero.
+        const int kend_canopy_w = std::min(kend_canopy+1, gd.kend);
 
         canopy_drag_w<TF, sw_pad_3d>(
                 fields.mt.at("w")->fld.data(),
                 fields.mp.at("u")->fld.data(),
                 fields.mp.at("v")->fld.data(),
                 fields.mp.at("w")->fld.data(),
-                pad_w,
+                pad.data(),
                 gd.utrans,
                 gd.vtrans,
                 cd,
                 gd.istart, gd.iend,
                 gd.jstart, gd.jend,
-                gd.kstart, kend_canopy,
+                gd.kstart, kend_canopy_w,
                 gd.icells, gd.ijcells);
     };
 
