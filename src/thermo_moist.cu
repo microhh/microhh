@@ -168,10 +168,10 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency.
-//            if (ssa.ql + ssa.qi > 0)
-            wt[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k], qhmh);
-//            else
-//                wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
+            if (ssa.ql + ssa.qi + qhmh > 0)
+                wt[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k], qhmh);
+            else
+                wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
     }
 
@@ -198,10 +198,10 @@ namespace
 
             Struct_sat_adjust<TF> ssa = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
-//            if (ssa.ql + ssa.qi > 0)
+            if (ssa.ql + ssa.qi + qhm[ijk] > 0)
             b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ssa.ql, ssa.qi, thvref[k], qhm[ijk]);
-//            else
-//                b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
+            else
+                b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
     }
 
@@ -230,10 +230,10 @@ namespace
             Struct_sat_adjust<TF> ssa = sat_adjust_g(thh, qth, ph[k], exnh[k]);
 
             // Calculate tendency
-//            if (ssa.ql + ssa.qi > 0)
+            if (ssa.ql + ssa.qi + qhmh > 0)
             bh[ijk] += buoyancy(exnh[k], thh, qth, ssa.ql, ssa.qi, thvrefh[k], qhmh);
-//            else
-//                bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
+            else
+                bh[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
     }
 
@@ -844,7 +844,6 @@ void Thermo_moist<TF>::prepare_device()
     // Allocate fields for Boussinesq and anelastic solver
     cuda_safe_call(cudaMalloc(&bs.thl0_g,    nmemsize));
     cuda_safe_call(cudaMalloc(&bs.qt0_g,     nmemsize));
-    cuda_safe_call(cudaMalloc(&bs.qhm0_g,     nmemsize));
     cuda_safe_call(cudaMalloc(&bs.thvref_g,  nmemsize));
     cuda_safe_call(cudaMalloc(&bs.thvrefh_g, nmemsize));
     cuda_safe_call(cudaMalloc(&bs.pref_g,    nmemsize));
@@ -857,7 +856,6 @@ void Thermo_moist<TF>::prepare_device()
     // Copy fields to device
     cuda_safe_call(cudaMemcpy(bs.thl0_g,    bs.thl0.data(),    nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.qt0_g,     bs.qt0.data(),     nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(bs.qhm0_g,     bs.qhm0.data(),     nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice));
@@ -873,7 +871,6 @@ void Thermo_moist<TF>::clear_device()
 {
     cuda_safe_call(cudaFree(bs.thl0_g   ));
     cuda_safe_call(cudaFree(bs.qt0_g    ));
-    cuda_safe_call(cudaFree(bs.qhm0_g    ));
     cuda_safe_call(cudaFree(bs.thvref_g ));
     cuda_safe_call(cudaFree(bs.thvrefh_g));
     cuda_safe_call(cudaFree(bs.pref_g   ));
@@ -893,7 +890,6 @@ void Thermo_moist<TF>::forward_device()
 
     cuda_safe_call(cudaMemcpy(bs.thl0_g,    bs.thl0.data(),    nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.qt0_g,     bs.qt0.data(),     nmemsize, cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(bs.qhm0_g,     bs.qhm0.data(),     nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvref_g,  bs.thvref.data(),  nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.thvrefh_g, bs.thvrefh.data(), nmemsize, cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bs.pref_g,    bs.pref.data(),    nmemsize, cudaMemcpyHostToDevice));
@@ -912,7 +908,6 @@ void Thermo_moist<TF>::backward_device()
 
     cuda_safe_call(cudaMemcpy(bs.thl0.data(),    bs.thl0_g,    nmemsize, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(bs.qt0.data(),     bs.qt0_g,     nmemsize, cudaMemcpyDeviceToHost));
-    cuda_safe_call(cudaMemcpy(bs.qhm0.data(),     bs.qhm0_g,     nmemsize, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(bs.thvref.data(),  bs.thvref_g,  nmemsize, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(bs.thvrefh.data(), bs.thvrefh_g, nmemsize, cudaMemcpyDeviceToHost));
     cuda_safe_call(cudaMemcpy(bs.pref.data(),    bs.pref_g,    nmemsize, cudaMemcpyDeviceToHost));
@@ -961,7 +956,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 bs.exnref.data(), bs.exnrefh.data(),
                 fields.sp.at("thl")->fld_mean.data(),
                 fields.sp.at("qt")->fld_mean.data(),
-                bs.qhm0.data(),
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -974,18 +968,15 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto qhm = fields.get_tmp_g();
     cuda_safe_call(cudaMemset(qhm->fld_g, 0, gd.ncells*sizeof(TF)));
 
-    for (const std::string qhm_name : {"qs", "qg", "qr"})
+    for (const std::string& qhm_name : hydrometeorlist)
     {
         auto it = fields.sp.find(qhm_name);
-        if (it != fields.sp.end())
-        {
-            add_hydrometeor_g<TF><<<gridGPU, blockGPU>>>(
-                    qhm->fld_g, it->second->fld_g,
-                    gd.istart, gd.jstart, gd.kstart,
-                    gd.iend,   gd.jend,   gd.kend,
-                    gd.icells, gd.ijcells);
-            cuda_check_error();
-        }
+        add_hydrometeor_g<TF><<<gridGPU, blockGPU>>>(
+                qhm->fld_g, it->second->fld_g,
+                gd.istart, gd.jstart, gd.kstart,
+                gd.iend,   gd.jend,   gd.kend,
+                gd.icells, gd.ijcells);
+        cuda_check_error();
     }
 
 
@@ -1046,7 +1037,6 @@ void Thermo_moist<TF>::get_thermo_field_g(
                 bs.exnref.data(), bs.exnrefh.data(),
                 fields.sp.at("thl")->fld_mean.data(),
                 fields.sp.at("qt")->fld_mean.data(),
-                bs.qhm0.data(),
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
 
@@ -1062,7 +1052,7 @@ void Thermo_moist<TF>::get_thermo_field_g(
     {
         cuda_safe_call(cudaMemset(qhm->fld_g, 0, gd.ncells*sizeof(TF)));
 
-        for (const std::string qhm_name : {"qs", "qg", "qr"})
+        for (const std::string& qhm_name : hydrometeorlist)
         {
             auto it = fields.sp.find(qhm_name);
             if (it != fields.sp.end())

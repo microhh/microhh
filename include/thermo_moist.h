@@ -123,6 +123,8 @@ class Thermo_moist : public Thermo<TF>
 
         void update_time_dependent(Timeloop<TF>&); ///< Update the time dependent parameters.
 
+        std::vector<std::string>& get_hydrometeorlist() {return hydrometeorlist;};
+
     private:
         using Thermo<TF>::swthermo;
         using Thermo<TF>::master;
@@ -143,6 +145,7 @@ class Thermo_moist : public Thermo<TF>
         bool swcross_qlqithv;
 
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        std::vector<std::string> hydrometeorlist;
 
         void create_column(Column<TF>&); ///< Initialization of the single column output.
         void create_dump(Dump<TF>&);     ///< Initialization of the single column output.
@@ -168,12 +171,10 @@ class Thermo_moist : public Thermo<TF>
             std::vector<TF> exnrefh;
             std::vector<TF> rhoref;
             std::vector<TF> rhorefh;
-            std::vector<TF> qhm0;
 
             // GPU functions and variables
             TF* thl0_g;
             TF* qt0_g;
-            TF* qhm0_g;
             TF* thvref_g;
             TF* thvrefh_g;
             TF* pref_g;

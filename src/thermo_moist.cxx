@@ -1148,7 +1148,6 @@ void Thermo_moist<TF>::init()
 
     bs.thl0.resize(gd.kcells);
     bs.qt0.resize(gd.kcells);
-    bs.qhm0.resize(gd.kcells);
     bs.thvref.resize(gd.kcells);
     bs.thvrefh.resize(gd.kcells);
     bs.exnref.resize(gd.kcells);
@@ -1186,7 +1185,6 @@ void Thermo_moist<TF>::save(const int iotime)
 
         fwrite(&bs.thl0 [gd.kstart], sizeof(TF), gd.ktot, pFile);
         fwrite(&bs.qt0  [gd.kstart], sizeof(TF), gd.ktot, pFile);
-        fwrite(&bs.qhm0  [gd.kstart], sizeof(TF), gd.ktot, pFile);
 
         fwrite(&bs.thvref [gd.kstart], sizeof(TF), gd.ktot  , pFile);
         fwrite(&bs.thvrefh[gd.kstart], sizeof(TF), gd.ktot+1, pFile);
@@ -1272,7 +1270,6 @@ void Thermo_moist<TF>::load(const int iotime)
 
             read(bs.thl0, gd.ktot);
             read(bs.qt0, gd.ktot);
-            read(bs.qhm0, gd.ktot);
 
             read(bs.thvref, gd.ktot);
             read(bs.thvrefh, gd.ktot+1);
@@ -1327,7 +1324,6 @@ void Thermo_moist<TF>::load(const int iotime)
     // Broadcast to other MPI tasks.
     master.broadcast(bs.thl0.data(), gd.kcells);
     master.broadcast(bs.qt0.data(), gd.kcells);
-    master.broadcast(bs.qhm0.data(), gd.kcells);
 
     master.broadcast(bs.thvref.data(), gd.kcells);
     master.broadcast(bs.thvrefh.data(), gd.kcells);
@@ -1371,16 +1367,10 @@ void Thermo_moist<TF>::create_basestate(
     calc_top_and_bot(
             bs.thl0.data(), bs.qt0.data(), gd.z.data(), gd.zh.data(), gd.dzhi.data(), gd.kstart, gd.kend);
 
-    // MT: assume that the initial base state contains no hydrometeors
-    for (int k=0; k<gd.ktot; ++k)
-    {
-        bs.qhm0[k]  = TF(0.);
-    }
-
     // 4. Calculate the initial/reference base state
     calc_base_state(
             bs.pref.data(), bs.prefh.data(), bs.rhoref.data(), bs.rhorefh.data(), bs.thvref.data(),
-            bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.qhm0.data(), bs.pbot,
+            bs.thvrefh.data(), bs.exnref.data(), bs.exnrefh.data(), bs.thl0.data(), bs.qt0.data(), bs.pbot,
             gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
 
     // 5. In Boussinesq mode, overwrite reference temperature and density
@@ -1438,20 +1428,17 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
     auto qhm = fields.get_tmp();
     std::fill(qhm->fld.begin(), qhm->fld.end(), TF(0));
 
-    for (const std::string qhm_name : {"qs", "qg", "qr"})
+    for (const std::string& qhm_name : hydrometeorlist)
     {
         auto it = fields.sp.find(qhm_name);
-        if (it != fields.sp.end())
-        {
-            add_hydrometeor(
-                    qhm->fld.data(),
-                    it->second->fld.data(),
-                    gd.istart, gd.iend,
-                    gd.jstart, gd.jend,
-                    gd.kstart, gd.kend,
-                    gd.icells, gd.ijcells
-            );
-        }
+        add_hydrometeor(
+                qhm->fld.data(),
+                it->second->fld.data(),
+                gd.istart, gd.iend,
+                gd.jstart, gd.jend,
+                gd.kstart, gd.kend,
+                gd.icells, gd.ijcells
+        );
     }
 
     if (bs.swupdatebasestate)
@@ -1463,7 +1450,6 @@ void Thermo_moist<TF>::exec(const double dt, Stats<TF>& stats)
                 bs.exnref.data(), bs.exnrefh.data(),
                 fields.sp.at("thl")->fld_mean.data(),
                 fields.sp.at("qt")->fld_mean.data(),
-                bs.qhm0.data(),
                 bs.pbot, gd.kstart, gd.kend,
                 gd.z.data(), gd.dz.data(), gd.dzh.data());
     }
@@ -1607,20 +1593,17 @@ void Thermo_moist<TF>::get_thermo_field(
 
     if (name == "b" || name == "b_h" || name == "thv")
     {
-        for (const std::string qhm_name : {"qs", "qg", "qr"})
+        for (const std::string& qhm_name : hydrometeorlist)
         {
             auto it = fields.sp.find(qhm_name);
-            if (it != fields.sp.end())
-            {
-                add_hydrometeor(
-                        qhm->fld.data(),
-                        it->second->fld.data(),
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        gd.kstart, gd.kend,
-                        gd.icells, gd.ijcells
-                );
-            }
+            add_hydrometeor(
+                    qhm->fld.data(),
+                    it->second->fld.data(),
+                    gd.istart, gd.iend,
+                    gd.jstart, gd.jend,
+                    gd.kstart, gd.kend,
+                    gd.icells, gd.ijcells
+                    );
         }
     }
 
@@ -1631,7 +1614,7 @@ void Thermo_moist<TF>::get_thermo_field(
         auto tmp = fields.get_tmp();
         calc_base_state(base.pref.data(), base.prefh.data(), &tmp->fld[0*gd.kcells], &tmp->fld[1*gd.kcells], &tmp->fld[2*gd.kcells],
                         &tmp->fld[3*gd.kcells], base.exnref.data(), base.exnrefh.data(), fields.sp.at("thl")->fld_mean.data(),
-                        fields.sp.at("qt")->fld_mean.data(), base.qhm0.data(),base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
+                        fields.sp.at("qt")->fld_mean.data(),base.pbot, gd.kstart, gd.kend, gd.z.data(), gd.dz.data(), gd.dzh.data());
         fields.release_tmp(tmp);
     }
 

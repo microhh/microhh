@@ -199,7 +199,7 @@ void Model<TF>::init()
     pres->init();
     force->init();
     thermo->init();
-    microphys->init();
+    microphys->init(*thermo);
     radiation->init(*timeloop);
     decay->init(*input);
     budget->init();

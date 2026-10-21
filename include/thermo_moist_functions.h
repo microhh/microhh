@@ -302,7 +302,6 @@ namespace Thermo_moist_functions
             TF* restrict exh,
             const TF* restrict thlmean,
             const TF* restrict qtmean,
-            const TF* restrict qhmmean,
             const TF pbot,
             const int kstart,
             const int kend,
@@ -312,7 +311,6 @@ namespace Thermo_moist_functions
     {
         const TF thlsurf = TF(0.5)*(thlmean[kstart-1] + thlmean[kstart]);
         const TF qtsurf  = TF(0.5)*(qtmean [kstart-1] + qtmean[kstart]);
-        const TF qhmsurf = TF(0.5)*(qhmmean [kstart-1] + qhmmean[kstart]);
 
         // Calculate the values at the surface (half level == kstart)
         prefh[kstart] = pbot;
@@ -322,7 +320,8 @@ namespace Thermo_moist_functions
         TF ql = ssa.ql;
         TF qi = ssa.qi;
 
-        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql, qi, qhmsurf);
+        // MT: assume no hydrometeors in the base state, hence use TF(0)
+        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql, qi, TF(0));
         rhoh[kstart] = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
@@ -335,7 +334,7 @@ namespace Thermo_moist_functions
             ssa      = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
             ql       = ssa.ql;
             qi       = ssa.qi;
-            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql, qi, qhmmean[k-1]);
+            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql, qi, TF(0));
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
@@ -345,13 +344,12 @@ namespace Thermo_moist_functions
             // 3. Use interpolated conserved quantities to calculate half-level[k] values
             const TF thli = TF(0.5)*(thlmean[k-1] + thlmean[k]);
             const TF qti  = TF(0.5)*(qtmean [k-1] + qtmean [k]);
-            const TF qhmi = TF(0.5)*(qhmmean [k-1] + qhmmean [k]);
 
             ssa = sat_adjust(thli, qti, prefh[k], exh[k]);
             const TF qli = ssa.ql;
             const TF qii = ssa.qi;
 
-            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli, qii, qhmi);
+            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli, qii, TF(0));
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
