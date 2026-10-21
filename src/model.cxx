@@ -151,21 +151,13 @@ Model<TF>::Model(Master& masterin, int argc, char *argv[]) :
         chemistry    = std::make_shared<Chemistry<TF>>(master, *grid, *fields, *input);
         canopy       = std::make_shared<Canopy   <TF>>(master, *grid, *fields, *input);
 
-        stats        = std::make_shared<Stats <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
-        column       = std::make_shared<Column<TF>>(master, *grid, *fields, *input);
-        dump         = std::make_shared<Dump  <TF>>(master, *grid, *fields, *input);
-        cross        = std::make_shared<Cross <TF>>(master, *grid, *soil_grid, *fields, *input);
-
-
-        // Keep this after `stats` constructor.
-        budget    = Budget<TF>   ::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
-
         stats      = std::make_shared<Stats     <TF>>(master, *grid, *soil_grid, *background, *fields, *advec, *diff, *input);
         column     = std::make_shared<Column    <TF>>(master, *grid, *fields, *input);
         dump       = std::make_shared<Dump      <TF>>(master, *grid, *fields, *input);
         cross      = std::make_shared<Cross     <TF>>(master, *grid, *soil_grid, *fields, *input);
         trajectory = std::make_shared<Trajectory<TF>>(master, *grid, *fields, *input);
 
+        // Keep this after `stats` constructor.
         budget     = Budget<TF>::factory(master, *grid, *fields, *thermo, *diff, *advec, *force, *stats, *input);
 
         // Parse the statistics masks
