@@ -68,6 +68,7 @@ class Thermo_disabled : public Thermo<TF>
         bool has_mask(std::string) {return false;};
         void get_prog_vars(std::vector<std::string>&) {};
         void update_time_dependent(Timeloop<TF>&) {};
+        std::vector<std::string>& get_hydrometeorlist() {return hydrometeorlist;};
 
         TF get_buoyancy_diffusivity();
 
@@ -131,5 +132,6 @@ class Thermo_disabled : public Thermo<TF>
 
     private:
         using Thermo<TF>::swthermo;
+        std::vector<std::string> hydrometeorlist;
 };
 #endif
