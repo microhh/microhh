@@ -34,20 +34,20 @@ namespace Chemistry_plume_kernels_g
 {
     template<typename TF>
     __global__ void pss(
-            TF* const restrict thno3,
-            TF* const restrict th2o2,
+            // TF* const restrict thno3,
+            // TF* const restrict th2o2,
             TF* const restrict tco,
             TF* const restrict thcho,
-            TF* const restrict trooh,
+            // TF* const restrict trooh,
             TF* const restrict tc3h6,
             TF* const restrict to3,
             TF* const restrict tno,
             TF* const restrict tno2,
-            const TF* const restrict hno3,
-            const TF* const restrict h2o2,
+            // const TF* const restrict hno3,
+            // const TF* const restrict h2o2,
             const TF* const restrict co,
             const TF* const restrict hcho,
-            const TF* const restrict rooh,
+            // const TF* const restrict rooh,
             const TF* const restrict c3h6,
             const TF* const restrict o3,
             const TF* const restrict no,
@@ -56,9 +56,9 @@ namespace Chemistry_plume_kernels_g
             const TF* const restrict vdo3,
             const TF* const restrict vdno,
             const TF* const restrict vdno2,
-            const TF* const restrict vdhno3,
-            const TF* const restrict vdh2o2,
-            const TF* const restrict vdrooh,
+            // const TF* const restrict vdhno3,
+            // const TF* const restrict vdh2o2,
+            // const TF* const restrict vdrooh,
             const TF* const restrict vdhcho,
             const TF* const restrict tprof,
             const TF* const restrict qprof,
@@ -126,11 +126,11 @@ namespace Chemistry_plume_kernels_g
             const TF fix_ch4 = TF(1800e-9) * cfactor;   // methane concentration
 
             // Convert to molecules per cm3 and add tendencies of other processes.
-            const TF var_hno3 = max((hno3[ijk] + thno3[ijk] * sdt) * cfactor, TF(0));
-            const TF var_h2o2 = max((h2o2[ijk] + th2o2[ijk] * sdt) * cfactor, TF(0));
+            // const TF var_hno3 = max((hno3[ijk] + thno3[ijk] * sdt) * cfactor, TF(0));
+            // const TF var_h2o2 = max((h2o2[ijk] + th2o2[ijk] * sdt) * cfactor, TF(0));
             const TF var_co   = max((co[ijk]   + tco[ijk]   * sdt) * cfactor, TF(0));
             const TF var_hcho = max((hcho[ijk] + thcho[ijk] * sdt) * cfactor, TF(0));
-            const TF var_rooh = max((rooh[ijk] + trooh[ijk] * sdt) * cfactor, TF(0));
+            // const TF var_rooh = max((rooh[ijk] + trooh[ijk] * sdt) * cfactor, TF(0));
             const TF var_rh   = max((c3h6[ijk] + tc3h6[ijk] * sdt) * cfactor, TF(0));
             const TF var_o3   = max((o3[ijk]   + to3[ijk]   * sdt) * cfactor, TF(0));
             const TF var_no   = max((no[ijk]   + tno[ijk]   * sdt) * cfactor, TF(0));
@@ -139,10 +139,10 @@ namespace Chemistry_plume_kernels_g
             const TF rconst39 = (k == kstart) ? vdo3[ij]   * dzi[k] : TF(0);
             const TF rconst40 = (k == kstart) ? vdno[ij]   * dzi[k] : TF(0);
             const TF rconst41 = (k == kstart) ? vdno2[ij]  * dzi[k] : TF(0);
-            const TF rconst42 = (k == kstart) ? vdhno3[ij] * dzi[k] : TF(0);
-            const TF rconst43 = (k == kstart) ? vdh2o2[ij] * dzi[k] : TF(0);
+            // const TF rconst42 = (k == kstart) ? vdhno3[ij] * dzi[k] : TF(0);
+            // const TF rconst43 = (k == kstart) ? vdh2o2[ij] * dzi[k] : TF(0);
             const TF rconst44 = (k == kstart) ? vdhcho[ij] * dzi[k] : TF(0);
-            const TF rconst45 = (k == kstart) ? vdrooh[ij] * dzi[k] : TF(0);
+            // const TF rconst45 = (k == kstart) ? vdrooh[ij] * dzi[k] : TF(0);
 
             // QSSA Auxiliary Variables
             TF p_oh, l_oh;
@@ -151,17 +151,123 @@ namespace Chemistry_plume_kernels_g
             TF p_no3, l_no3;
             TF p_n2o5, l_n2o5;
 
+            // // Reset QSSA iteration for each grid point. Otherwise this causes a race condition in vectorised or GPU code.
+            // TF fix_oh   = TF(0);
+            // TF fix_ho2  = TF(0);
+            // TF fix_ro2  = TF(0);
+            // TF fix_no3  = TF(0);
+            // TF fix_n2o5 = TF(0);
+
             // Reset QSSA iteration for each grid point. Otherwise this causes a race condition in vectorised or GPU code.
-            TF fix_oh   = TF(0);
-            TF fix_ho2  = TF(0);
-            TF fix_ro2  = TF(0);
-            TF fix_no3  = TF(0);
-            TF fix_n2o5 = TF(0);
+            //
+            // Improved initial guesses for QSSA species.
+            // These are local steady-state estimates and are generally better than starting from zero.
+
+            const TF eps_qssa = TF(1e-30);
+
+            // -------------------------------------------------------------------------
+            // Initial guess for OH
+            // -------------------------------------------------------------------------
+            // OH primary production:
+            //   RH + O3 branch
+            //   O3 photolysis-related source
+            const TF p_oh0 =
+                TF(0.33)*rconst26*var_rh*var_o3
+                + TF(2.0)*rconst29*var_o3;
+
+            // OH first-order loss, ignoring HO2-dependent loss for the initial estimate
+            const TF l_oh0 =
+                rconst0*var_o3
+                + rconst5
+                + rconst12*var_no2
+                + rconst16*fix_ch4
+                + rconst22*var_hcho
+                + rconst24*var_co
+                + rconst27*var_rh;
+
+            TF fix_oh = p_oh0 / fmax(l_oh0, eps_qssa);
+
+            // -------------------------------------------------------------------------
+            // Initial guess for RO2
+            // -------------------------------------------------------------------------
+            // Use the initial OH estimate. For the initial RO2 loss, ignore HO2/NO3 terms
+            // and retain the usually important NO sink.
+            const TF p_ro20 =
+                rconst16*fix_oh*fix_ch4
+                + TF(0.31)*rconst26*var_rh*var_o3
+                + rconst27*var_rh*fix_oh;
+
+            const TF l_ro20 =
+                rconst19*var_no;
+
+            TF fix_ro2 = p_ro20 / fmax(l_ro20, eps_qssa);
+
+            // -------------------------------------------------------------------------
+            // Initial guess for HO2
+            // -------------------------------------------------------------------------
+            // HO2 is important for NO -> NO2 through HO2 + NO.
+            // Include the RO2 + NO source using the initial RO2 estimate.
+            const TF p_ho20 =
+                rconst0*var_o3*fix_oh
+                + rconst5*fix_oh
+                + rconst19*fix_ro2*var_no
+                + rconst22*var_hcho*fix_oh
+                + rconst24*var_co*fix_oh
+                + TF(0.74)*rconst25*fix_ro2*fix_ro2
+                + TF(0.19)*rconst26*var_rh*var_o3
+                + TF(2.0)*jval[Jval::ch2or]*var_hcho;
+
+            const TF l_ho20 =
+                rconst1*var_o3
+                + rconst2*fix_oh
+                + rconst11*var_no
+                + rconst17*fix_ro2
+                + rconst18*fix_ro2;
+
+            TF fix_ho2 = p_ho20 / fmax(l_ho20, eps_qssa);
+
+            // -------------------------------------------------------------------------
+            // Initial guess for NO3
+            // -------------------------------------------------------------------------
+            const TF p_no30 =
+                rconst7*var_no2*var_o3;
+
+            const TF l_no30 =
+                rconst8*var_no
+                + rconst9*var_no2
+                + TF(4.0e-12)*fix_ho2
+                + TF(1.2e-12)*fix_ro2
+                + TF(5.8e-16)*var_hcho
+                + rconst28*var_rh
+                + jval[Jval::no3];
+
+            TF fix_no3 = p_no30 / fmax(l_no30, eps_qssa);
+
+            // -------------------------------------------------------------------------
+            // Initial guess for N2O5
+            // -------------------------------------------------------------------------
+            const TF p_n2o50 =
+                rconst9*var_no2*fix_no3;
+
+            const TF l_n2o50 =
+                rconst10
+                + TF(0.0004)
+                + jval[Jval::n2o5];
+
+            TF fix_n2o5 = p_n2o50 / fmax(l_n2o50, eps_qssa);
 
             // =========================================================================
             // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
             // =========================================================================
-            for (int i_qssa=0; i_qssa<2; i_qssa++)
+            // Keep the original update order, but use more than one sweep.
+            // For GPU performance, a fixed small number of sweeps is better than a dynamic convergence loop.
+
+
+            #pragma unroll
+            // =========================================================================
+            // QSSA Iteration: Solve P = L * F for OH, HO2, RO2, NO3, N2O5
+            // =========================================================================
+            for (int i_qssa=0; i_qssa<15; i_qssa++)
             {
                 // ---------------------------------------------------------------------
                 // 1. Solve N2O5 (Index fix_n2o5)
@@ -182,7 +288,8 @@ namespace Chemistry_plume_kernels_g
                 // Prod: NO2+O3 (A7), N2O5->NO2+NO3 (A10), HNO3+OH (A14)
                 p_no3 = rconst7*var_no2*var_o3                 // RF[7]: NO2(V6) + O3(V7)
                       + rconst10*fix_n2o5                     // RF[10]: N2O5(F7)
-                      + rconst14*var_hno3*fix_oh;               // RF[14]: HNO3(V0) + OH(F3)
+                  //     + rconst14*var_hno3*fix_oh               // RF[14]: HNO3(V0) + OH(F3)
+                      + jval[Jval::n2o5]*fix_n2o5;                     // RF[31]: N2O5(F7) (Loss in N2O5 is production in NO3)
 
                 // Loss: NO(A8), NO2(A9), HO2(A13), RO2(A20), HCHO(A23), RH(A28), Loss(A32)
                 l_no3 = rconst8*var_no                      // RF[8]: NO(V8)
@@ -200,7 +307,7 @@ namespace Chemistry_plume_kernels_g
                 // ---------------------------------------------------------------------
                 // Prod: CH4+OH(A16), ROOH+OH(0.6*A21), RH+O3(0.31*A26), RH+OH(A27)
                 p_ro2 = rconst16*fix_oh*fix_ch4                // RF[16]: OH(F3) + CH4(F0)
-                      + TF(0.6)*rconst21*var_rooh*fix_oh        // RF[21]: ROOH(V4) + OH(F3)
+                  //     + TF(0.6)*rconst21*var_rooh*fix_oh        // RF[21]: ROOH(V4) + OH(F3)
                       + TF(0.31)*rconst26*var_rh*var_o3       // RF[26]: RH(V5) + O3(V7)
                       + rconst27*var_rh*fix_oh;               // RF[27]: RH(V5) + OH(F3)
 
@@ -220,7 +327,7 @@ namespace Chemistry_plume_kernels_g
                 //       HCHO+OH(A22), CO+OH(A24), RO2+RO2(0.74*A25), RH+O3(0.19*A26),
                 //       ROOH+hv(A33), HCHO+hv(2*A35)
                 p_ho2 = rconst0*var_o3*fix_oh                 // RF[0]: O3(V7) + OH(F3)
-                      + rconst4*var_h2o2*fix_oh                 // RF[4]: H2O2(V1) + OH(F3)
+                    //   + rconst4*var_h2o2*fix_oh                 // RF[4]: H2O2(V1) + OH(F3)
                       + rconst5*fix_oh                      // RF[5]: OH(F3)
                       + rconst19*fix_ro2*var_no                // RF[19]: RO2(F5) + NO(V8)
                       + TF(1.2e-12)*fix_no3*fix_ro2            // RF[20]: NO3(F6) + RO2(F5)
@@ -228,7 +335,7 @@ namespace Chemistry_plume_kernels_g
                       + rconst24*var_co*fix_oh                  // RF[24]: CO(V2) + OH(F3)
                       + TF(0.74)*rconst25*fix_ro2*fix_ro2       // RF[25]: RO2(F5)^2
                       + TF(0.19)*rconst26*var_rh*var_o3         // RF[26]: RH(V5) + O3(V7)
-                      + jval[Jval::ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
+                  //     + jval[Jval::ch3o2h]*var_rooh               // RF[33]: ROOH(V4)
                       + TF(2.0)*jval[Jval::ch2or]*var_hcho;      // RF[35]: HCHO(V3)
                 // Loss: O3(A1), OH(A2), HO2(2*A3), NO(A11), NO3(A13), RO2(A17, A18)
                 l_ho2 = rconst1*var_o3                      // RF[1]: O3(V7)
@@ -246,33 +353,34 @@ namespace Chemistry_plume_kernels_g
                 p_oh = rconst1*var_o3*fix_ho2                  // RF[1]: O3(V7) + HO2(F4)
                      + rconst11*fix_ho2*var_no                 // RF[11]: HO2(F4) + NO(V8)
                      + TF(0.33)*rconst26*var_rh*var_o3         // RF[26]: RH(V5) + O3(V7)
-                     + TF(2.0)*rconst29*var_o3               // RF[29]: O3(V7)
-                     + jval[Jval::ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
-                     + TF(2.0)*jval[Jval::h2o2]*var_h2o2;     // RF[36]: H2O2(V1)
+                     + TF(2.0)*rconst29*var_o3;               // RF[29]: O3(V7)
+                  //    + jval[Jval::ch3o2h]*var_rooh                // RF[33]: ROOH(V4)
+                    //  + TF(2.0)*jval[Jval::h2o2]*var_h2o2;     // RF[36]: H2O2(V1)
 
 
                 // Loss: O3(A0), HO2(A2), H2O2(A4), M(A5), NO2(A12), HNO3(A14),
                 //       CH4(A16), ROOH(0.6*A21), HCHO(A22), CO(A24), RH(A27)
                 l_oh = rconst0*var_o3                       // RF[0]: O3(V7)
                      + rconst2*fix_ho2                       // RF[2]: HO2(F4)
-                     + rconst4*var_h2o2                       // RF[4]: H2O2(V1)
+                    //  + rconst4*var_h2o2                       // RF[4]: H2O2(V1)
                      + rconst5                            // RF[5]
                      + rconst12*var_no2                      // RF[12]: NO2(V6)
-                     + rconst14*var_hno3                      // RF[14]: HNO3(V0)
+                  //    + rconst14*var_hno3                      // RF[14]: HNO3(V0)
                      + rconst16*fix_ch4                      // RF[16]: CH4(F0)
-                     + TF(0.6)*rconst21*var_rooh               // RF[21]: ROOH(V4)
+                  //    + TF(0.6)*rconst21*var_rooh               // RF[21]: ROOH(V4)
                      + rconst22*var_hcho                      // RF[22]: HCHO(V3)
                      + rconst24*var_co                      // RF[24]: CO(V2)
                      + rconst27*var_rh;                     // RF[27]: RH(V5)
 
                 fix_oh = (l_oh > TF(1e-30)) ? p_oh / l_oh : TF(0);
+
             }
 
             // Computation of equation rates.
             const TF rf0  = rconst0*var_o3*fix_oh;
             const TF rf1  = rconst1*var_o3*fix_ho2;
             const TF rf3  = rconst3*fix_ho2*fix_ho2;
-            const TF rf4  = rconst4*var_h2o2*fix_oh;
+            // const TF rf4  = rconst4*var_h2o2*fix_oh;
             const TF rf6  = rconst6*var_o3*var_no;
             const TF rf7  = rconst7*var_no2*var_o3;
             const TF rf8  = rconst8*var_no*fix_no3;
@@ -281,13 +389,13 @@ namespace Chemistry_plume_kernels_g
             const TF rf11 = rconst11*var_no*fix_ho2;
             const TF rf12 = rconst12*var_no2*fix_oh;
             const TF rf13 = TF(4e-12)*fix_ho2*fix_no3;
-            const TF rf14 = rconst14*var_hno3*fix_oh;
+            // const TF rf14 = rconst14*var_hno3*fix_oh;
             const TF rf15 = TF(0.0004)*fix_n2o5;
             const TF rf17 = rconst17*fix_ho2*fix_ro2;
             const TF rf18 = rconst18*fix_ho2*fix_ro2;
             const TF rf19 = rconst19*var_no*fix_ro2;
             const TF rf20 = TF(1.2e-12)*fix_ro2*fix_no3;
-            const TF rf21 = rconst21*var_rooh*fix_oh;
+            // const TF rf21 = rconst21*var_rooh*fix_oh;
             const TF rf22 = rconst22*var_hcho*fix_oh;
             const TF rf23 = TF(5.8e-16)*var_hcho*fix_no3;
             const TF rf24 = rconst24*var_co*fix_oh;
@@ -299,36 +407,36 @@ namespace Chemistry_plume_kernels_g
             const TF rf30 = jval[Jval::no2]*var_no2;
             const TF rf31 = jval[Jval::n2o5]*fix_n2o5;
             const TF rf32 = jval[Jval::no3]*fix_no3;
-            const TF rf33 = jval[Jval::ch3o2h]*var_rooh;
+            // const TF rf33 = jval[Jval::ch3o2h]*var_rooh;
             const TF rf34 = jval[Jval::ch2om]*var_hcho;
             const TF rf35 = jval[Jval::ch2or]*var_hcho;
-            const TF rf36 = jval[Jval::h2o2]*var_h2o2;
+            // const TF rf36 = jval[Jval::h2o2]*var_h2o2;
             const TF rf37 = rconst37;
             const TF rf38 = rconst38;
             const TF rf39 = rconst39*var_o3;
             const TF rf40 = rconst40*var_no;
             const TF rf41 = rconst41*var_no2;
-            const TF rf42 = rconst42*var_hno3;
-            const TF rf43 = rconst43*var_h2o2;
+            // const TF rf42 = rconst42*var_hno3;
+            // const TF rf43 = rconst43*var_h2o2;
             const TF rf44 = rconst44*var_hcho;
-            const TF rf45 = rconst45*var_rooh;
+            // const TF rf45 = rconst45*var_rooh;
 
             // Aggregate function
-            const TF vdot_hno3 = rf12+rf13-rf14+TF(2)*rf15+rf23-rf42;
-            const TF vdot_h2o2 = rf3-rf4-rf36-rf43;
+            // const TF vdot_hno3 = rf12+rf13-rf14+TF(2)*rf15+rf23-rf42;
+            // const TF vdot_h2o2 = rf3-rf4-rf36-rf43;
             const TF vdot_co   = rf22-rf24+TF(0.56)*rf26+rf34+rf35;
-            const TF vdot_hcho = rf18+rf19+rf20+TF(0.4)*rf21-rf22-rf23+TF(1.37)*rf25+TF(1.04)*rf26+TF(1.5)*rf27+rf33-rf34-rf35-rf44;
-            const TF vdot_rooh = rf17-rf21-rf33-rf45;
+            const TF vdot_hcho = rf18+rf19+rf20-rf22-rf23+TF(1.37)*rf25+TF(1.04)*rf26+TF(1.5)*rf27-rf34-rf35-rf44;
+            // const TF vdot_rooh = rf17-rf21-rf33-rf45;
             const TF vdot_rh   = -rf26-rf27-rf28+rf38;
             const TF vdot_no2  = rf6-rf7+TF(2)*rf8-rf9+rf10+rf11-rf12+rf19+rf20-rf30+rf31+rf32-rf41;
             const TF vdot_o3   = -rf0-rf1-rf6-rf7-rf26-rf29+rf30+rf32-rf39;
             const TF vdot_no   = -rf6-rf8-rf11-rf19+rf30+rf37-rf40;
 
-            thno3[ijk] += vdot_hno3 * cfac_i;
-            th2o2[ijk] += vdot_h2o2 * cfac_i;
+            // thno3[ijk] += vdot_hno3 * cfac_i;
+            // th2o2[ijk] += vdot_h2o2 * cfac_i;
             tco[ijk]   += vdot_co   * cfac_i;
             thcho[ijk] += vdot_hcho * cfac_i;
-            trooh[ijk] += vdot_rooh * cfac_i;
+            // trooh[ijk] += vdot_rooh * cfac_i;
             tc3h6[ijk] += vdot_rh   * cfac_i;
             to3[ijk]   += vdot_o3   * cfac_i;
             tno[ijk]   += vdot_no   * cfac_i;

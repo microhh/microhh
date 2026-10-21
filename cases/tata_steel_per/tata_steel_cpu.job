@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --job-name=plume_chem
+
+# Log file `stdout` and `stderr` (%j is replaced with a unique job ID):
+#SBATCH --output=mhh-%j.out
+#SBATCH --error=mhh-%j.err
+
+# New (2023) Genoa CPU partition (https://servicedesk.surfsara.nl/wiki/display/WIKI/Snellius+usage+and+accounting):
+#SBATCH --partition=genoa
+
+# Genoa nodes have 192 cores/node. Slurm automatically determines the required number of nodes:
+#SBATCH -n 192
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks-per-core=1
+
+# Maximum wall clock time:
+#SBATCH -t 08:00:00
+
+module purge
+module load 2024
+module load CMake/3.29.3-GCCcore-13.3.0
+module load CUDA/12.6.0
+module load Clang/18.1.8-GCCcore-13.3.0
+module load foss/2024a
+module load netCDF/4.9.2-gompi-2024a
+
+srun ./microhh init tata_steel_nl
+srun ./microhh run tata_steel_nl
