@@ -3,9 +3,12 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 
+# pip install microhhpy
+from microhhpy.chem import Emission_input
+from microhhpy.thermo import qsat_liq
+from microhhpy.constants import T0, Rd, xm_cams
+
 import microhh_tools as mht
-import helpers as hlp
-from constants import *
 from lsm_input import LSM_input
 
 """
@@ -25,22 +28,13 @@ start_hour = 6
 end_hour = 7
 
 # Enable resolved plume rise:
-sw_plume_rise = False
+sw_plume_rise = True
 
 # Enable non-linear KPP chemistry:
 sw_chemistry = True
 
-# Enable deposition coupled to LSM. With False, fixed deposition velocities are used.
-sw_deposition = False
-
-# Enable land-surface model and more detailled deposition.
+# Enable land-surface model and deposition coupled to LSM. With False, fixed deposition velocities are used.
 sw_land_surface = True
-
-# Switch between old and new (equilibrium fast species) schemes.
-sw_new_scheme = False
-
-# Switch between periodic and open boundaries for scalars.
-sw_openbc = True
 
 
 """
@@ -90,14 +84,6 @@ if (sw_chemistry):
         'rooh': 3.6e-10,
         'c3h6': 3.3e-9}
 
-    if not sw_new_scheme:
-        species.update({
-            'oh': 1e-13,
-            'ho2': 1.5e-11,
-            'ro2': 7e-12,
-            'no3': 5e-14,
-            'n2o5': 8e-14})
-
     deposition_species = ['o3', 'no', 'no2', 'hno3', 'h2o2', 'rooh', 'hcho']
 
 else:
@@ -111,7 +97,12 @@ else:
 """
 Define vertical grid and initial thl/qt/co2 profiles.
 """
+dx = xsize / itot
+dy = ysize / jtot
 dz = zsize / ktot
+
+x = np.arange(0.5*dx, xsize, dx)
+y = np.arange(0.5*dy, ysize, dy)
 z = np.arange(0.5*dz, zsize, dz)
 
 def profile(zi, v_bulk, dv, gamma_v, clip_at_zero=False):
@@ -133,8 +124,8 @@ def profile(zi, v_bulk, dv, gamma_v, clip_at_zero=False):
 
 # Vertical profiles.
 thl = profile(zi=1000, v_bulk=290,   dv=2,     gamma_v=0.006)
-qt  = profile(zi=1000, v_bulk=10e-3, dv=-2e-3, gamma_v=-0.003e-3, clip_at_zero=True)
-u   = np.ones(ktot) * 5
+qt  = profile(zi=1000, v_bulk=6e-3,  dv=-2e-3, gamma_v=-0.003e-3, clip_at_zero=True)
+u   = np.ones(ktot) * 2.5
 co2 = np.zeros(ktot)
 
 # Surface fluxes.
@@ -273,33 +264,41 @@ else:
     sigma_z = 122.37
 
 # x,y spacing towers:
-dx = 290
-dy = 120
-ddx = 40
+dx_tower = 290
+dy_tower = 120
+ddx_tower = 40
 
 # Strength of plumes, from the CoCO2 simulation protocol:
-strength_co2 = 732.5  / 9. / MCO2   # kmol(CO2) s-1
-strength_no2 = 0.0289 / 9. / MNO2   # kmol(NO2) s-1
-strength_no  = 0.359  / 9. / MNO    # kmol(NO) s-1
-strength_co  = 0.223  / 9. / MCO    # kmol(CO) s-1
+strength_co2 = 732.5  / 9. / xm_cams['co2']   # kmol(CO2) s-1
+strength_no2 = 0.0289 / 9. / xm_cams['no2']   # kmol(NO2) s-1
+strength_no  = 0.359  / 9. / xm_cams['no']    # kmol(NO) s-1
+strength_co  = 0.223  / 9. / xm_cams['co']    # kmol(CO) s-1
 
 # Emission of heat and moisture. Numbers are from:
 # Effective pollutant emission heights for atmospheric transport modelling based on real-world information
 # Pregger and Friedrich, 2009, 10.1016/j.envpol.2008.09.027
-Tp = 50+T0    # Flue gass temperature (K)
+Tp = 45+T0    # Flue gass temperature (K)
 Mp = 790      # Volume-flux (m3 s-1)
 
 # This is not very accurate...:
 pp = 1e5
 rhop = pp/(Rd*Tp)
 rhp = 1.
-qp = rhp * hlp.calc_qsat(Tp, pp)
+qp = rhp * qsat_liq(pp, Tp)
 
-strength_q = np.round(Mp * rhop * qp, decimals=2)
-strength_T = np.round(Mp * rhop * Tp, decimals=2)
+# Mass flux per tower (kg s-1). NOTE: `Mp` is per tower (>1000 MW), not for the full plant.
+mass_flux = Mp * rhop
 
-# Emission input model.
-emi = hlp.Emissions()
+emission_species = ['co2', 'no2', 'no', 'co']
+
+# Boussinesq base state, so `rho_ref=1`.
+rho_ref = np.ones(ktot)
+
+# With plume rise, MicroHH needs the emitted mass flux (`me`, kg s-1 per grid cell),
+# and the absolute temperature (`te`, K) and specific humidity (`qe`, kg kg-1) of the emission.
+emission_fields = emission_species + (['me', 'te', 'qe'] if sw_plume_rise else [])
+
+emiss = Emission_input(emission_fields, [0], x, y, z, np.full(ktot, dz), rho_ref, float_type)
 
 # Add emission from individual towers.
 # NOTE: Jaenschwalde has nine cooling towers, in three groups.
@@ -307,18 +306,28 @@ emi = hlp.Emissions()
 #       Here, we distribute the emissions over all nine towers......
 for j in range(-1,2):
     for i in range(-1,2):
-        x = x0 + i*dx + j*ddx
-        y = y0 + j*dy
-        z = z0
+        xt = x0 + i*dx_tower + j*ddx_tower
+        yt = y0 + j*dy_tower
 
-        emi.add('co2', strength_co2, True, x, y, z, sigma_x, sigma_y, sigma_z)
-        emi.add('no2', strength_no2, True, x, y, z, sigma_x, sigma_y, sigma_z)
-        emi.add('no',  strength_no,  True, x, y, z, sigma_x, sigma_y, sigma_z)
-        emi.add('co',  strength_co,  True, x, y, z, sigma_x, sigma_y, sigma_z)
+        emiss.add_gaussian('co2', strength_co2, 0, xt, yt, z0, sigma_x, sigma_y, sigma_z, True)
+        emiss.add_gaussian('no2', strength_no2, 0, xt, yt, z0, sigma_x, sigma_y, sigma_z, True)
+        emiss.add_gaussian('no',  strength_no,  0, xt, yt, z0, sigma_x, sigma_y, sigma_z, True)
+        emiss.add_gaussian('co',  strength_co,  0, xt, yt, z0, sigma_x, sigma_y, sigma_z, True)
 
         if sw_plume_rise:
-            emi.add('thl', strength_T, False, x, y, z, sigma_x, sigma_y, sigma_z)
-            emi.add('qt',  strength_q, False, x, y, z, sigma_x, sigma_y, sigma_z)
+            emiss.add_gaussian('me', mass_flux, 0, xt, yt, z0, sigma_x, sigma_y, sigma_z, False)
+
+if sw_plume_rise:
+    # `add_gaussian` normalizes by the grid cell mass, `me` has to be in kg s-1 per grid cell.
+    emiss.data['me'] *= (rho_ref * dz * dx * dy)[None, :, None, None]
+
+    mask = emiss.data['me'] > 0
+    emiss.data['te'][mask] = Tp
+    emiss.data['qe'][mask] = qp
+
+# Clip to required vertical extent, and save binaries for MicroHH.
+emiss.clip()
+emiss.to_binary(path='.')
 
 
 """
@@ -390,20 +399,23 @@ ini['advec']['fluxlimit_list'] = scalars
 ini['limiter']['limitlist'] = scalars
 ini['fields']['slist'] = scalars
 
-if sw_openbc:
-    ini['boundary']['scalar_outflow'] = scalars
-    ini['boundary']['flow_direction[north]']='outflow'
-    ini['boundary']['flow_direction[east]']='outflow'
-    ini['boundary']['flow_direction[south]']='outflow'
-    ini['boundary']['flow_direction[west]']='inflow'
+ini['boundary']['scalar_outflow'] = scalars
+ini['boundary']['flow_direction[north]']='outflow'
+ini['boundary']['flow_direction[east]']='outflow'
+ini['boundary']['flow_direction[south]']='outflow'
+ini['boundary']['flow_direction[west]']='inflow'
 
 ini['time']['endtime'] = (end_hour - start_hour) * 3600
 
-ini['source']['sourcelist'] = emi.source_list
+ini['source']['swsource'] = '3d'
+ini['source']['sourcelist'] = emission_species
+ini['source']['ktot'] = emiss.kmax
+ini['source']['swheat'] = sw_plume_rise
+ini['source']['swmoisture'] = sw_plume_rise
 
 ini['chemistry']['swchemistry'] = sw_chemistry
 
-crosslist = ['thl', 'qt', 'u', 'v', 'w', 'thl_fluxbot', 'qt_fluxbot', 'co2']
+crosslist = ['thl', 'qt', 'u', 'v', 'w', 'thl_fluxbot', 'qt_fluxbot', 'co2', 'ql', 'ql_path']
 crosslist += list(species.keys())
 crosslist += [f'{x}_path' for x in species.keys()]
 
@@ -434,24 +446,9 @@ else:
 
     ini['radiation']['swradiation'] = False
 
-ini['deposition']['swdeposition'] = sw_deposition
+ini['deposition']['swdeposition'] = sw_land_surface
 
 ini['cross']['crosslist'] = crosslist
 ini['cross']['xz'] = ysize/2
-
-ini['source']['source_x0'] = emi.x0
-ini['source']['source_y0'] = emi.y0
-ini['source']['source_z0'] = emi.z0
-
-ini['source']['sigma_x'] = emi.sigma_x
-ini['source']['sigma_y'] = emi.sigma_y
-ini['source']['sigma_z'] = emi.sigma_z
-
-ini['source']['strength'] = emi.strength
-ini['source']['swvmr'] = emi.sw_vmr
-
-ini['source']['line_x'] = emi.line_x
-ini['source']['line_y'] = emi.line_y
-ini['source']['line_z'] = emi.line_z
 
 ini.save('plume_chem.ini', allow_overwrite=True)

@@ -1,8 +1,8 @@
 # Base jaenschwalde .ini file. All `None` values are set by `jaenschwalde_input.py`.
 
 [master]
-npx=2
-npy=4
+npx=1
+npy=1
 
 [grid]
 itot=None
@@ -96,19 +96,11 @@ rndz=300.
 rndexp=2.
 
 [source]
-swsource=1
+swsource=None
 sourcelist=None
-source_x0=None
-source_y0=None
-source_z0=None
-sigma_x=one
-sigma_y=None
-sigma_z=None
-strength=None
-swvmr=None
-line_x=None
-line_y=None
-line_z=None
+ktot=None
+swheat=None
+swmoisture=None
 
 [chemistry]
 swchemistry = None
