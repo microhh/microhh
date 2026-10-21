@@ -440,6 +440,29 @@ namespace
 
 
     template<typename TF> __global__
+    void calc_T_g(
+            TF* const __restrict__ T,
+            const TF* const __restrict__ thl,
+            const TF* const __restrict__ qt,
+            const TF* const __restrict__ p,
+            const TF* const __restrict__ exn,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            int icells, int ijcells)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*icells + k*ijcells;
+            T[ijk] = sat_adjust_g(thl[ijk], qt[ijk], p[k], exn[k]).t;
+        }
+    }
+
+    template<typename TF> __global__
     void calc_land_surface_fields(
         TF* const __restrict__ T_bot,
         TF* const __restrict__ T_a,
@@ -1098,6 +1121,20 @@ void Thermo_moist<TF>::get_thermo_field_g(
             bs.exnref_g,
             gd.istart, gd.jstart, gd.kstart,
             gd.iend,   gd.jend,   gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
+    }
+    else if (name == "T")
+    {
+        calc_T_g<TF><<<gridGPU2, blockGPU2>>>(
+            fld.fld_g,
+            fields.sp.at("thl")->fld_g,
+            fields.sp.at("qt")->fld_g,
+            bs.pref_g,
+            bs.exnref_g,
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
             gd.icells, gd.ijcells);
         cuda_check_error();
     }

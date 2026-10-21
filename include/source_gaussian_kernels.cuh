@@ -10,36 +10,24 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
-
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <array>
+#ifndef SOURCE_GAUSSIAN_KERNELS_G_H
+#define SOURCE_GAUSSIAN_KERNELS_G_H
 
-#include "master.h"
-#include "input.h"
-#include "grid.h"
-#include "fields.h"
-#include "source.h"
-#include "source_kernels.h"
-#include "defines.h"
 #include "fast_math.h"
-#include "tools.h"
 #include "constants.h"
 
-namespace
-{
-    namespace fm = Fast_math;
+namespace fm = Fast_math;
 
+namespace Source_gaussian_kernels_g
+{
     template<typename TF> __global__
     void calc_source_g(
             TF* const __restrict__ st,
@@ -153,8 +141,6 @@ namespace
 
         if (i < iend && j < jend && k < kend)
         {
-            const int ijk = i + j*jstride + k*kstride;
-
             if (sw_vmr)
                 // Emissions come in [kmol tracers s-1] and are added to grid boxes in [VMR s-1] unit.
                 // rhoref [kg m-3] divided by xmair [kg kmol-1] transfers to units [kmol(tracer) / kmol(air) / s].
@@ -239,122 +225,4 @@ namespace
         }
     }
 }
-
-// Add the source to the fields. This function is called in the main time loop.
-#ifdef USECUDA
-template<typename TF>
-void Source<TF>::exec(Timeloop<TF>& timeloop)
-{
-    auto& gd = grid.get_grid_data();
-
-    if (!swsource)
-        return;
-
-    if (swtimedep_location)
-    {
-        const int blocki = gd.ithread_block;
-        const int blockj = gd.jthread_block;
-        const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
-        const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
-
-        dim3 gridGPU (gridi, gridj, gd.kcells);
-        dim3 blockGPU(blocki, blockj, 1);
-
-        TF* norm_g;
-        cudaMalloc(&norm_g, sizeof(TF));
-
-        // Update source locations, and calculate new norm's
-        for (int n=0; n<sourcelist.size(); ++n)
-        {
-            std::string name_x = "source_x0_" + std::to_string(n);
-            std::string name_y = "source_y0_" + std::to_string(n);
-            std::string name_z = "source_z0_" + std::to_string(n);
-
-            tdep_source_x0.at(name_x)->update_time_dependent(source_x0[n], timeloop);
-            tdep_source_y0.at(name_y)->update_time_dependent(source_y0[n], timeloop);
-            tdep_source_z0.at(name_z)->update_time_dependent(source_z0[n], timeloop);
-
-            // Shape of the source in each direction
-            shape[n].range_x = calc_shape(gd.x.data(), source_x0[n], sigma_x[n], line_x[n], gd.istart, gd.iend);
-            shape[n].range_y = calc_shape(gd.y.data(), source_y0[n], sigma_y[n], line_y[n], gd.jstart, gd.jend);
-            shape[n].range_z = calc_shape(gd.z.data(), source_z0[n], sigma_z[n], line_z[n], gd.kstart, gd.kend);
-
-            if (sw_emission_profile)
-                throw std::runtime_error("Emission profiles with time dependent location/strength are not (yet) supported!");
-            else
-            {
-                calc_norm_g<TF><<<gridGPU, blockGPU>>>(
-                        norm_g,
-                        gd.x_g, source_x0[n], sigma_x[n], line_x[n],
-                        gd.y_g, source_y0[n], sigma_y[n], line_y[n],
-                        gd.z_g, source_z0[n], sigma_z[n], line_z[n],
-                        nullptr,
-                        shape[n].range_x[0], shape[n].range_x[1],
-                        shape[n].range_y[0], shape[n].range_y[1],
-                        shape[n].range_z[0], shape[n].range_z[1],
-                        gd.dz_g, gd.dx, gd.dy,
-                        fields.rhoref_g, sw_vmr[n], false,
-                        gd.istart, gd.iend,
-                        gd.jstart, gd.jend,
-                        gd.kstart, gd.kend,
-                        gd.icells, gd.ijcells);
-
-                cudaMemcpy(&norm[n], norm_g, sizeof(long), cudaMemcpyDeviceToHost);
-            }
-        }
-
-        // Take sum over MPI tasks, in CPU version done inside kernel.
-        master.sum(norm.data(), sourcelist.size());
-    }
-
-    if (swtimedep_strength)
-    {
-        // Update source locations, and calculate new norm's
-        for (int n=0; n<sourcelist.size(); ++n)
-        {
-            std::string name_strength = "source_strength_" + std::to_string(n);
-            tdep_source_strength.at(name_strength)->update_time_dependent(strength[n], timeloop);
-        }
-    }
-
-    for (int n=0; n<sourcelist.size(); ++n)
-    {
-        const int range[3] = {
-                shape[n].range_x[1]-shape[n].range_x[0],
-                shape[n].range_y[1]-shape[n].range_y[0],
-                shape[n].range_z[1]-shape[n].range_z[0]};
-
-        if (range[0] == 0 || range[1] == 0 || range[2] == 0)
-            continue;
-
-        const int blocki = 16;
-        const int blockj = 16;
-
-        const int gridi  = range[0]/blocki + (range[0]%blocki > 0);
-        const int gridj  = range[1]/blockj + (range[1]%blockj > 0);
-
-        dim3 gridGPU (gridi, gridj, range[2]);
-        dim3 blockGPU(blocki, blockj, 1);
-
-        calc_source_g<TF><<<gridGPU, blockGPU>>>(
-                fields.st[sourcelist[n]]->fld_g,
-                gd.x_g, gd.y_g, gd.z_g,
-                source_x0[n], sigma_x[n], line_x[n],
-                source_y0[n], sigma_y[n], line_y[n],
-                source_z0[n], sigma_z[n], line_z[n],
-                strength[n], norm[n],
-                shape[n].range_x[0], shape[n].range_x[1],
-                shape[n].range_y[0], shape[n].range_y[1],
-                shape[n].range_z[0], shape[n].range_z[1],
-                gd.icells, gd.ijcells);
-
-        cuda_check_error();
-    }
-}
-#endif
-
-#ifdef FLOAT_SINGLE
-template class Source<float>;
-#else
-template class Source<double>;
 #endif

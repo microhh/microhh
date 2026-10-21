@@ -264,4 +264,12 @@ void Master::min(float* var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_FLOAT, MPI_MIN, md.commxy);
 }
+
+int Master::calc_mpiid(const int mpicoordx, const int mpicoordy)
+{
+    int coords[2] = {mpicoordy, mpicoordx};
+    int mpiid;
+    MPI_Cart_rank(md.commxy, coords, &mpiid);
+    return mpiid;
+}
 #endif
