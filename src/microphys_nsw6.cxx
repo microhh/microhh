@@ -1000,7 +1000,7 @@ void Microphys_nsw6<TF>::create(
 
     // Create dumps
     // 1. Variables that this class can calculate/provide:
-    const std::vector<std::string> allowed_dumpvars = {"qrsg_tend_sed", "qtr_tend_frz"};
+    const std::vector<std::string> allowed_dumpvars = {"qrsg_tend_sed", "qr_tend_sed", "qsg_tend_sed", "qtr_tend_frz"};
 
     // 2. Cross-reference with the variables requested in the .ini file:
     std::vector<std::string>& dumplist_global = dump.get_dumplist();
@@ -1182,7 +1182,7 @@ void Microphys_nsw6<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, const d
 
     for (auto& it : dumplist)
     {
-        if (it == "qrsg_tend_sed")
+        if (it == "qrsg_tend_sed" || it == "qr_tend_sed" || it == "qsg_tend_sed")
         {
             auto qpt = fields.get_tmp();
             auto rc_bot_tmp = fields.get_tmp_xy();
@@ -1212,11 +1212,17 @@ void Microphys_nsw6<TF>::exec_dump(Dump<TF>& dump, unsigned long iotime, const d
                         gd.icells, gd.ijcells);
             };
 
-            add_sedimentation_tendency("qr", a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>, qr_min<TF>);
-            add_sedimentation_tendency("qs", a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>, qs_min<TF>);
-            add_sedimentation_tendency("qg", a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>, qg_min<TF>);
+            // Warm (rain) and cold (snow + graupel) precipitation, or their sum.
+            if (it != "qsg_tend_sed")
+                add_sedimentation_tendency("qr", a_r<TF>, b_r<TF>, c_r<TF>, d_r<TF>, N_0r<TF>, qr_min<TF>);
 
-            dump.save_dump(qpt->fld.data(), "qrsg_tend_sed", iotime);
+            if (it != "qr_tend_sed")
+            {
+                add_sedimentation_tendency("qs", a_s<TF>, b_s<TF>, c_s<TF>, d_s<TF>, N_0s<TF>, qs_min<TF>);
+                add_sedimentation_tendency("qg", a_g<TF>, b_g<TF>, c_g<TF>, d_g<TF>, N_0g<TF>, qg_min<TF>);
+            }
+
+            dump.save_dump(qpt->fld.data(), it, iotime);
 
             fields.release_tmp(qpt);
             fields.release_tmp_xy(rc_bot_tmp);
