@@ -442,9 +442,6 @@ void Model<TF>::exec()
                 for (auto& it: fields->at)
                     stats->calc_tend(*it.second, "total");
 
-                // Accumulate the RK-weighted total tendency for the 3D budget, if necessary
-                budget3d->exec(timeloop->get_sub_time_step());
-
                 // Allow only for statistics when not in substep and not directly after restart.
                 if (timeloop->is_stats_step())
                 {
@@ -494,6 +491,10 @@ void Model<TF>::exec()
                     }
 
                 }
+
+                // Accumulate the RK-weighted total tendency for the 3D budget, if necessary.
+                // Done after the dumps, so that the current time step counts towards the next dump.
+                budget3d->exec(timeloop->get_sub_time_step(), timeloop->get_dt(), timeloop->in_substep());
 
                 // Exit the simulation when the runtime has been hit.
                 if (timeloop->is_finished())

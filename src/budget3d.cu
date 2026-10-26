@@ -48,7 +48,7 @@ namespace
 
 #ifdef USECUDA
 template<typename TF>
-void Budget3d<TF>::exec(const double sub_dt)
+void Budget3d<TF>::exec(const double sub_dt, const double dt, const bool in_substep)
 {
     if (!swbudget3d)
         return;
@@ -76,7 +76,9 @@ void Budget3d<TF>::exec(const double sub_dt)
         cuda_check_error();
     }
 
-    elapsed_time += sub_dt;
+    // Sum of cB over the RK substeps is not 1; count the full time step once.
+    if (!in_substep)
+        elapsed_time += dt;
 }
 #endif
 
