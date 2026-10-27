@@ -965,13 +965,16 @@ Microphys_nsw6<TF>::~Microphys_nsw6()
 }
 
 template<typename TF>
-void Microphys_nsw6<TF>::init()
+void Microphys_nsw6<TF>::init(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     rr_bot.resize(gd.ijcells);
     rs_bot.resize(gd.ijcells);
     rg_bot.resize(gd.ijcells);
+
+    std::vector<std::string>& hydrometeorlist = thermo.get_hydrometeorlist();
+    hydrometeorlist = {"qr", "qs", "qg"};
 }
 
 template<typename TF>

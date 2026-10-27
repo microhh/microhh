@@ -55,7 +55,7 @@ class Microphys_nsw6 : public Microphys<TF>
         Microphys_nsw6(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys_nsw6();
 
-        void init();
+        void init(Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&);
         void exec(Thermo<TF>&, const double, Stats<TF>&);
 
