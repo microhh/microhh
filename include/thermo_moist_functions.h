@@ -82,19 +82,17 @@ namespace Thermo_moist_functions
 
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
+    // We extended the limiter for proper ice calculations. Taylor series is not good at low temperatures.
     template<typename TF>
     CUDA_MACRO inline TF esat_liq(const TF T)
     {
         #ifdef __CUDACC__
-        // const TF x = fmax(TF(-75.), T-T0<TF>);
-        const TF x = fmin(fmax(TF(-75.), T-T0<TF>), TF(50.));       // Limit the temperature range to avoid numerical errors
+        const TF x = fmin(fmax(TF(-100.), T-T0<TF>), TF(50.)); // Limit the temperature range to avoid numerical errors
         #else
-        // const TF x = std::max(TF(-75.), T-T0<TF>);
-        const TF x = std::min(std::max(TF(-75.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
+        const TF x = std::min(std::max(TF(-100.), T-T0<TF>), TF(50.)); // Limit the temperature range to avoid numerical errors
         #endif
 
-        // return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
-        return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
+        return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
     }
 
     template<typename TF>
@@ -109,10 +107,8 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat_ice(const TF T)
     {
         #ifdef __CUDACC__
-        // const TF x = fmax(TF(-100.), T-T0<TF>);
         const TF x = fmin(fmax(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #else
-        // const TF x = std::max(TF(-100.), T-T0<TF>);
         const TF x = std::min(std::max(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #endif
 

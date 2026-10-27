@@ -75,10 +75,10 @@ def calc_p_q_T_thl_o3(z):
 nc_file = nc.Dataset("rcemip_input.nc", mode="w", datamodel="NETCDF4", clobber=True)
 
 ### RADIATION INIT ###
-gpt_set = '128_112'
-linknotcopy = False
+#gpt_set = '128_112'
+#linknotcopy = False
+#mht.copy_radfiles(gpt=gpt_set, link=linknotcopy)
 
-mht.copy_radfiles(gpt=gpt_set, link=linknotcopy)
 # Radiation profiles.
 z_top = 70.e3
 dz = 500.

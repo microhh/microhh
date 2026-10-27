@@ -61,8 +61,8 @@ else()
 endif()
 
 # Add these as CMake removes the /usr/local from the search paths.
-include_directories("/usr/local/include")
-link_directories("/usr/local/lib")
+include_directories("/opt/homebrew/include")
+link_directories("/opt/homebrew/lib")
 
 set(NETCDF_LIB_C "netcdf")
 set(FFTW_LIB "fftw3")
