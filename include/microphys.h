@@ -53,7 +53,7 @@ class Microphys
         Microphys_type get_switch();
 
         // Below are the functions that the derived class has to implement.
-        virtual void init() = 0;
+        virtual void init(Thermo<TF>&) = 0;
         virtual void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) = 0;
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
