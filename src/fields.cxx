@@ -583,14 +583,13 @@ void Fields<TF>::create_cross(Cross<TF>& cross)
 
     if (cross.get_switch())
     {
-
         // Get global cross-list from cross.cxx
         std::vector<std::string>& crosslist_global = cross.get_crosslist();
 
         // Check different type of crosses and put them in their respective lists
         for (auto& it : ap)
         {
-            check_added_cross(it.first, "",        crosslist_global, cross_simple);
+            check_added_cross(it.first, "",         crosslist_global, cross_simple);
             check_added_cross(it.first, "_lngrad",  crosslist_global, cross_lngrad);
             check_added_cross(it.first, "_bot",     crosslist_global, cross_bot);
             check_added_cross(it.first, "_top",     crosslist_global, cross_top);
@@ -853,7 +852,7 @@ void Fields<TF>::init_momentum_field(
 {
     if (mp.find(fldname) != mp.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_momentum_field ";
         throw std::runtime_error(msg);
     }
 
@@ -881,7 +880,7 @@ void Fields<TF>::init_prognostic_field(
 {
     if (sp.find(fldname)!=sp.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_field";
         throw std::runtime_error(msg);
     }
 
@@ -911,7 +910,7 @@ void Fields<TF>::init_prognostic_soil_field(
 {
     if (sps.find(fldname)!=sps.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_soil_field";
         throw std::runtime_error(msg);
     }
 
@@ -930,7 +929,7 @@ void Fields<TF>::init_prognostic_2d_field(const std::string& fldname)
 {
     if (ap2d.find(fldname)!=ap2d.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_prognostic_2d_field";
         throw std::runtime_error(msg);
     }
 
@@ -947,7 +946,7 @@ void Fields<TF>::init_diagnostic_field(
 {
     if (sd.find(fldname)!=sd.end())
     {
-        std::string msg = fldname + " already exists";
+        std::string msg = fldname + " already exists in init_diagnostic_field";
         throw std::runtime_error(msg);
     }
 
@@ -1470,6 +1469,7 @@ void Fields<TF>::exec_cross(Cross<TF>& cross, unsigned long iotime)
 
     TF no_offset = 0.;
     TF offset;
+
     for (auto& it : cross_simple)
     {
         if (it == "u")

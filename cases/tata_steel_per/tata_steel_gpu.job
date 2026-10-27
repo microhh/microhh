@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#SBATCH --job-name=gpu
+#SBATCH --output=mhh-%j.out
+#SBATCH --error=mhh-%j.err
+#SBATCH --partition=gpu_h100
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --ntasks-per-core=1
+#SBATCH --time=02:00:00
+#SBATCH --gpus-per-node=1
+
+source ~/setup_env.sh
+
+./microhh init tata_steel_nl
+./microhh run tata_steel_nl
