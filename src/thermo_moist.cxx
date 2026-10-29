@@ -1040,6 +1040,7 @@ namespace
             TF* const restrict T_bot,
             TF* const restrict T_a,
             TF* const restrict vpd,
+            TF* const restrict vpds,
             TF* const restrict qs,
             TF* const restrict dqsdT,
             const TF* const restrict thl_bot,
@@ -1068,12 +1069,16 @@ namespace
                 T_bot[ij] = exnerh[kstart] * thl_bot[ij];   // Assuming no ql
                 T_a[ij]   = sa.t;
 
-                // Vapor pressure deficit first model level
+                // Vapor pressure deficit first model level.
                 const TF es = esat(sa.t);
                 const TF e = qt[ijk]/sa.qs * es;
                 vpd[ij] = es-e;
 
-                // qsat(T_bot) + dqsatdT(T_bot)
+                // "Surface to air" vapor pressure deficit.
+                const TF es_bot = esat(T_bot[ij]);
+                vpds[ij] = es_bot-e;
+
+                // qsat(T_bot) and dqsatdT(T_bot).
                 qs[ij] = qsat(ph[kstart], T_bot[ij]);
                 dqsdT[ij] = dqsatdT(ph[kstart], T_bot[ij]);
             }
@@ -1791,7 +1796,7 @@ void Thermo_moist<TF>::get_radiation_columns(
 template<typename TF>
 void Thermo_moist<TF>::get_land_surface_fields(
         std::vector<TF>& T_bot, std::vector<TF>& T_a, std::vector<TF>& vpd,
-        std::vector<TF>& qsat, std::vector<TF>& dqsatdT)
+        std::vector<TF>& vpds, std::vector<TF>& qsat, std::vector<TF>& dqsatdT)
 {
     /* Calculate the thermo fields required by the LSM in
        2D slices in the 3D tmp field */
@@ -1801,6 +1806,7 @@ void Thermo_moist<TF>::get_land_surface_fields(
             T_bot.data(),
             T_a.data(),
             vpd.data(),
+            vpds.data(),
             qsat.data(),
             dqsatdT.data(),
             fields.sp.at("thl")->fld_bot.data(),
@@ -1813,7 +1819,8 @@ void Thermo_moist<TF>::get_land_surface_fields(
             gd.istart, gd.iend,
             gd.jstart, gd.jend,
             gd.kstart,
-            gd.icells, gd.ijcells);
+            gd.icells,
+            gd.ijcells);
 }
 
 template<typename TF>

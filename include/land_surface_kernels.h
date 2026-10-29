@@ -47,12 +47,6 @@ namespace Land_surface_kernels
         tile.thl_bot.resize(ijcells);
         tile.qt_bot.resize(ijcells);
 
-        tile.obuk.resize(ijcells);
-        tile.ustar.resize(ijcells);
-        tile.bfluxbot.resize(ijcells);
-        tile.nobuk.resize(ijcells);
-        tile.ra.resize(ijcells);
-
         tile.rs.resize(ijcells);
         tile.H.resize(ijcells);
         tile.LE.resize(ijcells);
@@ -225,6 +219,295 @@ namespace Land_surface_kernels
                 rs[ij] = rs_min[ij] / (lai[ij]+Constants::dsmall) * f1[ij] * f2[ij] * f3[ij];
             }
     }
+
+    template<typename TF>
+    inline TF e1_approx(const TF x)
+    {
+        // E1() approximation, from: https://doi.org/10.1016/S0022-1694(99)00184-5
+        const TF euler = TF(0.5772156649015329);
+        const TF G = std::exp(-euler);
+        const TF b = std::pow(TF(2) * ((TF(1) - G) / (G * (TF(2) - G))), TF(0.5));
+        const TF h_inf = (TF(1) - G) * (fm::pow2(G) - TF(6) * G + TF(12)) / (TF(3) * G * fm::pow2(TF(2) - G) * b);
+        const TF q = TF(20/47.) * std::pow(x, std::pow(TF(31/26.), TF(0.5)));
+        const TF h = TF(1) / (TF(1) + x * std::pow(x, TF(0.5)));
+        const TF E1 = std::exp(-x) / (G + (TF(1) - G) * std::exp(-x / (TF(1) - G))) * std::log(TF(1) + G / x - (TF(1) - G) / fm::pow2(h + b * x));
+        return E1;
+    }
+
+
+    template<typename TF>
+    void calc_canopy_resistance_ags(
+            TF* const restrict rs,
+            TF* const restrict an_co2,
+            const TF* const restrict lai,
+            const TF* const restrict t_bot,
+            const TF* const restrict ra,
+            const TF* const restrict co2,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict sw_flux_dn,
+            const TF* const restrict theta_rel_mean,
+            //const TF* const restrict albedo,
+            const TF* const restrict vpds,
+            const TF* const restrict alpha0,
+            const TF* const restrict t1gm,
+            const TF* const restrict t2gm,
+            const TF* const restrict t1am,
+            const TF* const restrict gm298,
+            const TF* const restrict gmin,
+            const TF* const restrict ammax298,
+            const TF* const restrict f0,
+            const TF* const restrict co2_comp298,
+            //const TF cos_sza,
+            const TF rho,
+            const TF rho_bot,
+            const bool sw_splitleaf,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jstride,
+            const int kstride)
+    {
+        // Fixed constants.
+        const TF q10gm = TF(2);      // Parameter to calculate the mesophyll conductance
+        const TF q10am = TF(2);      // Parameter to calculate max primary productivity
+        const TF q10lambda = TF(1);  // Parameter to calculate the CO2 compensation concentration. (2 in IFS, 1.5 in DALES)
+
+        const TF t2am = TF(311);     // Reference temperatures calculation max primary productivity [K]
+
+        const TF nuco2q = TF(1.6);   // Ratio molecular viscosity water to carbon dioxide [-]
+        const TF ad = TF(0.07);      // Regression coefficient to calculate Cfrac [kPa-1]
+        const TF kx = TF(0.7);       // Extinction coefficient PAR in canopy [m_ground m_leaf-1]
+
+        // For sw_splitleaf.
+        //nr_gauss = 3                                   # Amount of bins to use for Gaussian integrations
+        //weight_g = np.array([0.2778, 0.4444, 0.2778])  # Weights of the Gaussian bins (must add up to 1)
+        //angle_g  = np.array([0.1127,    0.5, 0.8873])  # Sines of the leaf angles compared to the sun in the first Gaussian integration
+        //angle_weight_sum = np.sum(weight_g * angle_g)
+        //LAI_g    = np.array([0.1127,    0.5, 0.8873])  # Ratio of integrated LAI at locations where shaded leaves are evaluated in the second Gaussian integration
+        //sigma    = 0.2                                 # Scattering coefficient
+        //kdfbl    = 0.8                                 # Diffuse radiation extinction coefficient for black leaves
+
+        // Fixed conversion factors.
+        const TF to_mgm3 = Constants::xmco2<TF> / Constants::xmair<TF> * TF(1e6) * rho;
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jstride;
+                const int ijk = ij + kstart*kstride;
+
+                // Calculate the CO2 compensation concentration (IFS eq. 8.92).
+                // "The compensation point Γ is defined as the CO2 concentration at which the net CO2 assimilation of a fully lit leaf becomes zero".
+                const TF co2_comp = rho_bot * co2_comp298[ij] * std::pow(q10lambda, TF(0.1) * (t_bot[ij] - TF(298)));
+
+                // Calculate the mesophyll conductance (IFS eq. 8.93).
+                // "The mesophyll conductance gm describes the transport of CO2 from the substomatal cavities to the mesophyll cells where the carbon is fixed".
+                const TF gm = gm298[ij] * std::pow(q10gm, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1gm[ij] - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2gm[ij])))) / TF(1000);
+
+                // Calculate CO2 concentration inside the leaf (ci).
+                // NOTE: Differs from IFS
+                const TF fmin0 = gmin[ij] / nuco2q - TF(1./9.) * gm;
+                const TF fmin = std::pow(std::max(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ij] / nuco2q * gm), TF(Constants::dsmall)), TF(0.5)) / (TF(2) * gm);
+
+                // Calculate atmospheric moisture deficit.
+                // "Therefore Ci/Cs is specified as a function of atmospheric moisture deficit Ds at the leaf surface".
+                // Based on other literature, I think this indeed has to be the "leaf to air VPD", so esat(Ts) - e(Ta).
+                const TF ds = vpds[ij] / 1000.;
+
+                // This seems to differ from IFS?
+                const TF dmax = (f0[ij] - fmin) / ad;
+
+                // Coupling factor (IFS eq. 8.101).
+                const TF cfrac = std::max(TF(0.01), f0[ij] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
+
+                // Absolute CO2 concentration. Input = [mol(CO2) mol-1(air)], co2_abs = [mg(CO2) m-3(air)].
+                const TF co2_abs  = co2[ijk] * to_mgm3;
+
+                // CO2 concentration in leaf (IFS eq. ???).
+                //if (lrelaxci) then
+                //  if (ci_old_set) then
+                //    ci_inf        = cfrac * (co2_abs - co2_comp) + co2_comp
+                //    ci            = ci_old(i,j) + min(kci*rk3coef, 1.0) * (ci_inf - ci_old(i,j))
+                //    if (rk3step  == 3) then
+                //      ci_old(i,j) = ci
+                //    endif
+                //  else
+                //    ci            = cfrac * (co2_abs - co2_comp) + co2_comp
+                //    ci_old(i,j)   = ci
+                //  endif
+                //else
+                const TF ci = cfrac * (co2_abs - co2_comp) + co2_comp;
+                //endif
+
+                // Max gross primary production in high light conditions (Ag) (IFS eq. 8.94).
+                const TF ammax = ammax298[ij] * std::pow(q10am, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + std::exp(TF(0.3) * (t1am[ij] - t_bot[ij]))) * (TF(1) + std::exp(TF(0.3) * (t_bot[ij] - t2am))));
+
+                // Effect of soil moisture stress on gross assimilation rate.
+                // NOTE: this seems to be different in IFS...
+                const TF fstr = std::max(TF(1e-3), std::min(TF(1), theta_rel_mean[ij]));
+
+                // Gross assimilation rate (Am, IFS eq. 8.97).
+                const TF am = ammax * (TF(1) - std::exp(-(gm * (ci - co2_comp) / ammax)));
+
+                // Autotrophic dark respiration (IFS eq. 8.99).
+                const TF rdark = am / TF(9);
+
+                // Photosynthetically active radiation [W m-2].
+                const TF par = TF(0.5) * std::max(TF(0.1), sw_flux_dn[ij]);
+
+                // Light use efficiency.
+                const TF alphac = alpha0[ij] * (co2_abs - co2_comp) / (co2_abs + 2 * co2_comp);
+
+                //TF an, gc_inf;
+                //if (sw_splitleaf)
+                //{
+                //    throw std::runtime_error("Splitleaf A-Gs not (yet) implemented.");
+
+                //    PARdir   = 0.5 * max(0.1, sw_in[j,i])
+                //    PARdif   = 0.5 * max(0.1, sw_in[j,i])
+                //    cos_sza  = max(1e-10, cos_sza)
+
+                //    kdrbl = 0.5 / cos_sza   # Direct radiation extinction coefficient for black leaves
+                //    kdf = kdfbl * np.sqrt(1.0 - sigma)
+                //    kdr = kdrbl * np.sqrt(1.0 - sigma)
+                //    ref = (1.0 - np.sqrt(1.0 - sigma)) / (1.0 + np.sqrt(1.0 - sigma)) # Reflection coefficient
+                //    ref_dir = 2 * ref / (1.0 + 1.6 * cos_sza)
+
+                //    Hleaf = np.zeros(nr_gauss+1)
+                //    Fleaf = np.zeros(nr_gauss+1)
+                //    Agl   = np.zeros(nr_gauss+1)
+
+                //    Fnet  = np.zeros(nr_gauss)
+                //    gnet  = np.zeros(nr_gauss)
+
+                //    # Loop over different LAI locations
+                //    for it in range(nr_gauss):
+
+                //        iLAI = LAI[j,i] * LAI_g[it]   # Integrated LAI between here and canopy top; Gaussian distributed
+                //        fSL = np.exp(-kdrbl * iLAI)  # Fraction of sun-lit leaves
+
+                //        PARdfD = PARdif * (1.0-ref)     * np.exp(-kdf * iLAI)             # Total downward PAR due to diffuse radiation at canopy top
+                //        PARdrD = PARdir * (1.0-ref_dir) * np.exp(-kdr * iLAI)             # Total downward PAR due to direct radiation at canopy top
+                //        PARdfU = PARdif * (1.0-ref)     * np.exp(-kdf * LAI[j,i]) * \
+                //            albedo[j,i] * (1.0-ref)     * np.exp(-kdf * (LAI[j,i]-iLAI))  # Total upward (reflected) PAR that originates as diffuse radiation
+                //        PARdrU = PARdir * (1.0-ref_dir) * np.exp(-kdr * LAI[j,i]) * \
+                //            albedo[j,i] * (1.0-ref)     * np.exp(-kdf * (LAI[j,i]-iLAI))  # Total upward (reflected) PAR that originates as direct radiation
+                //        PARdfT = PARdfD + PARdfU                                          # Total PAR due to diffuse radiation at canopy top
+                //        PARdrT = PARdrD + PARdrU                                          # Total PAR due to direct radiation at canopy top
+
+                //        dirPAR = (1.0-sigma) * PARdir * fSL   # Purely direct PAR (can only be downward)
+                //        difPAR = PARdfT + PARdrT - dirPAR     # Total diffuse radiation
+
+                //        HdfT = kdf * PARdfD + kdf * PARdfU
+                //        HdrT = kdr * PARdrD + kdf * PARdrU
+                //        dirH = kdrbl * dirPAR
+                //        Hshad = HdfT + HdrT - dirH
+
+                //        Hsun = Hshad + angle_g * (1.0-sigma) * kdrbl * PARdir / angle_weight_sum
+
+                //        Hleaf[0] = Hshad
+                //        Hleaf[1:] = Hsun
+
+                //        Agl = fstr * (Am + Rdark) * (1 - np.exp(-alphac*Hleaf/(Am + Rdark)))
+                //        gleaf = gmin[ij]/nuco2q +  Agl/(co2_abs-ci)
+                //        Fleaf = Agl - Rdark
+
+                //        Fshad  = Fleaf[0]
+                //        Fsun   = np.sum(weight_g * Fleaf[1:])
+                //        gshad  = gleaf[0]
+                //        gsun   = np.sum(weight_g * gleaf[1:])
+
+                //        Fnet[it] = Fsun * fSL + Fshad * (1 - fSL)
+                //        gnet[it] = gsun * fSL + gshad * (1 - fSL)
+
+                //    An     = LAI[j,i] * np.sum(weight_g * Fnet)
+                //    gc_inf = LAI[j,i] * np.sum(weight_g * gnet)
+                //}
+                //else
+                //{
+                    // Calculate upscaling from leaf to canopy: net flow CO2 into the plant (An)
+                    const TF agsa1  = TF(1) / (TF(1) - f0[ij]);
+                    const TF dstar  = dmax / (agsa1 * (f0[ij] - fmin));
+                    const TF tempy  = alphac * kx * par / (am + rdark);
+
+                    const TF an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx(tempy * std::exp(-kx * lai[ij])) - e1_approx(tempy)));
+                    const TF gc_inf = lai[ij] * (gmin[ij] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
+                //}
+
+                //if (lrelaxgc) then
+                //  if (gc_old_set) then
+                //    gcco2       = gc_old(i,j) + min(kgc*rk3coef, 1.0) * (gc_inf - gc_old(i,j))
+                //    if (rk3step ==3) then
+                //      gc_old(i,j) = gcco2
+                //    endif
+                //  else
+                //    gcco2 = gc_inf
+                //    gc_old(i,j) = gcco2
+                //  endif
+                //else
+                //    gcco2 = gc_inf
+                const TF gcco2 = gc_inf;
+
+                // Output values from kernel:
+                // Canopy resistances for moisture.
+                rs[ij] = TF(1) / (TF(1.6) * gcco2);
+
+                // Net flux of CO2 into the plant (An).
+                // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
+                // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
+                an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
+
+
+                if (std::isnan(rs[ij]))
+                    throw std::runtime_error("Canopy resistance contains NaNs!");
+            }
+    }
+
+
+    template<typename TF>
+    void calc_soil_respiration_jacobs(
+            TF* const restrict resp_co2,
+            const TF* const restrict t_soil_mean,
+            const TF* const restrict r10,
+            const TF* const restrict ea,
+            const TF rho_bot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jstride;
+                resp_co2[ij] = r10[ij] * std::exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+            }
+    }
+
+
+    template<typename TF>
+    void set_net_co2_flux(
+            TF* const restrict co2_flux,
+            const TF* const restrict co2_an,
+            const TF* const restrict co2_resp,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij  = i + j*jstride;
+                co2_flux[ij] = co2_an[ij] + co2_resp[ij];
+            }
+    }
+
 
     template<typename TF>
     void calc_soil_resistance(

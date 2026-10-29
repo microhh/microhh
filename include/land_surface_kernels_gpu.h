@@ -133,13 +133,43 @@ namespace Land_surface_kernels_g
     void calc_resistance_functions_g(
             TF* const __restrict__ f1,
             TF* const __restrict__ f2,
-            TF* const __restrict__ f2b,
             TF* const __restrict__ f3,
             const TF* const __restrict__ sw_dn,
-            const TF* const __restrict__ theta,
             const TF* const __restrict__ theta_mean_n,
             const TF* const __restrict__ vpd,
             const TF* const __restrict__ gD,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int icells, const int ijcells)
+    {
+        // Constants f1 calculation:
+        const TF a_f1 = 0.81;
+        const TF b_f1 = 0.004;
+        const TF c_f1 = 0.05;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*icells;
+
+            // f1: reduction vegetation resistance as f(sw_in):
+            const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
+            f1[ij] = TF(1)/fmin( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
+
+            // f2: reduction vegetation resistance as f(theta):
+            f2[ij] = TF(1)/fmin( TF(1), fmax(TF(1e-9), theta_mean_n[ij]) );
+
+            // f3: reduction vegetation resistance as f(VPD):
+            f3[ij] = TF(1)/exp(-gD[ij] * vpd[ij]);
+        }
+    }
+
+    template<typename TF> __global__
+    void calc_soil_resistance_function_g(
+            TF* const __restrict__ f2b,
+            const TF* const __restrict__ theta,
             const TF* const __restrict__ c_veg,
             const TF* const __restrict__ theta_wp,
             const TF* const __restrict__ theta_fc,
@@ -164,22 +194,13 @@ namespace Land_surface_kernels_g
             const int ijk = i + j*icells + (kend-1)*ijcells;    // Top soil layer
             const int si  = soil_index[ijk];
 
-            // f1: reduction vegetation resistance as f(sw_in):
-            const TF sw_dn_lim = fmax(TF(0), sw_dn[ij]);
-            f1[ij] = TF(1)/fmin( TF(1), (b_f1*sw_dn_lim + c_f1) / (a_f1 * (b_f1*sw_dn_lim + TF(1))) );
-
-            // f2: reduction vegetation resistance as f(theta):
-            f2[ij] = TF(1)/fmin( TF(1), fmax(TF(1e-9), theta_mean_n[ij]) );
-
-            // f3: reduction vegetation resistance as f(VPD):
-            f3[ij] = TF(1)/exp(-gD[ij] * vpd[ij]);
-
             // f2b: reduction soil resistance as f(theta)
             const TF theta_min = c_veg[ij] * theta_wp[si] + (TF(1)-c_veg[ij]) * theta_res[si];
             const TF theta_rel = (theta[ijk] - theta_min) / (theta_fc[si] - theta_min);
             f2b[ij] = TF(1)/fmin(TF(1), fmax(TF(1e-9), theta_rel));
         }
     }
+
 
     template<typename TF> __global__
     void calc_canopy_resistance_g(
@@ -202,6 +223,301 @@ namespace Land_surface_kernels_g
             rs[ij] = rs_min[ij] / (lai[ij]+Constants::dsmall) * f1[ij] * f2[ij] * f3[ij];
         }
     }
+
+
+    template<typename TF> __device__
+    inline TF e1_approx_g(const TF x)
+    {
+        // E1() approximation, from: https://doi.org/10.1016/S0022-1694(99)00184-5
+        const TF euler = TF(0.5772156649015329);
+        const TF G = exp(-euler);
+        const TF b = pow(TF(2) * ((TF(1) - G) / (G * (TF(2) - G))), TF(0.5));
+        const TF h_inf = (TF(1) - G) * (fm::pow2(G) - TF(6) * G + TF(12)) / (TF(3) * G * fm::pow2(TF(2) - G) * b);
+        const TF q = TF(20/47.) * pow(x, pow(TF(31/26.), TF(0.5)));
+        const TF h = TF(1) / (TF(1) + x * pow(x, TF(0.5)));
+        const TF E1 = exp(-x) / (G + (TF(1) - G) * exp(-x / (TF(1) - G))) * log(TF(1) + G / x - (TF(1) - G) / fm::pow2(h + b * x));
+        return E1;
+    }
+
+
+    template<typename TF> __global__
+    void calc_canopy_resistance_ags_g(
+            TF* const restrict rs,
+            TF* const restrict an_co2,
+            const TF* const restrict lai,
+            const TF* const restrict t_bot,
+            const TF* const restrict ra,
+            const TF* const restrict co2,
+            const TF* const restrict thl,
+            const TF* const restrict qt,
+            const TF* const restrict sw_flux_dn,
+            const TF* const restrict theta_rel_mean,
+            //const TF* const restrict albedo,
+            const TF* const restrict vpds,
+            const TF* const restrict alpha0,
+            const TF* const restrict t1gm,
+            const TF* const restrict t2gm,
+            const TF* const restrict t1am,
+            const TF* const restrict gm298,
+            const TF* const restrict gmin,
+            const TF* const restrict ammax298,
+            const TF* const restrict f0,
+            const TF* const restrict co2_comp298,
+            //const TF cos_sza,
+            const TF rho,
+            const TF rho_bot,
+            const bool sw_splitleaf,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart,
+            const int jstride,
+            const int kstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jstride;
+            const int ijk = ij + kstart*kstride;
+
+            // Fixed constants.
+            const TF q10gm = TF(2);      // Parameter to calculate the mesophyll conductance
+            const TF q10am = TF(2);      // Parameter to calculate max primary productivity
+            const TF q10lambda = TF(1);  // Parameter to calculate the CO2 compensation concentration. (2 in IFS, 1.5 in DALES)
+
+            const TF t2am = TF(311);     // Reference temperatures calculation max primary productivity [K]
+
+            const TF nuco2q = TF(1.6);   // Ratio molecular viscosity water to carbon dioxide [-]
+            const TF ad = TF(0.07);      // Regression coefficient to calculate Cfrac [kPa-1]
+            const TF kx = TF(0.7);       // Extinction coefficient PAR in canopy [m_ground m_leaf-1]
+
+            // For sw_splitleaf.
+            //nr_gauss = 3                                   # Amount of bins to use for Gaussian integrations
+            //weight_g = np.array([0.2778, 0.4444, 0.2778])  # Weights of the Gaussian bins (must add up to 1)
+            //angle_g  = np.array([0.1127,    0.5, 0.8873])  # Sines of the leaf angles compared to the sun in the first Gaussian integration
+            //angle_weight_sum = np.sum(weight_g * angle_g)
+            //LAI_g    = np.array([0.1127,    0.5, 0.8873])  # Ratio of integrated LAI at locations where shaded leaves are evaluated in the second Gaussian integration
+            //sigma    = 0.2                                 # Scattering coefficient
+            //kdfbl    = 0.8                                 # Diffuse radiation extinction coefficient for black leaves
+
+            // Fixed conversion factors.
+            const TF to_mgm3 = Constants::xmco2<TF> / Constants::xmair<TF> * TF(1e6) * rho;
+            const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+            // Calculate the CO2 compensation concentration (IFS eq. 8.92).
+            // "The compensation point Γ is defined as the CO2 concentration at which the net CO2 assimilation of a fully lit leaf becomes zero".
+            const TF co2_comp = rho_bot * co2_comp298[ij] * pow(q10lambda, TF(0.1) * (t_bot[ij] - TF(298)));
+
+            // Calculate the mesophyll conductance (IFS eq. 8.93).
+            // "The mesophyll conductance gm describes the transport of CO2 from the substomatal cavities to the mesophyll cells where the carbon is fixed".
+            const TF gm = gm298[ij] * pow(q10gm, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + exp(TF(0.3) * (t1gm[ij] - t_bot[ij]))) * (TF(1) + exp(TF(0.3) * (t_bot[ij] - t2gm[ij])))) / TF(1000);
+
+            // Calculate CO2 concentration inside the leaf (ci).
+            // NOTE: Differs from IFS
+            const TF fmin0 = gmin[ij] / nuco2q - TF(1./9.) * gm;
+            const TF fmin = pow(max(-fmin0 + (fm::pow2(fmin0) + TF(4) * gmin[ij] / nuco2q * gm), TF(Constants::dsmall)), TF(0.5)) / (TF(2) * gm);
+
+            // Calculate atmospheric moisture deficit.
+            // "Therefore Ci/Cs is specified as a function of atmospheric moisture deficit Ds at the leaf surface".
+            // Based on other literature, I think this indeed has to be the "leaf to air VPD", so esat(Ts) - e(Ta).
+            const TF ds = vpds[ij] / 1000.;
+
+            // This seems to differ from IFS?
+            const TF dmax = (f0[ij] - fmin) / ad;
+
+            // Coupling factor (IFS eq. 8.101).
+            const TF cfrac = max(TF(0.01), f0[ij] * (TF(1) - ds / dmax) + fmin * (ds / dmax));
+
+            // Absolute CO2 concentration. Input = [mol(CO2) mol-1(air)], co2_abs = [mg(CO2) m-3(air)].
+            const TF co2_abs  = co2[ijk] * to_mgm3;
+
+            // CO2 concentration in leaf (IFS eq. ???).
+            //if (lrelaxci) then
+            //  if (ci_old_set) then
+            //    ci_inf        = cfrac * (co2_abs - co2_comp) + co2_comp
+            //    ci            = ci_old(i,j) + min(kci*rk3coef, 1.0) * (ci_inf - ci_old(i,j))
+            //    if (rk3step  == 3) then
+            //      ci_old(i,j) = ci
+            //    endif
+            //  else
+            //    ci            = cfrac * (co2_abs - co2_comp) + co2_comp
+            //    ci_old(i,j)   = ci
+            //  endif
+            //else
+            const TF ci = cfrac * (co2_abs - co2_comp) + co2_comp;
+            //endif
+
+            // Max gross primary production in high light conditions (Ag) (IFS eq. 8.94).
+            const TF ammax = ammax298[ij] * pow(q10am, TF(0.1) * (t_bot[ij] - TF(298))) / ((TF(1) + exp(TF(0.3) * (t1am[ij] - t_bot[ij]))) * (TF(1) + exp(TF(0.3) * (t_bot[ij] - t2am))));
+
+            // Effect of soil moisture stress on gross assimilation rate.
+            // NOTE: this seems to be different in IFS...
+            const TF fstr = max(TF(1e-3), min(TF(1), theta_rel_mean[ij]));
+
+            // Gross assimilation rate (Am, IFS eq. 8.97).
+            const TF am = ammax * (TF(1) - exp(-(gm * (ci - co2_comp) / ammax)));
+
+            // Autotrophic dark respiration (IFS eq. 8.99).
+            const TF rdark = am / TF(9);
+
+            // Photosynthetically active radiation [W m-2].
+            const TF par = TF(0.5) * max(TF(0.1), sw_flux_dn[ij]);
+
+            // Light use efficiency.
+            const TF alphac = alpha0[ij] * (co2_abs - co2_comp) / (co2_abs + 2 * co2_comp);
+
+            TF an, gc_inf;
+            //if (sw_splitleaf)
+            //{
+            //    PARdir   = 0.5 * max(0.1, sw_in[j,i])
+            //    PARdif   = 0.5 * max(0.1, sw_in[j,i])
+            //    cos_sza  = max(1e-10, cos_sza)
+
+            //    kdrbl = 0.5 / cos_sza   # Direct radiation extinction coefficient for black leaves
+            //    kdf = kdfbl * np.sqrt(1.0 - sigma)
+            //    kdr = kdrbl * np.sqrt(1.0 - sigma)
+            //    ref = (1.0 - np.sqrt(1.0 - sigma)) / (1.0 + np.sqrt(1.0 - sigma)) # Reflection coefficient
+            //    ref_dir = 2 * ref / (1.0 + 1.6 * cos_sza)
+
+            //    Hleaf = np.zeros(nr_gauss+1)
+            //    Fleaf = np.zeros(nr_gauss+1)
+            //    Agl   = np.zeros(nr_gauss+1)
+
+            //    Fnet  = np.zeros(nr_gauss)
+            //    gnet  = np.zeros(nr_gauss)
+
+            //    # Loop over different LAI locations
+            //    for it in range(nr_gauss):
+
+            //        iLAI = LAI[j,i] * LAI_g[it]   # Integrated LAI between here and canopy top; Gaussian distributed
+            //        fSL = np.exp(-kdrbl * iLAI)  # Fraction of sun-lit leaves
+
+            //        PARdfD = PARdif * (1.0-ref)     * np.exp(-kdf * iLAI)             # Total downward PAR due to diffuse radiation at canopy top
+            //        PARdrD = PARdir * (1.0-ref_dir) * np.exp(-kdr * iLAI)             # Total downward PAR due to direct radiation at canopy top
+            //        PARdfU = PARdif * (1.0-ref)     * np.exp(-kdf * LAI[j,i]) * \
+            //            albedo[j,i] * (1.0-ref)     * np.exp(-kdf * (LAI[j,i]-iLAI))  # Total upward (reflected) PAR that originates as diffuse radiation
+            //        PARdrU = PARdir * (1.0-ref_dir) * np.exp(-kdr * LAI[j,i]) * \
+            //            albedo[j,i] * (1.0-ref)     * np.exp(-kdf * (LAI[j,i]-iLAI))  # Total upward (reflected) PAR that originates as direct radiation
+            //        PARdfT = PARdfD + PARdfU                                          # Total PAR due to diffuse radiation at canopy top
+            //        PARdrT = PARdrD + PARdrU                                          # Total PAR due to direct radiation at canopy top
+
+            //        dirPAR = (1.0-sigma) * PARdir * fSL   # Purely direct PAR (can only be downward)
+            //        difPAR = PARdfT + PARdrT - dirPAR     # Total diffuse radiation
+
+            //        HdfT = kdf * PARdfD + kdf * PARdfU
+            //        HdrT = kdr * PARdrD + kdf * PARdrU
+            //        dirH = kdrbl * dirPAR
+            //        Hshad = HdfT + HdrT - dirH
+
+            //        Hsun = Hshad + angle_g * (1.0-sigma) * kdrbl * PARdir / angle_weight_sum
+
+            //        Hleaf[0] = Hshad
+            //        Hleaf[1:] = Hsun
+
+            //        Agl = fstr * (Am + Rdark) * (1 - np.exp(-alphac*Hleaf/(Am + Rdark)))
+            //        gleaf = gmin[ij]/nuco2q +  Agl/(co2_abs-ci)
+            //        Fleaf = Agl - Rdark
+
+            //        Fshad  = Fleaf[0]
+            //        Fsun   = np.sum(weight_g * Fleaf[1:])
+            //        gshad  = gleaf[0]
+            //        gsun   = np.sum(weight_g * gleaf[1:])
+
+            //        Fnet[it] = Fsun * fSL + Fshad * (1 - fSL)
+            //        gnet[it] = gsun * fSL + gshad * (1 - fSL)
+
+            //    An     = LAI[j,i] * np.sum(weight_g * Fnet)
+            //    gc_inf = LAI[j,i] * np.sum(weight_g * gnet)
+            //}
+            //else
+            //{
+                // Calculate upscaling from leaf to canopy: net flow CO2 into the plant (An)
+                const TF agsa1  = TF(1) / (TF(1) - f0[ij]);
+                const TF dstar  = dmax / (agsa1 * (f0[ij] - fmin));
+                const TF tempy  = alphac * kx * par / (am + rdark);
+
+                an     = (am + rdark) * (TF(1) - TF(1) / (kx * lai[ij]) * (e1_approx_g(tempy * exp(-kx * lai[ij])) - e1_approx_g(tempy)));
+                gc_inf = lai[ij] * (gmin[ij] / nuco2q + agsa1 * fstr * an / ((co2_abs - co2_comp) * (TF(1) + ds / dstar)));
+            //}
+
+            //if (lrelaxgc) then
+            //  if (gc_old_set) then
+            //    gcco2       = gc_old(i,j) + min(kgc*rk3coef, 1.0) * (gc_inf - gc_old(i,j))
+            //    if (rk3step ==3) then
+            //      gc_old(i,j) = gcco2
+            //    endif
+            //  else
+            //    gcco2 = gc_inf
+            //    gc_old(i,j) = gcco2
+            //  endif
+            //else
+            //    gcco2 = gc_inf
+            const TF gcco2 = gc_inf;
+
+            // Output values from kernel:
+            // Canopy resistances for moisture.
+            rs[ij] = TF(1) / (TF(1.6) * gcco2);
+
+            // Net flux of CO2 into the plant (An).
+            // `co2_abs` has units [mg(CO2) m-3(air)], so flux has units [mg(CO2) m-2 s-1)].
+            // Conversion with `to_mol` results in flux in [kmol(CO2) kmol-1(air) m s-1].
+            an_co2[ij] = (ci - co2_abs) / (ra[ij] + (TF(1) / gcco2)) * to_mol;
+
+
+            // Check!
+            if (isnan(rs[ij]))
+            {
+                printf("Canopy resistance contains NaNs!\n");
+                asm("trap;");
+            }
+        }
+    }
+
+
+    template<typename TF> __global__
+    void calc_soil_respiration_jacobs_g(
+            TF* const restrict resp_co2,
+            const TF* const restrict t_soil_mean,
+            const TF* const restrict r10,
+            const TF* const restrict ea,
+            const TF rho_bot,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const TF to_mol  = Constants::xmair<TF> / Constants::xmco2<TF> * TF(1e-6) * rho_bot;
+
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jstride;
+            resp_co2[ij] = r10[ij] * exp(ea[ij] / (TF(283.15) * TF(8.314)) * (TF(1) - TF(283.15) / t_soil_mean[ij])) * to_mol;
+        }
+    }
+
+
+    template<typename TF> __global__
+    void set_net_co2_flux_g(
+            TF* const restrict co2_flux,
+            const TF* const restrict co2_an,
+            const TF* const restrict co2_resp,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int jstride)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+        if (i < iend && j < jend)
+        {
+            const int ij  = i + j*jstride;
+            co2_flux[ij] = co2_an[ij] + co2_resp[ij];
+        }
+    }
+
 
     template<typename TF> __global__
     void calc_soil_resistance_g(
@@ -291,8 +607,8 @@ namespace Land_surface_kernels_g
             const TF* const __restrict__ lw_up,
             const TF* const __restrict__ b,
             const TF* const __restrict__ b_bot,
-            const TF* const __restrict__ rhorefh,
-            const TF* const __restrict__ exnerh,
+            const TF rho_bot,
+            const TF exner_bot,
             const TF db_ref,
             const TF emis_sfc,
             const TF dt,
@@ -304,9 +620,6 @@ namespace Land_surface_kernels_g
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-
-        const TF exner_bot = exnerh[kstart];
-        const TF rho_bot = rhorefh[kstart];
 
         if (i < iend && j < jend)
         {
@@ -588,9 +901,9 @@ template<typename TF> __global__
             const TF* const __restrict__ thl_bot,
             const TF* const __restrict__ qt_bot,
             const TF* const __restrict__ ra,
-            const TF* const __restrict__ rhoh,
-            const TF* const __restrict__ prefh,
-            const TF* const __restrict__ exnerh,
+            const TF rho_bot,
+            const TF pref_bot,
+            const TF exner_bot,
             const int istart, const int iend,
             const int jstart, const int jend,
             const int kstart,
@@ -599,8 +912,8 @@ template<typename TF> __global__
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
 
-        const TF rhocp = rhoh[kstart] * Constants::cp<TF>;
-        const TF rholv = rhoh[kstart] * Constants::Lv<TF>;
+        const TF rhocp = rho_bot * Constants::cp<TF>;
+        const TF rholv = rho_bot * Constants::Lv<TF>;
 
         if (i < iend && j < jend)
         {
@@ -609,8 +922,8 @@ template<typename TF> __global__
 
             if (water_mask[ij])
             {
-                thl_bot_wet[ij] = t_bot_water[ij] / exnerh[kstart];
-                qt_bot_wet[ij]  = Thermo_moist_functions::qsat(prefh[kstart], t_bot_water[ij]);
+                thl_bot_wet[ij] = t_bot_water[ij] / exner_bot;
+                qt_bot_wet[ij]  = Thermo_moist_functions::qsat(pref_bot, t_bot_water[ij]);
 
                 c_veg[ij]  = TF(0);
                 c_soil[ij] = TF(0);
@@ -709,13 +1022,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMalloc(&tile.thl_bot_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.qt_bot_g, memsize_tf));
 
-        cuda_safe_call(cudaMalloc(&tile.obuk_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.ustar_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.bfluxbot_g, memsize_tf));
-        cuda_safe_call(cudaMalloc(&tile.ra_g, memsize_tf));
-
-        cuda_safe_call(cudaMalloc(&tile.nobuk_g, memsize_int));
-
         cuda_safe_call(cudaMalloc(&tile.rs_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.H_g, memsize_tf));
         cuda_safe_call(cudaMalloc(&tile.LE_g, memsize_tf));
@@ -729,13 +1035,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaFree(tile.fraction_g));
         cuda_safe_call(cudaFree(tile.thl_bot_g));
         cuda_safe_call(cudaFree(tile.qt_bot_g));
-
-        cuda_safe_call(cudaFree(tile.obuk_g));
-        cuda_safe_call(cudaFree(tile.ustar_g));
-        cuda_safe_call(cudaFree(tile.bfluxbot_g));
-        cuda_safe_call(cudaFree(tile.ra_g));
-
-        cuda_safe_call(cudaFree(tile.nobuk_g));
 
         cuda_safe_call(cudaFree(tile.rs_g));
         cuda_safe_call(cudaFree(tile.H_g));
@@ -754,13 +1053,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMemcpy(tile.thl_bot_g, tile.thl_bot.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.qt_bot_g, tile.qt_bot.data(), memsize_tf, cudaMemcpyHostToDevice));
 
-        cuda_safe_call(cudaMemcpy(tile.obuk_g, tile.obuk.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.ustar_g, tile.ustar.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.bfluxbot_g, tile.bfluxbot.data(), memsize_tf, cudaMemcpyHostToDevice));
-        cuda_safe_call(cudaMemcpy(tile.ra_g, tile.ra.data(), memsize_tf, cudaMemcpyHostToDevice));
-
-        cuda_safe_call(cudaMemcpy(tile.nobuk_g, tile.nobuk.data(), memsize_int, cudaMemcpyHostToDevice));
-
         cuda_safe_call(cudaMemcpy(tile.rs_g, tile.rs.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.H_g, tile.H.data(), memsize_tf, cudaMemcpyHostToDevice));
         cuda_safe_call(cudaMemcpy(tile.LE_g, tile.LE.data(), memsize_tf, cudaMemcpyHostToDevice));
@@ -777,13 +1069,6 @@ template<typename TF> __global__
         cuda_safe_call(cudaMemcpy(tile.fraction.data(), tile.fraction_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.thl_bot.data(), tile.thl_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.qt_bot.data(), tile.qt_bot_g, memsize_tf, cudaMemcpyDeviceToHost));
-
-        cuda_safe_call(cudaMemcpy(tile.obuk.data(), tile.obuk_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.ustar.data(), tile.ustar_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.bfluxbot.data(), tile.bfluxbot_g, memsize_tf, cudaMemcpyDeviceToHost));
-        cuda_safe_call(cudaMemcpy(tile.ra.data(), tile.ra_g, memsize_tf, cudaMemcpyDeviceToHost));
-
-        cuda_safe_call(cudaMemcpy(tile.nobuk.data(), tile.nobuk_g, memsize_int, cudaMemcpyDeviceToHost));
 
         cuda_safe_call(cudaMemcpy(tile.rs.data(), tile.rs_g, memsize_tf, cudaMemcpyDeviceToHost));
         cuda_safe_call(cudaMemcpy(tile.H.data(), tile.H_g, memsize_tf, cudaMemcpyDeviceToHost));
