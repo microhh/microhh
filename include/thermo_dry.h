@@ -131,6 +131,7 @@ class Thermo_dry : public Thermo<TF>
         bool has_mask(std::string) {return false;};
 
         void update_time_dependent(Timeloop<TF>&);
+        std::vector<std::string>& get_hydrometeorlist() {return hydrometeorlist;};
 
     private:
         using Thermo<TF>::swthermo;
@@ -187,5 +188,7 @@ class Thermo_dry : public Thermo<TF>
         std::unique_ptr<Timedep<TF>> tdep_pbot;
         const std::string tend_name = "buoy";
         const std::string tend_longname = "Buoyancy";
+
+        std::vector<std::string> hydrometeorlist;
 };
 #endif
