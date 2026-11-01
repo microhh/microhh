@@ -33,6 +33,8 @@
 
 #include <iostream>
 #include <iomanip>
+#include <cstdint>
+#include <cstring>
 
 #include "constants.h"
 #include "fast_math.h"
@@ -211,6 +213,21 @@ namespace Thermo_moist_functions
         return f;
     }
 
+    // Bit-level finiteness test; immune to fast-math / finite-math-only assumptions.
+    inline bool is_finite_bits(const double x)
+    {
+        std::uint64_t u;
+        std::memcpy(&u, &x, sizeof(u));
+        return (u & 0x7ff0000000000000ULL) != 0x7ff0000000000000ULL;
+    }
+
+    inline bool is_finite_bits(const float x)
+    {
+        std::uint32_t u;
+        std::memcpy(&u, &x, sizeof(u));
+        return (u & 0x7f800000u) != 0x7f800000u;
+    }
+
     template<typename TF>
     struct Struct_sat_adjust
     {
@@ -302,6 +319,20 @@ namespace Thermo_moist_functions
             ans.qi = alpha_i*qlqi;
             ans.t  = tnr;
             ans.qs = qs;
+        }
+
+        if (!is_finite_bits(tnr))
+        {
+            std::string error = "Non-finite saturation adjustment: thl, qt, p, niter = "
+                + std::to_string(thl) + ", " + std::to_string(qt) + ", " + std::to_string(p)
+                + ", " + std::to_string(niter);
+
+            #ifdef USEMPI
+            std::cout << "SINGLE PROCESS EXCEPTION: " << error << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            #else
+            throw std::runtime_error(error);
+            #endif
         }
 
         if (niter == nitermax)
