@@ -58,6 +58,7 @@
 #include "source.h"
 #include "aerosol.h"
 #include "background_profs.h"
+#include "nan_check.h"
 
 #ifdef USECUDA
 #include <cuda_runtime_api.h>
@@ -198,7 +199,7 @@ void Model<TF>::init()
     pres->init();
     force->init();
     thermo->init();
-    microphys->init();
+    microphys->init(*thermo);
     radiation->init(*timeloop);
     decay->init(*input);
     budget->init();
@@ -875,7 +876,7 @@ void Model<TF>::print_status()
             std::fflush(dnsout);
         }
 
-        if (!(cfl>=0. && cfl < 10.) || (!std::isfinite(cfl)))
+        if (!(cfl>=0. && cfl < 10.) || (!Nan_check::is_finite(cfl)))
         {
             std::string error_message = "Simulation has non-finite numbers";
             throw std::runtime_error(error_message);

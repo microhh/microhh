@@ -99,6 +99,8 @@ class Thermo
 
         virtual void update_time_dependent(Timeloop<TF>&) = 0;
 
+        virtual std::vector<std::string>& get_hydrometeorlist() = 0;
+
         #ifdef USECUDA
         // GPU functions and variables.
         virtual void prepare_device() = 0;

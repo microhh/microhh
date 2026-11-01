@@ -153,7 +153,7 @@ class Microphys_2mom_warm : public Microphys<TF>
         Microphys_2mom_warm(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys_2mom_warm();
 
-        void init();
+        void init(Thermo<TF>&);
         void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&);
         void exec(Thermo<TF>&, const double, Stats<TF>&);
 
