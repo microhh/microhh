@@ -25,6 +25,7 @@
 
 #ifdef USECUDA
 #include <cufft.h>
+#include "cuda_buffer.h"
 #endif
 
 #include "field3d_operators.h"
@@ -76,6 +77,9 @@ class Pres
         cufftHandle jplanf;
         cufftHandle iplanb;
         cufftHandle jplanb;
+
+        // All pressure transforms execute sequentially on the default stream.
+        cuda_vector<unsigned char> fft_work_area;
         #endif
 
     private:

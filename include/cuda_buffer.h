@@ -101,7 +101,7 @@ void cuda_copy(Src&& src, Dst&& dst)
     cuda_raw_copy(
             static_cast<const void*>(src_view.data()),
             static_cast<void*>(dst_view.data()),
-            src.size_in_bytes());
+            src_view.size_in_bytes());
 }
 
 /**
@@ -334,6 +334,12 @@ struct cuda_vector: cuda_buffer_base<cuda_vector<T>, T, true>
      */
     void resize(size_t new_size)
     {
+        if (new_size == 0)
+        {
+            free();
+            return;
+        }
+
         if (new_size != size_)
         {
             cuda_vector<T> new_buffer(new_size);
@@ -346,10 +352,11 @@ struct cuda_vector: cuda_buffer_base<cuda_vector<T>, T, true>
     /**
      * Resize this `cuda_vector` and copy data from the given host vector.
      */
-    void from_vector(const std::vector<T>& input) const
+    void from_vector(const std::vector<T>& input)
     {
-        allocate(input.size());
-        this->copy_from(input);
+        if (input.size() != size_)
+            allocate(input.size());
+        cuda_copy(input, *this);
     }
 
 private:

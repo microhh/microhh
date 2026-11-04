@@ -197,9 +197,6 @@ class Fields
 
         bool calc_mean_profs;
 
-        int n_tmp_fields;   ///< Number of temporary fields.
-        int n_tmp_fields_xy;   ///< Number of temporary fields.
-
         std::vector<std::shared_ptr<Field3d<TF>>> atmp;
         std::vector<std::shared_ptr<Field3d<TF>>> atmp_g;
 

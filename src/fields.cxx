@@ -423,10 +423,6 @@ Fields<TF>::Fields(Master& masterin, Grid<TF>& gridin, Soil_grid<TF>& soilgridin
 
     init_diagnostic_field("p", "Perturbation pressure divided by density", "m2 s-2", group_name, gd.sloc);
 
-    // Set a default of 4 temporary fields. Other classes can increase this number
-    // before the init phase, where they are initialized in Fields::init()
-    n_tmp_fields = 4;
-
     // Specify the masks that fields can provide / calculate
     available_masks.insert(available_masks.end(), {"default", "wplus", "wmin"});
 
@@ -481,13 +477,14 @@ void Fields<TF>::init(Input& input, Dump<TF>& dump, Cross<TF>& cross, const Sim_
     for (auto& it : at2d)
         it.second->fld.resize(gd.ijcells);
 
-    // now that all classes have been able to set the minimum number of tmp fields, initialize them
-    for (int i=0; i<n_tmp_fields; ++i)
+    // Serial runs allocate and cache scratch fields on first use. MPI retains
+    // the initial pool because Field3d::init() performs a collective error check.
+    #ifdef USEMPI
+    for (int i=0; i<4; ++i)
         init_tmp_field();
-
-    // allocate the tmp fields
     for (auto& tmp : atmp)
         nerror += tmp->init();
+    #endif
 
     master.sum(&nerror, 1);
 

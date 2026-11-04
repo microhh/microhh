@@ -227,19 +227,15 @@ void Pres_2<TF>::prepare_device()
     const int imemsize = gd.itot*sizeof(TF);
     const int jmemsize = gd.jtot*sizeof(TF);
 
-    const int ijmemsize = gd.imax*gd.jmax*sizeof(TF);
-
     bmati_g.allocate(gd.itot);
     bmatj_g.allocate(gd.jtot);
     a_g.allocate(gd.kmax);
     c_g.allocate(gd.kmax);
-    work2d_g.allocate(gd.imax*gd.jmax);
 
     cuda_safe_call(cudaMemcpy(bmati_g,  bmati.data(),  imemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(bmatj_g,  bmatj.data(),  jmemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(a_g,      a.data(),      kmemsize,  cudaMemcpyHostToDevice));
     cuda_safe_call(cudaMemcpy(c_g,      c.data(),      kmemsize,  cudaMemcpyHostToDevice));
-    cuda_safe_call(cudaMemcpy(work2d_g, work2d.data(), ijmemsize, cudaMemcpyHostToDevice));
 
     make_cufft_plan();
 }

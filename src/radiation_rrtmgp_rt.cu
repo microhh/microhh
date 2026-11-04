@@ -1112,11 +1112,10 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
         const Array_gpu<Float,2>& h2o, const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
         const bool compute_clouds)
 {
-    constexpr int n_col_block = 1024;
-
     auto& gd = grid.get_grid_data();
 
     const int n_col = gd.imax*gd.jmax;
+    const int n_col_block = std::min(1024, n_col);
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -1182,8 +1181,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
             Source_func_lw_gpu& sources_subset_in,
             const Array_gpu<Float,2>& emis_sfc_subset_in,
             const Array_gpu<Float,2>& lw_flux_dn_inc_subset_in,
-            Fluxes_broadband_gpu& fluxes,
-            Fluxes_broadband_gpu& bnd_fluxes)
+            Fluxes_broadband_gpu& fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
         Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s_in, n_col_in);
@@ -1262,9 +1260,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block, n_lev);
-        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_subset =
-                std::make_unique<Fluxes_byband_gpu>(n_col_block, n_lev, n_bnd);
-
         call_kernels(
                 col_s, col_e,
                 optical_props_subset,
@@ -1272,8 +1267,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
                 *sources_subset,
                 emis_sfc_subset,
                 lw_flux_dn_inc_subset,
-                *fluxes_subset,
-                *bnd_fluxes_subset);
+                *fluxes_subset);
     }
 
     if (n_col_block_residual > 0)
@@ -1286,9 +1280,6 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block_residual, n_lev);
-        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_residual =
-                std::make_unique<Fluxes_byband_gpu>(n_col_block_residual, n_lev, n_bnd);
-
         call_kernels(
                 col_s, col_e,
                 optical_props_residual,
@@ -1296,8 +1287,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave(
                 *sources_residual,
                 emis_sfc_residual,
                 lw_flux_dn_inc_residual,
-                *fluxes_residual,
-                *bnd_fluxes_residual);
+                *fluxes_residual);
     }
 }
 #endif
@@ -1312,11 +1302,10 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
         const Array_gpu<Float,2>& clwp, const Array_gpu<Float,2>& ciwp,
         const bool compute_clouds)
 {
-    constexpr int n_col_block = 1024;
-
     auto& gd = grid.get_grid_data();
 
     const int n_col = gd.imax*gd.jmax;
+    const int n_col_block = std::min(1024, n_col);
     const int n_lay = gd.ktot;
     const int n_lev = gd.ktot+1;
 
@@ -1393,8 +1382,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
             const Array_gpu<Float,2>& sfc_alb_dir_subset_in,
             const Array_gpu<Float,2>& sfc_alb_dif_subset_in,
             const Array_gpu<Float,2>& sw_flux_dn_dif_inc_subset_in,
-            Fluxes_broadband_gpu& fluxes,
-            Fluxes_broadband_gpu& bnd_fluxes)
+            Fluxes_broadband_gpu& fluxes)
     {
         const int n_col_in = col_e_in - col_s_in + 1;
         Gas_concs_gpu gas_concs_subset(*gas_concs_gpu, col_s_in, n_col_in);
@@ -1505,8 +1493,6 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_subset =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block, n_lev);
-        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_subset =
-                std::make_unique<Fluxes_byband_gpu>(n_col_block, n_lev, n_bnd);
         call_kernels(
                 col_s, col_e,
                 optical_props_subset,
@@ -1517,8 +1503,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
                 sfc_alb_dir_subset,
                 sfc_alb_dif_subset,
                 sw_flux_dn_dif_inc_subset,
-                *fluxes_subset,
-                *bnd_fluxes_subset);
+                *fluxes_subset);
     }
 
     if (n_col_block_residual > 0)
@@ -1534,9 +1519,6 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
 
         std::unique_ptr<Fluxes_broadband_gpu> fluxes_residual =
                 std::make_unique<Fluxes_broadband_gpu>(n_col_block_residual, n_lev);
-        std::unique_ptr<Fluxes_broadband_gpu> bnd_fluxes_residual =
-                std::make_unique<Fluxes_byband_gpu>(n_col_block_residual, n_lev, n_bnd);
-
         call_kernels(
                 col_s, col_e,
                 optical_props_residual,
@@ -1547,8 +1529,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave(
                 sfc_alb_dir_residual,
                 sfc_alb_dif_residual,
                 sw_flux_dn_dif_inc_residual,
-                *fluxes_residual,
-                *bnd_fluxes_residual);
+                *fluxes_residual);
     }
 }
 #endif
@@ -2431,23 +2412,37 @@ TF* Radiation_rrtmgp_rt<TF>::get_surface_radiation_g(const std::string& name)
 template <typename TF>
 void Radiation_rrtmgp_rt<TF>::clear_device()
 {
-    cuda_safe_call(cudaFree(lw_flux_dn_sfc_g));
-    cuda_safe_call(cudaFree(lw_flux_up_sfc_g));
-    cuda_safe_call(cudaFree(sw_flux_dn_sfc_g));
-    cuda_safe_call(cudaFree(sw_flux_up_sfc_g));
+    auto release = [](Float*& ptr)
+    {
+        cuda_safe_call(cudaFree(ptr));
+        ptr = nullptr;
+    };
+    release(lw_flux_dn_sfc_g);
+    release(lw_flux_up_sfc_g);
+    release(sw_flux_dn_sfc_g);
+    release(sw_flux_up_sfc_g);
 
     for (auto& it : gasprofs_g)
+    {
         cuda_safe_call(cudaFree(it.second));
+        it.second = nullptr;
+    }
 
-    cuda_safe_call(cudaFree(sw_flux_sfc_dir_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_sfc_dif_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_sfc_up_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_tod_dn_rt_g));
-    cuda_safe_call(cudaFree(sw_flux_tod_up_rt_g));
+    release(sw_flux_sfc_dir_rt_g);
+    release(sw_flux_sfc_dif_rt_g);
+    release(sw_flux_sfc_up_rt_g);
+    release(sw_flux_tod_dn_rt_g);
+    release(sw_flux_tod_up_rt_g);
 
-    cuda_safe_call(cudaFree(lw_flux_dn_inc_g));
-    cuda_safe_call(cudaFree(sw_flux_dn_dir_inc_g));
-    cuda_safe_call(cudaFree(sw_flux_dn_dif_inc_g));
+    release(lw_flux_dn_inc_g);
+    release(sw_flux_dn_dir_inc_g);
+    release(sw_flux_dn_dif_inc_g);
+    release(aod550_g);
+
+    // Release Array_gpu members in a CUDA translation unit.
+    Array_gpu<Float,2> release_emis(std::move(emis_sfc_g));
+    Array_gpu<Float,2> release_alb_dir(std::move(sfc_alb_dir_g));
+    Array_gpu<Float,2> release_alb_dif(std::move(sfc_alb_dif_g));
 }
 
 

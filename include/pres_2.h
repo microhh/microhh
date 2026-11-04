@@ -73,7 +73,6 @@ class Pres_2 : public Pres<TF>
         cuda_vector<TF> bmatj_g;
         cuda_vector<TF> a_g;
         cuda_vector<TF> c_g;
-        cuda_vector<TF> work2d_g;
         #endif
 
         void input(TF* const restrict,
