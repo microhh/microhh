@@ -91,6 +91,9 @@ void cuda_raw_buffer::reallocate(size_t size_in_bytes)
 
 void cuda_raw_copy(const void* src, void* dst, size_t nbytes)
 {
+    if (nbytes == 0 || src == dst)
+        return;
+
 #ifdef USECUDA
     cuda_safe_call(cudaMemcpy(dst, src, nbytes, cudaMemcpyDefault));
 #else

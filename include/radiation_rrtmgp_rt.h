@@ -326,15 +326,15 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<Float> sw_flux_up_sfc;
 
         // Surface radiative fluxes GPU
-        Float* lw_flux_dn_sfc_g;
-        Float* lw_flux_up_sfc_g;
+        Float* lw_flux_dn_sfc_g = nullptr;
+        Float* lw_flux_up_sfc_g = nullptr;
 
-        Float* sw_flux_dn_sfc_g;
-        Float* sw_flux_up_sfc_g;
+        Float* sw_flux_dn_sfc_g = nullptr;
+        Float* sw_flux_up_sfc_g = nullptr;
 
-        Float* sw_flux_dn_dir_inc_g;
-        Float* sw_flux_dn_dif_inc_g;
-        Float* lw_flux_dn_inc_g;
+        Float* sw_flux_dn_dir_inc_g = nullptr;
+        Float* sw_flux_dn_dif_inc_g = nullptr;
+        Float* lw_flux_dn_inc_g = nullptr;
 
         // raytracing fluxes for stats & cross sections
         std::vector<Float> sw_flux_sfc_dir_rt;
@@ -343,11 +343,11 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<Float> sw_flux_tod_up_rt;
         std::vector<Float> sw_flux_tod_dn_rt;
 
-        Float* sw_flux_sfc_dir_rt_g;
-        Float* sw_flux_sfc_dif_rt_g;
-        Float* sw_flux_sfc_up_rt_g;
-        Float* sw_flux_tod_up_rt_g;
-        Float* sw_flux_tod_dn_rt_g;
+        Float* sw_flux_sfc_dir_rt_g = nullptr;
+        Float* sw_flux_sfc_dif_rt_g = nullptr;
+        Float* sw_flux_sfc_up_rt_g = nullptr;
+        Float* sw_flux_tod_up_rt_g = nullptr;
+        Float* sw_flux_tod_dn_rt_g = nullptr;
 
         // timedependent gases
         std::map<std::string, Timedep<TF>*> tdep_gases;
@@ -364,7 +364,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
-        Float* aod550_g;
+        Float* aod550_g = nullptr;
 
         Array_gpu<Float,2> emis_sfc_g;
         Array_gpu<Float,2> sfc_alb_dir_g;

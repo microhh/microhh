@@ -172,7 +172,6 @@ void Pres_4<TF>::init()
     m7.resize(gd.kmax);
 
     boundary_cyclic.init();
-    fft.init();
 }
 
 template<typename TF>

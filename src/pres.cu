@@ -21,6 +21,7 @@
  */
 
 #include <cstdio>
+#include <algorithm>
 #include <cufft.h>
 #include <type_traits>
 #include <iostream>
@@ -230,37 +231,52 @@ void Pres<TF>::make_cufft_plan()
     int o_jdist   = 1;
 
     // Get memory estimate of batched FFT over entire field.
-    size_t work_size, total_work_size=0;
+    size_t work_size = 0, total_work_size = 0;
 
     check_cufft(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot, &work_size));
-    total_work_size += work_size;
+    total_work_size = std::max(total_work_size, work_size);
     check_cufft(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot, &work_size));
-    total_work_size += work_size;
+    total_work_size = std::max(total_work_size, work_size);
     check_cufft(cufftEstimateMany(rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot, &work_size));
-    total_work_size += work_size;
+    total_work_size = std::max(total_work_size, work_size);
     check_cufft(cufftEstimateMany(rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot, &work_size));
-    total_work_size += work_size;
+    total_work_size = std::max(total_work_size, work_size);
 
     // Get available memory GPU
     size_t free_mem, total_mem;
-    cudaMemGetInfo(&free_mem, &total_mem);
+    cuda_safe_call(cudaMemGetInfo(&free_mem, &total_mem));
 
     // Note BvS: this margin is highly arbitrary, but for large cases,
     // the 2D and 3D batched FFTs are equally fast, so it does not really matter...
-    size_t margin = 5 * (gd.kcells + 6) * gd.ijcells * sizeof(TF) + 1e9/4;
+    const size_t margin = size_t(5) * (gd.kcells + 6) * gd.ijcells * sizeof(TF) + 250000000;
 
     master.print_message("Total memory = " + std::to_string(total_mem));
     master.print_message("Available memory pre-FFT = " + std::to_string(free_mem));
     master.print_message("Memory margin = " + std::to_string(margin));
 
-    int nerror = 0;
-    if (force_FFT_per_slice || free_mem - margin < total_work_size)
+    // Plan without internal allocations, then share the largest required work area.
+    size_t shared_work_size = 0;
+    auto make_plan = [&](cufftHandle& plan, int* lengths,
+                         int* inembed, int istride, int idist,
+                         int* onembed, int ostride, int odist, cufftType type, int batch)
+    {
+        size_t plan_work_size = 0;
+        if (check_cufft(cufftCreate(&plan)) ||
+            check_cufft(cufftSetAutoAllocation(plan, 0)) ||
+            check_cufft(cufftMakePlanMany(plan, rank, lengths,
+                    inembed, istride, idist, onembed, ostride, odist,
+                    type, batch, &plan_work_size)))
+            throw std::runtime_error("FFT planning error");
+        shared_work_size = std::max(shared_work_size, plan_work_size);
+    };
+
+    if (force_FFT_per_slice || free_mem <= margin || free_mem - margin < total_work_size)
     {
         FFT_per_slice = true;
-        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot));
-        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot));
-        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot));
-        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,     i_nj, i_jstride, i_jdist,     cufft_from_complex<TF>(), gd.itot));
+        make_plan(iplanf, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot);
+        make_plan(iplanb, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot);
+        make_plan(jplanf, i_nj, i_nj, i_jstride, i_jdist,     o_nj, o_jstride, o_jdist,     cufft_to_complex<TF>(),   gd.itot);
+        make_plan(jplanb, i_nj, o_nj, o_jstride, o_jdist,     i_nj, i_jstride, i_jdist,     cufft_from_complex<TF>(), gd.itot);
 
         if (force_FFT_per_slice)
             master.print_message("cuFFT strategy: batched per 2D slice (manually forced)\n");
@@ -270,18 +286,21 @@ void Pres<TF>::make_cufft_plan()
     else
     {
         FFT_per_slice = false;
-        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot));
-        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot));
-        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot));
-        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot));
+        make_plan(iplanf, i_ni, i_ni, i_istride, i_idist,     o_ni, o_istride, o_idist,     cufft_to_complex<TF>(),   gd.jtot*gd.ktot);
+        make_plan(iplanb, i_ni, o_ni, o_istride, o_idist,     i_ni, i_istride, i_idist,     cufft_from_complex<TF>(), gd.jtot*gd.ktot);
+        make_plan(jplanf, i_nj, i_nj, i_istride, gd.jtot,     o_nj, o_istride, gd.jtot/2+1, cufft_to_complex<TF>(),   gd.itot*gd.ktot);
+        make_plan(jplanb, i_nj, o_nj, o_istride, gd.jtot/2+1, i_nj, i_istride, gd.jtot,     cufft_from_complex<TF>(), gd.itot*gd.ktot);
         master.print_message("cuFFT strategy: batched over entire 3D field\n");
     }
 
-    cudaMemGetInfo(&free_mem, &total_mem);
-    master.print_message("Available memory post-FFT=" + std::to_string(free_mem));
+    fft_work_area.allocate(shared_work_size);
+    for (const cufftHandle plan : {iplanf, iplanb, jplanf, jplanb})
+        if (check_cufft(cufftSetWorkArea(plan, fft_work_area.data())))
+            throw std::runtime_error("FFT workspace error");
 
-    if (nerror > 0)
-        throw std::runtime_error("FFT error");
+    master.print_message("Shared cuFFT workspace = " + std::to_string(shared_work_size));
+    cuda_safe_call(cudaMemGetInfo(&free_mem, &total_mem));
+    master.print_message("Available memory post-FFT=" + std::to_string(free_mem));
 }
 
 template<typename TF>

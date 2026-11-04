@@ -302,15 +302,15 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::vector<Float> sw_flux_up_sfc;
 
         // Surface radiative fluxes GPU
-        Float* lw_flux_dn_sfc_g;
-        Float* lw_flux_up_sfc_g;
+        Float* lw_flux_dn_sfc_g = nullptr;
+        Float* lw_flux_up_sfc_g = nullptr;
 
-        Float* sw_flux_dn_sfc_g;
-        Float* sw_flux_up_sfc_g;
+        Float* sw_flux_dn_sfc_g = nullptr;
+        Float* sw_flux_up_sfc_g = nullptr;
 
-        Float* sw_flux_dn_dir_inc_g;
-        Float* sw_flux_dn_dif_inc_g;
-        Float* lw_flux_dn_inc_g;
+        Float* sw_flux_dn_dir_inc_g = nullptr;
+        Float* sw_flux_dn_dif_inc_g = nullptr;
+        Float* lw_flux_dn_inc_g = nullptr;
 
         // Surface diffuse radiation filtering
         bool sw_diffuse_filter;
@@ -339,7 +339,7 @@ class Radiation_rrtmgp : public Radiation<TF>
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
 
         std::map<std::string, TF*> gasprofs_g;    ///< Map of profiles with gasses stored by its name.
-        Float* aod550_g;
+        Float* aod550_g = nullptr;
 
         Array_gpu<Float,2> emis_sfc_g;
         Array_gpu<Float,2> sfc_alb_dir_g;

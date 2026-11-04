@@ -2557,16 +2557,13 @@ void Radiation_rrtmgp<TF>::exec_shortwave(
     }
 
     // Define the arrays that contain the subsets.
-    std::vector<Float> p  = thermo.get_basestate_vector("p");
-    std::vector<Float> ph = thermo.get_basestate_vector("ph");
+    const std::vector<Float>& p  = thermo.get_basestate_vector("p");
+    const std::vector<Float>& ph = thermo.get_basestate_vector("ph");
     Array<Float,2> p_lay(std::vector<Float>(p.begin()  + gd.kstart, p.begin()  + gd.kend  ), {1, n_lay});
     Array<Float,2> p_lev(std::vector<Float>(ph.begin() + gd.kstart, ph.begin() + gd.kend+1), {1, n_lev});
 
     // Create the boundary conditions
     Array<Float,1> mu0(std::vector<Float>(1, this->mu0), {1});
-
-    // Create the field for the top of atmosphere source.
-    Array<Float,2> toa_src({n_col, n_gpt});
 
     gas_concs.set_vmr("h2o", h2o);
     Array<Float,2> col_dry({n_col, n_lay});

@@ -39,7 +39,6 @@ Pres_2<TF>::Pres_2(Master& masterin, Grid<TF>& gridin, Fields<TF>& fieldsin, FFT
     #ifdef USECUDA
     a_g = 0;
     c_g = 0;
-    work2d_g = 0;
     bmati_g  = 0;
     bmatj_g  = 0;
     #endif
@@ -115,10 +114,11 @@ void Pres_2<TF>::init()
     a.resize(gd.kmax);
     c.resize(gd.kmax);
 
+    #ifndef USECUDA
     work2d.resize(gd.imax*gd.jmax);
+    #endif
 
     boundary_cyclic.init();
-    fft.init();
 }
 
 template<typename TF>
