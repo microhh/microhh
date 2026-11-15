@@ -1,0 +1,168 @@
+name: GPU Simulator
+
+# The hosted runners have no GPU, so the CUDA build is never configured in CI.
+# This builds the GPU version with CUDA 13.0 and runs short cases on a
+# simulated NVIDIA H100 (https://github.com/pantheongpu/pantheonsim), then
+# compares the results with the CPU build.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ develop, main ]
+    paths:
+      - "src/**"
+      - "include/**"
+      - "cases/**"
+      - "python/**"
+      - "config/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/gpu-sim.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gpu-cases:
+    name: GPU cases (CUDA 13.0 and simulated H100)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gfortran libfftw3-dev libnetcdf-dev \
+                                  libnetcdf-c++4-1 libnetcdf-c++4-dev cmake \
+                                  libboost-dev python3-pip
+          pip3 install --user numpy netcdf4 xarray
+
+      # library-path is disabled so that the toolkit's cuFFT is the one that
+      # MicroHH links against and loads.
+      - name: Set up the simulated GPU and CUDA toolkit
+        uses: pantheongpu/setup-pantheonsim@a1b9d4237411f9b2b0e0bb895b4d83377f336a7b # v0.1.9
+        with:
+          gpu: nvidia/h100
+          cuda-toolkit: "13.0"
+          library-path: 'false'
+
+      - name: Configure and build DP + CPU
+        run: |
+          mkdir build_dp_cpu
+          cd build_dp_cpu
+          cmake -DSYST=ubuntu_20lts ..
+          make -j3
+
+      # The config file hardcodes SASS for sm_86. 90-virtual embeds PTX, which
+      # the simulator runs, and the simulator needs a shared CUDA runtime.
+      # MPI and CUDA cannot be combined in MicroHH, so this build has no MPI.
+      - name: Configure and build DP + GPU
+        run: |
+          sed -i 's/CMAKE_CUDA_ARCHITECTURES 86/CMAKE_CUDA_ARCHITECTURES 90-virtual/' config/ubuntu_20lts.cmake
+          mkdir build_dp_gpu
+          cd build_dp_gpu
+          cmake -DSYST=ubuntu_20lts -DUSECUDA=TRUE \
+                -DCUDAToolkit_ROOT=/usr/local/cuda-13.0 \
+                -DCMAKE_CUDA_RUNTIME_LIBRARY=Shared ..
+          vgpu run --preload cmake --build . -j3
+
+      # Run from a file in cases/ (like run_ci_tests.py): microhh_tools imports the
+      # per-case input scripts relative to the directory of the main script.
+      # run_case() runs <executable> <init|run> <case>; for mode 'gpu' the
+      # executable is a small wrapper that starts the GPU build on the simulator.
+      - name: Run the cases on the CPU and on the simulated H100
+        working-directory: cases
+        run: |
+          ln -s ../build_dp_cpu/microhh microhh_dp_cpu
+          printf '#!/bin/bash\nexec vgpu run %s/build_dp_gpu/microhh "$@"\n' "$GITHUB_WORKSPACE" > microhh_dp_gpu
+          chmod +x microhh_dp_gpu
+          cat > run_gpu_sim_cases.py <<'PY'
+          import sys
+          sys.path.append('../python/')
+          import microhh_tools as mht
+
+          # Same short LES/DNS settings as cases/run_ci_tests.py.
+          les = {'grid': {'itot': 8, 'jtot': 8, 'xsize': 800, 'ysize': 800},
+                 'time': {'endtime': 200, 'savetime': 100}}
+          dns = {'grid': {'itot': 8, 'jtot': 8},
+                 'time': {'endtime': 2, 'savetime': 1}}
+          cases = [('arm', les), ('bomex', les), ('drycblles', les),
+                   ('gabls1', les), ('rico', les), ('sullivan2011', les),
+                   ('ekman', dns)]
+
+          err = 0
+          for name, opts in cases:
+              for mode in ['cpu', 'gpu']:
+                  err += mht.run_case(name, opts, {}, 'microhh_dp_' + mode,
+                                      mode, name, 'dp_' + mode)
+          sys.exit(err)
+          PY
+          python3 run_gpu_sim_cases.py
+
+      # Same tolerances as compare() in python/microhh_tools.py (rtol 1e-3,
+      # atol 1e-8), applied to every statistics variable (including the
+      # sub-groups, which compare() does not look into) and to the 3D fields.
+      # thermo/zi is skipped: it is a threshold-based height that differs
+      # between the CPU and GPU builds on real GPU hardware as well.
+      - name: Compare the GPU results with the CPU results
+        working-directory: cases
+        run: |
+          python3 - <<'PY'
+          import glob, os, sys
+          import numpy as np
+          import netCDF4 as nc
+
+          RTOL, ATOL = 1e-3, 1e-8
+          cases = ['arm', 'bomex', 'drycblles', 'gabls1', 'rico', 'sullivan2011', 'ekman']
+          skip = ['iter', 'thermo/zi']
+
+          def walk(g, prefix=''):
+              for k, v in g.variables.items():
+                  yield prefix + k, v
+              for n, sg in g.groups.items():
+                  yield from walk(sg, prefix + n + '/')
+
+          fail = 0
+          for case in cases:
+              cpu, gpu = case + '/dp_cpu', case + '/dp_gpu'
+              nvar = nfile = 0
+              for f in sorted(glob.glob(cpu + '/*.nc')):
+                  name = os.path.basename(f)
+                  if name.endswith('_input.nc'):
+                      continue
+                  b = dict(walk(nc.Dataset(gpu + '/' + name)))
+                  for key, va in walk(nc.Dataset(f)):
+                      if key in skip:
+                          continue
+                      x = np.ma.filled(va[:], np.nan)
+                      y = np.ma.filled(b[key][:], np.nan)
+                      nvar += 1
+                      if not np.allclose(x, y, rtol=RTOL, atol=ATOL, equal_nan=True):
+                          fail += 1
+                          print('DIFF', case, name, key, np.nanmax(np.abs(x - y)))
+              for f in sorted(glob.glob(cpu + '/*')):
+                  name = os.path.basename(f)
+                  if (not os.path.isfile(f)
+                          or name.endswith(('.nc', '.log', '.ini', '.py', '.out'))
+                          or name.startswith(('fftwplan', 'time.', 'grid.'))):
+                      continue
+                  x = np.fromfile(f, dtype='<f8')
+                  y = np.fromfile(gpu + '/' + name, dtype='<f8')
+                  nfile += 1
+                  if x.shape != y.shape or not np.allclose(x, y, rtol=RTOL, atol=ATOL, equal_nan=True):
+                      fail += 1
+                      print('DIFF file', case, name)
+              print('%-13s %3d statistics variables and %2d field files compared' % (case, nvar, nfile))
+          if fail:
+              print('%d mismatches between GPU and CPU' % fail)
+              sys.exit(1)
+          print('GPU results match the CPU results')
+          PY
