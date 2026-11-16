@@ -568,11 +568,14 @@ Microphys_2mom_warm<TF>::~Microphys_2mom_warm()
 }
 
 template<typename TF>
-void Microphys_2mom_warm<TF>::init()
+void Microphys_2mom_warm<TF>::init(Thermo<TF>& thermo)
 {
     auto& gd = grid.get_grid_data();
 
     rr_bot.resize(gd.ijcells);     // 2D surface sedimentation flux (rain rate)
+
+    std::vector<std::string>& hydrometeorlist = thermo.get_hydrometeorlist();
+    hydrometeorlist = {"qr"};
 }
 
 template<typename TF>

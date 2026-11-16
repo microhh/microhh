@@ -46,7 +46,7 @@ class Microphys_disabled : public Microphys<TF>
         Microphys_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
         virtual ~Microphys_disabled();
 
-        void init() {};
+        void init(Thermo<TF>&) {};
         void create(Input&, Netcdf_handle&, Stats<TF>&, Cross<TF>&, Dump<TF>&, Column<TF>&) {};
         void exec(Thermo<TF>&, const double, Stats<TF>&) {};
         void exec_stats(Stats<TF>&, Thermo<TF>&, const double) {};

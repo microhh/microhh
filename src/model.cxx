@@ -199,7 +199,7 @@ void Model<TF>::init()
     pres->init();
     force->init();
     thermo->init();
-    microphys->init();
+    microphys->init(*thermo);
     radiation->init(*timeloop);
     decay->init(*input);
     budget->init();
@@ -437,7 +437,7 @@ void Model<TF>::exec()
                 boundary->set_ghost_cells_w(Boundary_w_type::Normal_type);
 
                 // Apply the limiter as the last tendency.
-                limiter->exec(timeloop->get_sub_time_step(), *stats);
+                limiter->limit_tendencies(timeloop->get_sub_time_step(), *stats);
 
                 // Calculate the total tendency statistics, if necessary
                 for (auto& it: fields->at)
@@ -502,6 +502,9 @@ void Model<TF>::exec()
                 {
                     // Integrate in time.
                     timeloop->exec();
+
+                    // Hard clip fields that must stay non-negative, as a guaranteed backstop.
+                    limiter->clip_fields();
 
                     // Increase the time with the time step.
                     timeloop->step_time();

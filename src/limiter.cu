@@ -55,11 +55,32 @@ namespace
             at[ijk] += (a_new < min_value) ? (-a_new + min_value) * dti : TF(0.);
         }
     }
+
+    // This kernel hard clips a field to guarantee it is at/above the minimum value.
+    template<typename TF>__global__
+    void clip_field_g(
+            TF* const __restrict__ a,
+            const TF min_value,
+            const int istart, const int iend,
+            const int jstart, const int jend,
+            const int kstart, const int kend,
+            const int jj, const int kk)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            a[ijk] = max(a[ijk], min_value);
+        }
+    }
 }
 
 #ifdef USECUDA
 template <typename TF>
-void Limiter<TF>::exec(double dt, Stats<TF>& stats)
+void Limiter<TF>::limit_tendencies(double dt, Stats<TF>& stats)
 {
     const Grid_data<TF>& gd = grid.get_grid_data();
     const int blocki = gd.ithread_block;
@@ -107,6 +128,31 @@ void Limiter<TF>::exec(double dt, Stats<TF>& stats)
         cuda_check_error();
 
         stats.calc_tend(*fields.at.at("sgstke"), tend_name);
+    }
+}
+
+template <typename TF>
+void Limiter<TF>::clip_fields()
+{
+    const Grid_data<TF>& gd = grid.get_grid_data();
+    const int blocki = gd.ithread_block;
+    const int blockj = gd.jthread_block;
+    const int gridi  = gd.imax/blocki + (gd.imax%blocki > 0);
+    const int gridj  = gd.jmax/blockj + (gd.jmax%blockj > 0);
+
+    dim3 gridGPU (gridi, gridj, gd.kmax);
+    dim3 blockGPU(blocki, blockj, 1);
+
+    for (auto& name : clip_list)
+    {
+        clip_field_g<TF><<<gridGPU, blockGPU>>>(
+            fields.ap.at(name)->fld_g,
+            TF(0.),
+            gd.istart, gd.iend,
+            gd.jstart, gd.jend,
+            gd.kstart, gd.kend,
+            gd.icells, gd.ijcells);
+        cuda_check_error();
     }
 }
 #endif
