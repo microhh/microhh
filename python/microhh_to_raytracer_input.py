@@ -252,10 +252,10 @@ iwp = qi * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
 
 nc0 = nl['micro']['Nc0']
 ftpnr_w = (4./3) * np.pi * nc0 * rho_liq
-ftpnr_i = (2./3) * np.pi * 1e5 * rho_ice
+ftpnr_i = (4./3) * np.pi * 1e5 * rho_ice
 sig_fac = np.exp(np.log(1.34)*np.log(1.34))
 rel = np.where(lwp>0, 1e6 * sig_fac * (lwp / dz[:,np.newaxis,np.newaxis] / ftpnr_w)**(1./3), 0)
-dei = np.where(iwp>0, 1e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
+dei = np.where(iwp>0, 2e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
 
 rel = np.maximum(2.5, np.minimum(rel, 21.5))
 dei = np.maximum(10., np.minimum(dei, 180.))

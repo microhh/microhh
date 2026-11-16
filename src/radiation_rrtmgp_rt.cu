@@ -335,7 +335,7 @@ namespace
             const int idx = icol + ilay*ncol;
             const int idx_z = ilay + kstart;
             const Float rel_local = clwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(clwp[idx] / dz[idx_z] / four_third_pi_N0_rho_w, Float(1.)/Float(3.)) : Float(0.);
-            const Float dei_local = ciwp[idx] > Float(0.) ? Float(1.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
+            const Float dei_local = ciwp[idx] > Float(0.) ? Float(2.e6) * sig_g_fac * pow(ciwp[idx] / dz[idx_z] / four_third_pi_N0_rho_i, Float(1.)/Float(3.)) : Float(0.);
 
             rel[idx] = max(Float(2.5), min(rel_local, Float(21.5)));
             dei[idx] = max(Float(10.), min(dei_local, Float(180.)));
@@ -2340,7 +2340,7 @@ void Radiation_rrtmgp_rt<TF>::exec(
         const TF Ni0 = microphys.get_Ni0();
 
         const Float four_third_pi_N0_rho_w = (4./3.)*M_PI*Nc0*Constants::rho_w<Float>;
-        const Float four_third_pi_N0_rho_i = (2./3.)*M_PI*Ni0*Constants::rho_i<Float>;
+        const Float four_third_pi_N0_rho_i = (4./3.)*M_PI*Ni0*Constants::rho_i<Float>;
 
         const int block_col = 16;
         const int block_lay = 16;
