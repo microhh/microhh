@@ -58,9 +58,6 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
         particles.add("v", Particle_kind::Diagnostic, "Particle v-velocity", "m s-1");
         particles.add("w", Particle_kind::Diagnostic, "Particle w-velocity", "m s-1");
 
-        particles.add("cd", Particle_kind::Constant, "Drag coefficient", "-");
-        particles.add("m", Particle_kind::Constant, "Mass", "kg");
-
         // Raw dump of all particles.
         sw_dump = inputin.get_item<bool>("particle_lagrangian", "sw_dump", "", false);
 
@@ -69,6 +66,11 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
             const int sampletime = inputin.get_item<int>("particle_lagrangian", "sampletime_dump", "");
             isampletime_dump = convert_to_itime(sampletime);
             szip_compression = inputin.get_item<int>("particle_lagrangian", "szip_compression", "", 0);
+            dumplist = inputin.get_list<std::string>("particle_lagrangian", "dumplist", "");
+
+            if (dumplist.empty())
+                throw std::runtime_error("Particle dump enabled, but dumplist is empty");
+            dump_file_id = -1;
         }
 
         // Profile and time serie statistics.
@@ -87,6 +89,8 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
 template<typename TF>
 Particle_lagrangian<TF>::~Particle_lagrangian()
 {
+    if (sw_particle && sw_dump && dump_file_id >= 0)
+        H5Fclose(dump_file_id);
 }
 
 
@@ -102,12 +106,18 @@ void Particle_lagrangian<TF>::create(Timeloop<TF>& timeloop, Stats<TF>& stats)
         std::ostringstream file_out;
         file_out << "particle_dump." << std::setfill('0') << std::setw(7) << iotime << ".h5";
 
+        for (const std::string& name : dumplist)
+            if (!particles.has_property(name))
+                throw std::runtime_error("Particle property \"" + name + "\" in dumplist does not exist");
+
         // Create single HDF5 file for particle dumps.
         plio::create_particle_dump<TF>(
             file_out.str(),
             dump_file_id,
             n_particles,
             szip_compression,
+            dumplist,
+            particles,
             master);
     }
 
@@ -267,11 +277,8 @@ void Particle_lagrangian<TF>::load(const int iotime)
     std::ostringstream file_in;
     file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
 
-    auto& uid = particles.uid;
-
-    auto& xp = particles.get("x");
-    auto& yp = particles.get("y");
-    auto& zp = particles.get("z");
+    // Read all prognostic and constant properties.
+    const std::vector<std::string> names = particles.get_names({Particle_kind::Prognostic, Particle_kind::Constant});
 
     #ifdef USEMPI
     /*
@@ -287,32 +294,33 @@ void Particle_lagrangian<TF>::load(const int iotime)
 
     // Read buffers.
     std::vector<int> uid_in;
-    std::vector<TF> xp_in;
-    std::vector<TF> yp_in;
-    std::vector<TF> zp_in;
+    std::vector<std::vector<TF>> fields_in(names.size());
 
     // Read particles to their "home" task using parallel HDF5.
-    plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, n_particles, master);
+    plio::read_particles<TF>(file_in.str(), names, uid_in, get_pointers(fields_in), n_particles, master);
 
     // Send particles from "home" task to actual location in domain.
+    auto get_index = [&](const std::string& name)
+    {
+        return std::find(names.begin(), names.end(), name) - names.begin();
+    };
+
     plio::distribute_particles<TF>(
-        uid, {&xp, &yp, &zp},
-        uid_in, {&xp_in, &yp_in, &zp_in},
-        xp_in, yp_in,
+        particles.uid, particles.get_fields(names),
+        uid_in, get_pointers(fields_in),
+        fields_in[get_index("x")], fields_in[get_index("y")],
         gd.xsize, gd.ysize,
         master);
 
     #else
     /*
-     * Read particles using simple serial HDF5.
+     * Read particles using serial HDF5.
      */
-    plio::read_particles_serial(file_in.str(), uid, xp, yp, zp);
-    plio::check_particle_uids(uid, 0, master);
-    n_particles = xp.size();
+    plio::read_particles<TF>(file_in.str(), names, particles.uid, particles.get_fields(names), n_particles, master);
     #endif
 
     // Resize other properties and tendencies.
-    const int n_local = xp.size();
+    const int n_local = particles.size();
     particles.resize(n_local);
 
     // Interpolation indexes and factors.
@@ -337,34 +345,35 @@ void Particle_lagrangian<TF>::save(const int iotime)
 
     master.print_message("Saving \"%s\" ... ", file_out.str().c_str());
 
+    // Save all prognostic and constant properties.
+    const std::vector<std::string> names = particles.get_names({Particle_kind::Prognostic, Particle_kind::Constant});
+
     // Create new HDF5 file for each restart file.
     hid_t restart_file_id;
     plio::create_particle_restart<TF>(
         file_out.str(),
         restart_file_id,
         n_particles,
+        names,
+        particles,
         master);
 
     // Gather particles back to their original MPI tasks based on `uid`.
     std::vector<int> uid_local;
-    std::vector<TF> x_local;
-    std::vector<TF> y_local;
-    std::vector<TF> z_local;
+    std::vector<std::vector<TF>> fields_local(names.size());
 
     plio::gather_particles<TF>(
-        uid_local, {&x_local, &y_local, &z_local},
-        particles.uid, {&particles.get("x"), &particles.get("y"), &particles.get("z")},
+        uid_local, get_pointers(fields_local),
+        particles.uid, particles.get_fields(names),
         n_particles,
         master);
 
     // Write gathered particles to restart file.
     auto& md = master.get_MPI_data();
-    plio::write_particles_restart(
+    plio::write_particles_restart<TF>(
         restart_file_id,
-        uid_local,
-        x_local,
-        y_local,
-        z_local,
+        names,
+        get_pointers(fields_local),
         n_particles,
         md.mpiid,
         md.nprocs);
@@ -411,23 +420,19 @@ void Particle_lagrangian<TF>::dump(Timeloop<TF>& timeloop)
 
     // Gather particles back to their original MPI tasks based on `uid`.
     std::vector<int> uid_local;
-    std::vector<TF> x_local;
-    std::vector<TF> y_local;
-    std::vector<TF> z_local;
+    std::vector<std::vector<TF>> fields_local(dumplist.size());
 
     plio::gather_particles<TF>(
-        uid_local, {&x_local, &y_local, &z_local},
-        particles.uid, {&particles.get("x"), &particles.get("y"), &particles.get("z")},
+        uid_local, get_pointers(fields_local),
+        particles.uid, particles.get_fields(dumplist),
         n_particles,
         master);
 
     // Write particles to HDF5 file with parallel IO.
-    plio::write_particles_parallel(
+    plio::write_particles_dump<TF>(
         dump_file_id,
-        uid_local,
-        x_local,
-        y_local,
-        z_local,
+        dumplist,
+        get_pointers(fields_local),
         time,
         n_particles,
         md.mpiid,

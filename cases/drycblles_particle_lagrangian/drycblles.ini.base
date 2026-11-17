@@ -52,6 +52,7 @@ starttime=0
 
 sw_dump=1
 sampletime_dump=10
+dumplist=x,y,z,u,v,w
 szip_compression=0
 
 sw_stats=1

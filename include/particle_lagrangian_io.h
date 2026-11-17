@@ -27,6 +27,7 @@
 #include <numeric>
 
 #include <hdf5.h>
+#include <hdf5_hl.h>
 #include "hdf5_interface.h"
 
 namespace Particle_lagrangian_io
@@ -257,78 +258,58 @@ namespace Particle_lagrangian_io
     }
 
 
+    // Read `particle_id` and properties `names` from file. Each task reads
+    // its own block of particles, see `get_io_block()`. Works with and without MPI.
     template <typename TF>
-    void read_particles_parallel(
+    void read_particles(
         const std::string& filename,
+        const std::vector<std::string>& names,
         std::vector<int>& uid,
-        std::vector<TF>& x,
-        std::vector<TF>& y,
-        std::vector<TF>& z,
+        const std::vector<std::vector<TF>*>& fields,
         int& n_particles,
         Master& master)
     {
         auto& md = master.get_MPI_data();
 
-        // Open file with parallel HDF5.
+        // Open file with (parallel) HDF5.
         hid_t plist_id = create_fapl(master);
         hid_t file_id = h5_check(H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id), "opening " + filename);
         H5Pclose(plist_id);
 
         // Get total number of particles.
-        hid_t dset_x = h5_check(H5Dopen(file_id, "/x", H5P_DEFAULT), "opening dataset /x in " + filename);
-        hid_t dspace = H5Dget_space(dset_x);
+        hid_t dset = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id in " + filename);
+        hid_t dspace = H5Dget_space(dset);
         hsize_t n_total;
         H5Sget_simple_extent_dims(dspace, &n_total, NULL);
         H5Sclose(dspace);
-        H5Dclose(dset_x);
+        H5Dclose(dset);
 
         n_particles = static_cast<int>(n_total);
 
         hsize_t start, count;
         get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
 
-        //std::cout << "n_total=" << n_total << ", n_per_task=" << np_per_task << ", mpiid=" << mpiid << ", start=" << start << ", count=" << count << std::endl;
-
-        // Resize local vectors.
-        // Use local size without buffer; these particles are only
+        // Read each property with hyperslab selection.
+        // Use local size without buffer; with MPI, these particles are only
         // temporarely on this task and shipped elsewhwere soon.
         uid.resize(count);
-        x.resize(count);
-        y.resize(count);
-        z.resize(count);
-
-        // Read each coordinate with hyperslab selection
         read_coordinate(file_id, "/particle_id", uid.data(), start, count);
-        read_coordinate(file_id, "/x", x.data(), start, count);
-        read_coordinate(file_id, "/y", y.data(), start, count);
-        read_coordinate(file_id, "/z", z.data(), start, count);
 
         check_particle_uids(uid, start, master);
 
+        for (size_t i=0; i<names.size(); ++i)
+        {
+            const std::string path = "/" + names[i];
+
+            if (H5Lexists(file_id, path.c_str(), H5P_DEFAULT) <= 0)
+                throw std::runtime_error("Particle property \"" + names[i] + "\" not found in " + filename);
+
+            fields[i]->resize(count);
+            read_coordinate(file_id, path.c_str(), fields[i]->data(), start, count);
+        }
+
         // Cleanup!
         h5_check(H5Fclose(file_id), "closing " + filename);
-    }
-
-
-    template <typename TF>
-    void read_particles_serial(
-        const std::string& filename,
-        std::vector<int>& uid,
-        std::vector<TF>& x,
-        std::vector<TF>& y,
-        std::vector<TF>& z)
-    {
-        Hdf5_file h5_file_in(filename, Hdf5_mode::Read);
-
-        Hdf5_variable<int> var_uid(h5_file_in, "particle_id");
-        Hdf5_variable<TF> var_x(h5_file_in, "x");
-        Hdf5_variable<TF> var_y(h5_file_in, "y");
-        Hdf5_variable<TF> var_z(h5_file_in, "z");
-
-        uid = var_uid.read();
-        x = var_x.read();
-        y = var_y.read();
-        z = var_z.read();
     }
 
 
@@ -451,12 +432,10 @@ namespace Particle_lagrangian_io
     #endif
 
 
-    template<typename TF>
-    void create_particle_dump(
+    // Create new particle file with `particle_id` dimension scale.
+    inline hid_t create_particle_file(
         const std::string& filename,
-        hid_t& file_id,
         const int n_particles,
-        const int szip_compression,
         Master& master)
     {
         auto& md = master.get_MPI_data();
@@ -479,8 +458,88 @@ namespace Particle_lagrangian_io
 
         // Create file with parallel HDF5.
         hid_t plist_id = create_fapl(master);
-        file_id = h5_check(H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id), "creating " + filename);
+        hid_t file_id = h5_check(H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id), "creating " + filename);
         H5Pclose(plist_id);
+
+        // Create particle_id dimension scale dataset.
+        hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
+        hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
+        hid_t dset_particle_id = h5_check(H5Dcreate(
+            file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /particle_id");
+
+        // Make particle_id a dimension scale
+        h5_check(H5DSset_scale(dset_particle_id, "particle_id"), "setting dimension scale /particle_id");
+
+        H5Dclose(dset_particle_id);
+        H5Sclose(dspace_particle_id);
+
+        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values.
+        // Each task only writes its own block of particle IDs.
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
+
+        std::vector<int> particle_ids(count);
+        for (hsize_t i=0; i<count; ++i)
+            particle_ids[i] = static_cast<int>(start + i);
+
+        write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
+
+        return file_id;
+    }
+
+
+    // Create dataset for particle property `name`, with `long_name` and `units` attributes,
+    // and `particle_id` (and optionally `time`) as dimension scales.
+    template<typename TF>
+    void create_property_dataset(
+        hid_t file_id,
+        const std::string& name,
+        const Particle_property<TF>& prop,
+        hid_t dspace,
+        hid_t plist_create,
+        const bool has_time)
+    {
+        const std::string path = "/" + name;
+
+        hid_t dset = h5_check(H5Dcreate(
+            file_id, path.c_str(), get_hdf5_type<TF>(), dspace,
+            H5P_DEFAULT, plist_create, H5P_DEFAULT), "creating dataset " + path);
+
+        h5_check(H5LTset_attribute_string(file_id, path.c_str(), "long_name", prop.long_name.c_str()),
+                "setting long_name of " + path);
+        h5_check(H5LTset_attribute_string(file_id, path.c_str(), "units", prop.units.c_str()),
+                "setting units of " + path);
+
+        // Attach dimension scales.
+        hid_t dset_particle_id = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id");
+
+        if (has_time)
+        {
+            hid_t dset_time = h5_check(H5Dopen(file_id, "/time", H5P_DEFAULT), "opening dataset /time");
+            h5_check(H5DSattach_scale(dset, dset_time, 0), "attaching dimension scale /time to " + path);
+            h5_check(H5DSattach_scale(dset, dset_particle_id, 1), "attaching dimension scale /particle_id to " + path);
+            H5Dclose(dset_time);
+        }
+        else
+            h5_check(H5DSattach_scale(dset, dset_particle_id, 0), "attaching dimension scale /particle_id to " + path);
+
+        H5Dclose(dset_particle_id);
+        H5Dclose(dset);
+    }
+
+
+    template<typename TF>
+    void create_particle_dump(
+        const std::string& filename,
+        hid_t& file_id,
+        const int n_particles,
+        const int szip_compression,
+        const std::vector<std::string>& names,
+        Particle_data<TF>& particles,
+        Master& master)
+    {
+        file_id = create_particle_file(filename, n_particles, master);
 
         // Create unlimited time dimension.
         hsize_t time_dims[1] = {0};
@@ -502,30 +561,6 @@ namespace Particle_lagrangian_io
         H5Pclose(plist_create);
         H5Sclose(dspace_time);
 
-        // Create particle_id dimension scale dataset.
-        hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
-        hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
-        hid_t dset_particle_id = h5_check(H5Dcreate(
-            file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /particle_id");
-
-        // Make particle_id a dimension scale
-        h5_check(H5DSset_scale(dset_particle_id, "particle_id"), "setting dimension scale /particle_id");
-
-        H5Dclose(dset_particle_id);
-        H5Sclose(dspace_particle_id);
-
-        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values.
-        // Each task only writes its own block of particle IDs.
-        hsize_t start, count;
-        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
-
-        std::vector<int> particle_ids(count);
-        for (hsize_t i=0; i<count; ++i)
-            particle_ids[i] = static_cast<int>(start + i);
-
-        write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
-
         // Create particle datasets with unlimited time dimension.
         hsize_t dims[2] = {0, static_cast<hsize_t>(n_particles)};
         hsize_t maxdims[2] = {H5S_UNLIMITED, static_cast<hsize_t>(n_particles)};
@@ -544,34 +579,9 @@ namespace Particle_lagrangian_io
             h5_check(H5Pset_szip(plist_create_2d, H5_SZIP_NN_OPTION_MASK, szip_compression), "setting SZIP compression");
         }
 
-        hid_t h5_type = get_hdf5_type<TF>();
+        for (const std::string& name : names)
+            create_property_dataset(file_id, name, particles.get_property(name), dspace, plist_create_2d, true);
 
-        hid_t dset_x = h5_check(H5Dcreate(
-            file_id, "/x", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /x");
-        hid_t dset_y = h5_check(H5Dcreate(
-            file_id, "/y", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /y");
-        hid_t dset_z = h5_check(H5Dcreate(
-            file_id, "/z", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /z");
-
-        // Attach dimension scales
-        dset_time = h5_check(H5Dopen(file_id, "/time", H5P_DEFAULT), "opening dataset /time");
-        dset_particle_id = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id");
-
-        h5_check(H5DSattach_scale(dset_x, dset_time, 0), "attaching dimension scale /time to /x");
-        h5_check(H5DSattach_scale(dset_x, dset_particle_id, 1), "attaching dimension scale /particle_id to /x");
-        h5_check(H5DSattach_scale(dset_y, dset_time, 0), "attaching dimension scale /time to /y");
-        h5_check(H5DSattach_scale(dset_y, dset_particle_id, 1), "attaching dimension scale /particle_id to /y");
-        h5_check(H5DSattach_scale(dset_z, dset_time, 0), "attaching dimension scale /time to /z");
-        h5_check(H5DSattach_scale(dset_z, dset_particle_id, 1), "attaching dimension scale /particle_id to /z");
-
-        H5Dclose(dset_time);
-        H5Dclose(dset_particle_id);
-        H5Dclose(dset_x);
-        H5Dclose(dset_y);
-        H5Dclose(dset_z);
         H5Pclose(plist_create_2d);
         H5Sclose(dspace);
 
@@ -585,83 +595,20 @@ namespace Particle_lagrangian_io
         const std::string& filename,
         hid_t& file_id,
         const int n_particles,
+        const std::vector<std::string>& names,
+        Particle_data<TF>& particles,
         Master& master)
     {
-        auto& md = master.get_MPI_data();
-
-        // Throw error if file exists.
-        int file_exists = 0;
-        if (md.mpiid == 0)
-        {
-            std::ifstream test(filename);
-            file_exists = test.good() ? 1 : 0;
-            test.close();
-        }
-        master.broadcast(&file_exists, 1, 0);
-
-        if (file_exists)
-        {
-            std::string error_msg = "ERROR: Particle output file already exists: " + filename;
-            throw std::runtime_error(error_msg);
-        }
-
-        // Create file with parallel HDF5.
-        hid_t plist_id = create_fapl(master);
-        file_id = h5_check(H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id), "creating " + filename);
-        H5Pclose(plist_id);
-
-        // Create particle_id dimension scale dataset.
-        hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
-        hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
-        hid_t dset_particle_id = h5_check(H5Dcreate(
-            file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /particle_id");
-
-        // Make particle_id a dimension scale
-        h5_check(H5DSset_scale(dset_particle_id, "particle_id"), "setting dimension scale /particle_id");
-
-        H5Dclose(dset_particle_id);
-        H5Sclose(dspace_particle_id);
-
-        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values.
-        // Each task only writes its own block of particle IDs.
-        hsize_t start, count;
-        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
-
-        std::vector<int> particle_ids(count);
-        for (hsize_t i=0; i<count; ++i)
-            particle_ids[i] = static_cast<int>(start + i);
-
-        write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
+        file_id = create_particle_file(filename, n_particles, master);
 
         // Create particle datasets without time dimension (single time step).
         // Fixed size and no compression, so use default contiguous layout.
         hsize_t dims[1] = {static_cast<hsize_t>(n_particles)};
         hid_t dspace = H5Screate_simple(1, dims, dims);
 
-        hid_t h5_type = get_hdf5_type<TF>();
+        for (const std::string& name : names)
+            create_property_dataset(file_id, name, particles.get_property(name), dspace, H5P_DEFAULT, false);
 
-        hid_t dset_x = h5_check(H5Dcreate(
-            file_id, "/x", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /x");
-        hid_t dset_y = h5_check(H5Dcreate(
-            file_id, "/y", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /y");
-        hid_t dset_z = h5_check(H5Dcreate(
-            file_id, "/z", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /z");
-
-        // Attach dimension scale
-        dset_particle_id = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id");
-
-        h5_check(H5DSattach_scale(dset_x, dset_particle_id, 0), "attaching dimension scale /particle_id to /x");
-        h5_check(H5DSattach_scale(dset_y, dset_particle_id, 0), "attaching dimension scale /particle_id to /y");
-        h5_check(H5DSattach_scale(dset_z, dset_particle_id, 0), "attaching dimension scale /particle_id to /z");
-
-        H5Dclose(dset_particle_id);
-        H5Dclose(dset_x);
-        H5Dclose(dset_y);
-        H5Dclose(dset_z);
         H5Sclose(dspace);
 
         // Flush to ensure datasets are written to file.
@@ -672,10 +619,8 @@ namespace Particle_lagrangian_io
     template<typename TF>
     void write_particles_restart(
         hid_t file_id,
-        const std::vector<int>& uid,
-        const std::vector<TF>& x,
-        const std::vector<TF>& y,
-        const std::vector<TF>& z,
+        const std::vector<std::string>& names,
+        const std::vector<std::vector<TF>*>& fields,
         const int n_particles,
         const int mpiid,
         const int nprocs)
@@ -684,10 +629,9 @@ namespace Particle_lagrangian_io
         hsize_t start, count;
         get_io_block(start, count, n_particles, mpiid, nprocs);
 
-        // Write particle coordinates (all tasks must call this even if count=0).
-        write_coordinate_1d(file_id, "/x", x.data(), start, count);
-        write_coordinate_1d(file_id, "/y", y.data(), start, count);
-        write_coordinate_1d(file_id, "/z", z.data(), start, count);
+        // Write particle properties (all tasks must call this even if count=0).
+        for (size_t i=0; i<names.size(); ++i)
+            write_coordinate_1d(file_id, ("/" + names[i]).c_str(), fields[i]->data(), start, count);
 
         // Flush to disk to ensure data is written.
         h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
@@ -695,12 +639,10 @@ namespace Particle_lagrangian_io
 
 
     template<typename TF>
-    void write_particles_parallel(
+    void write_particles_dump(
         hid_t file_id,
-        const std::vector<int>& uid,
-        const std::vector<TF>& x,
-        const std::vector<TF>& y,
-        const std::vector<TF>& z,
+        const std::vector<std::string>& names,
+        const std::vector<std::vector<TF>*>& fields,
         const double time,
         const int n_particles,
         const int mpiid,
@@ -740,27 +682,21 @@ namespace Particle_lagrangian_io
         H5Sclose(dspace_time_write);
         H5Dclose(dset_time);
 
-        // Extend particle datasets.
-        hid_t dset_x = h5_check(H5Dopen(file_id, "/x", H5P_DEFAULT), "opening dataset /x");
-        hid_t dset_y = h5_check(H5Dopen(file_id, "/y", H5P_DEFAULT), "opening dataset /y");
-        hid_t dset_z = h5_check(H5Dopen(file_id, "/z", H5P_DEFAULT), "opening dataset /z");
-
-        h5_check(H5Dset_extent(dset_x, new_dims), "extending dataset /x");
-        h5_check(H5Dset_extent(dset_y, new_dims), "extending dataset /y");
-        h5_check(H5Dset_extent(dset_z, new_dims), "extending dataset /z");
-
-        H5Dclose(dset_x);
-        H5Dclose(dset_y);
-        H5Dclose(dset_z);
-
         // Calculate hyperslab parameters for this MPI task.
         hsize_t start, count;
         get_io_block(start, count, n_particles, mpiid, nprocs);
 
-        // Write particle coordinates (write_coordinate opens/closes datasets internally).
-        write_coordinate(file_id, "/x", x.data(), time_idx, start, count, n_particles);
-        write_coordinate(file_id, "/y", y.data(), time_idx, start, count, n_particles);
-        write_coordinate(file_id, "/z", z.data(), time_idx, start, count, n_particles);
+        // Extend and write particle properties (all tasks must call this even if count=0).
+        for (size_t i=0; i<names.size(); ++i)
+        {
+            const std::string path = "/" + names[i];
+
+            hid_t dset = h5_check(H5Dopen(file_id, path.c_str(), H5P_DEFAULT), "opening dataset " + path);
+            h5_check(H5Dset_extent(dset, new_dims), "extending dataset " + path);
+            H5Dclose(dset);
+
+            write_coordinate(file_id, path.c_str(), fields[i]->data(), time_idx, start, count, n_particles);
+        }
 
         // Flush to disk to ensure data is written.
         h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");

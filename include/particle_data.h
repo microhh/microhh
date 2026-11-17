@@ -122,6 +122,19 @@ void unpack_record(
 }
 
 
+// Pointers to a list of arrays, e.g. to pass temporary buffers as list of fields.
+template<typename TF>
+std::vector<std::vector<TF>*> get_pointers(std::vector<std::vector<TF>>& arrays)
+{
+    std::vector<std::vector<TF>*> pointers;
+
+    for (std::vector<TF>& array : arrays)
+        pointers.push_back(&array);
+
+    return pointers;
+}
+
+
 #ifdef USEMPI
 inline MPI_Datatype create_record_type(const size_t record_size)
 {
@@ -207,6 +220,17 @@ class Particle_data
                     names.push_back(name);
 
             return names;
+        }
+
+        // Pointers to the data of properties `names`.
+        std::vector<std::vector<TF>*> get_fields(const std::vector<std::string>& names)
+        {
+            std::vector<std::vector<TF>*> fields;
+
+            for (const std::string& name : names)
+                fields.push_back(&get(name));
+
+            return fields;
         }
 
         int size() const

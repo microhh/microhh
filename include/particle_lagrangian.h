@@ -72,6 +72,7 @@ class Particle_lagrangian
         unsigned long isampletime_dump;
         hid_t dump_file_id;                        // HDF5 file handle for particle dumps.
         int szip_compression;                      // SZIP compression pixels-per-block (0 = no compression).
+        std::vector<std::string> dumplist;         // Particle properties in dump.
 
         // Profile and time serie statistics.
         bool sw_stats;
