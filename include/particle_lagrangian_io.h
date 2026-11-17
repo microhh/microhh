@@ -28,6 +28,33 @@
 
 namespace Particle_lagrangian_io
 {
+    // Each task has `ceil(n_particles / nprocs)` particles, except the last task(s).
+    inline int get_np_per_task(const int n_particles, const int nprocs)
+    {
+        return (n_particles + nprocs - 1) / nprocs;
+    }
+
+
+    // Contiguous block [start, start+count) of particles that is read/written by this task.
+    inline void get_io_block(
+        hsize_t& start,
+        hsize_t& count,
+        const int n_particles,
+        const int mpiid,
+        const int nprocs)
+    {
+        const int np_per_task = get_np_per_task(n_particles, nprocs);
+        start = static_cast<hsize_t>(mpiid) * np_per_task;
+        count = np_per_task;
+
+        // Handle case where start >= n_particles (more tasks than particles per task).
+        if (start >= static_cast<hsize_t>(n_particles))
+            count = 0;
+        else if (start + count > static_cast<hsize_t>(n_particles))
+            count = static_cast<hsize_t>(n_particles) - start;
+    }
+
+
     template<typename T>
     void read_coordinate(
         hid_t file_id,
@@ -149,16 +176,8 @@ namespace Particle_lagrangian_io
 
         n_particles = static_cast<int>(n_total);
 
-        // Each task has `ceil(n_total / nprocs)` particles (except last task, see next code block).
-        const int np_per_task = std::ceil(TF(n_total) / md.nprocs);
-        hsize_t start = md.mpiid * np_per_task;
-        hsize_t count = np_per_task;
-
-        // Handle case where start >= n_total (more tasks than particles per task).
-        if (start >= n_total)
-            count = 0;
-        else if (start + count > n_total)
-            count = n_total - start;
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
 
         //std::cout << "n_total=" << n_total << ", n_per_task=" << np_per_task << ", mpiid=" << mpiid << ", start=" << start << ", count=" << count << std::endl;
 
@@ -609,15 +628,8 @@ namespace Particle_lagrangian_io
         const int nprocs)
     {
         // Calculate hyperslab parameters for this MPI task.
-        const int np_per_task = std::ceil(TF(n_particles) / nprocs);
-        hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
-        hsize_t count = static_cast<hsize_t>(np_per_task);
-
-        // Handle case where start >= n_particles (more tasks than particles per task).
-        if (start >= static_cast<hsize_t>(n_particles))
-            count = 0;
-        else if (start + count > static_cast<hsize_t>(n_particles))
-            count = static_cast<hsize_t>(n_particles) - start;
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, mpiid, nprocs);
 
         // Open datasets.
         hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
@@ -735,15 +747,8 @@ namespace Particle_lagrangian_io
         H5Dclose(dset_z);
 
         // Calculate hyperslab parameters for this MPI task.
-        const int np_per_task = std::ceil(TF(n_particles) / nprocs);
-        hsize_t start = static_cast<hsize_t>(mpiid * np_per_task);
-        hsize_t count = static_cast<hsize_t>(np_per_task);
-
-        // Handle case where start >= n_particles (more tasks than particles per task).
-        if (start >= static_cast<hsize_t>(n_particles))
-            count = 0;
-        else if (start + count > static_cast<hsize_t>(n_particles))
-            count = static_cast<hsize_t>(n_particles) - start;
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, mpiid, nprocs);
 
         // Write particle coordinates (write_coordinate opens/closes datasets internally).
         write_coordinate(file_id, "/x", x.data(), time_idx, start, count, n_particles);
@@ -771,7 +776,7 @@ namespace Particle_lagrangian_io
         auto& md = master.get_MPI_data();
 
         // Each task originally has `ceil(n_particles / nprocs)` particles.
-        const int np_per_task = std::ceil(TF(n_particles) / md.nprocs);
+        const int np_per_task = get_np_per_task(n_particles, md.nprocs);
 
         const int np_local = uid_in.size();
 
