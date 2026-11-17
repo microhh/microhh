@@ -174,6 +174,49 @@ namespace Particle_lagrangian_io
     }
 
 
+    template<typename T>
+    void write_coordinate_1d(
+        hid_t file_id,
+        const char* dset_name,
+        const T* buffer,
+        hsize_t start,
+        hsize_t count)
+    {
+        // Open dataset.
+        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t filespace = H5Dget_space(dset);
+        hid_t memspace;
+
+        if (count > 0)
+        {
+            // Select hyperslab in file: [start:start+count]
+            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
+
+            // Local memory layout is simple; continuous 1D array of size `count`.
+            memspace = H5Screate_simple(1, &count, NULL);
+        }
+        else
+        {
+            // Nothing to write - select empty hyperslab.
+            H5Sselect_none(filespace);
+            memspace = H5Scopy(filespace);
+            H5Sselect_none(memspace);
+        }
+
+        // Setup collective IO where all tasks participate.
+        hid_t plist_id = create_dxpl();
+
+        // Write data (all tasks must call this even if count=0).
+        H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
+
+        // Cleanup!
+        H5Pclose(plist_id);
+        H5Sclose(memspace);
+        H5Sclose(filespace);
+        H5Dclose(dset);
+    }
+
+
     template <typename TF>
     void read_particles_parallel(
         const std::string& filename,
@@ -485,17 +528,19 @@ namespace Particle_lagrangian_io
         // Make particle_id a dimension scale
         H5DSset_scale(dset_particle_id, "particle_id");
 
-        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values
-        std::vector<int> particle_ids(n_particles);
-        for (int i = 0; i < n_particles; ++i)
-            particle_ids[i] = i;
-
-        hid_t plist_write = create_dxpl();
-        H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
-        H5Pclose(plist_write);
-
         H5Dclose(dset_particle_id);
         H5Sclose(dspace_particle_id);
+
+        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values.
+        // Each task only writes its own block of particle IDs.
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
+
+        std::vector<int> particle_ids(count);
+        for (hsize_t i=0; i<count; ++i)
+            particle_ids[i] = static_cast<int>(start + i);
+
+        write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
 
         // Create particle datasets with unlimited time dimension.
         hsize_t dims[2] = {0, static_cast<hsize_t>(n_particles)};
@@ -586,17 +631,19 @@ namespace Particle_lagrangian_io
         // Make particle_id a dimension scale
         H5DSset_scale(dset_particle_id, "particle_id");
 
-        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values
-        std::vector<int> particle_ids(n_particles);
-        for (int i = 0; i < n_particles; ++i)
-            particle_ids[i] = i;
-
-        hid_t plist_write = create_dxpl();
-        H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
-        H5Pclose(plist_write);
-
         H5Dclose(dset_particle_id);
         H5Sclose(dspace_particle_id);
+
+        // Write particle IDs (0, 1, 2, ..., n_particles-1) as coordinate values.
+        // Each task only writes its own block of particle IDs.
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
+
+        std::vector<int> particle_ids(count);
+        for (hsize_t i=0; i<count; ++i)
+            particle_ids[i] = static_cast<int>(start + i);
+
+        write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
 
         // Create particle datasets without time dimension (single time step).
         hsize_t dims[1] = {static_cast<hsize_t>(n_particles)};
