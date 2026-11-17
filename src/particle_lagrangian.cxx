@@ -58,6 +58,9 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
         particles.add("v", Particle_kind::Diagnostic, "Particle v-velocity", "m s-1");
         particles.add("w", Particle_kind::Diagnostic, "Particle w-velocity", "m s-1");
 
+        particles.add("cd", Particle_kind::Constant, "Drag coefficient", "-");
+        particles.add("m", Particle_kind::Constant, "Mass", "kg");
+
         // Raw dump of all particles.
         sw_dump = inputin.get_item<bool>("particle_lagrangian", "sw_dump", "", false);
 
@@ -292,7 +295,12 @@ void Particle_lagrangian<TF>::load(const int iotime)
     plio::read_particles_parallel<TF>(file_in.str(), uid_in, xp_in, yp_in, zp_in, n_particles, master);
 
     // Send particles from "home" task to actual location in domain.
-    plio::distribute_particles(uid, xp, yp, zp, uid_in, xp_in, yp_in, zp_in,  gd.xsize, gd.ysize, master);
+    plio::distribute_particles<TF>(
+        uid, {&xp, &yp, &zp},
+        uid_in, {&xp_in, &yp_in, &zp_in},
+        xp_in, yp_in,
+        gd.xsize, gd.ysize,
+        master);
 
     #else
     /*
@@ -343,15 +351,9 @@ void Particle_lagrangian<TF>::save(const int iotime)
     std::vector<TF> y_local;
     std::vector<TF> z_local;
 
-    plio::gather_particles(
-        uid_local,
-        x_local,
-        y_local,
-        z_local,
-        particles.uid,
-        particles.get("x"),
-        particles.get("y"),
-        particles.get("z"),
+    plio::gather_particles<TF>(
+        uid_local, {&x_local, &y_local, &z_local},
+        particles.uid, {&particles.get("x"), &particles.get("y"), &particles.get("z")},
         n_particles,
         master);
 
@@ -413,15 +415,9 @@ void Particle_lagrangian<TF>::dump(Timeloop<TF>& timeloop)
     std::vector<TF> y_local;
     std::vector<TF> z_local;
 
-    plio::gather_particles(
-        uid_local,
-        x_local,
-        y_local,
-        z_local,
-        particles.uid,
-        particles.get("x"),
-        particles.get("y"),
-        particles.get("z"),
+    plio::gather_particles<TF>(
+        uid_local, {&x_local, &y_local, &z_local},
+        particles.uid, {&particles.get("x"), &particles.get("y"), &particles.get("z")},
         n_particles,
         master);
 

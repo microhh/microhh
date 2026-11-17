@@ -23,6 +23,9 @@
 #ifndef PARTICLE_LAGRANGIAN_IO_H
 #define PARTICLE_LAGRANGIAN_IO_H
 
+#include <algorithm>
+#include <numeric>
+
 #include <hdf5.h>
 #include "hdf5_interface.h"
 
@@ -329,94 +332,21 @@ namespace Particle_lagrangian_io
     }
 
 
-    template<typename TF>
-    struct Particle_io
-    {
-        int uid;
-        TF x, y, z;     // Location.
-    };
-
-
     #ifdef USEMPI
-    template<typename T>
-    MPI_Datatype get_mpi_type()
-    {
-        if constexpr (std::is_same_v<T, float>)
-            return MPI_FLOAT;
-        else if constexpr (std::is_same_v<T, double>)
-            return MPI_DOUBLE;
-        else
-            throw std::runtime_error("Invalid float type for MPI!");
-    }
-    #endif
-
-
+    // Send each particle `n` to MPI task `target_rank[n]`. The received particles are not sorted.
     template<typename TF>
-    bool particle_uid_compare(const Particle_io<TF>& a, const Particle_io<TF>& b)
-    {
-        return a.uid < b.uid;
-    }
-
-
-    #ifdef USEMPI
-    template<typename TF>
-    MPI_Datatype create_particle_type_io()
-    {
-        // Create MPI type specific for particle I/O, which typically uses less
-        // elements per particle than the neighbour-neighbour MPI communication.
-        MPI_Datatype particle_type;
-
-        // 1=uid, 3=number of particle properties (currently x,y,z).
-        int blocklengths[2] = {1, 3};
-        MPI_Aint displacements[2];
-        MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
-
-        Particle_io<TF> particle;
-        MPI_Aint base_address;
-        MPI_Get_address(&particle, &base_address);
-        MPI_Get_address(&particle.uid, &displacements[0]);
-        MPI_Get_address(&particle.x, &displacements[1]);
-
-        displacements[0] = MPI_Aint_diff(displacements[0], base_address);
-        displacements[1] = MPI_Aint_diff(displacements[1], base_address);
-
-        MPI_Type_create_struct(2, blocklengths, displacements, types, &particle_type);
-        MPI_Type_commit(&particle_type);
-
-        return particle_type;
-    }
-
-
-    template<typename TF>
-    void distribute_particles(
+    void alltoallv_particles(
         std::vector<int>& uid_out,
-        std::vector<TF>& x_out,
-        std::vector<TF>& y_out,
-        std::vector<TF>& z_out,
-        std::vector<int>& uid_in,
-        std::vector<TF>& x_in,
-        std::vector<TF>& y_in,
-        std::vector<TF>& z_in,
-        const TF xsize,
-        const TF ysize,
+        const std::vector<std::vector<TF>*>& fields_out,
+        const std::vector<int>& uid_in,
+        const std::vector<std::vector<TF>*>& fields_in,
+        const std::vector<int>& target_rank,
         Master& master)
     {
         auto& md = master.get_MPI_data();
 
-        const TF xsize_sub = xsize / md.npx;
-        const TF ysize_sub = ysize / md.npy;
-
-        const int np_local = x_in.size();
-
-        // Calculate target `mpiid` for each particle.
-        std::vector<int> target_rank(np_local);
-        for (int n=0; n<np_local; ++n)
-        {
-            const int mpicoordx = int(x_in[n] / xsize_sub);
-            const int mpicoordy = int(y_in[n] / ysize_sub);
-
-            target_rank[n] = master.get_mpiid(mpicoordx, mpicoordy);
-        }
+        const int np_local = uid_in.size();
+        const size_t record_size = get_record_size<TF>(fields_in.size());
 
         // Count particles going to each processor.
         std::vector<int> send_counts(md.nprocs, 0);
@@ -449,59 +379,74 @@ namespace Particle_lagrangian_io
         const int total_send = send_offsets[md.nprocs-1] + send_counts[md.nprocs-1];
         const int total_recv = recv_offsets[md.nprocs-1] + recv_counts[md.nprocs-1];
 
-        // Pack particles into vector of Particle structs. This should make it easier
-        // to add other properties like velocity or mass at a later point.
-        std::vector<Particle_io<TF>> particles_send(total_send);
+        // Pack particles into send buffer, ordered by target task.
+        std::vector<char> send_buffer(total_send * record_size);
         std::vector<int> current_offset = send_offsets;
 
-        for (int n=0; n < np_local; ++n)
+        for (int n=0; n<np_local; ++n)
         {
-            const int rank = target_rank[n];
-            const int pos = current_offset[rank];
-            current_offset[rank] += 1;
+            const int pos = current_offset[target_rank[n]];
+            current_offset[target_rank[n]] += 1;
 
-            particles_send[pos].uid = uid_in[n];
-            particles_send[pos].x = x_in[n];
-            particles_send[pos].y = y_in[n];
-            particles_send[pos].z = z_in[n];
+            pack_record(send_buffer.data() + pos * record_size, n, uid_in, fields_in);
         }
-
-        // Allocate receive buffer.
-        std::vector<Particle_io<TF>> particles_recv(total_recv);
 
         // Exchange particles.
-        MPI_Datatype particle_type = create_particle_type_io<TF>();
+        std::vector<char> recv_buffer(total_recv * record_size);
+        MPI_Datatype record_type = create_record_type(record_size);
 
         MPI_Alltoallv(
-            particles_send.data(),
+            send_buffer.data(),
             send_counts.data(),
             send_offsets.data(),
-            particle_type,
-            particles_recv.data(),
+            record_type,
+            recv_buffer.data(),
             recv_counts.data(),
             recv_offsets.data(),
-            particle_type,
+            record_type,
             md.commxy);
 
-        MPI_Type_free(&particle_type);
+        MPI_Type_free(&record_type);
 
-        // Unpack Particle structs in local vectors.
+        // Unpack records into output arrays.
         uid_out.resize(total_recv);
-        x_out.resize(total_recv);
-        y_out.resize(total_recv);
-        z_out.resize(total_recv);
+        for (std::vector<TF>* field : fields_out)
+            field->resize(total_recv);
 
         for (int n=0; n<total_recv; ++n)
+            unpack_record(recv_buffer.data() + n * record_size, n, uid_out, fields_out);
+    }
+
+
+    // Send particles from their "home" task to the task that owns their (x,y) location.
+    template<typename TF>
+    void distribute_particles(
+        std::vector<int>& uid_out,
+        const std::vector<std::vector<TF>*>& fields_out,
+        const std::vector<int>& uid_in,
+        const std::vector<std::vector<TF>*>& fields_in,
+        const std::vector<TF>& x_in,
+        const std::vector<TF>& y_in,
+        const TF xsize,
+        const TF ysize,
+        Master& master)
+    {
+        auto& md = master.get_MPI_data();
+
+        const TF xsize_sub = xsize / md.npx;
+        const TF ysize_sub = ysize / md.npy;
+
+        // Calculate target `mpiid` for each particle.
+        std::vector<int> target_rank(uid_in.size());
+        for (size_t n=0; n<uid_in.size(); ++n)
         {
-            uid_out[n] = particles_recv[n].uid;
-            x_out[n] = particles_recv[n].x;
-            y_out[n] = particles_recv[n].y;
-            z_out[n] = particles_recv[n].z;
+            const int mpicoordx = int(x_in[n] / xsize_sub);
+            const int mpicoordy = int(y_in[n] / ysize_sub);
+
+            target_rank[n] = master.get_mpiid(mpicoordx, mpicoordy);
         }
 
-        // DEBUG.
-        //for (int n=0; n<total_recv; ++n)
-        //    std::cout << "mpiidx/y= " << md.mpicoordx << "/" << md.mpicoordy << " has x=" << x_out[n] << ", y=" << y_out[n] << std::endl;
+        alltoallv_particles(uid_out, fields_out, uid_in, fields_in, target_rank, master);
     }
     #endif
 
@@ -822,112 +767,64 @@ namespace Particle_lagrangian_io
     }
 
 
+    // Gather particles back to their "home" task based on `uid`, sorted by `uid`.
     template<typename TF>
     void gather_particles(
         std::vector<int>& uid_out,
-        std::vector<TF>& x_out,
-        std::vector<TF>& y_out,
-        std::vector<TF>& z_out,
+        const std::vector<std::vector<TF>*>& fields_out,
         const std::vector<int>& uid_in,
-        const std::vector<TF>& x_in,
-        const std::vector<TF>& y_in,
-        const std::vector<TF>& z_in,
+        const std::vector<std::vector<TF>*>& fields_in,
         const int n_particles,
         Master& master)
     {
         auto& md = master.get_MPI_data();
 
-        const int np_local = uid_in.size();
+        const int n_fields = fields_in.size();
+
+        // Unsorted particles on their "home" task.
+        std::vector<int> uid_tmp;
+        std::vector<std::vector<TF>> fields_tmp(n_fields);
+        std::vector<std::vector<TF>*> fields_tmp_ptr(n_fields);
+        for (int f=0; f<n_fields; ++f)
+            fields_tmp_ptr[f] = &fields_tmp[f];
 
         #ifdef USEMPI
         // Each task originally has `ceil(n_particles / nprocs)` particles.
         const int np_per_task = get_np_per_task(n_particles, md.nprocs);
 
         // Calculate which original MPI task each particle belongs to based on uid.
-        std::vector<int> target_rank(np_local);
-        for (int n=0; n<np_local; ++n)
+        std::vector<int> target_rank(uid_in.size());
+        for (size_t n=0; n<uid_in.size(); ++n)
             target_rank[n] = uid_in[n] / np_per_task;
 
-        // Count particles going to each processor.
-        std::vector<int> send_counts(md.nprocs, 0);
-        for (int n=0; n<np_local; ++n)
-            send_counts[target_rank[n]] += 1;
-
-        // Exchange send counts across all tasks.
-        std::vector<int> recv_counts(md.nprocs);
-        const int size = 1;
-        MPI_Alltoall(
-            send_counts.data(),
-            size,
-            MPI_INT,
-            recv_counts.data(),
-            size,
-            MPI_INT,
-            md.commxy);
-
-        // Calculate send/receive offsets.
-        std::vector<int> send_offsets(md.nprocs, 0);
-        std::vector<int> recv_offsets(md.nprocs, 0);
-        for (int i=1; i<md.nprocs; ++i)
-        {
-            send_offsets[i] = send_offsets[i-1] + send_counts[i-1];
-            recv_offsets[i] = recv_offsets[i-1] + recv_counts[i-1];
-        }
-
-        const int total_send = send_offsets[md.nprocs-1] + send_counts[md.nprocs-1];
-        const int total_recv = recv_offsets[md.nprocs-1] + recv_counts[md.nprocs-1];
-
-        // Pack particles into send buffer.
-        std::vector<Particle_io<TF>> particles_send(total_send);
-        std::vector<int> current_offset = send_offsets;
-
-        for (int n=0; n < np_local; ++n)
-        {
-            const int rank = target_rank[n];
-            const int pos = current_offset[rank];
-            current_offset[rank] += 1;
-
-            particles_send[pos].uid = uid_in[n];
-            particles_send[pos].x = x_in[n];
-            particles_send[pos].y = y_in[n];
-            particles_send[pos].z = z_in[n];
-        }
-
-        // Allocate receive buffer.
-        std::vector<Particle_io<TF>> particles_recv(total_recv);
-
-        // Exchange particles.
-        MPI_Datatype particle_type = create_particle_type_io<TF>();
-
-        MPI_Alltoallv(
-            particles_send.data(),
-            send_counts.data(),
-            send_offsets.data(),
-            particle_type,
-            particles_recv.data(),
-            recv_counts.data(),
-            recv_offsets.data(),
-            particle_type,
-            md.commxy);
-
-        MPI_Type_free(&particle_type);
+        alltoallv_particles(uid_tmp, fields_tmp_ptr, uid_in, fields_in, target_rank, master);
 
         #else
         // Single task: all particles are already local.
-        const int total_recv = np_local;
-        std::vector<Particle_io<TF>> particles_recv(total_recv);
-
-        for (int n=0; n<np_local; ++n)
-        {
-            particles_recv[n].uid = uid_in[n];
-            particles_recv[n].x = x_in[n];
-            particles_recv[n].y = y_in[n];
-            particles_recv[n].z = z_in[n];
-        }
+        uid_tmp = uid_in;
+        for (int f=0; f<n_fields; ++f)
+            fields_tmp[f] = *fields_in[f];
         #endif
 
-        // Sort received particles by uid to restore original order.
-        std::sort(particles_recv.begin(), particles_recv.end(), particle_uid_compare<TF>);
+        const int total_recv = uid_tmp.size();
+
+        // Sort particles by uid to restore original order.
+        std::vector<int> order(total_recv);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](const int a, const int b) { return uid_tmp[a] < uid_tmp[b]; });
+
+        uid_out.resize(total_recv);
+        for (int n=0; n<total_recv; ++n)
+            uid_out[n] = uid_tmp[order[n]];
+
+        for (int f=0; f<n_fields; ++f)
+        {
+            std::vector<TF>& field_out = *fields_out[f];
+            field_out.resize(total_recv);
+
+            for (int n=0; n<total_recv; ++n)
+                field_out[n] = fields_tmp[f][order[n]];
+        }
 
         // Each task should now have exactly its own block of particles with uid [start, start+count).
         // If not, particles have been lost or duplicated, and the output would be corrupted.
@@ -936,7 +833,7 @@ namespace Particle_lagrangian_io
 
         int n_invalid = (static_cast<hsize_t>(total_recv) == count) ? 0 : 1;
         for (int n=0; n<total_recv && n_invalid == 0; ++n)
-            if (particles_recv[n].uid != static_cast<int>(start + n))
+            if (uid_out[n] != static_cast<int>(start + n))
                 n_invalid = 1;
 
         master.sum(&n_invalid, 1);
@@ -944,20 +841,6 @@ namespace Particle_lagrangian_io
         if (n_invalid > 0)
             throw std::runtime_error(
                 "Lagrangian particles lost or duplicated on " + std::to_string(n_invalid) + " task(s)");
-
-        // Unpack Particle structs in local vectors.
-        uid_out.resize(total_recv);
-        x_out.resize(total_recv);
-        y_out.resize(total_recv);
-        z_out.resize(total_recv);
-
-        for (int n=0; n<total_recv; ++n)
-        {
-            uid_out[n] = particles_recv[n].uid;
-            x_out[n] = particles_recv[n].x;
-            y_out[n] = particles_recv[n].y;
-            z_out[n] = particles_recv[n].z;
-        }
     }
 }
 #endif
