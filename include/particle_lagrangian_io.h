@@ -25,13 +25,31 @@
 
 #include <algorithm>
 #include <numeric>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <stdexcept>
+#include <type_traits>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#include "hdf5_interface.h"
 
 namespace Particle_lagrangian_io
 {
+    template<typename T>
+    hid_t get_hdf5_type()
+    {
+        if constexpr (std::is_same_v<T, float>)
+            return H5T_NATIVE_FLOAT;
+        else if constexpr (std::is_same_v<T, double>)
+            return H5T_NATIVE_DOUBLE;
+        else if constexpr (std::is_same_v<T, int>)
+            return H5T_NATIVE_INT;
+        else
+            static_assert(sizeof(T) == 0, "Invalid datatype for HDF5");
+    }
+
+
     // Negative return values of HDF5 functions (`hid_t` and `herr_t`) indicate failure.
     inline hid_t h5_check(const hid_t status, const std::string& msg)
     {
@@ -149,8 +167,7 @@ namespace Particle_lagrangian_io
         const T* buffer,
         hsize_t time_idx,
         hsize_t start,
-        hsize_t count,
-        hsize_t n_total)
+        hsize_t count)
     {
         // Open dataset.
         hid_t dset = h5_check(H5Dopen(file_id, dset_name, H5P_DEFAULT), "opening dataset " + std::string(dset_name));
@@ -610,9 +627,6 @@ namespace Particle_lagrangian_io
             create_property_dataset(file_id, name, particles.get_property(name), dspace, H5P_DEFAULT, false);
 
         H5Sclose(dspace);
-
-        // Flush to ensure datasets are written to file.
-        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 
@@ -632,9 +646,6 @@ namespace Particle_lagrangian_io
         // Write particle properties (all tasks must call this even if count=0).
         for (size_t i=0; i<names.size(); ++i)
             write_coordinate_1d(file_id, ("/" + names[i]).c_str(), fields[i]->data(), start, count);
-
-        // Flush to disk to ensure data is written.
-        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 
@@ -695,7 +706,7 @@ namespace Particle_lagrangian_io
             h5_check(H5Dset_extent(dset, new_dims), "extending dataset " + path);
             H5Dclose(dset);
 
-            write_coordinate(file_id, path.c_str(), fields[i]->data(), time_idx, start, count, n_particles);
+            write_coordinate(file_id, path.c_str(), fields[i]->data(), time_idx, start, count);
         }
 
         // Flush to disk to ensure data is written.
