@@ -289,6 +289,7 @@ void Particle_lagrangian<TF>::load(const int iotime)
      * Read particles using simple serial HDF5.
      */
     plio::read_particles_serial(file_in.str(), uid, xp, yp, zp);
+    plio::check_particle_uids(uid, 0, master);
     n_particles = xp.size();
     #endif
 

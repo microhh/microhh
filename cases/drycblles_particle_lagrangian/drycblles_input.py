@@ -45,6 +45,8 @@ Define initial location particles.
 """
 n_particles = 10000
 
+# NOTE: MicroHH requires the particle IDs to be sorted and equal to 0, 1, ..., n_particles-1.
+# The ID determines the location of each particle in the restart and dump files.
 particle_id = np.arange(n_particles, dtype=np.int32)
 
 """

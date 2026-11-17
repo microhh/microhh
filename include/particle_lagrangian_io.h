@@ -232,6 +232,28 @@ namespace Particle_lagrangian_io
     }
 
 
+    // Particle IDs in the input file must be sorted and equal to 0, 1, ..., n_particles-1,
+    // since the particle ID determines the location of each particle in the output files.
+    inline void check_particle_uids(
+        const std::vector<int>& uid,
+        const hsize_t start,
+        Master& master)
+    {
+        int invalid = 0;
+        for (size_t n=0; n<uid.size(); ++n)
+            if (uid[n] != static_cast<int>(start + n))
+            {
+                invalid = 1;
+                break;
+            }
+
+        master.sum(&invalid, 1);
+
+        if (invalid > 0)
+            throw std::runtime_error("Particle IDs in input file must be sorted and equal to 0, 1, ..., n_particles-1");
+    }
+
+
     template <typename TF>
     void read_particles_parallel(
         const std::string& filename,
@@ -277,6 +299,8 @@ namespace Particle_lagrangian_io
         read_coordinate(file_id, "/x", x.data(), start, count);
         read_coordinate(file_id, "/y", y.data(), start, count);
         read_coordinate(file_id, "/z", z.data(), start, count);
+
+        check_particle_uids(uid, start, master);
 
         // Cleanup!
         h5_check(H5Fclose(file_id), "closing " + filename);
@@ -811,11 +835,11 @@ namespace Particle_lagrangian_io
         const int n_particles,
         Master& master)
     {
+        auto& md = master.get_MPI_data();
+
         const int np_local = uid_in.size();
 
         #ifdef USEMPI
-        auto& md = master.get_MPI_data();
-
         // Each task originally has `ceil(n_particles / nprocs)` particles.
         const int np_per_task = get_np_per_task(n_particles, md.nprocs);
 
@@ -904,6 +928,22 @@ namespace Particle_lagrangian_io
 
         // Sort received particles by uid to restore original order.
         std::sort(particles_recv.begin(), particles_recv.end(), particle_uid_compare<TF>);
+
+        // Each task should now have exactly its own block of particles with uid [start, start+count).
+        // If not, particles have been lost or duplicated, and the output would be corrupted.
+        hsize_t start, count;
+        get_io_block(start, count, n_particles, md.mpiid, md.nprocs);
+
+        int n_invalid = (static_cast<hsize_t>(total_recv) == count) ? 0 : 1;
+        for (int n=0; n<total_recv && n_invalid == 0; ++n)
+            if (particles_recv[n].uid != static_cast<int>(start + n))
+                n_invalid = 1;
+
+        master.sum(&n_invalid, 1);
+
+        if (n_invalid > 0)
+            throw std::runtime_error(
+                "Lagrangian particles lost or duplicated on " + std::to_string(n_invalid) + " task(s)");
 
         // Unpack Particle structs in local vectors.
         uid_out.resize(total_recv);
