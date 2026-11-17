@@ -11,15 +11,15 @@ scalars = ['s1', 's2']     # All scalars.
 scalars_outflow = ['s1']   # Scalars with non-periodic lateral BCs.
 swtimedep_outflow = False  # Time depedent lateral outflow profiles.
 
-xsize = 12800
-ysize = 4800
+xsize = 6400
+ysize = 3200
 zsize = 3200
 
 itot = 256
-jtot = 96
+jtot = 128
 ktot = 64
 
-endtime = 43200
+endtime = 300
 
 """
 Source settings.
@@ -66,7 +66,7 @@ for k in range(ktot):
     else:
         th[k] = th0 + dth + dthetadz*(z[k]-(h+0.5*dthz))
 
-u[:] = 5
+#u[:] = 5
 
 # Outflow profiles
 if swtimedep_outflow:

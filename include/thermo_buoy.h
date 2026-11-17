@@ -99,6 +99,7 @@ class Thermo_buoy : public Thermo<TF>
         bool has_mask(std::string) {return false;};
 
         void update_time_dependent(Timeloop<TF>&) {};
+        std::vector<std::string>& get_hydrometeorlist() {return hydrometeorlist;};
 
         #ifdef USECUDA
         void prepare_device() {};
@@ -143,5 +144,7 @@ class Thermo_buoy : public Thermo<TF>
         TF dbdy_ls;
         const std::string tend_name = "buoy";
         const std::string tend_longname = "Buoyancy";
+
+        std::vector<std::string> hydrometeorlist;
 };
 #endif

@@ -44,16 +44,16 @@ namespace Thermo_moist_functions
 
     // INLINE FUNCTIONS
     template<typename TF>
-    CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi)
+    CUDA_MACRO inline TF virtual_temperature(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF qhm)
     {
         const TF th = thl + Lv<TF>*ql/(cp<TF>*exn) + Ls<TF>*qi/(cp<TF>*exn);
-        return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi));
+        return th * (TF(1.) - (TF(1.) - Rv<TF>/Rd<TF>)*qt - Rv<TF>/Rd<TF>*(ql+qi) - qhm);
     }
 
     template<typename TF>
-    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF thvref)
+    CUDA_MACRO inline TF buoyancy(const TF exn, const TF thl, const TF qt, const TF ql, const TF qi, const TF thvref, const TF qhm)
     {
-        return grav<TF> * (virtual_temperature(exn, thl, qt, ql, qi) - thvref) / thvref;
+        return grav<TF> * (virtual_temperature(exn, thl, qt, ql, qi, qhm) - thvref) / thvref;
     }
 
     template<typename TF>
@@ -82,19 +82,17 @@ namespace Thermo_moist_functions
 
     // Saturation vapor pressure, using Taylor expansion at T=T0 around the Arden Buck (1981) equation:
     // es = 611.21 * exp(17.502 * Tc / (240.97 + Tc)), with Tc=T-T0
+    // We extended the limiter for proper ice calculations. Taylor series is not good at low temperatures.
     template<typename TF>
     CUDA_MACRO inline TF esat_liq(const TF T)
     {
         #ifdef __CUDACC__
-        // const TF x = fmax(TF(-75.), T-T0<TF>);
-        const TF x = fmin(fmax(TF(-75.), T-T0<TF>), TF(50.));       // Limit the temperature range to avoid numerical errors
+        const TF x = fmin(fmax(TF(-100.), T-T0<TF>), TF(50.)); // Limit the temperature range to avoid numerical errors
         #else
-        // const TF x = std::max(TF(-75.), T-T0<TF>);
-        const TF x = std::min(std::max(TF(-75.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
+        const TF x = std::min(std::max(TF(-100.), T-T0<TF>), TF(50.)); // Limit the temperature range to avoid numerical errors
         #endif
 
-        // return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
-        return c00<TF>+x*(c10<TF>+x*(c20<TF>+x*(c30<TF>+x*(c40<TF>+x*(c50<TF>+x*(c60<TF>+x*(c70<TF>+x*(c80<TF>+x*(c90<TF>+x*c100<TF>)))))))));
+        return TF(611.21)*std::exp(TF(17.502)*x / (TF(240.97)+x));
     }
 
     template<typename TF>
@@ -109,10 +107,8 @@ namespace Thermo_moist_functions
     CUDA_MACRO inline TF esat_ice(const TF T)
     {
         #ifdef __CUDACC__
-        // const TF x = fmax(TF(-100.), T-T0<TF>);
         const TF x = fmin(fmax(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #else
-        // const TF x = std::max(TF(-100.), T-T0<TF>);
         const TF x = std::min(std::max(TF(-100.), T-T0<TF>), TF(50.));     // Limit the temperature range to avoid numerical errors
         #endif
 
@@ -324,7 +320,8 @@ namespace Thermo_moist_functions
         TF ql = ssa.ql;
         TF qi = ssa.qi;
 
-        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql, qi);
+        // MT: assume no hydrometeors in the base state, hence use TF(0)
+        thvh[kstart] = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql, qi, TF(0));
         rhoh[kstart] = pbot / (Rd<TF> * exh[kstart] * thvh[kstart]);
 
         // Calculate the first full level pressure
@@ -337,7 +334,7 @@ namespace Thermo_moist_functions
             ssa      = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
             ql       = ssa.ql;
             qi       = ssa.qi;
-            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql, qi);
+            thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql, qi, TF(0));
             rho[k-1] = pref[k-1] / (Rd<TF> * ex[k-1] * thv[k-1]);
 
             // 2. Calculate pressure at half-level[k]
@@ -352,7 +349,7 @@ namespace Thermo_moist_functions
             const TF qli = ssa.ql;
             const TF qii = ssa.qi;
 
-            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli, qii);
+            thvh[k]  = virtual_temperature(exh[k], thli, qti, qli, qii, TF(0));
             rhoh[k]  = prefh[k] / (Rd<TF> * exh[k] * thvh[k]);
 
             // 4. Calculate pressure at full-level[k]
@@ -407,5 +404,23 @@ namespace Thermo_moist_functions
 
         pref[kstart-1] = TF(2.)*prefh[kstart] - pref[kstart];
     }
+
+    template<typename TF>
+    void add_hydrometeor(TF* restrict qhm_total,
+                         TF* restrict qhm,
+                         const int istart, const int iend,
+                         const int jstart, const int jend,
+                         const int kstart, const int kend,
+                         const int jj, const int kk)
+    {
+        for (int k = kstart; k < kend; k++)
+            for (int j = jstart; j < jend; j++)
+                for (int i = istart; i < iend; i++)
+                {
+                    const int ijk = i + j * jj + k * kk;
+                    qhm_total[ijk] += qhm[ijk];
+                }
+    }
+
 }
 #endif
