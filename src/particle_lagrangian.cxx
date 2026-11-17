@@ -374,7 +374,7 @@ void Particle_lagrangian<TF>::save(const int iotime)
 template<typename TF>
 unsigned long Particle_lagrangian<TF>::get_time_limit(const unsigned long itime)
 {
-    if (!sw_dump)
+    if (!sw_particle || !sw_dump)
         return Constants::ulhuge;
 
     return isampletime_dump - itime % isampletime_dump;
@@ -384,7 +384,7 @@ unsigned long Particle_lagrangian<TF>::get_time_limit(const unsigned long itime)
 template<typename TF>
 bool Particle_lagrangian<TF>::do_dump(const unsigned long itime)
 {
-    if (!sw_dump || itime % isampletime_dump != 0)
+    if (!sw_particle || !sw_dump || itime % isampletime_dump != 0)
         return false;
 
     return true;
