@@ -646,24 +646,21 @@ namespace Particle_lagrangian_io
         write_coordinate_1d(file_id, "/particle_id", particle_ids.data(), start, count);
 
         // Create particle datasets without time dimension (single time step).
+        // Fixed size and no compression, so use default contiguous layout.
         hsize_t dims[1] = {static_cast<hsize_t>(n_particles)};
         hid_t dspace = H5Screate_simple(1, dims, dims);
-
-        hid_t plist_create = H5Pcreate(H5P_DATASET_CREATE);
-        hsize_t chunk_dims[1] = {static_cast<hsize_t>(n_particles)};
-        H5Pset_chunk(plist_create, 1, chunk_dims);
 
         hid_t h5_type = get_hdf5_type<TF>();
 
         hid_t dset_x = H5Dcreate(
             file_id, "/x", h5_type, dspace,
-            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         hid_t dset_y = H5Dcreate(
             file_id, "/y", h5_type, dspace,
-            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         hid_t dset_z = H5Dcreate(
             file_id, "/z", h5_type, dspace,
-            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         // Attach dimension scale
         dset_particle_id = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
@@ -676,7 +673,6 @@ namespace Particle_lagrangian_io
         H5Dclose(dset_x);
         H5Dclose(dset_y);
         H5Dclose(dset_z);
-        H5Pclose(plist_create);
         H5Sclose(dspace);
 
         // Flush to ensure datasets are written to file.
@@ -699,56 +695,10 @@ namespace Particle_lagrangian_io
         hsize_t start, count;
         get_io_block(start, count, n_particles, mpiid, nprocs);
 
-        // Open datasets.
-        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
-        hid_t dset_y = H5Dopen(file_id, "/y", H5P_DEFAULT);
-        hid_t dset_z = H5Dopen(file_id, "/z", H5P_DEFAULT);
-
-        hid_t filespace_x = H5Dget_space(dset_x);
-        hid_t filespace_y = H5Dget_space(dset_y);
-        hid_t filespace_z = H5Dget_space(dset_z);
-
-        hid_t memspace;
-
-        if (count > 0)
-        {
-            // Select hyperslab in file: [start:start+count]
-            hsize_t file_start[1] = {start};
-            hsize_t file_count[1] = {count};
-            H5Sselect_hyperslab(filespace_x, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
-            H5Sselect_hyperslab(filespace_y, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
-            H5Sselect_hyperslab(filespace_z, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
-
-            // Local memory layout is simple; continuous 1D array of size `count`.
-            memspace = H5Screate_simple(1, &count, NULL);
-        }
-        else
-        {
-            // No particles to write - select empty hyperslab.
-            H5Sselect_none(filespace_x);
-            H5Sselect_none(filespace_y);
-            H5Sselect_none(filespace_z);
-            memspace = H5Scopy(filespace_x);
-            H5Sselect_none(memspace);
-        }
-
-        // Setup collective IO where all tasks participate.
-        hid_t plist_xfer = create_dxpl();
-
-        // Write data (all tasks must call this even if count=0).
-        H5Dwrite(dset_x, get_hdf5_type<TF>(), memspace, filespace_x, plist_xfer, x.data());
-        H5Dwrite(dset_y, get_hdf5_type<TF>(), memspace, filespace_y, plist_xfer, y.data());
-        H5Dwrite(dset_z, get_hdf5_type<TF>(), memspace, filespace_z, plist_xfer, z.data());
-
-        // Cleanup!
-        H5Pclose(plist_xfer);
-        H5Sclose(memspace);
-        H5Sclose(filespace_x);
-        H5Sclose(filespace_y);
-        H5Sclose(filespace_z);
-        H5Dclose(dset_x);
-        H5Dclose(dset_y);
-        H5Dclose(dset_z);
+        // Write particle coordinates (all tasks must call this even if count=0).
+        write_coordinate_1d(file_id, "/x", x.data(), start, count);
+        write_coordinate_1d(file_id, "/y", y.data(), start, count);
+        write_coordinate_1d(file_id, "/z", z.data(), start, count);
 
         // Flush to disk to ensure data is written.
         H5Fflush(file_id, H5F_SCOPE_GLOBAL);
