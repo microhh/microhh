@@ -25,6 +25,8 @@
 
 #include <hdf5.h>
 
+#include "particle_data.h"
+
 class Master;
 class Input;
 template<typename> class Grid;
@@ -86,23 +88,8 @@ class Particle_lagrangian
         // Delay start of particle release.
         unsigned long istarttime;
 
-        // Particle properties.
-        std::vector<int> uid;
-
-        // Location.
-        std::vector<TF> xp;
-        std::vector<TF> yp;
-        std::vector<TF> zp;
-
-        // Velocity.
-        std::vector<TF> up;
-        std::vector<TF> vp;
-        std::vector<TF> wp;
-
-        // Tendency.
-        std::vector<TF> xpt;
-        std::vector<TF> ypt;
-        std::vector<TF> zpt;
+        // Particle properties, defined in the constructor.
+        Particle_data<TF> particles;
 
         // Interpolation indexes and factors.
         // Re-used for different locations on grid (u, v, w, ..).

@@ -48,6 +48,16 @@ Particle_lagrangian<TF>::Particle_lagrangian(Master& masterin, Grid<TF>& gridin,
 
     if (sw_particle)
     {
+        // Particle properties. New properties only need to be added here; restart files,
+        // MPI exchange, resizing, and time integration are handled by `Particle_data`.
+        particles.add("x", Particle_kind::Prognostic, "Particle x-location", "m");
+        particles.add("y", Particle_kind::Prognostic, "Particle y-location", "m");
+        particles.add("z", Particle_kind::Prognostic, "Particle z-location", "m");
+
+        particles.add("u", Particle_kind::Diagnostic, "Particle u-velocity", "m s-1");
+        particles.add("v", Particle_kind::Diagnostic, "Particle v-velocity", "m s-1");
+        particles.add("w", Particle_kind::Diagnostic, "Particle w-velocity", "m s-1");
+
         // Raw dump of all particles.
         sw_dump = inputin.get_item<bool>("particle_lagrangian", "sw_dump", "", false);
 
@@ -117,6 +127,10 @@ void Particle_lagrangian<TF>::exec(Timeloop<TF>& timeloop)
 
     auto& gd = grid.get_grid_data();
 
+    auto& xp = particles.get("x");
+    auto& yp = particles.get("y");
+    auto& zp = particles.get("z");
+
     auto diagnose_tendency = [&](
         std::vector<TF>& velocity,
         std::vector<TF>& tendency,
@@ -151,9 +165,9 @@ void Particle_lagrangian<TF>::exec(Timeloop<TF>& timeloop)
             xp.size());
     };
 
-    diagnose_tendency(up, xpt, fields.mp.at("u")->fld, {1,0,0});
-    diagnose_tendency(vp, ypt, fields.mp.at("v")->fld, {0,1,0});
-    diagnose_tendency(wp, zpt, fields.mp.at("w")->fld, {0,0,1});
+    diagnose_tendency(particles.get("u"), particles.get_tend("x"), fields.mp.at("u")->fld, {1,0,0});
+    diagnose_tendency(particles.get("v"), particles.get_tend("y"), fields.mp.at("v")->fld, {0,1,0});
+    diagnose_tendency(particles.get("w"), particles.get_tend("z"), fields.mp.at("w")->fld, {0,0,1});
 }
 
 
@@ -165,10 +179,19 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 
     auto& gd = grid.get_grid_data();
 
-    // Integrate particle location with RK3/4 scheme.
-    timeloop.exec(xp, xpt);
-    timeloop.exec(yp, ypt);
-    timeloop.exec(zp, zpt);
+    // Integrate all prognostic particle properties with RK3/4 scheme.
+    for (const std::string& name : particles.get_names({Particle_kind::Prognostic}))
+        timeloop.exec(particles.get(name), particles.get_tend(name));
+
+    auto& uid = particles.uid;
+
+    auto& xp = particles.get("x");
+    auto& yp = particles.get("y");
+    auto& zp = particles.get("z");
+
+    auto& xpt = particles.get_tend("x");
+    auto& ypt = particles.get_tend("y");
+    auto& zpt = particles.get_tend("z");
 
     // Quick hack: bounce particles from domain bottom/top.
     // TODO: I think we need to manipulate tendencies to do this correctly...
@@ -213,9 +236,9 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
 
     // These need to be included in the particle exchange
     // when the velocities become prognostic.
-    plk::adaptive_resize(up, new_size, reserve_ratio);
-    plk::adaptive_resize(vp, new_size, reserve_ratio);
-    plk::adaptive_resize(wp, new_size, reserve_ratio);
+    plk::adaptive_resize(particles.get("u"), new_size, reserve_ratio);
+    plk::adaptive_resize(particles.get("v"), new_size, reserve_ratio);
+    plk::adaptive_resize(particles.get("w"), new_size, reserve_ratio);
 
     // These are always diagnostic.
     plk::adaptive_resize(il, new_size, reserve_ratio);
@@ -260,6 +283,12 @@ void Particle_lagrangian<TF>::load(const int iotime)
     std::ostringstream file_in;
     file_in << "particles." << std::setfill('0') << std::setw(7) << iotime << ".h5";
 
+    auto& uid = particles.uid;
+
+    auto& xp = particles.get("x");
+    auto& yp = particles.get("y");
+    auto& zp = particles.get("z");
+
     #ifdef USEMPI
     /*
      * Read particles in parallel using HDF5 and MPI.
@@ -293,18 +322,9 @@ void Particle_lagrangian<TF>::load(const int iotime)
     n_particles = xp.size();
     #endif
 
-    // Resize other properties.
+    // Resize other properties and tendencies.
     const int n_local = xp.size();
-
-    // Velocities.
-    up.resize(n_local);
-    vp.resize(n_local);
-    wp.resize(n_local);
-
-    // Location tendencies.
-    xpt.resize(n_local);
-    ypt.resize(n_local);
-    zpt.resize(n_local);
+    particles.resize(n_local);
 
     // Interpolation indexes and factors.
     il.resize(n_local);
@@ -347,10 +367,10 @@ void Particle_lagrangian<TF>::save(const int iotime)
         x_local,
         y_local,
         z_local,
-        uid,
-        xp,
-        yp,
-        zp,
+        particles.uid,
+        particles.get("x"),
+        particles.get("y"),
+        particles.get("z"),
         n_particles,
         master);
 
@@ -417,10 +437,10 @@ void Particle_lagrangian<TF>::dump(Timeloop<TF>& timeloop)
         x_local,
         y_local,
         z_local,
-        uid,
-        xp,
-        yp,
-        zp,
+        particles.uid,
+        particles.get("x"),
+        particles.get("y"),
+        particles.get("z"),
         n_particles,
         master);
 
