@@ -55,6 +55,35 @@ namespace Particle_lagrangian_io
     }
 
 
+    // File access property list; parallel HDF5 with collective metadata operations for MPI builds.
+    inline hid_t create_fapl(Master& master)
+    {
+        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+
+        #ifdef USEMPI
+        auto& md = master.get_MPI_data();
+        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
+        H5Pset_all_coll_metadata_ops(plist_id, true);
+        H5Pset_coll_metadata_write(plist_id, true);
+        #endif
+
+        return plist_id;
+    }
+
+
+    // Dataset transfer property list; collective IO for MPI builds.
+    inline hid_t create_dxpl()
+    {
+        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+
+        #ifdef USEMPI
+        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+        #endif
+
+        return plist_id;
+    }
+
+
     template<typename T>
     void read_coordinate(
         hid_t file_id,
@@ -85,8 +114,7 @@ namespace Particle_lagrangian_io
         }
 
         // Setup collective IO where all tasks participate.
-        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_id = create_dxpl();
 
         // Read data (all tasks must call this even if count=0).
         H5Dread(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
@@ -133,8 +161,7 @@ namespace Particle_lagrangian_io
         }
 
         // Setup collective IO where all tasks participate.
-        hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_id = create_dxpl();
 
         // Write data (all tasks must call this even if count=0).
         H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
@@ -160,9 +187,7 @@ namespace Particle_lagrangian_io
         auto& md = master.get_MPI_data();
 
         // Open file with parallel HDF5.
-        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
-        H5Pset_all_coll_metadata_ops(plist_id, true);
+        hid_t plist_id = create_fapl(master);
         hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id);
         H5Pclose(plist_id);
 
@@ -230,6 +255,7 @@ namespace Particle_lagrangian_io
     };
 
 
+    #ifdef USEMPI
     template<typename T>
     MPI_Datatype get_mpi_type()
     {
@@ -240,6 +266,7 @@ namespace Particle_lagrangian_io
         else
             throw std::runtime_error("Invalid float type for MPI!");
     }
+    #endif
 
 
     template<typename TF>
@@ -249,6 +276,7 @@ namespace Particle_lagrangian_io
     }
 
 
+    #ifdef USEMPI
     template<typename TF>
     MPI_Datatype create_particle_type_io()
     {
@@ -393,6 +421,7 @@ namespace Particle_lagrangian_io
         //for (int n=0; n<total_recv; ++n)
         //    std::cout << "mpiidx/y= " << md.mpicoordx << "/" << md.mpicoordy << " has x=" << x_out[n] << ", y=" << y_out[n] << std::endl;
     }
+    #endif
 
 
     template<typename TF>
@@ -413,7 +442,7 @@ namespace Particle_lagrangian_io
             file_exists = test.good() ? 1 : 0;
             test.close();
         }
-        MPI_Bcast(&file_exists, 1, MPI_INT, 0, md.commxy);
+        master.broadcast(&file_exists, 1, 0);
 
         if (file_exists)
         {
@@ -422,10 +451,7 @@ namespace Particle_lagrangian_io
         }
 
         // Create file with parallel HDF5.
-        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
-        H5Pset_all_coll_metadata_ops(plist_id, true);
-        H5Pset_coll_metadata_write(plist_id, true);
+        hid_t plist_id = create_fapl(master);
         file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
         H5Pclose(plist_id);
 
@@ -464,8 +490,7 @@ namespace Particle_lagrangian_io
         for (int i = 0; i < n_particles; ++i)
             particle_ids[i] = i;
 
-        hid_t plist_write = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_write, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_write = create_dxpl();
         H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
         H5Pclose(plist_write);
 
@@ -538,7 +563,7 @@ namespace Particle_lagrangian_io
             file_exists = test.good() ? 1 : 0;
             test.close();
         }
-        MPI_Bcast(&file_exists, 1, MPI_INT, 0, md.commxy);
+        master.broadcast(&file_exists, 1, 0);
 
         if (file_exists)
         {
@@ -547,10 +572,7 @@ namespace Particle_lagrangian_io
         }
 
         // Create file with parallel HDF5.
-        hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
-        H5Pset_all_coll_metadata_ops(plist_id, true);
-        H5Pset_coll_metadata_write(plist_id, true);
+        hid_t plist_id = create_fapl(master);
         file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
         H5Pclose(plist_id);
 
@@ -569,8 +591,7 @@ namespace Particle_lagrangian_io
         for (int i = 0; i < n_particles; ++i)
             particle_ids[i] = i;
 
-        hid_t plist_write = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_write, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_write = create_dxpl();
         H5Dwrite(dset_particle_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, plist_write, particle_ids.data());
         H5Pclose(plist_write);
 
@@ -665,8 +686,7 @@ namespace Particle_lagrangian_io
         }
 
         // Setup collective IO where all tasks participate.
-        hid_t plist_xfer = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_xfer, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_xfer = create_dxpl();
 
         // Write data (all tasks must call this even if count=0).
         H5Dwrite(dset_x, get_hdf5_type<TF>(), memspace, filespace_x, plist_xfer, x.data());
@@ -723,8 +743,7 @@ namespace Particle_lagrangian_io
         H5Sselect_hyperslab(dspace_time_write, H5S_SELECT_SET, time_start, NULL, time_count, NULL);
         hid_t memspace_time = H5Screate_simple(1, time_count, NULL);
 
-        hid_t plist_xfer = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(plist_xfer, H5FD_MPIO_COLLECTIVE);
+        hid_t plist_xfer = create_dxpl();
 
         H5Dwrite(dset_time, H5T_NATIVE_DOUBLE, memspace_time, dspace_time_write, plist_xfer, &time);
 
@@ -773,12 +792,13 @@ namespace Particle_lagrangian_io
         const int n_particles,
         Master& master)
     {
+        const int np_local = uid_in.size();
+
+        #ifdef USEMPI
         auto& md = master.get_MPI_data();
 
         // Each task originally has `ceil(n_particles / nprocs)` particles.
         const int np_per_task = get_np_per_task(n_particles, md.nprocs);
-
-        const int np_local = uid_in.size();
 
         // Calculate which original MPI task each particle belongs to based on uid.
         std::vector<int> target_rank(np_local);
@@ -848,6 +868,20 @@ namespace Particle_lagrangian_io
             md.commxy);
 
         MPI_Type_free(&particle_type);
+
+        #else
+        // Single task: all particles are already local.
+        const int total_recv = np_local;
+        std::vector<Particle_io<TF>> particles_recv(total_recv);
+
+        for (int n=0; n<np_local; ++n)
+        {
+            particles_recv[n].uid = uid_in[n];
+            particles_recv[n].x = x_in[n];
+            particles_recv[n].y = y_in[n];
+            particles_recv[n].z = z_in[n];
+        }
+        #endif
 
         // Sort received particles by uid to restore original order.
         std::sort(particles_recv.begin(), particles_recv.end(), particle_uid_compare<TF>);

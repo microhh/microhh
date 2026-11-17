@@ -26,6 +26,7 @@
 
 namespace Particle_lagrangian_kernels
 {
+    #ifdef USEMPI
     template<typename TF>
     struct Particle_comm
     {
@@ -73,6 +74,7 @@ namespace Particle_lagrangian_kernels
 
         return particle_type;
     }
+    #endif
 
 
     template<typename T>
@@ -296,6 +298,7 @@ namespace Particle_lagrangian_kernels
     }
 
 
+    #ifdef USEMPI
     enum class Neighbor
     {
         SW = 0,
@@ -599,5 +602,6 @@ namespace Particle_lagrangian_kernels
         }
 
     }
+    #endif
 }
 #endif
