@@ -28,6 +28,15 @@
 
 namespace Particle_lagrangian_io
 {
+    // Negative return values of HDF5 functions (`hid_t` and `herr_t`) indicate failure.
+    inline hid_t h5_check(const hid_t status, const std::string& msg)
+    {
+        if (status < 0)
+            throw std::runtime_error("HDF5 error: " + msg);
+        return status;
+    }
+
+
     // Each task has `ceil(n_particles / nprocs)` particles, except the last task(s).
     inline int get_np_per_task(const int n_particles, const int nprocs)
     {
@@ -62,9 +71,9 @@ namespace Particle_lagrangian_io
 
         #ifdef USEMPI
         auto& md = master.get_MPI_data();
-        H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL);
-        H5Pset_all_coll_metadata_ops(plist_id, true);
-        H5Pset_coll_metadata_write(plist_id, true);
+        h5_check(H5Pset_fapl_mpio(plist_id, md.commxy, MPI_INFO_NULL), "setting MPI-IO file driver");
+        h5_check(H5Pset_all_coll_metadata_ops(plist_id, true), "setting collective metadata reads");
+        h5_check(H5Pset_coll_metadata_write(plist_id, true), "setting collective metadata writes");
         #endif
 
         return plist_id;
@@ -77,7 +86,7 @@ namespace Particle_lagrangian_io
         hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 
         #ifdef USEMPI
-        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+        h5_check(H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE), "setting collective IO");
         #endif
 
         return plist_id;
@@ -93,14 +102,15 @@ namespace Particle_lagrangian_io
         hsize_t count)
     {
         // Open dataset.
-        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t dset = h5_check(H5Dopen(file_id, dset_name, H5P_DEFAULT), "opening dataset " + std::string(dset_name));
         hid_t filespace = H5Dget_space(dset);
         hid_t memspace;
 
         if (count > 0)
         {
             // Select hyperslab.
-            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
+            h5_check(H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL),
+                    "selecting hyperslab in " + std::string(dset_name));
 
             // Local memory layout is simple; continous 1D array of size `count`.
             memspace = H5Screate_simple(1, &count, NULL);
@@ -117,7 +127,8 @@ namespace Particle_lagrangian_io
         hid_t plist_id = create_dxpl();
 
         // Read data (all tasks must call this even if count=0).
-        H5Dread(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
+        h5_check(H5Dread(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer),
+                "reading dataset " + std::string(dset_name));
 
         // Cleanup!
         H5Pclose(plist_id);
@@ -138,7 +149,7 @@ namespace Particle_lagrangian_io
         hsize_t n_total)
     {
         // Open dataset.
-        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t dset = h5_check(H5Dopen(file_id, dset_name, H5P_DEFAULT), "opening dataset " + std::string(dset_name));
         hid_t filespace = H5Dget_space(dset);
         hid_t memspace;
 
@@ -147,7 +158,8 @@ namespace Particle_lagrangian_io
             // Select hyperslab in file: [time_idx, start:start+count]
             hsize_t file_start[2] = {time_idx, start};
             hsize_t file_count[2] = {1, count};
-            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+            h5_check(H5Sselect_hyperslab(filespace, H5S_SELECT_SET, file_start, NULL, file_count, NULL),
+                    "selecting hyperslab in " + std::string(dset_name));
 
             // Local memory layout is simple; continuous 1D array of size `count`.
             memspace = H5Screate_simple(1, &count, NULL);
@@ -164,7 +176,8 @@ namespace Particle_lagrangian_io
         hid_t plist_id = create_dxpl();
 
         // Write data (all tasks must call this even if count=0).
-        H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
+        h5_check(H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer),
+                "writing dataset " + std::string(dset_name));
 
         // Cleanup!
         H5Pclose(plist_id);
@@ -183,14 +196,15 @@ namespace Particle_lagrangian_io
         hsize_t count)
     {
         // Open dataset.
-        hid_t dset = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+        hid_t dset = h5_check(H5Dopen(file_id, dset_name, H5P_DEFAULT), "opening dataset " + std::string(dset_name));
         hid_t filespace = H5Dget_space(dset);
         hid_t memspace;
 
         if (count > 0)
         {
             // Select hyperslab in file: [start:start+count]
-            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL);
+            h5_check(H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &start, NULL, &count, NULL),
+                    "selecting hyperslab in " + std::string(dset_name));
 
             // Local memory layout is simple; continuous 1D array of size `count`.
             memspace = H5Screate_simple(1, &count, NULL);
@@ -207,7 +221,8 @@ namespace Particle_lagrangian_io
         hid_t plist_id = create_dxpl();
 
         // Write data (all tasks must call this even if count=0).
-        H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer);
+        h5_check(H5Dwrite(dset, get_hdf5_type<T>(), memspace, filespace, plist_id, buffer),
+                "writing dataset " + std::string(dset_name));
 
         // Cleanup!
         H5Pclose(plist_id);
@@ -231,11 +246,11 @@ namespace Particle_lagrangian_io
 
         // Open file with parallel HDF5.
         hid_t plist_id = create_fapl(master);
-        hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id);
+        hid_t file_id = h5_check(H5Fopen(filename.c_str(), H5F_ACC_RDONLY, plist_id), "opening " + filename);
         H5Pclose(plist_id);
 
         // Get total number of particles.
-        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
+        hid_t dset_x = h5_check(H5Dopen(file_id, "/x", H5P_DEFAULT), "opening dataset /x in " + filename);
         hid_t dspace = H5Dget_space(dset_x);
         hsize_t n_total;
         H5Sget_simple_extent_dims(dspace, &n_total, NULL);
@@ -264,7 +279,7 @@ namespace Particle_lagrangian_io
         read_coordinate(file_id, "/z", z.data(), start, count);
 
         // Cleanup!
-        H5Fclose(file_id);
+        h5_check(H5Fclose(file_id), "closing " + filename);
     }
 
 
@@ -495,7 +510,7 @@ namespace Particle_lagrangian_io
 
         // Create file with parallel HDF5.
         hid_t plist_id = create_fapl(master);
-        file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
+        file_id = h5_check(H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id), "creating " + filename);
         H5Pclose(plist_id);
 
         // Create unlimited time dimension.
@@ -505,14 +520,14 @@ namespace Particle_lagrangian_io
 
         hid_t plist_create = H5Pcreate(H5P_DATASET_CREATE);
         hsize_t chunk_dims[1] = {1};
-        H5Pset_chunk(plist_create, 1, chunk_dims);
+        h5_check(H5Pset_chunk(plist_create, 1, chunk_dims), "setting chunk size /time");
 
-        hid_t dset_time = H5Dcreate(
+        hid_t dset_time = h5_check(H5Dcreate(
             file_id, "/time", H5T_NATIVE_DOUBLE, dspace_time,
-            H5P_DEFAULT, plist_create, H5P_DEFAULT);
+            H5P_DEFAULT, plist_create, H5P_DEFAULT), "creating dataset /time");
 
         // Make time a dimension scale
-        H5DSset_scale(dset_time, "time");
+        h5_check(H5DSset_scale(dset_time, "time"), "setting dimension scale /time");
 
         H5Dclose(dset_time);
         H5Pclose(plist_create);
@@ -521,12 +536,12 @@ namespace Particle_lagrangian_io
         // Create particle_id dimension scale dataset.
         hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
         hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
-        hid_t dset_particle_id = H5Dcreate(
+        hid_t dset_particle_id = h5_check(H5Dcreate(
             file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /particle_id");
 
         // Make particle_id a dimension scale
-        H5DSset_scale(dset_particle_id, "particle_id");
+        h5_check(H5DSset_scale(dset_particle_id, "particle_id"), "setting dimension scale /particle_id");
 
         H5Dclose(dset_particle_id);
         H5Sclose(dspace_particle_id);
@@ -549,34 +564,39 @@ namespace Particle_lagrangian_io
 
         hid_t plist_create_2d = H5Pcreate(H5P_DATASET_CREATE);
         hsize_t chunk_dims_2d[2] = {1, static_cast<hsize_t>(n_particles)};
-        H5Pset_chunk(plist_create_2d, 2, chunk_dims_2d);
+        h5_check(H5Pset_chunk(plist_create_2d, 2, chunk_dims_2d), "setting chunk size particle datasets");
 
         // Apply SZIP compression if requested.
         if (szip_compression > 0)
-            H5Pset_szip(plist_create_2d, H5_SZIP_NN_OPTION_MASK, szip_compression);
+        {
+            if (H5Zfilter_avail(H5Z_FILTER_SZIP) <= 0)
+                throw std::runtime_error("SZIP compression requested, but SZIP filter is not available in HDF5");
+
+            h5_check(H5Pset_szip(plist_create_2d, H5_SZIP_NN_OPTION_MASK, szip_compression), "setting SZIP compression");
+        }
 
         hid_t h5_type = get_hdf5_type<TF>();
 
-        hid_t dset_x = H5Dcreate(
+        hid_t dset_x = h5_check(H5Dcreate(
             file_id, "/x", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
-        hid_t dset_y = H5Dcreate(
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /x");
+        hid_t dset_y = h5_check(H5Dcreate(
             file_id, "/y", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
-        hid_t dset_z = H5Dcreate(
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /y");
+        hid_t dset_z = h5_check(H5Dcreate(
             file_id, "/z", h5_type, dspace,
-            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT);
+            H5P_DEFAULT, plist_create_2d, H5P_DEFAULT), "creating dataset /z");
 
         // Attach dimension scales
-        dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
-        dset_particle_id = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
+        dset_time = h5_check(H5Dopen(file_id, "/time", H5P_DEFAULT), "opening dataset /time");
+        dset_particle_id = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id");
 
-        H5DSattach_scale(dset_x, dset_time, 0);
-        H5DSattach_scale(dset_x, dset_particle_id, 1);
-        H5DSattach_scale(dset_y, dset_time, 0);
-        H5DSattach_scale(dset_y, dset_particle_id, 1);
-        H5DSattach_scale(dset_z, dset_time, 0);
-        H5DSattach_scale(dset_z, dset_particle_id, 1);
+        h5_check(H5DSattach_scale(dset_x, dset_time, 0), "attaching dimension scale /time to /x");
+        h5_check(H5DSattach_scale(dset_x, dset_particle_id, 1), "attaching dimension scale /particle_id to /x");
+        h5_check(H5DSattach_scale(dset_y, dset_time, 0), "attaching dimension scale /time to /y");
+        h5_check(H5DSattach_scale(dset_y, dset_particle_id, 1), "attaching dimension scale /particle_id to /y");
+        h5_check(H5DSattach_scale(dset_z, dset_time, 0), "attaching dimension scale /time to /z");
+        h5_check(H5DSattach_scale(dset_z, dset_particle_id, 1), "attaching dimension scale /particle_id to /z");
 
         H5Dclose(dset_time);
         H5Dclose(dset_particle_id);
@@ -587,7 +607,7 @@ namespace Particle_lagrangian_io
         H5Sclose(dspace);
 
         // Flush to ensure datasets are written to file.
-        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 
@@ -618,18 +638,18 @@ namespace Particle_lagrangian_io
 
         // Create file with parallel HDF5.
         hid_t plist_id = create_fapl(master);
-        file_id = H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id);
+        file_id = h5_check(H5Fcreate(filename.c_str(), H5F_ACC_EXCL, H5P_DEFAULT, plist_id), "creating " + filename);
         H5Pclose(plist_id);
 
         // Create particle_id dimension scale dataset.
         hsize_t particle_dims[1] = {static_cast<hsize_t>(n_particles)};
         hid_t dspace_particle_id = H5Screate_simple(1, particle_dims, particle_dims);
-        hid_t dset_particle_id = H5Dcreate(
+        hid_t dset_particle_id = h5_check(H5Dcreate(
             file_id, "/particle_id", H5T_NATIVE_INT, dspace_particle_id,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /particle_id");
 
         // Make particle_id a dimension scale
-        H5DSset_scale(dset_particle_id, "particle_id");
+        h5_check(H5DSset_scale(dset_particle_id, "particle_id"), "setting dimension scale /particle_id");
 
         H5Dclose(dset_particle_id);
         H5Sclose(dspace_particle_id);
@@ -652,22 +672,22 @@ namespace Particle_lagrangian_io
 
         hid_t h5_type = get_hdf5_type<TF>();
 
-        hid_t dset_x = H5Dcreate(
+        hid_t dset_x = h5_check(H5Dcreate(
             file_id, "/x", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        hid_t dset_y = H5Dcreate(
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /x");
+        hid_t dset_y = h5_check(H5Dcreate(
             file_id, "/y", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        hid_t dset_z = H5Dcreate(
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /y");
+        hid_t dset_z = h5_check(H5Dcreate(
             file_id, "/z", h5_type, dspace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT), "creating dataset /z");
 
         // Attach dimension scale
-        dset_particle_id = H5Dopen(file_id, "/particle_id", H5P_DEFAULT);
+        dset_particle_id = h5_check(H5Dopen(file_id, "/particle_id", H5P_DEFAULT), "opening dataset /particle_id");
 
-        H5DSattach_scale(dset_x, dset_particle_id, 0);
-        H5DSattach_scale(dset_y, dset_particle_id, 0);
-        H5DSattach_scale(dset_z, dset_particle_id, 0);
+        h5_check(H5DSattach_scale(dset_x, dset_particle_id, 0), "attaching dimension scale /particle_id to /x");
+        h5_check(H5DSattach_scale(dset_y, dset_particle_id, 0), "attaching dimension scale /particle_id to /y");
+        h5_check(H5DSattach_scale(dset_z, dset_particle_id, 0), "attaching dimension scale /particle_id to /z");
 
         H5Dclose(dset_particle_id);
         H5Dclose(dset_x);
@@ -676,7 +696,7 @@ namespace Particle_lagrangian_io
         H5Sclose(dspace);
 
         // Flush to ensure datasets are written to file.
-        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 
@@ -701,7 +721,7 @@ namespace Particle_lagrangian_io
         write_coordinate_1d(file_id, "/z", z.data(), start, count);
 
         // Flush to disk to ensure data is written.
-        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 
@@ -718,7 +738,7 @@ namespace Particle_lagrangian_io
         const int nprocs)
     {
         // Get current time dimension size_dump
-        hid_t dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
+        hid_t dset_time = h5_check(H5Dopen(file_id, "/time", H5P_DEFAULT), "opening dataset /time");
         hid_t dspace_time = H5Dget_space(dset_time);
         hsize_t time_idx;
         H5Sget_simple_extent_dims(dspace_time, &time_idx, NULL);
@@ -730,19 +750,21 @@ namespace Particle_lagrangian_io
         hsize_t new_dims[2] = {time_idx + 1, static_cast<hsize_t>(n_particles)};
 
         // Extend time dataset.
-        dset_time = H5Dopen(file_id, "/time", H5P_DEFAULT);
-        H5Dset_extent(dset_time, new_dims_time);
+        dset_time = h5_check(H5Dopen(file_id, "/time", H5P_DEFAULT), "opening dataset /time");
+        h5_check(H5Dset_extent(dset_time, new_dims_time), "extending dataset /time");
 
         // Write time value.
         hid_t dspace_time_write = H5Dget_space(dset_time);
         hsize_t time_start[1] = {time_idx};
         hsize_t time_count[1] = {1};
-        H5Sselect_hyperslab(dspace_time_write, H5S_SELECT_SET, time_start, NULL, time_count, NULL);
+        h5_check(H5Sselect_hyperslab(dspace_time_write, H5S_SELECT_SET, time_start, NULL, time_count, NULL),
+                "selecting hyperslab in /time");
         hid_t memspace_time = H5Screate_simple(1, time_count, NULL);
 
         hid_t plist_xfer = create_dxpl();
 
-        H5Dwrite(dset_time, H5T_NATIVE_DOUBLE, memspace_time, dspace_time_write, plist_xfer, &time);
+        h5_check(H5Dwrite(dset_time, H5T_NATIVE_DOUBLE, memspace_time, dspace_time_write, plist_xfer, &time),
+                "writing dataset /time");
 
         H5Pclose(plist_xfer);
         H5Sclose(memspace_time);
@@ -750,13 +772,13 @@ namespace Particle_lagrangian_io
         H5Dclose(dset_time);
 
         // Extend particle datasets.
-        hid_t dset_x = H5Dopen(file_id, "/x", H5P_DEFAULT);
-        hid_t dset_y = H5Dopen(file_id, "/y", H5P_DEFAULT);
-        hid_t dset_z = H5Dopen(file_id, "/z", H5P_DEFAULT);
+        hid_t dset_x = h5_check(H5Dopen(file_id, "/x", H5P_DEFAULT), "opening dataset /x");
+        hid_t dset_y = h5_check(H5Dopen(file_id, "/y", H5P_DEFAULT), "opening dataset /y");
+        hid_t dset_z = h5_check(H5Dopen(file_id, "/z", H5P_DEFAULT), "opening dataset /z");
 
-        H5Dset_extent(dset_x, new_dims);
-        H5Dset_extent(dset_y, new_dims);
-        H5Dset_extent(dset_z, new_dims);
+        h5_check(H5Dset_extent(dset_x, new_dims), "extending dataset /x");
+        h5_check(H5Dset_extent(dset_y, new_dims), "extending dataset /y");
+        h5_check(H5Dset_extent(dset_z, new_dims), "extending dataset /z");
 
         H5Dclose(dset_x);
         H5Dclose(dset_y);
@@ -772,7 +794,7 @@ namespace Particle_lagrangian_io
         write_coordinate(file_id, "/z", z.data(), time_idx, start, count, n_particles);
 
         // Flush to disk to ensure data is written.
-        H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+        h5_check(H5Fflush(file_id, H5F_SCOPE_GLOBAL), "flushing file");
     }
 
 

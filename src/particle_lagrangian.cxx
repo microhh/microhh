@@ -366,7 +366,7 @@ void Particle_lagrangian<TF>::save(const int iotime)
         md.nprocs);
 
     // Close the restart file.
-    H5Fclose(restart_file_id);
+    plio::h5_check(H5Fclose(restart_file_id), "closing " + file_out.str());
 
     master.print_message("OK\n");
 }
