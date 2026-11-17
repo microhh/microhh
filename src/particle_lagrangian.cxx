@@ -183,15 +183,9 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     for (const std::string& name : particles.get_names({Particle_kind::Prognostic}))
         timeloop.exec(particles.get(name), particles.get_tend(name));
 
-    auto& uid = particles.uid;
-
     auto& xp = particles.get("x");
     auto& yp = particles.get("y");
     auto& zp = particles.get("z");
-
-    auto& xpt = particles.get_tend("x");
-    auto& ypt = particles.get_tend("y");
-    auto& zpt = particles.get_tend("z");
 
     // Quick hack: bounce particles from domain bottom/top.
     // TODO: I think we need to manipulate tendencies to do this correctly...
@@ -210,13 +204,7 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     int mem_dec_loc = 0;
 
     plk::particle_exchange_parallel(
-        uid,
-        xp,
-        yp,
-        zp,
-        xpt,
-        ypt,
-        zpt,
+        particles,
         gd.xsize,
         gd.ysize,
         reserve_ratio,
@@ -231,23 +219,16 @@ void Particle_lagrangian<TF>::integrate(Timeloop<TF>& timeloop)
     mem_inc += mem_inc_loc;
     mem_dec += mem_dec_loc;
 
-    // Resize non-communicated vectors.
-    const int new_size = xp.size();
+    // Resize interpolation indexes and factors.
+    const int new_size = particles.size();
 
-    // These need to be included in the particle exchange
-    // when the velocities become prognostic.
-    plk::adaptive_resize(particles.get("u"), new_size, reserve_ratio);
-    plk::adaptive_resize(particles.get("v"), new_size, reserve_ratio);
-    plk::adaptive_resize(particles.get("w"), new_size, reserve_ratio);
+    adaptive_resize(il, new_size, reserve_ratio);
+    adaptive_resize(jl, new_size, reserve_ratio);
+    adaptive_resize(kl, new_size, reserve_ratio);
 
-    // These are always diagnostic.
-    plk::adaptive_resize(il, new_size, reserve_ratio);
-    plk::adaptive_resize(jl, new_size, reserve_ratio);
-    plk::adaptive_resize(kl, new_size, reserve_ratio);
-
-    plk::adaptive_resize(fx, new_size, reserve_ratio);
-    plk::adaptive_resize(fy, new_size, reserve_ratio);
-    plk::adaptive_resize(fz, new_size, reserve_ratio);
+    adaptive_resize(fx, new_size, reserve_ratio);
+    adaptive_resize(fy, new_size, reserve_ratio);
+    adaptive_resize(fz, new_size, reserve_ratio);
 
     #else
     plk::particle_exchange_serial(

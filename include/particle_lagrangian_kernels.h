@@ -26,150 +26,6 @@
 
 namespace Particle_lagrangian_kernels
 {
-    #ifdef USEMPI
-    template<typename TF>
-    struct Particle_comm
-    {
-        int uid;
-        TF x, y, z;     // Location.
-        TF xt, yt, zt;  // Location tendency.
-    };
-
-
-    template<typename T>
-    MPI_Datatype get_mpi_type()
-    {
-        if constexpr (std::is_same_v<T, float>)
-            return MPI_FLOAT;
-        else if constexpr (std::is_same_v<T, double>)
-            return MPI_DOUBLE;
-        else
-            throw std::runtime_error("Invalid float type for MPI!");
-    }
-
-
-    template<typename TF>
-    MPI_Datatype create_particle_type_comm()
-    {
-        // Create MPI type specific for particle communication, which typically
-        // uses more elements per particle than the parallel I/O.
-        MPI_Datatype particle_type;
-
-        // 1=uid, 6=number of particle properties (currently x,y,z + x,y,z tendencies).
-        int blocklengths[2] = {1, 6};
-        MPI_Aint displacements[2];
-        MPI_Datatype types[2] = {MPI_INT, get_mpi_type<TF>()};
-
-        Particle_comm<TF> particle;
-        MPI_Aint base_address;
-        MPI_Get_address(&particle, &base_address);
-        MPI_Get_address(&particle.uid, &displacements[0]);
-        MPI_Get_address(&particle.x, &displacements[1]);
-
-        displacements[0] = MPI_Aint_diff(displacements[0], base_address);
-        displacements[1] = MPI_Aint_diff(displacements[1], base_address);
-
-        MPI_Type_create_struct(2, blocklengths, displacements, types, &particle_type);
-        MPI_Type_commit(&particle_type);
-
-        return particle_type;
-    }
-    #endif
-
-
-    template<typename T>
-    int adaptive_resize(
-            std::vector<T>& v,
-            const int new_size,
-            const double reserve_ratio)
-    {
-        const int size     = v.size();      // Used elements.
-        const int capacity = v.capacity();  // Reserved size.
-
-        // Keep track of increases and decreases in size.
-        int status = 0;     // 0 = no change, 1 = increase, 2 = decrease.
-
-        // Don't enlarge and shrink using the same ratio.
-        const double shrink_ratio = 2. * reserve_ratio - 1.;
-
-        if (new_size * shrink_ratio < capacity)
-        {
-            // Too large! Decrease capacity.
-            status = 2;
-            const int new_capacity = int(new_size * reserve_ratio);
-            std::vector<T>(v.begin(), v.begin() + new_size).swap(v);
-            v.reserve(new_capacity);
-
-            //std::cout << "Too large! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
-        }
-        else if (new_size > capacity)
-        {
-            // Too small! Increase capacity.
-            status = 1;
-            const int new_capacity = int(new_size * reserve_ratio);
-            v.reserve(new_capacity);
-
-            //std::cout << "Too small! Size=" << size << " -> new size=" << new_size << ", new capacity=" << new_capacity << std::endl;
-        }
-
-        v.resize(new_size);
-
-        return status;
-    }
-
-
-    template<typename TF>
-    void compact_vectors(
-        const std::vector<int>& leaving,
-        std::vector<int>& uid,
-        std::vector<TF>& xp,
-        std::vector<TF>& yp,
-        std::vector<TF>& zp,
-        std::vector<TF>& xpt,
-        std::vector<TF>& ypt,
-        std::vector<TF>& zpt)
-    {
-        // Create lookup table to check if an index is leaving.
-        // Prevents using a find operation, which is more expensive.
-        std::vector<char> is_leaving(xp.size(), 0);
-        for (int idx : leaving)
-            is_leaving[idx] = 1;
-
-        int last_idx = xp.size()-1;
-
-        // Compact the vectors.
-        for (int pos : leaving)
-        {
-            // If idx = [0,1,2,3,4,5] and `1` and `4` leave, the compacted vector is:
-            //    idx = [0,5,2,3]
-            // So if the leaving index is behind `last_idx`, there is no need to move it.
-            if (pos > last_idx)
-                continue;
-
-            // Find a valid index at the end of the vector.
-            while (last_idx > pos && is_leaving[last_idx])
-                last_idx--;
-
-            // Same as above; skip if already in empty block.
-            if (pos >= last_idx)
-                continue;
-
-            // Swap data from end of vector to empty spot.
-            uid[pos] = uid[last_idx];
-
-            xp[pos] = xp[last_idx];
-            yp[pos] = yp[last_idx];
-            zp[pos] = zp[last_idx];
-
-            xpt[pos] = xpt[last_idx];
-            ypt[pos] = ypt[last_idx];
-            zpt[pos] = zpt[last_idx];
-
-            last_idx--;
-        }
-    }
-
-
     template<typename TF>
     void calc_interpolation_factors_h(
         int* const restrict index,
@@ -314,13 +170,7 @@ namespace Particle_lagrangian_kernels
 
     template<typename TF>
     void particle_exchange_parallel(
-        std::vector<int>& uid,
-        std::vector<TF>& xp,
-        std::vector<TF>& yp,
-        std::vector<TF>& zp,
-        std::vector<TF>& xpt,
-        std::vector<TF>& ypt,
-        std::vector<TF>& zpt,
+        Particle_data<TF>& particles,
         const TF xsize,
         const TF ysize,
         const TF reserve_ratio,
@@ -334,6 +184,13 @@ namespace Particle_lagrangian_kernels
         // 1. Setup MPI communication with neighbors.
         // ------------------------------------------
         auto& md = master.get_MPI_data();
+
+        std::vector<TF>& xp = particles.get("x");
+        std::vector<TF>& yp = particles.get("y");
+
+        // All properties and tendencies that move with the particles.
+        const std::vector<std::vector<TF>*> fields = particles.get_comm_fields();
+        const size_t record_size = get_record_size<TF>(fields.size());
 
         const TF xsize_sub = xsize / md.npx;
         const TF ysize_sub = ysize / md.npy;
@@ -415,24 +272,19 @@ namespace Particle_lagrangian_kernels
 
         // Pack leaving particles into send buffers.
         std::vector<int> send_counts(n_neighbors);
-        std::vector<std::vector<Particle_comm<TF>>> particles_to_send(n_neighbors);
+        std::vector<std::vector<char>> particles_to_send(n_neighbors);
 
         for (int i=0; i<n_neighbors; ++i)
         {
             send_counts[i] = leaving_indices[i].size();
-            particles_to_send[i].resize(send_counts[i]);
+            particles_to_send[i].resize(send_counts[i] * record_size);
 
             for (int j=0; j<send_counts[i]; ++j)
-            {
-                const int idx = leaving_indices[i][j];
-                particles_to_send[i][j].uid = uid[idx];
-                particles_to_send[i][j].x   = xp[idx];
-                particles_to_send[i][j].y   = yp[idx];
-                particles_to_send[i][j].z   = zp[idx];
-                particles_to_send[i][j].xt  = xpt[idx];
-                particles_to_send[i][j].yt  = ypt[idx];
-                particles_to_send[i][j].zt  = zpt[idx];
-            }
+                pack_record(
+                    &particles_to_send[i][j * record_size],
+                    leaving_indices[i][j],
+                    particles.uid,
+                    fields);
         }
 
         // Collect all indexes that are leaving.
@@ -457,7 +309,7 @@ namespace Particle_lagrangian_kernels
         //       write the incoming particles directly at the positions of the leaving particles.
         //       This is a bit tricky if the balance is uneven, so I’ve kept it simple for now...
 
-        compact_vectors(all_leaving, uid, xp, yp, zp, xpt, ypt, zpt);
+        particles.compact(all_leaving);
 
 
         // ----------------------------
@@ -507,28 +359,20 @@ namespace Particle_lagrangian_kernels
 
         const int new_size = old_size + total_incoming - total_leaving;
 
-        const int status = adaptive_resize(uid, new_size, reserve_ratio);
+        const int status = particles.resize_adaptive(new_size, reserve_ratio);
 
         if (status == 1)
             mem_inc += 1;
         else if (status == 2)
             mem_dec += 1;
 
-        adaptive_resize(xp, new_size, reserve_ratio);
-        adaptive_resize(yp, new_size, reserve_ratio);
-        adaptive_resize(zp, new_size, reserve_ratio);
-
-        adaptive_resize(xpt, new_size, reserve_ratio);
-        adaptive_resize(ypt, new_size, reserve_ratio);
-        adaptive_resize(zpt, new_size, reserve_ratio);
-
 
         // -------------------------------------
         // 6. Exchange particles with neighbors.
         // -------------------------------------
-        MPI_Datatype particle_type = create_particle_type_comm<TF>();
+        MPI_Datatype particle_type = create_record_type(record_size);
 
-        std::vector<Particle_comm<TF>> recv_buffer(total_incoming);
+        std::vector<char> recv_buffer(total_incoming * record_size);
         int recv_offset = 0;
 
         requests.clear();
@@ -551,7 +395,7 @@ namespace Particle_lagrangian_kernels
             if (recv_counts[i] > 0)
             {
                 MPI_Irecv(
-                    &recv_buffer[recv_offset],
+                    &recv_buffer[recv_offset * record_size],
                     recv_counts[i],
                     particle_type,
                     mpiid_neighbors[i],
@@ -575,18 +419,11 @@ namespace Particle_lagrangian_kernels
         const int iend = istart + total_incoming;
 
         for (int i=istart; i<iend; ++i)
-        {
-            const int idx = i - istart;
-            uid[i] = recv_buffer[idx].uid;
-
-            xp[i] = recv_buffer[idx].x;
-            yp[i] = recv_buffer[idx].y;
-            zp[i] = recv_buffer[idx].z;
-
-            xpt[i] = recv_buffer[idx].xt;
-            ypt[i] = recv_buffer[idx].yt;
-            zpt[i] = recv_buffer[idx].zt;
-        }
+            unpack_record(
+                &recv_buffer[(i - istart) * record_size],
+                i,
+                particles.uid,
+                fields);
 
 
         // --------------------------------------
