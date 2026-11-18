@@ -30,8 +30,8 @@
 #include <algorithm>
 #include <memory>
 #include "types.h"
-#include "Source_functions.h"
-#include "Gas_concs.h"
+#include "source_functions.h"
+#include "gas_concs.h"
 
 using Aerosol_concs = Gas_concs;
 

@@ -27,13 +27,13 @@
 #include "field3d_operators.h"
 #include "boundary_cyclic.h"
 
-#include "Gas_concs.h"
-#include "Gas_optics_rrtmgp.h"
-#include "Source_functions.h"
-#include "Cloud_optics.h"
-#include "Aerosol_optics.h"
-#include "Rte_lw.h"
-#include "Rte_sw.h"
+#include "gas_concs.h"
+#include "gas_optics_rrtmgp.h"
+#include "source_functions.h"
+#include "cloud_optics.h"
+#include "aerosol_optics.h"
+#include "rte_lw.h"
+#include "rte_sw.h"
 #include "types.h"
 
 

@@ -26,7 +26,7 @@
 #include "tools.h"
 #include "timedep.h"
 #include "aerosol.h"
-#include "Array.h"
+#include "array.h"
 
 template<typename TF>
 void Aerosol<TF>::prepare_device()

@@ -154,6 +154,8 @@ TF = np.float32
 g = 9.81
 rho_liq = 1e3
 rho_ice = 917
+cp = 1005
+p0 = 1e5
 
 # size of null-collision grid:
 ng_x = 48
@@ -231,6 +233,16 @@ tlay = np.fromfile(path+"T.{:07d}".format(iotime),TF).reshape(dims)
 h2o = qt / (ep - ep*qt)
 h2o = np.maximum(0, h2o)
 
+# read surface temperature
+exner = (plev[0]/p0) ** (Rd/cp)
+t_sfc = exner * np.fromfile(path+"thl_bot.{:07d}".format(iotime),TF).reshape((jtot,itot))
+
+# compute temperature at layer interface
+tlev = np.zeros((ktot+1, jtot, itot))
+tlev[1:-1] = (tlay[1:] + tlay[:-1])/2
+tlev[0] = t_sfc
+tlev[-1] = 2*tlay[-1] - tlev[-2] # linear interpolate to domain top
+
 # cloud properties and effective radius
 ql = read_if_exists(path+"ql", iotime, dims)
 lwp = ql * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
@@ -240,10 +252,10 @@ iwp = qi * (dz*rho)[:,np.newaxis,np.newaxis] # kg/m2
 
 nc0 = nl['micro']['Nc0']
 ftpnr_w = (4./3) * np.pi * nc0 * rho_liq
-ftpnr_i = (2./3) * np.pi * 1e5 * rho_ice
+ftpnr_i = (4./3) * np.pi * 1e5 * rho_ice
 sig_fac = np.exp(np.log(1.34)*np.log(1.34))
 rel = np.where(lwp>0, 1e6 * sig_fac * (lwp / dz[:,np.newaxis,np.newaxis] / ftpnr_w)**(1./3), 0)
-dei = np.where(iwp>0, 1e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
+dei = np.where(iwp>0, 2e6 * sig_fac * (iwp / dz[:,np.newaxis,np.newaxis] / ftpnr_i)**(1./3), 0)
 
 rel = np.maximum(2.5, np.minimum(rel, 21.5))
 dei = np.maximum(10., np.minimum(dei, 180.))
@@ -327,7 +339,7 @@ nc_yh[:] = grid_yh
 nc_zh = nc_out.createVariable("zh", TF, ("zh",))
 nc_zh[:] = grid_zh
 
-nc_zlay = nc_out.createVariable("zlay", TF, ("lay"))
+nc_zlay = nc_out.createVariable("z_lay", TF, ("lay"))
 nc_zlev = nc_out.createVariable("z_lev", TF, ("lev"))
 nc_zlay[:] = zlay
 nc_zlev[:] = zlev
@@ -347,10 +359,9 @@ nc_h2o = nc_out.createVariable("vmr_h2o", TF, ("lay","y","x"))
 nc_h2o[:] = np.append(h2o[:], np.tile(h2o_bg[zmin_idx:][:,None,None], (1, jtot, itot)), axis=0)
 nc_tlay = nc_out.createVariable("t_lay", TF, ("lay","y","x"))
 nc_tlay[:] = np.append(tlay[:], np.tile(tlay_bg[zmin_idx:][:,None,None], (1, jtot, itot)), axis=0)
-
-# We do not bother about t_lev yet  because the ray tracer is shortwave-only, but we do need to supply it in the netcdf
 nc_tlev = nc_out.createVariable("t_lev", TF, ("lev","y","x"))
-nc_tlev[:] = 0
+nc_tlev[:] = np.append(tlev[:], np.tile(tlev_bg[zmin_idx+1:][:,None,None], (1, jtot, itot)), axis=0)
+
 
 # Liquid water path
 nc_lwp = nc_out.createVariable("lwp" , TF, ("lay","y","x"))
@@ -380,7 +391,7 @@ nc_alb_dif[:] = nl['radiation']['sfc_alb_dif']
 nc_emis = nc_out.createVariable("emis_sfc", TF, ("y","x","band_lw"))
 nc_emis[:] = nl['radiation']['emis_sfc']
 nc_tsfc = nc_out.createVariable("t_sfc", TF, ("y","x"))
-nc_tsfc[:] = 0 # don't bother about longwave for now
+nc_tsfc[:] = t_sfc # don't bother about longwave for now
 
 # solar angles
 nc_mu = nc_out.createVariable("mu0", TF, ("y","x"))
@@ -444,12 +455,12 @@ if swaerosol:
         nc_out.createVariable(aerosol, TF, ("lay", "y", "x"))
         nc_out[aerosol][:] = np.tile(np.append(aermr[:], aermr_bg[zmin_idx:])[:, None, None], (1, jtot, itot))
 
-    # relative humidity
-    q = nc_h2o[:] * eps / (1 + nc_h2o[:] * eps)
-    qs = qsat(nc_play[:, :, :], nc_tlay[:])
-    rh = np.maximum(np.minimum(q / qs, 1), 0)
-    nc_out.createVariable("rh", TF, ("lay", "y", "x"))
-    nc_out['rh'][:] = rh
+# relative humidity
+q = nc_h2o[:] * eps / (1 + nc_h2o[:] * eps)
+qs = qsat(nc_play[:, :, :], nc_tlay[:])
+rh = np.maximum(np.minimum(q / qs, 1), 0)
+nc_out.createVariable("rh", TF, ("lay", "y", "x"))
+nc_out['rh'][:] = rh
 
 # size of null-collision grid
 nc_ng_x = nc_out.createVariable("ngrid_x", TF)

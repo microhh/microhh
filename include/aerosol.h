@@ -29,7 +29,7 @@
 #include <map>
 #include <algorithm>
 #include <memory>
-#include "Gas_concs.h"
+#include "gas_concs.h"
 
 using Aerosol_concs = Gas_concs;
 #ifdef USECUDA

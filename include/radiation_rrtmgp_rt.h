@@ -26,23 +26,24 @@
 #include "radiation.h"
 #include "field3d_operators.h"
 
-#include "Gas_concs.h"
-#include "Gas_optics_rrtmgp.h"
-#include "Source_functions.h"
-#include "Cloud_optics.h"
-#include "Aerosol_optics.h"
-#include "Rte_lw.h"
-#include "Rte_sw.h"
+#include "gas_concs.h"
+#include "gas_optics_rrtmgp.h"
+#include "source_functions.h"
+#include "cloud_optics.h"
+#include "aerosol_optics.h"
+#include "rte_lw.h"
+#include "rte_sw.h"
 #include "types.h"
 
-#include "Gas_concs_rt.h"
-#include "Gas_optics_rrtmgp_rt.h"
-#include "Source_functions_rt.h"
-#include "Cloud_optics_rt.h"
-#include "Aerosol_optics_rt.h"
-#include "Rte_lw_rt.h"
-#include "Rte_sw_rt.h"
-#include "Raytracer.h"
+#include "gas_concs_rt.h"
+#include "gas_optics_rrtmgp_rt.h"
+#include "source_functions_rt.h"
+#include "cloud_optics_rt.h"
+#include "aerosol_optics_rt.h"
+#include "rte_lw_rt.h"
+#include "rte_sw_rt.h"
+#include "raytracer_sw.h"
+#include "raytracer_lw.h"
 // #include <curand_kernel.h>
 
 
@@ -188,14 +189,30 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
+
+        void exec_longwave_rt(
+                Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,3>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,1>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
+                const bool, const bool);
 
         void exec_shortwave(
                 Thermo<TF>&, Microphys<TF>&, Timeloop<TF>&, Stats<TF>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
-                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const bool);
 
         void exec_shortwave_rt(
@@ -205,6 +222,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
                 Array_gpu<Float,2>& rt_flux_sfc_up, Array_gpu<Float,3>& rt_flux_abs_dir, Array_gpu<Float,3>& rt_flux_abs_dif,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
                 const Array_gpu<Float,2>&, const Array_gpu<Float,2>&,
+                Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 Array_gpu<Float,2>&, Array_gpu<Float,2>&,
                 const bool, const bool);
         #endif
@@ -220,12 +238,15 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         bool sw_longwave;
         bool sw_shortwave;
+        bool sw_longwave_3d;
+        bool sw_shortwave_3d;
         bool sw_clear_sky_stats;
         bool sw_fixed_sza;
         bool sw_aerosol;
         bool sw_delta_cloud;
         bool sw_delta_aer;
-        bool sw_2str_when_no_clouds;
+        bool sw_1d_when_no_clouds;
+        bool sw_lw_scattering;
 
         bool swtimedep_background;
         bool swtimedep_aerosol;
@@ -243,6 +264,7 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         unsigned long idt_rad;
 
         Int rays_per_pixel;
+        Int rays_count_power;
         int kngrid_i;
         int kngrid_j;
         int kngrid_k;
@@ -259,6 +281,9 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
 
         Float lat; // Latitude (degrees)
         Float lon; // Longitude (degrees)
+
+        // threshold ratio between minimum gasous mean free path and horizontal grid to decide whether to use longwave raytracing or 1D solution for g-point
+        Float min_mfp_grid_ratio = Float(1.0);
 
         // The reference column for the full profile.
         Array<Float,2> lw_flux_dn_inc;
@@ -343,11 +368,21 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::vector<Float> sw_flux_tod_up_rt;
         std::vector<Float> sw_flux_tod_dn_rt;
 
+        std::vector<Float> lw_flux_sfc_dn_rt;
+        std::vector<Float> lw_flux_sfc_up_rt;
+        std::vector<Float> lw_flux_tod_up_rt;
+        std::vector<Float> lw_flux_tod_dn_rt;
+
         Float* sw_flux_sfc_dir_rt_g;
         Float* sw_flux_sfc_dif_rt_g;
         Float* sw_flux_sfc_up_rt_g;
         Float* sw_flux_tod_up_rt_g;
         Float* sw_flux_tod_dn_rt_g;
+
+        Float* lw_flux_sfc_dn_rt_g;
+        Float* lw_flux_sfc_up_rt_g;
+        Float* lw_flux_tod_up_rt_g;
+        Float* lw_flux_tod_dn_rt_g;
 
         // timedependent gases
         std::map<std::string, Timedep<TF>*> tdep_gases;
@@ -357,8 +392,11 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         #ifdef USECUDA
         std::unique_ptr<Gas_concs_gpu> gas_concs_gpu;
         std::unique_ptr<Aerosol_concs_gpu> aerosol_concs_gpu;
+
         std::unique_ptr<Gas_optics_gpu> kdist_lw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_lw_gpu;
+        std::unique_ptr<Aerosol_optics_gpu> aerosol_lw_gpu;
+
         std::unique_ptr<Gas_optics_gpu> kdist_sw_gpu;
         std::unique_ptr<Cloud_optics_gpu> cloud_sw_gpu;
         std::unique_ptr<Aerosol_optics_gpu> aerosol_sw_gpu;
@@ -373,7 +411,8 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;
 
-        Raytracer raytracer;
+        Raytracer raytracer_sw;
+        Raytracer_lw raytracer_lw;
 
         //std::unique_ptr<Gas_concs_rt> gas_concs_rt;
         //std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
@@ -381,6 +420,10 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         std::unique_ptr<Gas_optics_rt> kdist_sw_rt;
         std::unique_ptr<Cloud_optics_rt> cloud_sw_rt;
         std::unique_ptr<Aerosol_optics_rt> aerosol_sw_rt;
+
+        std::unique_ptr<Gas_optics_rt> kdist_lw_rt;
+        std::unique_ptr<Cloud_optics_rt> cloud_lw_rt;
+        std::unique_ptr<Aerosol_optics_rt> aerosol_lw_rt;
 
         Rte_lw_rt rte_lw_rt;
         Rte_sw_rt rte_sw_rt;
