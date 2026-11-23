@@ -519,6 +519,7 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
     sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
     sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+    sfc_scat_type_hom = inputin.get_item<int>("radiation", "sfc_scat_type", "", 0); // Default to lambertian scattering
 
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
     rays_count_power = inputin.get_item<Float>("radiation", "rays_count_power", "");
@@ -703,6 +704,8 @@ void Radiation_rrtmgp_rt<TF>::create(
         sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
         sfc_alb_dir.fill(sfc_alb_dir_hom);
         sfc_alb_dif.fill(sfc_alb_dif_hom);
+        sfc_scat_type.set_dims({gd.imax*gd.jmax});
+        sfc_scat_type.fill(sfc_scat_type_hom);
     }
 
     if (sw_longwave)

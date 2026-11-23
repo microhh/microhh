@@ -1138,6 +1138,7 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
     emis_sfc_g = emis_sfc;
     sfc_alb_dir_g = sfc_alb_dir;
     sfc_alb_dif_g = sfc_alb_dif;
+    sfc_scat_type_g = sfc_scat_type;
 
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
@@ -1696,6 +1697,12 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                         rays_count,//r_pixel,
                         grid_cells,
                         grid_d, kn_grid,
+                        Array_gpu<Float,1>({1}),
+                        Array_gpu<Float,1>({1}),
+                        Array_gpu<int,1>({1}),
+                        Array_gpu<int,1>({1}),
+                        Float(0.),
+                        Float(0.),
                         dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
                         dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
                         dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_tau(),
@@ -2224,6 +2231,12 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     false, //no independent column
                     this->rays_per_pixel,
                     grid_cells, grid_d, kn_grid,
+                    Array_gpu<Float,1>({1}),
+                    Array_gpu<Float,1>({1}),
+                    Array_gpu<int,1>({1}),
+                    Array_gpu<int,1>({1}),
+                    Float(0.),
+                    Float(0.),
                     mie_cdfs_sub,
                     mie_angs_sub,
                     dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
@@ -2234,7 +2247,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_tau(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_ssa(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_g(),
-                    rel, sfc_alb_dir.subset({{ {band, band}, {1, n_col} }}),
+                    rel, sfc_alb_dir_g.subset({{ {band, band}, {1, n_col} }}),
+                    sfc_scat_type_g,
                     zenith_angle,
                     azimuth_angle,
                     sw_flux_dn_dir_inc({1,igpt}) * mu0({1}),
