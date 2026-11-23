@@ -46,6 +46,7 @@
 
 #include "cub/cub.cuh"
 #include "raytracer_definitions.h"
+#include "raytracer_vertical_grid.h"
 #include "subset_kernels_cuda.h"
 #include "gas_optics_rrtmgp_kernels_cuda_rt.h"
 #include "gpt_combine_kernels_cuda_rt.h"
@@ -54,6 +55,14 @@
 namespace
 {
     using namespace Radiation_rrtmgp_functions;
+
+    struct Tau_to_kext
+    {
+        const Float* tau;
+        const Float* dz;
+        int n_col;
+        __device__ Float operator()(const int i) const { return tau[i] / dz[i / n_col]; }
+    };
     using namespace Raytracer_definitions;
 
     __global__
@@ -206,7 +215,7 @@ namespace
         void convert_1d_to_rt_hr_kernels(
             const int ncol,
             const int nz,
-            const Float dz,
+            const Float* z_lev,
             const Float* flux_net,
             Float* flux_rt_abs)
         {
@@ -218,7 +227,7 @@ namespace
                 const int idx = icol + iz*ncol;
                 const int idx_p = icol + (iz+1)*ncol;
 
-                flux_rt_abs[idx] = (flux_net[idx_p] - flux_net[idx])/dz;
+                flux_rt_abs[idx] = (flux_net[idx_p] - flux_net[idx])/(z_lev[iz+1] - z_lev[iz]);
             }
         }
 
@@ -245,7 +254,7 @@ namespace
         const int ncol,
         const int nlay,
         const int nz,
-        const Float dz,
+        const Array_gpu<Float,1>& z_lev,
         const Array_gpu<Float,2>& flux_up,
         const Array_gpu<Float,2>& flux_dn,
         const Array_gpu<Float,2>& flux_net,
@@ -264,7 +273,7 @@ namespace
         const dim3 block_2d(block_col, 1, 1);
         const dim3 grid_2d(grid_col, nz, 1);
         convert_1d_to_rt_hr_kernels<<<grid_2d, block_2d>>>(
-            ncol, nz, dz, flux_net.ptr(), flux_abs.ptr());
+            ncol, nz, z_lev.ptr(), flux_net.ptr(), flux_abs.ptr());
     }
 
     __global__
@@ -1138,6 +1147,20 @@ void Radiation_rrtmgp_rt<TF>::prepare_device()
     emis_sfc_g = emis_sfc;
     sfc_alb_dir_g = sfc_alb_dir;
     sfc_alb_dif_g = sfc_alb_dif;
+    sfc_scat_type_g = sfc_scat_type;
+
+    // Build the vertical grid of the ray tracer from the half levels.
+    Array<Float,1> z_lev_rt({gd.ktot+1});
+    for (int k=0; k<gd.ktot+1; ++k)
+        z_lev_rt({k+1}) = gd.zh[gd.kstart+k];
+
+    Vertical_grid_gpu vgrid = build_vertical_grid(z_lev_rt, gd.ktot, kngrid_k);
+    z_lev_rt_g = std::move(vgrid.z_lev);
+    kn_z_lev_rt_g = std::move(vgrid.kn_z_lev);
+    z_lut_rt_g = std::move(vgrid.z_lut);
+    kn_z_lut_rt_g = std::move(vgrid.kn_z_lut);
+    lut_dz_rt = vgrid.lut_dz;
+    zsize_rt = vgrid.zsize;
 
     // Initialize the pointers.
     this->gas_concs_gpu = std::make_unique<Gas_concs_gpu>(gas_concs);
@@ -1451,7 +1474,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
     const Bool top_at_1 = 0;
 
     const Vector<int> grid_cells = {gd.imax, gd.jmax, gd.ktot};
-    const Vector<Float> grid_d = {gd.dx, gd.dy, gd.dz[gd.kstart]};
+    const Vector<Float> grid_d = {gd.dx, gd.dy, zsize_rt / Float(gd.ktot)};
     const Vector<int> kn_grid = {kngrid_i, kngrid_j, kngrid_k};
 
     const Float grid_d_xy_min = min(gd.dx, gd.dy);
@@ -1581,25 +1604,31 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
 
         const int max_size = n_col * grid_cells.z;
 
-        Float* max_tau_gas_g = Tools_gpu::allocate_gpu<Float>(1);
-        cudaMemset(max_tau_gas_g, 0, sizeof(Float));
+        Float* max_kext_gas_g = Tools_gpu::allocate_gpu<Float>(1);
+        cudaMemset(max_kext_gas_g, 0, sizeof(Float));
 
-        Float max_tau_gas = 0;
+        Float max_kext_gas = 0;
         Float max_tau_cld = 0;
+
+        // Reduce over the extinction (tau/dz), so that the selection is also valid for non-uniform dz.
+        const Tau_to_kext to_kext{optical_props->get_tau().ptr(), gd.dz_g + gd.kstart, n_col};
+        cub::CountingInputIterator<int> counting(0);
+        cub::TransformInputIterator<Float, Tau_to_kext, cub::CountingInputIterator<int>> kext_it(counting, to_kext);
+
         // Get required temp storage size
         cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
-                               optical_props->get_tau().ptr(), max_tau_gas_g, max_size);
+                               kext_it, max_kext_gas_g, max_size);
 
         // Allocate temp storage
         cudaMalloc(&d_temp_storage, temp_storage_bytes);
 
         // Compute max
         cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
-                               optical_props->get_tau().ptr(), max_tau_gas_g, max_size);
+                               kext_it, max_kext_gas_g, max_size);
 
-        cudaMemcpy(&max_tau_gas, max_tau_gas_g, sizeof(Float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&max_kext_gas, max_kext_gas_g, sizeof(Float), cudaMemcpyDeviceToHost);
 
-        const Float lowest_gas_mean_free_path = grid_d.z / max_tau_gas;
+        const Float lowest_gas_mean_free_path = Float(1.) / max_kext_gas;
         const bool raytrace_gpoint = (lowest_gas_mean_free_path / grid_d_xy_min) > min_mfp_grid_ratio;
 
         if (compute_clouds)
@@ -1696,6 +1725,12 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
                         rays_count,//r_pixel,
                         grid_cells,
                         grid_d, kn_grid,
+                        z_lev_rt_g,
+                        kn_z_lev_rt_g,
+                        z_lut_rt_g,
+                        kn_z_lut_rt_g,
+                        lut_dz_rt,
+                        zsize_rt,
                         dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
                         dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_ssa(),
                         dynamic_cast<Optical_props_2str_rt&>(*cloud_optical_props).get_tau(),
@@ -1724,7 +1759,7 @@ void Radiation_rrtmgp_rt<TF>::exec_longwave_rt(
             else
             {
                 convert_1d_to_rt_output(
-                    n_col, n_lay, grid_cells.z, grid_d.z,
+                    n_col, n_lay, grid_cells.z, z_lev_rt_g,
                     (*fluxes).get_flux_up(),
                     (*fluxes).get_flux_dn(),
                     (*fluxes).get_flux_net(),
@@ -2008,7 +2043,7 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
     const Bool top_at_1 = 0;
 
     const Vector<int> grid_cells = {gd.imax, gd.jmax, gd.ktot};
-    const Vector<Float> grid_d = {gd.dx, gd.dy, gd.dz[gd.kstart]};
+    const Vector<Float> grid_d = {gd.dx, gd.dy, zsize_rt / Float(gd.ktot)}; // z only used for constant dz
     const Vector<int> kn_grid = {kngrid_i, kngrid_j, kngrid_k};
 
     // initiate flux & heating rate arrays to 0
@@ -2224,6 +2259,12 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     false, //no independent column
                     this->rays_per_pixel,
                     grid_cells, grid_d, kn_grid,
+                    z_lev_rt_g,
+                    kn_z_lev_rt_g,
+                    z_lut_rt_g,
+                    kn_z_lut_rt_g,
+                    lut_dz_rt,
+                    zsize_rt,
                     mie_cdfs_sub,
                     mie_angs_sub,
                     dynamic_cast<Optical_props_2str_rt&>(*optical_props).get_tau(),
@@ -2234,7 +2275,8 @@ void Radiation_rrtmgp_rt<TF>::exec_shortwave_rt(
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_tau(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_ssa(),
                     dynamic_cast<Optical_props_2str_rt&>(*aerosol_optical_props).get_g(),
-                    rel, sfc_alb_dir.subset({{ {band, band}, {1, n_col} }}),
+                    rel, sfc_alb_dir_g.subset({{ {band, band}, {1, n_col} }}),
+                    sfc_scat_type_g,
                     zenith_angle,
                     azimuth_angle,
                     sw_flux_dn_dir_inc({1,igpt}) * mu0({1}),
@@ -3050,8 +3092,7 @@ void Radiation_rrtmgp_rt<TF>::exec_all_stats(
 
         if (sw_longwave_3d)
         {
-            save_stats_and_cross(*fields.sd.at("lw_heat_rt"), "lw_heat_dir_rt", gd.sloc);
-            save_stats_and_cross(*fields.sd.at("lw_heat_rt"), "lw_heat_dif_rt", gd.sloc);
+            save_stats_and_cross(*fields.sd.at("lw_heat_rt"), "lw_heat_rt", gd.sloc);
         }
 
         if (sw_clear_sky_stats)

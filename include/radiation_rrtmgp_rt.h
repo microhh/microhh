@@ -338,10 +338,12 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         TF emis_sfc_hom;
         TF sfc_alb_dir_hom;
         TF sfc_alb_dif_hom;
+        int sfc_scat_type_hom;
 
         Array<Float,2> emis_sfc;
         Array<Float,2> sfc_alb_dir;
         Array<Float,2> sfc_alb_dif;
+        Array<int,1> sfc_scat_type;
 
         // Surface radiative fluxes CPU
         std::vector<Float> lw_flux_dn_sfc;
@@ -407,6 +409,15 @@ class Radiation_rrtmgp_rt : public Radiation<TF>
         Array_gpu<Float,2> emis_sfc_g;
         Array_gpu<Float,2> sfc_alb_dir_g;
         Array_gpu<Float,2> sfc_alb_dif_g;
+        Array_gpu<int,1> sfc_scat_type_g;
+
+        // Vertical grid of the ray tracer (supports non-uniform dz).
+        Array_gpu<Float,1> z_lev_rt_g;
+        Array_gpu<Float,1> kn_z_lev_rt_g;
+        Array_gpu<int,1> z_lut_rt_g;
+        Array_gpu<int,1> kn_z_lut_rt_g;
+        Float lut_dz_rt;
+        Float zsize_rt;
 
         Rte_lw_gpu rte_lw_gpu;
         Rte_sw_gpu rte_sw_gpu;

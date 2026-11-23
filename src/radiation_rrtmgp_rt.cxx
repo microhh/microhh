@@ -519,13 +519,14 @@ Radiation_rrtmgp_rt<TF>::Radiation_rrtmgp_rt(
     emis_sfc_hom = inputin.get_item<Float>("radiation", "emis_sfc", "");
     sfc_alb_dir_hom = inputin.get_item<Float>("radiation", "sfc_alb_dir", "");
     sfc_alb_dif_hom = inputin.get_item<Float>("radiation", "sfc_alb_dif", "");
+    sfc_scat_type_hom = inputin.get_item<int>("radiation", "sfc_scat_type", "", 0); // Default to lambertian scattering
 
     rays_per_pixel = inputin.get_item<Float>("radiation", "rays_per_pixel", "");
     rays_count_power = inputin.get_item<Float>("radiation", "rays_count_power", "");
 
-    kngrid_i = inputin.get_item<Float>("radiation", "kngrid_i", "");
-    kngrid_j = inputin.get_item<Float>("radiation", "kngrid_j", "");
-    kngrid_k = inputin.get_item<Float>("radiation", "kngrid_k", "");
+    kngrid_i = inputin.get_item<int>("radiation", "kngrid_i", "");
+    kngrid_j = inputin.get_item<int>("radiation", "kngrid_j", "");
+    kngrid_k = inputin.get_item<int>("radiation", "kngrid_k", "");
 
     if (sw_fixed_sza)
     {
@@ -654,13 +655,18 @@ void Radiation_rrtmgp_rt<TF>::create(
     if (thermo.get_switch() != Thermo_type::Moist)
         throw std::runtime_error("Radiation_rrtmgp_rt only supports swthermo=moist.");
 
-    // Check if grid is equidistant.
+    // The ray tracer supports non-uniform vertical grids, but then the null-collision grid
+    // cannot have more layers than the model grid (that would create zero-thickness layers).
     const TF dz0 = gd.dz[gd.kstart];
+    bool dz_constant = true;
     for (int k=gd.kstart+1; k<gd.kend; ++k)
     {
         if (std::abs(gd.dz[k] - dz0) > Constants::dsmall)
-            throw std::runtime_error("Radiation_rrtmgp_rt requires an equidistant vertical grid.");
+            dz_constant = false;
     }
+
+    if (!dz_constant && kngrid_k > gd.ktot)
+        throw std::runtime_error("Radiation_rrtmgp_rt requires kngrid_k <= ktot for a non-uniform vertical grid.");
 
     // Setup timedependent gasses
     const TF offset = 0;
@@ -703,6 +709,8 @@ void Radiation_rrtmgp_rt<TF>::create(
         sfc_alb_dif.set_dims({n_bnd, gd.imax*gd.jmax});
         sfc_alb_dir.fill(sfc_alb_dir_hom);
         sfc_alb_dif.fill(sfc_alb_dif_hom);
+        sfc_scat_type.set_dims({gd.imax*gd.jmax});
+        sfc_scat_type.fill(sfc_scat_type_hom);
     }
 
     if (sw_longwave)
