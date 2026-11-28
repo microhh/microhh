@@ -10,48 +10,42 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+
  * MicroHH is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+
  * You should have received a copy of the GNU General Public License
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SOURCE_KERNELS_H
-#define SOURCE_KERNELS_H
+#ifndef SOURCE_DISABLED_H
+#define SOURCE_DISABLED_H
+
+#include "source.h"
+
+class Input;
 
 template<typename TF>
-std::vector<int> calc_shape(
-        const TF* restrict x, const TF x0, const TF sigma_x, const TF line_x, int istart, int iend)
+class Source_disabled : public Source<TF>
 {
-    std::vector<int> range(2);
+    public:
+        Source_disabled(Master&, Grid<TF>&, Fields<TF>&, Input&);
+        ~Source_disabled();
 
-    int i = istart;
-    range[0] = iend;
+        void init();
+        void create(Input&, Timeloop<TF>&, Netcdf_handle&);
+        void exec(Thermo<TF>&, Timeloop<TF>&);
+        void update_time_dependent(Timeloop<TF>&);
 
-    for (; i<iend; ++i)
-    {
-        if ( x[i]-x0 + TF(4)*sigma_x > TF(0) )
-        {
-            range[0] = i;
-            break;
-        }
-    }
+        #ifdef USECUDA
+        void prepare_device();
+        #endif
 
-    i = istart;
-    for (; i<iend; ++i)
-    {
-        range[1] = iend;
-
-        if ( x[i]-x0-line_x - TF(4)*sigma_x > TF(0) )
-        {
-            range[1] = i;
-            break;
-        }
-    }
-
-    return range;
-}
-
+    private:
+        using Source<TF>::master;
+        using Source<TF>::grid;
+        using Source<TF>::fields;
+};
 #endif

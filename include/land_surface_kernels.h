@@ -26,6 +26,7 @@
 #include <iomanip>
 
 #include "constants.h"
+#include "surface_tile.h"
 #include "thermo_moist_functions.h"
 #include "boundary_surface_kernels.h"
 #include "monin_obukhov.h"
