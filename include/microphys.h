@@ -64,8 +64,6 @@ class Microphys
         virtual void exec_dump(Dump<TF>&, unsigned long) = 0;
         virtual void exec_cross(Cross<TF>&, unsigned long) = 0;
 
-        virtual void get_mask(Stats<TF>&, std::string) = 0;
-        virtual bool has_mask(std::string) = 0;
 
         virtual void get_surface_rain_rate(std::vector<TF>&) = 0;
 

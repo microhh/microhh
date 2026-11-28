@@ -38,17 +38,18 @@ template<typename> class Stats;
  */
 
 enum class Decay_type {disabled, enabled, exponential};
+enum class Reset_type {disabled, enabled, ql};
 
 template<typename TF>
 class Decay
 {
     public:
-        Decay(Master&, Grid<TF>&, Fields<TF>&, Input&); ///< Constructor of the decay class.
+        Decay(Master&, Grid<TF>&, Fields<TF>&, Input&, Thermo<TF>&); ///< Constructor of the decay class.
         ~Decay();                                       ///< Destructor of the decay class.
 
         void init(Input&);           ///< Initialize the arrays that contain the profiles.
         void create(Input&, Stats<TF>&);   ///< Read the profiles of the forces from the input.
-        void exec(double, Stats<TF>&);     ///< Add the tendencies belonging to the decay processes.
+        void exec(double, Stats<TF>&, Thermo<TF>&);     ///< Add the tendencies belonging to the decay processes.
 
         void get_mask(Stats<TF>&, std::string);
         bool has_mask(std::string);
@@ -58,18 +59,20 @@ class Decay
         Master& master;
         Grid<TF>& grid;
         Fields<TF>& fields;
+        Thermo<TF>& thermo;
 
         // Internal switches for various forcings
         struct Decay_var
         {
             double timescale; ///< Decay timescale.
             Decay_type type; ///< Switch for the decay.
+            Reset_type reset_type; ///< Switch for the reset.
         };
 
         typedef std::map<std::string, Decay_var> Decay_map;
         Decay_map dmap;
 
-        std::vector<std::string> available_masks = {"couvreux"};   // Vector with the masks that fields can provide
+        std::vector<std::string> available_masks = {"couvreux", "cldshell", "cldshelldown"};   // Vector with the masks that fields can provide
         TF nstd_couvreux;
 
         const std::string tend_name = "decay";
